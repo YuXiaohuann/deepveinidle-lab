@@ -12,6 +12,19 @@ node scripts/serve.mjs
 
 打开 http://127.0.0.1:4173 。只能从本机访问。可通过 PORT 环境变量修改端口。
 
+## 发布到 Cloudflare Pages
+
+线上地址：<https://deepveinidle-simulator.pages.dev/>。
+
+使用 Wrangler Direct Upload，生产分支选择 `main`。将 `index.html`、`src/`、`vendor/`、`PLAN.md`、`README.md` 复制到独立发布目录，再运行：
+
+```sh
+npx wrangler login
+npx wrangler pages deploy <发布目录> --project-name deepveinidle-simulator --branch main
+```
+
+Pages 项目已创建。网页在访问者浏览器中完成模拟，无需后端；本机与线上域名的配置分别保存在各自的浏览器存储中。授权过期时可使用 `npx wrangler login --scopes account:read user:read pages:write` 仅申请账号读取与 Pages 发布相关权限。
+
 ## 测试与代码更新
 
 ```sh
@@ -36,6 +49,8 @@ node scripts/extract.mjs
 - 三种 Boss 使用公开基础数据估算，不包含服务端动态缩放和未验证的最终取整；不输出虚假的固定实战 HP。
 - 普通怪物没有逐目标护甲扣伤，最大单次伤害相同属于当前原始代码行为。
 - 本版使用原始完整模拟流程，但不自动读取账号，不包含登录、交易或角色操作。
+
+项目作者（游戏昵称）：Alice，交流 QQ 群：897891232。页脚作者名称为普通文本，右侧 [Deep Vein Idle](https://deepveinidle.com/?ref=Alice) 使用邀请链接，不展示代码快照和需求设计链接；素材与资源版权及非官方项目说明中英文同步。
 
 详细范围与后续阶段见 [PLAN.md](PLAN.md)。原游戏代码及数据归原作者；本项目中的来源记录不代表上游授予了开源许可。
 
