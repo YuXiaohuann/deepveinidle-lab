@@ -1,0 +1,84 @@
+import {game,normalize,slots,skills,foods,gearDetails} from './model.js';
+import {combatRooms,combatMasteries,combatPerks,combatPotions} from './combat-options.js';
+export const importTypes=[['skills','技能','Skills'],['equipment','装备','Equipment'],['food','食物','Food'],['potions','药水','Potions'],['home','家园','Home'],['masteries','精通','Masteries'],['guild','公会与祝福','Guild & blessing'],['supplies','补给','Supplies'],['perks','天赋','Perks']];
+const record=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
+const valid=(v,min=0,max=Number.MAX_SAFE_INTEGER)=>typeof v==='number'&&Number.isFinite(v)&&v>=min&&v<=max;
+const int=(v,min=0,max=Number.MAX_SAFE_INTEGER)=>valid(v,min,max)&&Number.isInteger(v);
+export function importCharacter(current,snapshot,selected){
+ if(!record(snapshot)||snapshot.version!==1||!int(snapshot.capturedAt,1)||snapshot.capturedAt>Date.now()+60000||!record(snapshot.player)||!int(snapshot.player.lastTick))throw new Error('invalidSnapshot');
+ const chosen=importTypes.filter(([id])=>selected.includes(id)).map(([id])=>id);
+ if(!chosen.length)throw new Error('noTypes');
+ const state=structuredClone(current),p=snapshot.player,warnings=[],applied=new Set();let category;
+ const warn=field=>warnings.push(`${category}: ${field}`);
+ const put=(field,value,check,set)=>{if(check(value)){set(value);applied.add(category);}else warn(field);};
+ const map=(field,entries,set,max=Number.MAX_SAFE_INTEGER)=>{
+  if(!record(p[field])){warn(field);return;}
+  for(const key of entries)put(`${field}.${key}`,Object.hasOwn(p[field],key)?p[field][key]:0,v=>int(v,0,max),(v)=>set(key,v));
+ };
+ const active=kind=>record(p.brews)&&int(p.brews[kind]??0)&&(p.brews[kind]??0)>p.lastTick;
+ for(category of chosen){
+  if(category==='skills')for(const k of skills)put(`skills.${k}`,p.skills?.[k],v=>valid(v),v=>state.levels[k]=game.level(v));
+  if(category==='equipment'){
+   if(!record(p.equipment)){warn('equipment');continue;}
+   for(const slot of slots){
+    const id=p.equipment[slot];
+    if(id===null){state.gear[slot]={id:0,tier:0,plus:0};applied.add(category);continue;}
+    const base=int(id)?game.baseItemId(id):0,tier=int(id)?game.itemTier(id):0,plus=int(id)?Math.floor(id/game.encode(0,1)):0;
+    if(!int(id)||!int(tier,0,4)||!int(plus,0,game.maxEnhancement)||!gearDetails(slot,id)||gearDetails(slot,id).slot!==slot){warn(`equipment.${slot}`);continue;}
+    state.gear[slot]={id:base,tier,plus};applied.add(category);
+   }
+   // Derive only when the weapon itself was readable; retain unsupported gear.
+   if(p.equipment.weapon===null||int(p.equipment.weapon)&&game.gear(p.equipment.weapon)?.slot==='weapon'){
+    const weapon=game.gear(state.gear.weapon.id);state.style=weapon?.magic?'magic':weapon?.ranged?'ranged':'melee';
+   }
+   if(slots.some(slot=>{const g=gearDetails(slot,game.encode(game.withRarity(state.gear[slot].id,state.gear[slot].tier),state.gear[slot].plus));return g?.style&&g.style!==state.style;}))state.manual.allGear=true;
+  }
+  if(category==='food'){
+   const id=p.foodItemId;
+   if(id===null||id===0||id===-2){state.manual.foodRule=id===-2?2:1;applied.add(category);warn('food.selectionRetained');}
+   else if(int(id,1)&&foods.some(f=>f.id===game.baseItemId(id))&&int(game.itemTier(id),0,4)){state.food={id:game.baseItemId(id),tier:game.itemTier(id)};state.manual.foodRule=0;applied.add(category);}else warn('foodItemId');
+   if(p.eatAt===0){state.manual.foodRule=3;applied.add(category);warn('eatAt.retained');}
+   else put('eatAt',p.eatAt,v=>[.25,.5,.75].includes(v),v=>state.eatAt=v*100);
+   put('foodMaxTier',p.foodMaxTier,v=>int(v,0,4),v=>state.manual.foodMaxTier=v);
+   put('foodPerTrip',p.foodPerTrip,v=>[5,10,20,-2,-1].includes(v),v=>state.manual.foodPerTrip=v);
+   if(record(p.brews)&&['fed','rooted'].every(k=>int(p.brews[k]??0))){state.fed=active('fed');state.rooted=active('rooted');applied.add(category);}else warn('food.buffs');
+  }
+  if(category==='potions'){
+   if(!record(p.brews)){warn('brews');continue;}
+   for(const {kind} of combatPotions){
+    if(!int(p.brews[kind]??0)){warn(`brews.${kind}`);continue;}
+    if(!active(kind)){state.brews[kind]=-1;applied.add(category);continue;}
+    const buckets=p.brewBuckets?.[kind];let tier=p.brewTier?.[kind]??0;
+    if(buckets!==undefined){
+     if(!Array.isArray(buckets)||buckets.length!==5||!buckets.every(v=>int(v))){warn(`brewBuckets.${kind}`);continue;}
+     const total=buckets.reduce((a,b)=>a+b,0),elapsed=Math.max(0,p.lastTick-(p.brews[kind]-total));let sum=0;tier=-1;
+     for(let i=4;i>=0;i--){sum+=buckets[i];if(elapsed<sum){tier=i;break;}}
+    }
+    put(`brewTier.${kind}`,tier,v=>int(v,0,4),v=>state.brews[kind]=v);
+   }
+  }
+  if(category==='home'){
+   if(!record(p.house)||!record(p.houseFurniture)){warn('house / houseFurniture');continue;}
+   for(const r of combatRooms)put(`house.${r.id}`,Object.hasOwn(p.house,r.id)?p.house[r.id]:0,v=>int(v),v=>state.house[r.id]=r.bonus.kind==='bankSlots'||record(p.houseFurniture[r.id])?v:0);
+  }
+  if(category==='masteries')map('masteries',combatMasteries.map(m=>m.id),(k,v)=>state.masteries[k]=v,game.masteryRankLimit);
+  if(category==='guild'){
+   put('guildBonus',p.guildBonus,v=>valid(v,0,1e5),v=>state.manual.guildXp=v*100);
+   if(record(p.brews)&&int(p.brews.blessing??0)){state.manual.blessing=active('blessing');applied.add(category);}else warn('blessing');
+   const windows=snapshot.worldBuffs,tick=snapshot.worldTick;
+   if(int(tick)&&Array.isArray(windows)&&windows.every(w=>record(w)&&['Weekly goal: gathered','Weekly goal: felled'].includes(w.label)&&int(w.fromTick)&&int(w.toTick,w.fromTick)&&valid(w.xpMult,1,1e5))){
+    state.manual.weeklyXp=Math.round(windows.filter(w=>w.fromTick<=tick&&tick<=w.toTick).reduce((sum,w)=>sum+(w.xpMult-1)*100,0)*1e8)/1e8;
+    applied.add(category);
+   }else warn('weeklyXp.retained');
+  }
+  if(category==='supplies'){
+   put('homeBank',p.homeBank,v=>v===null||game.world.banks.some(b=>b.id===v),v=>state.homeBank=v??0);
+   put('ironman',p.ironman,v=>typeof v==='boolean',v=>state.manual.ironman=v);
+  }
+  if(category==='perks'){
+   if(!record(p.perks)){warn('perks');continue;}
+   for(const perk of combatPerks)put(`perks.${perk.id}`,Object.hasOwn(p.perks,perk.id)?p.perks[perk.id]:0,v=>int(v,0,perk.ranks),v=>{if(perk.id==='meals')state.meals=v;else state.manual.perks[perk.id]=v;});
+  }
+ }
+ return {state:normalize(state),applied:[...applied],warnings};
+}

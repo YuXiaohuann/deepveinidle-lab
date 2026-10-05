@@ -15,3 +15,17 @@ th.column-highlight,td.column-highlight{color:var(--gold);font-weight:650}.sort-
 .methodology .prediction-difference{color:var(--gold);font-weight:700}
 
 .project-footer{max-width:1536px;margin:0 auto;padding:22px 0 28px;border-top:1px solid var(--line);display:block;color:var(--muted);font-size:11px;line-height:1.8;width:calc(100% - 64px)}.project-footer a{margin:0;color:#b8cece}.footer-contact,.footer-source,.footer-source nav{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center}.footer-contact{margin-bottom:14px;font-size:12px;color:#b8c8ca}.footer-contact a,.footer-contact strong{color:var(--gold);font-weight:650}.footer-source{justify-content:space-between;margin-bottom:14px}.project-footer p{margin:6px 0;overflow-wrap:anywhere}@media(max-width:650px){.project-footer{width:calc(100% - 32px);padding:18px 0 24px}.footer-contact,.footer-source{gap:8px 16px}}
+
+/* Character import stays visually separate from the combat style controls. */
+.character-import{margin:0 0 18px;border:1px solid #615b43;border-radius:8px;padding:12px 14px;background:#1b2b30}
+.character-import>summary{margin:0;color:var(--gold);font-weight:700;line-height:1.5}
+.import-body{display:grid;gap:14px;padding-top:14px}
+.import-body .micro{margin:0}
+.import-body>.text-button{justify-self:start;display:inline-flex;align-items:center;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:#18272d;color:#b8c8ca;text-decoration:none;line-height:1.5}
+.import-body>.text-button:hover{border-color:var(--gold);color:var(--gold)}
+.import-types{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 12px;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.import-types .check{margin:0;min-width:0}
+.import-body>.secondary{min-height:38px}
+#import-status{overflow-wrap:anywhere}
+#import-status:empty{display:none}
+.import-warning{display:block;margin-top:8px;color:var(--gold);font-weight:700;line-height:1.8}
