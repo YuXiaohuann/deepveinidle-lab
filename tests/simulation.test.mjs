@@ -101,3 +101,32 @@ test('removed manual reproduction overrides use fixed defaults',()=>{
  const n=normalize(s);assert.equal(n.manual.playerId,1);assert.equal(n.manual.seed,0);assert.equal(n.manual.currentTick,START_TICK);
  assert.deepEqual(simulateMonster(s,game.monsters[3]),simulateMonster(preset('ranged'),game.monsters[3]));
 });
+
+test('named food above the quality cap is eaten and matches native prediction',()=>{
+ const state=preset('ranged'),monster=game.monsters.find(m=>m.id===12);
+ state.food={id:64,tier:4};state.manual.foodRule=0;state.manual.foodMaxTier=0;
+ for(const slot of ['helmet','body','legs'])state.gear[slot]={id:0,tier:0,plus:0};
+ const before=JSON.stringify(state),actual=simulateMonster(state,monster);
+ assert.ok(actual.food>0);assert.ok(actual.kills>0);assert.equal(actual.deaths,0);
+ const uncapped=structuredClone(state);uncapped.manual.foodMaxTier=4;
+ assert.deepEqual(actual,simulateMonster(uncapped,monster));
+ const {player,context}=createScenario(state,monster),zone=game.world.zones.find(z=>z.monsterId===monster.id);
+ const expected=game.predict(player,context,p=>game.startFight(p,context,zone.id));
+ assert.equal(actual.xp,expected.xpPerHour);assert.deepEqual(actual.bySkill,expected.bySkill);
+ assert.equal(actual.deaths,expected.deaths);assert.equal(actual.elapsedTicks,expected.ticks);
+ assert.equal(JSON.stringify(state),before);
+});
+
+test('food priorities still enforce the quality cap and fountain-only never eats',()=>{
+ const state=preset('ranged'),monster=game.monsters.find(m=>m.id===12);
+ state.food={id:64,tier:4};state.manual.foodMaxTier=0;
+ for(const slot of ['helmet','body','legs'])state.gear[slot]={id:0,tier:0,plus:0};
+ for(const foodRule of [1,2]){
+  state.manual.foodRule=foodRule;
+  const capped=simulateMonster(state,monster);assert.equal(capped.food,0);
+  const uncapped=structuredClone(state);uncapped.manual.foodMaxTier=4;
+  assert.ok(simulateMonster(uncapped,monster).food>0);
+ }
+ state.manual.foodRule=3;state.manual.foodMaxTier=4;
+ assert.equal(simulateMonster(state,monster).food,0);
+});

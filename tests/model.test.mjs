@@ -18,6 +18,23 @@ test('presets are valid for all styles',()=>{for(const style of ['melee','ranged
 test('language follows saved choice, then browser language list',()=>{assert.equal(chooseLanguage('en',['zh-CN']),'en');assert.equal(chooseLanguage(null,['en-US','zh-TW']),'zh');assert.equal(chooseLanguage(null,['fr']),'en');});
 test('snapshot hash and every extracted original declaration match manifest',()=>{const source=fs.readFileSync('vendor/game-original.js','utf8'),generated=fs.readFileSync('src/upstream.js','utf8'),manifest=JSON.parse(fs.readFileSync('vendor/manifest.json','utf8'));const hash=x=>crypto.createHash('sha256').update(x).digest('hex');assert.equal(hash(source),manifest.sha256);for(const d of manifest.declarations){const text=source.slice(d.start,d.end);assert.ok(generated.includes(text),d.name);const candidates=[text,...['const','let','var'].map(k=>k+' '+text+';')];assert.ok(candidates.some(x=>hash(x)===d.sha256),d.name);}});
 
+test('combat random samples include the upstream integer mixing step',()=>{
+ // Fixed vectors independently checked using unbounded integer multiplication
+ // modulo 2^32. Raw values are the pre-mix samples used by the old snapshot.
+ const vectors=[
+  [0,1,1000001,3621179820,3230848567],
+  [0,1,1000002,4202739916,2202290078],
+  [0,1,1000003,1264039605,1173829368],
+  [123,42,987654,2253720909,2557656668],
+  [0,0,0,2932326263,493009611],
+ ];
+ for(const [seed,id,tick,mixed,raw]of vectors){
+  const actual=game.randomFloat(seed,id,tick);
+  assert.equal(actual,mixed/2**32);
+  assert.notEqual(actual,raw/2**32);
+ }
+});
+
 
 test('style change keeps shared stats and removes incompatible gear',async()=>{const {selectStyle,gearForStyle}=await import('../src/model.js');const s=selectStyle(preset('ranged'),'magic');assert.equal(s.style,'magic');assert.equal(s.levels.ranged,85);assert.ok(game.gear(s.gear.weapon.id).magic);for(const slot of slots)assert.ok(!s.gear[slot].id||gearForStyle(slot,'magic').some(g=>g.itemId===s.gear[slot].id));});
 test('all eight upstream potions survive normalization',()=>{assert.equal(game.potions.length,8);const s=defaults();for(const p of game.potions)s.brews[p.kind]=4;assert.deepEqual(normalize(s).brews,s.brews);});

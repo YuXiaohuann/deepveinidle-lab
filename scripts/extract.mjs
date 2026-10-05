@@ -4,7 +4,10 @@ import {parse} from 'acorn';
 import {analyze} from 'eslint-scope';
 
 // Select upstream declarations by semantic signature; preserve their source verbatim.
+const sourceInfo={sourceUrl:'https://deepveinidle.com/assets/index-Bwib9zgA.js',retrieved:'2026-10-06',changelogVersion:'1.0.1173',sha256:'d5dede7a94f87782efe0f6c01205d03ad39b276be0b54236f0f82eda4981af66'};
+const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const source = fs.readFileSync('vendor/game-original.js','utf8');
+if(hash(source)!==sourceInfo.sha256)throw Error('Unreviewed upstream snapshot: review source metadata, export mappings and signatures before extraction');
 const ast = parse(source,{ecmaVersion:'latest',sourceType:'module',ranges:true});
 const declarations = new Map();
 for (const node of ast.body) {
@@ -23,13 +26,13 @@ function find(signature,type) {
 }
 const exportsMap={
   monsters:find('name:"Gnawer",level:2'), equipment:find('itemId:110,slot:"weapon"'),
-  items:'St', gear:'ge', item:'lo', encode:'_s', withRarity:'we', levelXp:'ht', level:'$o', maxLevel:'Hc',
-  accuracy:find('Math.round(ox*ze(e,"warrior"))','function'), maxHit:find('s>1?Math.ceil(c*s):c','function'),
-  evasion:find('return 10+$o(e.skills.defence)+zI(e)','function'), hitChance:'Is', magic:'Ms', style:'Zc',
-  attackTicks:'Eb', maxHp:'Yt', equipmentSlots:'Si', masteries:'Qa', rooms:'et',
-  foodBuff:'u1', cropDuration:'Uh', isCrop:'Jd', damageReduction:'R6', brewScale:'ze', combine:'$t',
-  bosses:'Yu', bossStats:'I6', bossWeakMultiplier:'Nh', bossOtherMultiplier:'Wh', tickMs:'oo',
-  strength:'jI', armour:'zI', magicDefenceScale:'sl', maxEnhancement:'Fu', potions:'Qd'
+  items:'wt', gear:'we', item:'uo', encode:'rs', withRarity:'ve', levelXp:'pt', level:'So', maxLevel:'jc',
+  accuracy:find('Math.round(_x*Ze(e,"warrior"))','function'), maxHit:find('s>1?Math.ceil(c*s):c','function'),
+  evasion:find('return 10+So(e.skills.defence)+PI(e)','function'), hitChance:'Bs', magic:'Rs', style:'ds',
+  attackTicks:'dp', maxHp:'oc', equipmentSlots:'_i', masteries:'ni', rooms:'st',
+  foodBuff:'F1', cropDuration:'fu', isCrop:'bl', damageReduction:'CA', brewScale:'Ze', combine:'qt',
+  bosses:'ff', bossStats:'xA', bossWeakMultiplier:'iu', bossOtherMultiplier:'ru', tickMs:'co',
+  strength:'GI', armour:'PI', magicDefenceScale:'kl', maxEnhancement:'nf', potions:'ml'
 };
 exportsMap.recipes=find(`id:220,name:"Gatherer's draught",skill:"herblore"`);
 // Dictionary is upstream data, not a hand-maintained translation list.
@@ -37,36 +40,37 @@ exportsMap.translations=find('"Bronze blade":"青铜剑"','const');
 exportsMap.worldTranslations=find('Gnawer:"啃噬者"','const');
 exportsMap.uiTranslations=find('"Vein Colossus":"矿脉巨像"','const');
 exportsMap.homeTranslations=find('"The mine":"矿井"','const');
-exportsMap.houseBonus='mn';
-exportsMap.houseDamageCap='Hx';
-exportsMap.masteryRankLimit='CT';
-exportsMap.combatTick='tM';
-exportsMap.killMonster='JI';
-exportsMap.baseItemId='xo';
-exportsMap.itemTier='Jo';
-exportsMap.coinItemId='bc';
-exportsMap.hotSkill='tl';
-exportsMap.masteryOfflineBaseHours='tu';
-exportsMap.predict='mi';
-exportsMap.offline='EC';
-exportsMap.tick='OS';
-exportsMap.world='R';
-exportsMap.startFight='va';
-exportsMap.resetActivity='it';
-exportsMap.depositPack='SS';
-exportsMap.homeBank='A1';
-exportsMap.combatTargetTile='yM';
-exportsMap.nearbyTile='Zt';
-exportsMap.predictionStartTick='HC';
-exportsMap.predictionChunkTicks='Q0';
+exportsMap.houseBonus='ka';
+exportsMap.houseDamageCap='mS';
+exportsMap.masteryRankLimit='x6';
+exportsMap.combatTick='VI';
+exportsMap.killMonster='zI';
+exportsMap.baseItemId='fo';
+exportsMap.itemTier='Eo';
+exportsMap.coinItemId='Ac';
+exportsMap.hotSkill='yl';
+exportsMap.masteryOfflineBaseHours='vu';
+exportsMap.predict='$i';
+exportsMap.offline='T9';
+exportsMap.tick='w3';
+exportsMap.world='P';
+exportsMap.startFight='Hn';
+exportsMap.resetActivity='ht';
+exportsMap.depositPack='c3';
+exportsMap.homeBank='sg';
+exportsMap.combatTargetTile='hq';
+exportsMap.nearbyTile='sc';
+exportsMap.predictionStartTick='I9';
+exportsMap.predictionChunkTicks='Mw';
 exportsMap.allSkills='Be';
-exportsMap.createContext='$0';
-exportsMap.fullFoodLoad='ua';
+exportsMap.createContext='J0';
+exportsMap.fullFoodLoad='xn';
 exportsMap.perks=find('id:"pockets",name:"Deep pockets"');
-exportsMap.hotXp='y9';exportsMap.hotRare='w9';
-exportsMap.tools='jy';
-exportsMap.tool='Lc';
-exportsMap.mountSpeed='I9';
+exportsMap.hotXp='hM';exportsMap.hotRare='uM';
+exportsMap.tools='v0';
+exportsMap.tool='zc';
+exportsMap.mountSpeed='wM';
+exportsMap.randomFloat=find('return af(ne(e,o,t))/4294967296','function');
 const selected=new Set(); const allowed=new Set(['WeakSet','WeakMap','Uint8Array','Uint16Array','Uint32Array','Int32Array','Float64Array','Math','Map','Set','Number','Object','Array','String','Error','Date','Boolean','Infinity','undefined','JSON','RegExp','parseInt','parseFloat']);
 function collect(name){
  const d=declarations.get(name);if(!d)throw Error('Missing declaration '+name);if(selected.has(d))return;selected.add(d);
@@ -78,6 +82,5 @@ Object.values(exportsMap).forEach(collect);
 const ordered=[...selected].sort((a,b)=>a.start-b.start);
 fs.mkdirSync('src',{recursive:true});
 fs.writeFileSync('src/upstream.js','// GENERATED from vendor/game-original.js. Do not edit.\n'+ordered.map(d=>d.text).join('\n')+'\nexport { '+Object.entries(exportsMap).map(([alias,name])=>`${name} as ${alias}`).join(', ')+' };\n');
-const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
-fs.writeFileSync('vendor/manifest.json',JSON.stringify({sourceUrl:'https://deepveinidle.com/assets/index-CEociSeB.js',retrieved:'2026-10-04',changelogVersion:'0.0.1167',sha256:hash(source),exports:exportsMap,declarations:ordered.map(({name,start,end,text})=>({name,start,end,sha256:hash(text)}))},null,2));
+fs.writeFileSync('vendor/manifest.json',JSON.stringify({...sourceInfo,exports:exportsMap,declarations:ordered.map(({name,start,end,text})=>({name,start,end,sha256:hash(text)}))},null,2));
 console.log(`Extracted ${ordered.length} original declarations (${fs.statSync('src/upstream.js').size} bytes).`);
