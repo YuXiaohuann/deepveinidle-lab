@@ -1,0 +1,65 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import crypto from 'node:crypto';
+import {game,slots,defaults,normalize,calculate,preset,chooseLanguage,sortEnemies} from '../src/model.js';
+test('empty character: hand-calculated baseline',()=>{const r=calculate(defaults());assert.deepEqual(r.stats,{hit:1,accuracy:11,evasion:11,style:'melee',strength:0,armour:0,hp:10,seconds:3});assert.equal(r.rows.length,23);assert.equal(r.rows.find(x=>x.id===1).chance,.5);});
+test('rarity rounds first, enhancement rounds second',()=>{const s=defaults();s.levels.melee=30;s.gear.weapon={id:110,tier:2,plus:5};const r=calculate(s);assert.equal(r.stats.accuracy,53);assert.equal(r.stats.strength,10);assert.equal(r.stats.hit,6);assert.equal(r.stats.seconds,2.4);});
+test('class weapon divisors: shortbow 8, longbow 5, staff 4.5, greatsword 6',()=>{for(const [predicate,divisor]of [[g=>g.ranged&&g.speed===3,8],[g=>g.ranged&&g.speed===5,5],[g=>g.magic,4.5],[g=>g.twoHanded,6]]){const g=game.equipment.find(x=>x.slot==='weapon'&&x.levelReq===1&&predicate(x));assert.ok(g);const s=defaults();s.levels={melee:40,ranged:40,magic:40,defence:40,hitpoints:40};s.gear.weapon={id:g.itemId,tier:0,plus:0};assert.equal(calculate(s).stats.hit,1+Math.floor((40+g.strength)/divisor));}});
+test('magic halves defence before the flat 10',()=>{const s=preset('magic'),r=calculate(s),m=r.rows.find(x=>x.name==='Ice wight');assert.equal(m.chance,r.stats.accuracy/(r.stats.accuracy+10+106/2));});
+test('food + warrior are additive, home and mastery multiplicative',()=>{const s=defaults();s.levels.melee=79;s.fed=true;s.brews.warrior=0;s.house.post=10;s.masteries.maxhit=10;const r=calculate(s);assert.equal(r.stats.hit,Math.ceil(10*1.35*1.05*1.05));assert.equal(r.stats.accuracy,99);});
+test('two-handed excludes off-hand, underlevel gear excluded',()=>{const s=defaults();s.gear.weapon={id:390,tier:0,plus:0};s.gear.shield={id:115,tier:0,plus:0};let r=calculate(s);assert.ok(r.issues.some(i=>i.kind==='twoHanded'));assert.equal(r.player.equipment.shield,null);s.gear.weapon.id=114;r=calculate(s);assert.ok(r.issues.some(i=>i.kind==='level'));assert.equal(r.player.equipment.weapon,null);});
+test('wrong-style armour subtracts accuracy but retains defence',()=>{const s=defaults();s.gear.weapon.id=140;s.gear.helmet.id=120;const r=calculate(s);assert.equal(r.stats.accuracy,15);assert.equal(r.stats.evasion,14);assert.ok(r.issues.some(i=>i.kind==='style'));});
+test('rare crops have both food buffs, healing includes additive bonuses',()=>{const s=defaults();s.food={id:170,tier:1};s.brews.nourish=0;s.meals=10;const r=calculate(s);assert.equal(r.food.healing,6);assert.equal(r.food.fedSeconds,120);assert.equal(r.food.rootSeconds,120);});
+test('all normal targets share max hit; incoming protection reduces max',()=>{const s=preset('ranged');s.rooted=true;const r=calculate(s);assert.ok(r.rows.filter(x=>!x.boss).every(x=>x.max===r.stats.hit));assert.equal(r.rows.find(x=>x.name==='Ice wight').enemyMax,27);});
+test('boss estimates are marked, with no invented dynamic HP',()=>{const r=calculate(preset('ranged'));const boss=r.rows.filter(x=>x.boss);assert.equal(boss.length,3);assert.ok(boss.every(x=>x.hp===null&&x.enemyChance===null));assert.equal(boss.find(x=>x.fears==='ranged').max,r.stats.hit*1.3);});
+test('saved configuration normalization, upper bounds and defaults',()=>{const s=normalize({levels:{melee:9999,magic:-2},gear:{weapon:{id:999,tier:9,plus:-1}},brews:{warrior:'oops'}});assert.equal(s.levels.melee,game.maxLevel);assert.equal(s.levels.magic,1);assert.equal(s.levels.hitpoints,10);assert.equal(s.gear.weapon.id,0);assert.equal(s.brews.warrior,-1);assert.deepEqual(normalize(JSON.parse(JSON.stringify(preset('magic')))),preset('magic'));});
+test('presets are valid for all styles',()=>{for(const style of ['melee','ranged','magic']){const r=calculate(preset(style));assert.equal(r.stats.style,style);assert.equal(r.issues.length,0);}});
+test('language follows saved choice, then browser language list',()=>{assert.equal(chooseLanguage('en',['zh-CN']),'en');assert.equal(chooseLanguage(null,['en-US','zh-TW']),'zh');assert.equal(chooseLanguage(null,['fr']),'en');});
+test('snapshot hash and every extracted original declaration match manifest',()=>{const source=fs.readFileSync('vendor/game-original.js','utf8'),generated=fs.readFileSync('src/upstream.js','utf8'),manifest=JSON.parse(fs.readFileSync('vendor/manifest.json','utf8'));const hash=x=>crypto.createHash('sha256').update(x).digest('hex');assert.equal(hash(source),manifest.sha256);for(const d of manifest.declarations){const text=source.slice(d.start,d.end);assert.ok(generated.includes(text),d.name);const candidates=[text,...['const','let','var'].map(k=>k+' '+text+';')];assert.ok(candidates.some(x=>hash(x)===d.sha256),d.name);}});
+
+
+test('style change keeps shared stats and removes incompatible gear',async()=>{const {selectStyle,gearForStyle}=await import('../src/model.js');const s=selectStyle(preset('ranged'),'magic');assert.equal(s.style,'magic');assert.equal(s.levels.ranged,85);assert.ok(game.gear(s.gear.weapon.id).magic);for(const slot of slots)assert.ok(!s.gear[slot].id||gearForStyle(slot,'magic').some(g=>g.itemId===s.gear[slot].id));});
+test('all eight upstream potions survive normalization',()=>{assert.equal(game.potions.length,8);const s=defaults();for(const p of game.potions)s.brews[p.kind]=4;assert.deepEqual(normalize(s).brews,s.brews);});
+test('bosses remain last for every sort',async()=>{const {sortEnemies}=await import('../src/model.js');for(const sort of ['level','chance','max']){const rows=sortEnemies(calculate(preset('magic')).rows,sort);assert.ok(rows.slice(0,20).every(r=>!r.boss));assert.ok(rows.slice(20).every(r=>r.boss));}});
+
+test('complete home and mastery configuration round trips',()=>{const s=defaults();assert.deepEqual(Object.keys(s.house),game.rooms.map(x=>x.id));assert.deepEqual(Object.keys(s.masteries),game.masteries.map(x=>x.id));for(const r of game.rooms)s.house[r.id]=120;for(const m of game.masteries)s.masteries[m.id]=123;const restored=normalize(JSON.parse(JSON.stringify(s)));assert.deepEqual(restored.house,s.house);assert.deepEqual(restored.masteries,s.masteries);});
+test('home damage reaches original 50 percent cap at level 100',()=>{const s=preset('ranged'),base=calculate(s).stats.hit;s.house.target=100;assert.equal(calculate(s).stats.hit,Math.ceil(base*1.5));s.house.target=150;assert.equal(calculate(s).stats.hit,Math.ceil(base*1.5));});
+test('non-combat options do not invent combat effects',()=>{const s=preset('magic'),base=calculate(s).stats;for(const r of game.rooms)if(r.bonus.kind!=='dmg')s.house[r.id]=100;for(const m of game.masteries)if(!['hp','accuracy','maxhit'].includes(m.id))s.masteries[m.id]=100;assert.deepEqual(calculate(s).stats,base);});
+test('all potion home and mastery labels have Chinese translations',async()=>{const {translatedName}=await import('../src/i18n.js');for(const label of [...game.potions.map(p=>game.item(p.itemId).name),...game.rooms.map(r=>r.name),...game.masteries.flatMap(m=>[m.name,m.blurb])]){assert.notEqual(translatedName(label,'zh'),label);assert.equal(translatedName(label,'en'),label);}});
+
+test('mount upgrades use their own multipliers without changing combat stats',()=>{
+ const base=calculate(defaults());
+ for(const [tier,speed]of [[0,1120],[1,1180],[2,1270],[3,1420],[4,1600]]){
+  const s=defaults();s.gear.mount={id:328,tier,plus:0};const r=calculate(s);
+  assert.equal(game.mountSpeed(r.player),speed);assert.deepEqual(r.stats,base.stats);assert.deepEqual(r.issues,[]);
+ }
+ const s=defaults();s.gear.mount={id:328,tier:2,plus:5};assert.equal(game.mountSpeed(calculate(s).player),1473);
+ s.gear.mount={id:328,tier:4,plus:100};assert.equal(game.mountSpeed(calculate(s).player),10600);
+});
+test('mount survives storage and style changes, old configurations stay unmounted',async()=>{
+ const {selectStyle}=await import('../src/model.js');const s=defaults();s.gear.mount={id:328,tier:3,plus:7};
+ assert.deepEqual(normalize(JSON.parse(JSON.stringify(s))).gear.mount,s.gear.mount);
+ for(const style of ['melee','magic','ranged'])assert.deepEqual(selectStyle(s,style).gear.mount,s.gear.mount);
+ delete s.gear.mount;assert.deepEqual(normalize(s).gear.mount,{id:0,tier:0,plus:0});
+ s.gear.mount={id:110,tier:4,plus:100};assert.equal(normalize(s).gear.mount.id,0);
+ for(const style of ['melee','magic','ranged'])assert.equal(preset(style).gear.mount.id,0);
+});
+
+test('all numeric enemy columns sort both ways, keeping missing values and bosses last',()=>{
+ const keys=['level','hp','max','chance','enemyMax','enemyChance','homeBank','kills','xp','coins','normal','rare','food'];
+ for(const key of keys){
+  const rows=[{id:'missing',boss:false,[key]:null},{id:'high',boss:false,[key]:12.04},{id:'boss-high',boss:true,[key]:9},{id:'zero',boss:false,[key]:0},{id:'low',boss:false,[key]:12.01},{id:'absent',boss:false},{id:'boss-missing',boss:true,[key]:null},{id:'boss-zero',boss:true,[key]:0},{id:'invalid',boss:false,[key]:NaN}];
+  const before=rows.map(r=>r.id);
+  assert.deepEqual(sortEnemies(rows,key,'asc').map(r=>r.id),['zero','low','high','missing','absent','invalid','boss-zero','boss-high','boss-missing'],key);
+  assert.deepEqual(sortEnemies(rows,key,'desc').map(r=>r.id),['high','low','zero','missing','absent','invalid','boss-high','boss-zero','boss-missing'],key);
+  assert.deepEqual(rows.map(r=>r.id),before);
+ }
+});
+test('reward sorting uses raw simulation values, preserving ties and pending results',()=>{
+ const rows=[{key:'pending',boss:false},{key:'a',boss:false},{key:'b',boss:false},{key:'c',boss:false},{key:'boss',boss:true}];
+ const rewards=new Map([['a',{xp:100.004}],['b',{xp:100.001}],['c',{xp:100.004}]]);
+ const value=row=>rewards.get(row.key)?.xp;
+ assert.deepEqual(sortEnemies(rows,'xp','asc',value).map(r=>r.key),['b','a','c','pending','boss']);
+ assert.deepEqual(sortEnemies(rows,'xp','desc',value).map(r=>r.key),['a','c','b','pending','boss']);
+});
