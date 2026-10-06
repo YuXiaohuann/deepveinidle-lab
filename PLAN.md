@@ -206,7 +206,7 @@
 
 ### 6.4 Cloudflare Pages 发布
 
-本机预览服务仅将 `/`、`/combat`、`/forecast` 及两个板块的尾斜线形式映射到同一个 `index.html`，其他文件访问边界保持原样。Cloudflare Pages 发布包增加 `_redirects`，按 [Cloudflare Pages 代理规则](https://developers.cloudflare.com/pages/configuration/redirects/#proxying)，以 200 代理规则将两个板块路径映射到首页资源，支持独立网址直接访问；不复制页面实现。0.3 发布包含实验室更名、战斗／预报独立网址、热门加成预报与当前界面调整；userscript 版本保持 1.0。新增路由上线行为需发布后另行核验。
+本机预览服务仅将 `/`、`/combat`、`/forecast` 及两个板块的尾斜线形式映射到同一个 `index.html`，其他文件访问边界保持原样。Cloudflare Pages 发布包增加 `_redirects`，按 [Cloudflare Pages 代理规则](https://developers.cloudflare.com/pages/configuration/redirects/#proxying)，以 200 代理规则将两个板块路径映射到根入口 `/`；不能使用 `/index.html` 作为代理目标，线上实测会触发 Pages 的规范化跳转并丢失板块路径，支持独立网址直接访问；不复制页面实现。0.3 发布包含实验室更名、战斗／预报独立网址、热门加成预报与当前界面调整；userscript 版本保持 1.0。新增路由上线行为需发布后另行核验。
 
 采用 Wrangler Direct Upload 发布静态文件，项目名为 `dvi-lab`，生产分支为 `main`，地址为 <https://dvi-lab.pages.dev/>。发布包包含 `index.html`、`_redirects`、`src/`、`vendor/`、`PLAN.md` 和 `README.md`，以及本次更新核验报告与验证截图，保持现有资源路径与模块 Worker 加载方式。发布不改变计算或本地保存规则；本机与线上域名的浏览器存储分别保存。验收要求为线上首页、脚本、样式、Worker 与来源文档可访问，页面完成普通怪物模拟。当前版本发布到项目 `dvi-lab`；旧项目保留，不自动删除或重定向。不同域名的浏览器配置不会自动迁移。此前 2026-10-05 已完成新域名发布：当时线上源文件与本地代码逐文件一致，Chrome 默认配置小时模拟完成 20/20，最新 Alice 项目页脚正常显示，未捕获警告或错误。
 
