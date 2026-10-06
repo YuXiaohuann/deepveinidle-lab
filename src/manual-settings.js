@@ -4,7 +4,7 @@ const int=(v,min,max,fallback)=>Math.floor(limit(v,min,max,fallback));
 export function manualDefaults(){return {
  progress:Object.fromEntries(game.allSkills.map(k=>[k,0])),xp:Object.fromEntries(game.allSkills.map(k=>[k,-1])),
  perks:Object.fromEntries(game.perks.filter(p=>p.id!=='meals').map(p=>[p.id,0])),
- guildXp:0,weeklyXp:0,blessing:false,blessingMinutes:-1,
+ guildXp:0,weeklyXp:0,hotForecast:true,blessing:false,blessingMinutes:-1,
  brewMinutes:Object.fromEntries(game.potions.map(p=>[p.kind,-1])),fedMinutes:-1,rootedMinutes:-1,
  foodRule:0,foodMaxTier:4,foodPerTrip:-1,actualInventory:false,bank:[],pack:[],overflow:[],
  bankSlotsBought:0,unlimitedBank:true,ironman:false,coins:0,
@@ -14,7 +14,7 @@ export function manualDefaults(){return {
 export function normalizeManual(raw={}){
  const s=manualDefaults();raw=raw??{};
  for(const p of game.perks)if(p.id!=='meals')s.perks[p.id]=int(raw.perks?.[p.id]??0,0,p.ranks,0);
- for(const key of ['blessing','ironman','allGear'])s[key]=raw[key]===undefined?s[key]:raw[key]===true;
+ for(const key of ['blessing','ironman','allGear','hotForecast'])s[key]=raw[key]===undefined?s[key]:raw[key]===true;
  for(const key of ['guildXp'])s[key]=limit(raw[key]??s[key],key.endsWith('Minutes')?-1:0,1e7,s[key]);
  for(const key of ['coins'])s[key]=int(raw[key]??s[key],0,Number.MAX_SAFE_INTEGER,s[key]);
  for(const key of ['foodRule','foodMaxTier'])s[key]=int(raw[key]??s[key],0,key==='foodMaxTier'?4:3,s[key]);

@@ -1,0 +1,18 @@
+import {game} from '../src/model.js';
+import {DAY_TICKS,START_TICK} from '../src/simulation.js';
+// Use upstream offline chunk reports independently of the adapter's event totals.
+export function nativeDay(player,context,start){
+ let p;game.predict(player,context,prepared=>{p=prepared;return false;});
+ if(!start(p))throw Error('No route');
+ p.offlineCapTicks=DAY_TICKS*2;
+ const result={xpPerHour:0,bySkill:{},ticks:0,deaths:0,itemsGained:{}};
+ for(let offset=game.predictionChunkTicks;offset<=DAY_TICKS;offset+=game.predictionChunkTicks){
+  const report=game.offline(p,context,START_TICK+offset);
+  result.ticks=offset;result.deaths+=report.deaths;
+  for(const [skill,value]of Object.entries(report.skills))if(value.xp)result.bySkill[skill]=(result.bySkill[skill]??0)+value.xp;
+  for(const [id,qty]of Object.entries(report.itemsGained))result.itemsGained[id]=(result.itemsGained[id]??0)+qty;
+  if(report.deaths||p.route===null)break;
+ }
+ result.xpPerHour=Object.values(result.bySkill).reduce((sum,xp)=>sum+xp,0);
+ return result;
+}

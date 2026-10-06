@@ -1,8 +1,13 @@
+import {nativeDay} from './native-day.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {game,defaults,preset,normalize,makePlayer,calculate,selectStyle} from '../src/model.js';
+import {game,defaults as defaultBuild,preset as presetBuild,normalize,makePlayer,calculate,selectStyle} from '../src/model.js';
 import {createScenario,simulateMonster,START_TICK} from '../src/simulation.js';
 import {manualWindows} from '../src/manual-settings.js';
+// Keep non-forecast regression scenarios deterministic and independent of wall time.
+const preset=style=>{const s=presetBuild(style);s.manual.hotForecast=false;return s;};
+const defaults=()=>{const s=defaultBuild();s.manual.hotForecast=false;return s;};
+
 
 test('old configurations keep defaults; all new manual settings survive normalization',()=>{
  const old=normalize({levels:{ranged:70}});assert.equal(old.manual.seed,0);assert.equal(old.manual.currentTick,START_TICK);assert.equal(old.manual.foodPerTrip,-1);
@@ -52,7 +57,7 @@ test('hot XP and rarity bonuses are cancelled at every tick across a full hot cy
 test('full manual scenario matches native predictor across 20 monsters without a snapshot',()=>{
  const s=preset('ranged');s.manual.playerId=54321;s.manual.seed=813;s.manual.weeklyXp=30;s.manual.guildXp=11;s.manual.blessing=true;s.manual.progress.ranged=75.1;s.manual.perks.pockets=1;s.manual.foodPerTrip=-2;s.manual.windows=[{start:0,minutes:60,xp:45,rare:25}];s.brews.haste=1;s.manual.brewMinutes.haste=20;s.manual.actualInventory=true;s.manual.bank=[{id:64,tier:0,plus:0,qty:5000}];s.manual.upgradeMinutes.target=10;
  const before=JSON.stringify(s);
- for(const monster of game.monsters){const {player,context}=createScenario(s,monster),zone=game.world.zones.find(z=>z.monsterId===monster.id),expected=game.predict(player,context,p=>game.startFight(p,context,zone.id)),actual=simulateMonster(s,monster);assert.equal(actual.xp,expected.xpPerHour,monster.name);assert.equal(actual.deaths,expected.deaths);assert.deepEqual(actual.bySkill,expected.bySkill);}
+ for(const monster of game.monsters){const {player,context}=createScenario(s,monster),zone=game.world.zones.find(z=>z.monsterId===monster.id),expected=nativeDay(player,context,p=>game.startFight(p,context,zone.id)),actual=simulateMonster(s,monster);assert.equal(actual.xp,expected.xpPerHour,monster.name);assert.equal(actual.deaths,expected.deaths);assert.deepEqual(actual.bySkill,expected.bySkill);}
  assert.equal(JSON.stringify(s),before);
 });
 test('mixed equipment toggle preserves cross-style choices',()=>{

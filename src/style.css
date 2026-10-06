@@ -4,7 +4,7 @@
 
 .presets button.selected{background:#294a40;border-color:var(--teal);color:#b8f1db;box-shadow:inset 0 0 0 1px var(--teal)}.active-skill{color:var(--teal)}.active-skill input{border-color:var(--teal);background:#223d38}
 
-.reward-detail summary{cursor:pointer;color:inherit}.reward-detail>div{white-space:normal;min-width:150px;max-width:230px;line-height:1.7;font-size:10px;margin-top:8px}.hourly-muted{color:var(--muted)}.death-note{display:block;white-space:normal;color:#e3aa79;font-size:10px;margin-top:5px}#simulation-status{border:0;padding-top:0}.table-scroll th:first-child,.table-scroll td:first-child{position:sticky;left:0;background:#17252b;z-index:1;box-shadow:2px 0 5px #101a1e55}.table-scroll th:first-child{background:#122127}
+.reward-detail summary{cursor:pointer;color:inherit}.reward-detail>div{white-space:normal;width:max-content;min-width:0;max-width:230px;line-height:1.7;font-size:10px;margin:8px 0 0 auto}.hourly-muted{color:var(--muted)}.death-note{display:block;white-space:normal;color:#e3aa79;font-size:10px;margin-top:5px}#simulation-status{border:0;padding-top:0}.table-scroll th:first-child,.table-scroll td:first-child{position:sticky;left:0;background:#17252b;z-index:1;box-shadow:2px 0 5px #101a1e55}.table-scroll th:first-child{background:#122127}
 
 
 
@@ -43,3 +43,16 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
 .hot-current{padding:24px;display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:22px}.hot-current h2{margin:12px 0}.hot-current p{margin:0}.hot-skill{color:var(--gold);font-weight:650}.hot-current h2 span{margin-left:12px;font-size:15px}.hot-countdown{display:flex;flex-direction:column;gap:8px;color:var(--muted);font-size:12px}.hot-countdown strong{color:var(--gold);font-size:30px;font-variant-numeric:tabular-nums}
 .forecast-filters{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:24px;padding:22px}.forecast-filters fieldset{border:0;padding:0;margin:0;min-width:0}.forecast-filters fieldset:last-child{text-align:right}.forecast-filters fieldset:last-child legend{margin-left:auto}.forecast-filters fieldset:last-child .forecast-options{justify-content:flex-end}.forecast-filters legend{padding:0;margin-bottom:10px;color:var(--muted);font-size:12px}.forecast-options{display:flex;flex-wrap:wrap;gap:8px}.forecast-options button{font-size:12px;padding:7px 14px}.forecast-options button[aria-pressed="true"]{color:var(--teal);border-color:var(--teal);background:#223d38}.forecast-empty{padding:0 22px 22px;color:var(--gold);line-height:1.8}.forecast-schedule td:first-child{white-space:normal}.forecast-schedule table{min-width:0}
 @media(max-width:740px){.hot-current{align-items:flex-start;padding:18px;flex-direction:column;gap:14px}.hot-countdown{flex-direction:row;align-items:center;gap:14px}.forecast-filters{grid-template-columns:minmax(0,1fr);gap:18px;padding:18px}.forecast-filters fieldset:last-child{text-align:left}.forecast-filters fieldset:last-child legend{margin-left:0}.forecast-filters fieldset:last-child .forecast-options{justify-content:flex-start}.forecast-schedule td,.forecast-schedule th{padding:12px 10px;font-size:11px}.forecast-schedule td:first-child,.forecast-schedule th:first-child{padding-left:18px}.hot-current h2 span{display:block;margin:8px 0 0}}
+
+/* Other settings share one label/control layout. */
+#other-settings>label{display:grid;grid-template-columns:minmax(0,1fr) 120px;align-items:center;gap:10px;margin:9px 0;font-size:12px;color:#b8c8ca}
+#other-settings>label>span{min-width:0;overflow-wrap:anywhere}
+#other-settings>label>input[type="number"],#other-settings>label>select{width:120px;font-size:11px}
+#other-settings>label>input[type="checkbox"]{justify-self:end;margin:0}
+
+.enemies th:not(:first-child),.enemies td:not(:first-child){text-align:right}
+.enemies .reward-detail>div{text-align:left}
+
+.loot-line{display:grid;grid-template-columns:minmax(0,1fr) max-content;gap:12px}
+.loot-line>span:first-child{overflow-wrap:anywhere}
+.loot-line>span:last-child{text-align:right;white-space:nowrap}

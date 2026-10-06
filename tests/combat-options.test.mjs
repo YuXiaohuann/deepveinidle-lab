@@ -1,9 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {game,preset,calculate,normalize} from '../src/model.js';
+import {game,preset as presetBuild,calculate,normalize} from '../src/model.js';
 import {simulateMonster} from '../src/simulation.js';
 import {combatPotions,combatRooms,combatMasteries,combatPerks} from '../src/combat-options.js';
 import {manualControls} from '../src/manual-controls.js';
+// Keep non-forecast regression scenarios deterministic and independent of wall time.
+const preset=style=>{const s=presetBuild(style);s.manual.hotForecast=false;return s;};
+
 
 test('removed settings do not alter combat across three styles and every monster',()=>{
  const changes=[['gatherer',s=>{s.brews.gatherer=4;s.manual.brewMinutes.gatherer=10;}],['coins',s=>{s.manual.coins=1e12;}],...['hands','quick'].map(k=>[k,s=>{s.manual.perks[k]=10;}]),...game.masteries.filter(m=>!combatMasteries.includes(m)).map(m=>[m.id,s=>{s.masteries[m.id]=game.masteryRankLimit;}]),...game.rooms.filter(r=>!combatRooms.includes(r)).map(r=>[r.id,s=>{s.house[r.id]=100;s.manual.upgradeMinutes[r.id]=1;}]),['storeroom placement',s=>{s.manual.placed.storeroom=false;}]];

@@ -1,7 +1,12 @@
+import {nativeDay} from './native-day.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {game,defaults,preset,normalize,masteryValue,masteryRank} from '../src/model.js';
-import {simulateMonster,createScenario,START_TICK,HOUR_TICKS} from '../src/simulation.js';
+import {game,defaults as defaultBuild,preset as presetBuild,normalize,masteryValue,masteryRank} from '../src/model.js';
+import {simulateMonster,createScenario,START_TICK,HOUR_TICKS,DAY_TICKS} from '../src/simulation.js';
+// Keep non-forecast regression scenarios deterministic and independent of wall time.
+const preset=style=>{const s=presetBuild(style);s.manual.hotForecast=false;return s;};
+const defaults=()=>{const s=defaultBuild();s.manual.hotForecast=false;return s;};
+
 
 test('effective mastery values preserve existing ranks and original units',()=>{
  for(const m of game.masteries)for(const rank of [0,1,13,20000])assert.equal(masteryRank(m.id,masteryValue(m.id,rank)),rank);
@@ -12,7 +17,7 @@ test('all monsters match the original predictor XP, timing, deaths and regular l
  const state=preset('ranged');
  for(const monster of game.monsters){
   const scenario=createScenario(state,monster),zone=game.world.zones.find(z=>z.monsterId===monster.id);
-  const expected=game.predict(scenario.player,scenario.context,p=>game.startFight(p,scenario.context,zone.id));
+  const expected=nativeDay(scenario.player,scenario.context,p=>game.startFight(p,scenario.context,zone.id));
   const actual=simulateMonster(state,monster);
   assert.equal(Math.round(actual.xp),expected.xpPerHour,monster.name);
   assert.deepEqual(actual.bySkill,expected.bySkill,monster.name);
@@ -25,7 +30,8 @@ test('full tick event counts agree with original offline report and food invento
  let p;game.predict(scenario.player,scenario.context,prepared=>{p=prepared;return false;});
  assert.equal(p.lastTick,START_TICK);assert.equal(p.pack.length,0);
  game.startFight(p,scenario.context,game.world.zones.find(z=>z.monsterId===monster.id).id);
- const report=game.offline(p,scenario.context,START_TICK+HOUR_TICKS),actual=simulateMonster(state,monster);
+ p.offlineCapTicks=DAY_TICKS*2;
+ const report=game.offline(p,scenario.context,START_TICK+DAY_TICKS),actual=simulateMonster(state,monster);
  assert.equal(actual.kills,report.kills);assert.equal(actual.coins,report.coins);
  const food=game.withRarity(state.food.id,state.food.tier),left=(p.bank[food]??0)+p.pack.filter(x=>x.itemId===food).reduce((n,x)=>n+x.qty,0);
  assert.equal(actual.food,1e9-left);assert.ok(actual.food>0);assert.ok(actual.restocks>1);assert.ok(actual.movingTicks>0);
@@ -47,7 +53,7 @@ test('starting depot changes travel and repeated simulation preserves input',()=
 test('buffs, food expiry and movement remain aligned with original prediction',()=>{
  const state=preset('magic');state.food={id:171,tier:2};state.fed=true;state.rooted=true;state.brews.haste=3;state.brews.swift=2;state.masteries.xp=20;state.masteries.move=10;
  const monster=game.monsters.find(m=>m.id===20),scenario=createScenario(state);
- const expected=game.predict(scenario.player,scenario.context,p=>game.startFight(p,scenario.context,game.world.zones.find(z=>z.monsterId===monster.id).id));
+ const expected=nativeDay(scenario.player,scenario.context,p=>game.startFight(p,scenario.context,game.world.zones.find(z=>z.monsterId===monster.id).id));
  const result=simulateMonster(state,monster);
  assert.equal(Math.round(result.xp),expected.xpPerHour);assert.deepEqual(result.bySkill,expected.bySkill);assert.equal(result.deaths,expected.deaths);
 });
@@ -58,7 +64,7 @@ test('mount stacks with movement buffs and matches original full prediction',()=
  const mounted=simulateMonster(s,monster);assert.ok(mounted.movingTicks<base.movingTicks);
  s.brews.swift=0;s.masteries.move=10;
  const scenario=createScenario(s,monster),zone=game.world.zones.find(z=>z.monsterId===monster.id);
- const expected=game.predict(scenario.player,scenario.context,p=>{
+ const expected=nativeDay(scenario.player,scenario.context,p=>{
   const started=game.startFight(p,scenario.context,zone.id);
   return started;
  });
@@ -111,7 +117,7 @@ test('named food above the quality cap is eaten and matches native prediction',(
  const uncapped=structuredClone(state);uncapped.manual.foodMaxTier=4;
  assert.deepEqual(actual,simulateMonster(uncapped,monster));
  const {player,context}=createScenario(state,monster),zone=game.world.zones.find(z=>z.monsterId===monster.id);
- const expected=game.predict(player,context,p=>game.startFight(p,context,zone.id));
+ const expected=nativeDay(player,context,p=>game.startFight(p,context,zone.id));
  assert.equal(actual.xp,expected.xpPerHour);assert.deepEqual(actual.bySkill,expected.bySkill);
  assert.equal(actual.deaths,expected.deaths);assert.equal(actual.elapsedTicks,expected.ticks);
  assert.equal(JSON.stringify(state),before);
