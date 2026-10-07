@@ -1,11 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {enhancementTypes,enhancementItemsForType} from '../src/enhancement-items.js';
+import {enhanceableItems} from '../src/enhancement.js';
 import {filterSearchOptions,bindSearchSelect} from '../src/search-select.js';
-test('categories cover every enhanceable item exactly once and bilingual search ignores case',()=>{
- const all=enhancementItemsForType('all'),grouped=enhancementTypes.slice(1).flatMap(([type])=>enhancementItemsForType(type));
- assert.equal(all.length,161);assert.deepEqual(grouped.map(x=>x.id).sort(),all.map(x=>x.id).sort());
- assert.ok(enhancementTypes.slice(1).every(([type])=>enhancementItemsForType(type).length<=18));
+test('all enhanceable items are searchable and bilingual search ignores case',()=>{
+ assert.equal(enhanceableItems.length,161);
+ const catalog=enhanceableItems.map(x=>({value:x.id,label:x.name}));assert.equal(filterSearchOptions(catalog,'').length,161);
  const options=[{value:1,label:'青铜',search:'青铜 Bronze blade'},{value:2,label:'铁',search:'铁 Iron blade'}];
  assert.equal(filterSearchOptions(options,' BRONZE ')[0].value,1);assert.equal(filterSearchOptions(options,'青铜')[0].value,1);assert.equal(filterSearchOptions(options,'missing').length,0);
 });

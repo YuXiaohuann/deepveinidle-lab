@@ -1,11 +1,10 @@
 import {searchSelectMarkup,bindSearchSelect} from './search-select.js';
-import {enhancementTypes,enhancementItemsForType} from './enhancement-items.js';
 import * as game from './upstream.js';
 import {translatedName} from './i18n.js';
 import {requestCharacter,characterImportPanel,probeCharacter,importStatusText} from './import-controls.js';
-import {enhancementStorageKey,enhancementDefaults,validateEnhancement,calculateEnhancement,importEnhancement} from './enhancement.js';
+import {enhancementStorageKey,enhancementDefaults,enhanceableItems,validateEnhancement,calculateEnhancement,importEnhancement} from './enhancement.js';
 
-let probeStarted=false,itemType='all';
+let probeStarted=false;
 let state=enhancementDefaults(),candidates=[],language='zh',busy=false,status=null,saveOK=true;
 try{const saved=localStorage.getItem(enhancementStorageKey);if(saved)state=validateEnhancement(JSON.parse(saved));}catch{status={error:'savedInvalid'};}
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -44,12 +43,11 @@ export function renderEnhancement(nextLanguage){
  const candidateLabel=x=>`${name(game.item(x.itemId).name)} · ${rarities()[x.tier]} +${x.current}`;
  host.innerHTML=`<aside class="panel config enhance-config"><div class="panel-heading"><h1>${text('角色配置','Character build')}</h1><button id="enhance-reset" class="text-button">${text('清空配置','Reset settings')}</button></div><p class="muted intro">${text('配置角色的强化技能与成功率加成。','Configure enhancing skill and success chance bonuses.')}</p>
  ${characterImportPanel(language,{id:'enhance-import-settings',statusId:'enhance-import-status',buttons:[{id:'enhance-import',label:text('导入配置','Import configuration')}]})}
- <details class="config-detail" id="enhance-skill-settings"><summary>${text('技能','Skills')}</summary><div class="skill-grid">${field('level',text('强化技能等级','Enhancing skill level'),1,game.maxLevel)}</div><p class="micro">${text('强化技能每比 1 级高一级，成功率倍率增加 0.2%。例如 51 级倍率为 1.10，基础成功率 50% 变为 55%（不计书台与精通）。与书台、精通倍率相乘后，成功率最高为 100%；估算期间等级固定。','Each enhancing level above level 1 adds 0.2% to the success chance multiplier. At level 51, the multiplier is 1.10: a base chance of 50% becomes 55% before lectern and mastery bonuses. These multipliers multiply, capped at 100% success. Skill level stays fixed during the estimate.')}</p></details>
+ <details class="config-detail" id="enhance-skill-settings"><summary>${text('技能','Skills')}</summary><div class="skill-grid">${field('level',text('强化技能等级','Enhancing skill level'),1,game.maxLevel)}</div><p class="micro">${text('强化技能每比 1 级高一级，成功率倍率增加 0.2%。','Each enhancing level above level 1 adds 0.2% to the success chance multiplier.')}</p></details>
  <details class="config-detail" id="enhance-home-settings"><summary>${text('家园','Home')}</summary><div class="skill-grid">${field('lectern',text('符文书台等级','Rune lectern level'),0,Number.MAX_SAFE_INTEGER)}</div><p class="micro">${text('符文书台只计已放置的等级，每级将成功率乘以额外 1%。','Only placed rune lectern levels apply; +1% of the chance per level.')}</p></details>
  <details class="config-detail" id="enhance-mastery-settings"><summary>${text('精通','Masteries')}</summary><label class="number-field"><span>${text('强化精通实际加成 (%)','Effective enhance mastery bonus (%)')}</span><input data-enhance-field="mastery" type="number" min="0" max="${game.masteryRankLimit*0.25}" step="0.25" value="${state.mastery===null?'':state.mastery*0.25}"></label></details>
  <p class="save-note" id="enhance-save-note"></p></aside><div class="results enhance-workspace"><section class="panel enhance-equipment"><div class="panel-heading"><h2>${text('强化装备','Enhancement item')}</h2></div><p class="muted">${text('选择装备和目标，计算成功率与失败后的完整期望成本。','Choose an item and target to estimate success chances and costs including failures.')}</p>
  ${candidates.length?`<label class="enhance-select"><span>${text('快捷选择角色物品','Quick select character item')}</span><select id="enhance-candidate">${options([['',text('选择一件角色物品','Select a character item')],...candidates.map(x=>[x.id,candidateLabel(x)])],'')}</select></label>`:''}
- <label class="enhance-select"><span>${text('类型','Type')}</span><select id="enhance-item-type">${options(enhancementTypes.map(([id,zh,en])=>[id,text(zh,en)]),itemType)}</select></label>
  <div class="enhance-item-row">${searchSelectMarkup('enhance-item-search',text('装备 / 工具','Equipment / tool'))}
  <label class="enhance-select"><span>${text('品质','Rarity')}</span><select data-enhance-field="tier">${options(rarities().map((x,i)=>[i,x]),state.tier)}</select></label></div>
  <div class="skill-grid">${field('current',text('当前强化值','Current enhancement'),0,game.maxEnhancement)}${field('target',text('目标强化值','Target enhancement'),0,game.maxEnhancement)}</div>
@@ -59,10 +57,9 @@ export function renderEnhancement(nextLanguage){
   const update=()=>{const key=el.dataset.enhanceField;state[key]=el.type==='checkbox'?el.checked:el.value===''?null:Number(el.value)/(key==='mastery'?0.25:1);save();renderResults();};
   if(el.type==='number')el.oninput=update;else el.onchange=update;
  });
- const itemOptions=()=>enhancementItemsForType(itemType).map(x=>({value:x.id,label:name(x.name),search:`${x.name} ${translatedName(x.name,'zh')}`}));
- const itemSelect=bindSearchSelect({id:'enhance-item-search',options:itemOptions(),value:state.itemId,selectedLabel:id=>name(game.item(id).name),onSelect:id=>{state.itemId=id;save();renderResults();},emptyText:text('没有匹配的装备或工具','No matching equipment or tools'),countText:count=>text(`${count} 件匹配物品`,`${count} matching items`)});
- document.getElementById('enhance-item-type').onchange=event=>{itemType=event.target.value;itemSelect.setOptions(itemOptions());};
- document.getElementById('enhance-reset').onclick=()=>{state=enhancementDefaults();itemType='all';candidates=[];status=null;save();renderEnhancement(language);};
+ const itemOptions=()=>enhanceableItems.map(x=>({value:x.id,label:name(x.name),search:`${x.name} ${translatedName(x.name,'zh')}`}));
+ bindSearchSelect({id:'enhance-item-search',options:itemOptions(),value:state.itemId,selectedLabel:id=>name(game.item(id).name),onSelect:id=>{state.itemId=id;save();renderResults();},emptyText:text('没有匹配的装备或工具','No matching equipment or tools'),countText:count=>text(`${count} 件匹配物品`,`${count} matching items`)});
+ document.getElementById('enhance-reset').onclick=()=>{state=enhancementDefaults();candidates=[];status=null;save();renderEnhancement(language);};
  document.getElementById('enhance-candidate')?.addEventListener('change',event=>{const selected=candidates.find(x=>x.id===Number(event.target.value));if(!selected||event.target.value==='')return;state={...state,itemId:selected.itemId,tier:selected.tier,current:selected.current,target:Math.max(state.target??0,selected.current)};save();renderEnhancement(language);});
  document.getElementById('enhance-import').onclick=async()=>{
   if(busy)return;busy=true;renderStatus();
