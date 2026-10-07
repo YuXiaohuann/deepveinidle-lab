@@ -1,8 +1,8 @@
 import {forecast,hotSkills,tickTime} from './hot-forecast.js';
-const names={zh:['采矿','钓鱼','伐木','耕种','偷窃','烹饪','锻造','制弓','草药学','工艺','强化','战斗'],en:['Mining','Fishing','Woodcutting','Farming','Thieving','Cooking','Smithing','Fletching','Herblore','Crafting','Enhancing','Combat']};
+import {translatedName} from './i18n.js';
 const copy={zh:{title:'热门加成',current:'当前热门',next:'距下次切换',skill:'技能',kind:'加成',all:'全部',xp:'经验',rarity:'稀有',time:'发生时间段',empty:'该技能没有稀有热门加成，请调整筛选。',timezone:'本地时区',error:'预报失败：',invalidTime:'设备时间早于游戏时间纪元或无效。',invalidFilter:'筛选条件无效。',forecastIncomplete:'一年内未找到 10 次匹配加成，请核验游戏规则。'},en:{title:'Hot bonuses',current:'Current bonus',next:'Next change in',skill:'Skill',kind:'Bonus',all:'All',xp:'XP',rarity:'Rarity',time:'Time window',empty:'This skill has no rarity hot bonus. Adjust your filters.',timezone:'Local time zone',error:'Forecast failed: ',invalidTime:'The device time is invalid or before the game epoch.',invalidFilter:'Invalid filters.',forecastIncomplete:'Could not find 10 matches within a year. Check the game rules.'}};
 let skill='all',kind='all',language='zh',expiry=0;
-const skillName=id=>names[language][hotSkills.indexOf(id)];
+const skillName=id=>translatedName(id[0].toUpperCase()+id.slice(1),language);
 const text=key=>copy[language][key];
 const bonus=hot=>`${text(hot.kind)} +${Math.round((hot.mult-1)*100)}%`;
 const pad=value=>String(value).padStart(2,'0');

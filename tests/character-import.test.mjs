@@ -205,3 +205,19 @@ test('old bridge replies do not win over the current script and are reported if 
  const old=page.requestCharacter('read');timeout();await assert.rejects(old,/scriptOutdated/);
  userscriptWorld(doc,async()=>fixture());const current=await page.requestCharacter('read');assert.equal(current.version,'2.0');
 });
+
+test('both panels share one probe and common bilingual status messages',async()=>{
+ const doc=new EventTarget(),page=simulatorWorld(doc);let probes=0;
+ doc.addEventListener('dvi-character-request',event=>{if(JSON.parse(event.detail).action==='probe')probes++;});
+ userscriptWorld(doc,()=>null);
+ const first=page.probeCharacter(),second=page.probeCharacter();assert.equal(first,second);assert.equal((await first).ready,true);assert.equal(probes,1);
+ for(const language of ['zh','en']){
+  assert.equal(page.importStatusText(language,null),'');
+  assert.match(page.importStatusText(language,{ready:true}),language==='zh'?/脚本已连接/:/Script connected/);
+  assert.match(page.importStatusText(language,{ready:true},true),language==='zh'?/正在读取角色配置/:/Reading character configuration/);
+  assert.match(page.importStatusText(language,{capturedAt:1700000000000}),language==='zh'?/已导入 · 读取时间/:/Imported · Captured/);
+  assert.match(page.importStatusText(language,{snapshot:true,capturedAt:1700000000000}),language==='zh'?/临时快照/:/Temporary snapshot/);
+  for(const error of ['scriptMissing','scriptOutdated','scriptReadFailed','noSnapshot','invalidSnapshot','incompleteSnapshot'])assert.notEqual(page.importStatusText(language,{error}),error);
+  assert.equal(page.importStatusText(language,{error:'unexpected detail'}),'unexpected detail');
+ }
+});

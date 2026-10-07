@@ -94,7 +94,13 @@ const exportsMap={
   "tools": "Oy",
   "tool": "Xc",
   "mountSpeed": "rB",
-  "randomFloat": "Jb"
+  "randomFloat": "Jb",
+  "canEnhance": "jc",
+  "enhanceChance": "D3",
+  "enhanceCost": "j1",
+  "enhanceXp": "h9",
+  "enhanceTicks": "Lm",
+  "protectionMin": "Ta"
 };
 const selected=new Set(); const allowed=new Set(['WeakSet','WeakMap','Uint8Array','Uint16Array','Uint32Array','Int32Array','Float64Array','Math','Map','Set','Number','Object','Array','String','Error','Date','Boolean','Infinity','undefined','JSON','RegExp','parseInt','parseFloat']);
 function collect(name){

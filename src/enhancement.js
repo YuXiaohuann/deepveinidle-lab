@@ -1,0 +1,70 @@
+import * as game from './upstream.js';
+
+export const enhancementStorageKey='dvi-enhancement-v1';
+export const enhanceableItems=[...new Set([...game.equipment,...game.tools].map(x=>x.itemId))]
+ .filter(id=>game.canEnhance(id)).map(id=>game.item(id));
+const record=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
+const integer=(v,min,max)=>Number.isSafeInteger(v)&&v>=min&&v<=max;
+export function enhancementDefaults(){return {itemId:110,tier:0,current:0,target:5,level:1,lectern:0,mastery:0,protect:false,protectFrom:game.protectionMin,shardPrice:null,scrollPrice:null,basePrice:null};}
+export function validateEnhancement(input){
+ if(!record(input))throw Error('invalidConfiguration');
+ const s={...input};
+ if(!enhanceableItems.some(x=>x.id===s.itemId)||!integer(s.tier,0,4)||!game.canEnhance(game.withRarity(s.itemId,s.tier)))throw Error('invalidItem');
+ for(const [key,min,max]of [['current',0,game.maxEnhancement],['target',0,game.maxEnhancement],['level',1,game.maxLevel],['lectern',0,Number.MAX_SAFE_INTEGER],['mastery',0,game.masteryRankLimit],['protectFrom',game.protectionMin,game.maxEnhancement]])if(!integer(s[key],min,max))throw Error('invalidConfiguration');
+ if(typeof s.protect!=='boolean')throw Error('invalidConfiguration');
+ for(const key of ['shardPrice','scrollPrice','basePrice'])if(s[key]!==null&&(typeof s[key]!=='number'||!Number.isFinite(s[key])||s[key]<0||s[key]>Number.MAX_SAFE_INTEGER))throw Error('invalidPrice');
+ if(s.target<s.current)throw Error('targetBelowCurrent');
+ return s;
+}
+export function enhancementSteps(input){
+ const s=validateEnhancement(input),p={skills:{enhancing:game.levelXp(s.level)},house:{lectern:s.lectern},houseFurniture:s.lectern?{lectern:{cell:0,slot:0}}:{},masteries:{enhance:s.mastery}};
+ return Array.from({length:s.target===s.current?0:s.target},(_,k)=>{
+  const id=game.encode(game.withRarity(s.itemId,s.tier),k),chance=game.enhanceChance(p,k),cost=game.enhanceCost(id),protectedStep=s.protect&&k>=s.protectFrom;
+  return {from:k,to:k+1,chance,...cost,failTo:protectedStep?k-1:0,protected:protectedStep,xp:game.enhanceXp(game.withRarity(s.itemId,s.tier),k)};
+ });
+}
+// Solve the absorption equations using positive adjacent differences. This
+// avoids subtracting large expectations or pivoting a nearly singular matrix.
+export function expectedCost(steps,start,cost){
+ let prefix=0;const differences=[];
+ for(const step of steps){
+  const k=step.from,c=cost(step),rollback=step.protected?(differences[k-1]??0):prefix;
+  const rhs=c+(1-step.chance)*rollback,d=rhs/step.chance;
+  if(!Number.isFinite(d)||d<0||Math.abs(step.chance*d-rhs)>1e-12*Math.max(1,rhs))throw Error('unreliableCalculation');
+  differences.push(d);prefix+=d;
+  if(!Number.isFinite(prefix))throw Error('unreliableCalculation');
+ }
+ const result=differences.slice(start).reduce((a,b)=>a+b,0);
+ if(!Number.isFinite(result))throw Error('unreliableCalculation');
+ return result;
+}
+export function calculateEnhancement(input){
+ const s=validateEnhancement(input),steps=enhancementSteps(s),totals={};
+ for(const [key,cost]of Object.entries({gold:x=>x.gold,shards:x=>x.shards,scrolls:x=>x.protected?1-x.chance:0,attempts:()=>1}))totals[key]=expectedCost(steps,s.current,cost);
+ totals.seconds=totals.attempts*game.enhanceTicks*game.tickMs/1000;
+ const missingPrices=['shards','scrolls'].filter(key=>totals[key]>0&&s[key==='shards'?'shardPrice':'scrollPrice']===null);
+ const pricedGold=missingPrices.length?null:totals.gold+totals.shards*(s.shardPrice??0)+totals.scrolls*(s.scrollPrice??0);
+ const purchaseTotal=pricedGold!==null&&s.basePrice!==null?pricedGold+s.basePrice:null;
+ if([totals.seconds,pricedGold,purchaseTotal].some(v=>v!==null&&!Number.isFinite(v)))throw Error('unreliableCalculation');
+ return {steps,totals,missingPrices,pricedGold,purchaseTotal};
+}
+export function decodeEnhancementItem(id){
+ if(!integer(id,0,Number.MAX_SAFE_INTEGER))throw Error('invalidSnapshot');
+ const itemId=game.baseItemId(id),tier=game.itemTier(id),current=Math.floor(id/game.encode(0,1));
+ if(!enhanceableItems.some(x=>x.id===itemId))return null;
+ if(!integer(tier,0,4)||!integer(current,0,game.maxEnhancement)||!game.canEnhance(id)||game.encode(game.withRarity(itemId,tier),current)!==id)throw Error('invalidSnapshot');
+ return {itemId,tier,current,id};
+}
+export function importEnhancement(current,snapshot){
+ if(!record(snapshot)||snapshot.version!==2||!integer(snapshot.capturedAt,1,Number.MAX_SAFE_INTEGER)||snapshot.capturedAt>Date.now()+60000||!record(snapshot.player))throw Error('invalidSnapshot');
+ const p=snapshot.player;
+ if(!record(p.skills)||typeof p.skills.enhancing!=='number'||!Number.isFinite(p.skills.enhancing)||p.skills.enhancing<0||!record(p.house)||!record(p.houseFurniture)||!record(p.masteries)||!record(p.equipment)||!record(p.bank)||!Array.isArray(p.pack)||!record(p.overflow))throw Error('incompleteSnapshot');
+ const lectern=p.house.lectern??0,mastery=p.masteries.enhance??0;
+ if(!integer(lectern,0,Number.MAX_SAFE_INTEGER)||!integer(mastery,0,game.masteryRankLimit)||Object.hasOwn(p.houseFurniture,'lectern')&&!record(p.houseFurniture.lectern))throw Error('invalidSnapshot');
+ const found=new Map(),add=id=>{if(id===null)return;const item=decodeEnhancementItem(id);if(item)found.set(id,item);};
+ Object.values(p.equipment).forEach(add);
+ for(const inventory of [p.bank,p.overflow])for(const [id,qty]of Object.entries(inventory)){if(!integer(qty,0,Number.MAX_SAFE_INTEGER))throw Error('invalidSnapshot');if(qty>0)add(Number(id));}
+ for(const stack of p.pack){if(!record(stack)||!integer(stack.qty,1,Number.MAX_SAFE_INTEGER))throw Error('invalidSnapshot');add(stack.itemId);}
+ const state=validateEnhancement({...current,level:game.level(p.skills.enhancing),lectern:Object.hasOwn(p.houseFurniture,'lectern')?lectern:0,mastery});
+ return {state,candidates:[...found.values()],capturedAt:snapshot.capturedAt};
+}

@@ -77,7 +77,13 @@
     "tools": "Oy",
     "tool": "Xc",
     "mountSpeed": "rB",
-    "randomFloat": "Jb"
+    "randomFloat": "Jb",
+    "canEnhance": "jc",
+    "enhanceChance": "D3",
+    "enhanceCost": "j1",
+    "enhanceXp": "h9",
+    "enhanceTicks": "Lm",
+    "protectionMin": "Ta"
   },
   "declarations": [
     {

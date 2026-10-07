@@ -25,8 +25,8 @@ th.column-highlight,td.column-highlight{color:var(--gold);font-weight:650}.sort-
 .import-body>.text-button:hover{border-color:var(--gold);color:var(--gold)}
 .import-actions{display:flex;flex-wrap:wrap;gap:10px}
 .import-actions>.secondary{min-height:38px;flex:1}
-#import-status{overflow-wrap:anywhere}
-#import-status:empty{display:none}
+.import-status{overflow-wrap:anywhere}
+.import-status:empty{display:none}
 .import-warning{display:block;margin-top:8px;color:var(--gold);font-weight:700;line-height:1.8}
 
 /* Top-level sections share the header and footer. */
@@ -55,3 +55,46 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
 .loot-line{display:grid;grid-template-columns:minmax(0,1fr) max-content;gap:12px}
 .loot-line>span:first-child{overflow-wrap:anywhere}
 .loot-line>span:last-child{text-align:right;white-space:nowrap}
+
+/* Enhancement shares the combat layout but keeps its form and storage separate. */
+#enhance-section{max-width:1600px;margin:0 auto;padding:28px 32px}
+#enhance-section[hidden]{display:none}
+#enhance-content{display:grid;grid-template-columns:345px minmax(0,1fr);gap:28px;align-items:start}
+.enhance-config{min-width:0}
+.enhance-select{display:grid;gap:8px;margin:18px 0;font-size:13px}
+.enhance-select select{width:100%;min-width:0;max-width:100%}
+.enhance-costs{padding:20px;margin-bottom:20px}
+.enhance-costs h3,.enhance-config h1{margin-top:0}
+.enhance-costs p{font-size:14px;overflow-wrap:anywhere}
+.enhance-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+.enhance-stats strong{font-size:24px;overflow-wrap:anywhere}
+.enhance-table td:first-child,.enhance-table th:first-child{text-align:left}
+.enhance-table td,.enhance-table th{text-align:right;white-space:nowrap}
+.enhance-rebuild td{color:var(--muted)}
+.enhance-table small{font-size:11px}
+@media(max-width:1050px){#enhance-section{padding:20px 18px}#enhance-content{grid-template-columns:300px minmax(0,1fr);gap:18px}.enhance-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:740px){#enhance-section{padding:17px 12px}#enhance-content{grid-template-columns:minmax(0,1fr);gap:18px}.enhance-stats strong{font-size:22px}}
+.enhance-equipment{padding:22px;margin-bottom:24px}
+.enhance-equipment .skill-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.enhance-equipment .number-field{margin-bottom:12px}
+#enhance-results .enemies>h3{margin:20px 20px 12px}
+#enhance-results .enemies>.micro{margin:8px 20px 16px}
+
+.enhance-item-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.enhance-item-row .enhance-select{min-width:0}
+@media(max-width:740px){.enhance-item-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}}
+
+.enhance-protection-row .check{align-self:center;min-width:0}
+
+.search-select{position:relative;min-width:0;margin-bottom:12px;font-size:12px}
+.search-select>label{display:block;margin-bottom:6px;color:#a5b6bb}
+.search-select>input{width:100%}
+.search-select-list{position:absolute;top:62px;left:0;right:0;z-index:10;max-height:260px;overflow-y:auto;background:#18272d;border:1px solid #526970;border-radius:6px;box-shadow:0 6px 18px #0006}
+.search-select-option{padding:9px 10px;cursor:pointer;overflow-wrap:anywhere}
+.search-select-option:hover,.search-select-option.active{background:#2b454c;color:#fff}
+.search-select> [role=status]{display:block;overflow-wrap:anywhere}
+.search-select> [role=status]:empty{display:none}
+.enhance-item-row>.enhance-select,.enhance-item-row>.search-select{margin:18px 0;font-size:13px;align-self:start}
+.enhance-item-row>.search-select>label{margin-bottom:8px;color:inherit}
+
+#enhance-results>.enemies{margin-bottom:24px}
