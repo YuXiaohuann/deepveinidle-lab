@@ -221,13 +221,13 @@
 
 ### 6.4 Cloudflare Pages 发布
 
-本机预览服务仅将 `/`、`/combat`、`/forecast` 及两个板块的尾斜线形式映射到同一个 `index.html`，其他文件访问边界保持原样。Cloudflare Pages 发布包增加 `_redirects`，按 [Cloudflare Pages 代理规则](https://developers.cloudflare.com/pages/configuration/redirects/#proxying)，以 200 代理规则将两个板块路径映射到根入口 `/`；不能使用 `/index.html` 作为代理目标，线上实测会触发 Pages 的规范化跳转并丢失板块路径，支持独立网址直接访问；不复制页面实现。0.5 发布范围包含可选模拟时长、默认沿用游戏的热门加成、默认折叠菜单、表格精度与对齐、紧凑掉落明细和四行击杀明细，以及 userscript 2.0 双入口导入和临时完整快照；本轮发布到现有 dvi-lab 生产站点，发布验证待完成。新增路由上线行为需发布后另行核验。
+本机预览服务仅将 `/`、`/combat`、`/forecast` 及两个板块的尾斜线形式映射到同一个 `index.html`，其他文件访问边界保持原样。Cloudflare Pages 发布包增加 `_redirects`，按 [Cloudflare Pages 代理规则](https://developers.cloudflare.com/pages/configuration/redirects/#proxying)，以 200 代理规则将两个板块路径映射到根入口 `/`；不能使用 `/index.html` 作为代理目标，线上实测会触发 Pages 的规范化跳转并丢失板块路径，支持独立网址直接访问；不复制页面实现。0.5 发布范围包含可选模拟时长、默认沿用游戏的热门加成、默认折叠菜单、表格精度与对齐、紧凑掉落明细和四行击杀明细，以及 userscript 2.0 双入口导入和临时完整快照；已发布到现有 dvi-lab 生产站点，0.5 发布验证见第 7 节。新增路由上线行为需发布后另行核验。
 
 采用 Wrangler Direct Upload 发布静态文件，项目名为 `dvi-lab`，生产分支为 `main`，地址为 <https://dvi-lab.pages.dev/>。发布包包含 `index.html`、`_redirects`、`src/`、`vendor/`、`PLAN.md` 和 `README.md`，以及本次更新核验报告与验证截图，保持现有资源路径与模块 Worker 加载方式。发布不改变计算或本地保存规则；本机与线上域名的浏览器存储分别保存。验收要求为线上首页、脚本、样式、Worker 与来源文档可访问，页面完成普通怪物模拟。当前版本发布到项目 `dvi-lab`；旧项目保留，不自动删除或重定向。不同域名的浏览器配置不会自动迁移。此前 2026-10-05 已完成新域名发布：当时线上源文件与本地代码逐文件一致，Chrome 默认配置小时模拟完成 20/20，最新 Alice 项目页脚正常显示，未捕获警告或错误。
 
 ## 7. 验收标准
 
-0.5 发布准备（2026-10-07）：包含当前模拟时间、热门选择、世界增益说明、userscript 2.0 双入口及临时完整快照、导入提示和按钮下方说明。包版本为 0.5.0，界面为测试版 0.5 / BETA 0.5。发布到既有 Cloudflare Pages 项目 dvi-lab，本次 `npm test` 95 项全部通过（138.25 秒），17 个 src/提取器 JS 文件语法检查及 `git diff --check` 通过。本机 Chrome 核验中英文 0.5 标识、双入口及按钮下方说明；收益无待计算单元格，无控制台警告或错误，已恢复中文。截图为 `reports/v0.5-local.png`。线上验证待完成，本轮未重复真实账号与脚本管理器端到端、窄屏验证。历史验证不代替本次发布检查。
+0.5 发布验证（2026-10-07）：包含当前模拟时间、热门选择、世界增益说明、userscript 2.0 双入口及临时完整快照、导入提示和按钮下方说明。包版本为 0.5.0，界面为测试版 0.5 / BETA 0.5。发布到既有 Cloudflare Pages 项目 dvi-lab，本次 `npm test` 95 项全部通过（138.25 秒），17 个 src/提取器 JS 文件语法检查及 `git diff --check` 通过。本机 Chrome 核验中英文 0.5 标识、双入口及按钮下方说明；收益无待计算单元格，无控制台警告或错误，已恢复中文。截图为 `reports/v0.5-local.png`。代码提交 `3454f3a` 已发布到生产地址 https://dvi-lab.pages.dev/ ，部署地址 https://447e384e.dvi-lab.pages.dev 。发布包 25 个文件均 HTTP 200 并逐字节一致（首页去除 Cloudflare 自动注入的 Pages Analytics）；五个入口 `/`、`/combat`、`/forecast` 及两个尾斜线路径均返回 200 并保留路径。线上 Chrome 核验中文/英文 0.5 标识、导入双入口及按钮下方说明、模拟时间/热门选项；20 个普通怪物收益均完成，无待计算单元格、无控制台警告或错误，已恢复中文。线上截图为 `reports/v0.5-online.png`。部署初次文件核验遇到 README 尚未传播，随后读取确认新版本并完整重验通过。本轮未重复真实账号与脚本管理器端到端、窄屏验证。历史验证不代替本次发布检查。
 
 导入区别说明已移至两个导入按钮及状态提示下方，文案未改。本次 Chrome 核验显示顺序，截图为 `reports/import-explanation-below-2026-10-07.png`；控件语法及 git diff 检查通过。未重跑计算测试或执行角色导入。
 
