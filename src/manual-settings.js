@@ -1,10 +1,11 @@
 import * as game from './upstream.js';
+export const MAX_SIMULATION_MINUTES=Math.floor(8.64e15/60000/2);
 const limit=(v,min,max,fallback)=>Number.isFinite(Number(v))?Math.min(max,Math.max(min,Number(v))):fallback;
 const int=(v,min,max,fallback)=>Math.floor(limit(v,min,max,fallback));
 export function manualDefaults(){return {
  progress:Object.fromEntries(game.allSkills.map(k=>[k,0])),xp:Object.fromEntries(game.allSkills.map(k=>[k,-1])),
  perks:Object.fromEntries(game.perks.filter(p=>p.id!=='meals').map(p=>[p.id,0])),
- guildXp:0,weeklyXp:0,hotForecast:true,blessing:false,blessingMinutes:-1,
+ guildXp:0,weeklyXp:0,simulationHours:1,customSimulation:false,hotSetting:'game',blessing:false,blessingMinutes:-1,
  brewMinutes:Object.fromEntries(game.potions.map(p=>[p.kind,-1])),fedMinutes:-1,rootedMinutes:-1,
  foodRule:0,foodMaxTier:4,foodPerTrip:-1,actualInventory:false,bank:[],pack:[],overflow:[],
  bankSlotsBought:0,unlimitedBank:true,ironman:false,coins:0,
@@ -14,12 +15,14 @@ export function manualDefaults(){return {
 export function normalizeManual(raw={}){
  const s=manualDefaults();raw=raw??{};
  for(const p of game.perks)if(p.id!=='meals')s.perks[p.id]=int(raw.perks?.[p.id]??0,0,p.ranks,0);
- for(const key of ['blessing','ironman','allGear','hotForecast'])s[key]=raw[key]===undefined?s[key]:raw[key]===true;
+ for(const key of ['blessing','ironman','allGear','customSimulation'])s[key]=raw[key]===undefined?s[key]:raw[key]===true;
  for(const key of ['guildXp'])s[key]=limit(raw[key]??s[key],key.endsWith('Minutes')?-1:0,1e7,s[key]);
  for(const key of ['coins'])s[key]=int(raw[key]??s[key],0,Number.MAX_SAFE_INTEGER,s[key]);
  for(const key of ['foodRule','foodMaxTier'])s[key]=int(raw[key]??s[key],0,key==='foodMaxTier'?4:3,s[key]);
  s.foodPerTrip=[5,10,20,-2,-1].includes(Number(raw.foodPerTrip))?Number(raw.foodPerTrip):-1;
+ s.hotSetting=['game','current','off'].includes(raw.hotSetting)?raw.hotSetting:typeof raw.hotForecast==='boolean'?(raw.hotForecast?'current':'off'):'game';
  s.weeklyXp=int(raw.weeklyXp??0,0,1e7,0);
+ s.simulationHours=Math.round(limit(Number(raw.simulationHours??1)*60,1,MAX_SIMULATION_MINUTES,60))/60;
  return s;
 }
 export function skillXp(s,k){return game.levelXp(s.levels[k]??1);}
@@ -35,8 +38,9 @@ export function applyManualPlayer(p,s){
 }
 // The upstream engine adds hot bonuses to context windows. Cancel them for the
 // complete prediction clock, including initialization and the final tick.
-export function manualWindows(start=game.predictionStartTick,end=start+6000,weeklyXp=0){
+export function manualWindows(start=game.predictionStartTick,end=start+6000,weeklyXp=0,cancelHot=true){
  const windows=weeklyXp?[{fromTick:start,toTick:end,xpMult:1+weeklyXp/100,rarityMult:1}]:[];
+ if(!cancelHot)return windows;
  for(let tick=start;tick<=end;){
   const hot=game.hotSkill(tick),until=Math.min(end,hot.until-1);
   const xp=hot.skill==='combat'&&hot.kind==='xp'?hot.mult-1:0;

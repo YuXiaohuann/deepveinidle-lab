@@ -4,7 +4,7 @@ import {parse} from 'acorn';
 import {analyze} from 'eslint-scope';
 
 // Select upstream declarations by semantic signature; preserve their source verbatim.
-const sourceInfo={sourceUrl:'https://deepveinidle.com/assets/index-Bwib9zgA.js',retrieved:'2026-10-06',changelogVersion:'1.0.1173',sha256:'d5dede7a94f87782efe0f6c01205d03ad39b276be0b54236f0f82eda4981af66'};
+const sourceInfo={sourceUrl:'https://deepveinidle.com/assets/index-DwK7yQ7O.js',retrieved:'2026-10-07',changelogVersion:'1.0.1173',sha256:'e7901d9a9bdf0cb98882830c518c7bc9fc205384a237caf07c940572c8ac8ea8'};
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const source = fs.readFileSync('vendor/game-original.js','utf8');
 if(hash(source)!==sourceInfo.sha256)throw Error('Unreviewed upstream snapshot: review source metadata, export mappings and signatures before extraction');
@@ -19,58 +19,83 @@ for (const node of ast.body) {
     ids.forEach(id=>declarations.set(id,entry));
   }
 }
-function find(signature,type) {
-  const matches=[...new Set(declarations.values())].filter(d=>d.text.includes(signature)&&(!type||d.text.startsWith(type)));
-  if(matches.length!==1)throw Error(`Signature ${signature}: found ${matches.length}, review new upstream build`);
-  return matches[0].name;
-}
+// Reviewed public build mappings; the source hash guards every symbol.
 const exportsMap={
-  monsters:find('name:"Gnawer",level:2'), equipment:find('itemId:110,slot:"weapon"'),
-  items:'wt', gear:'we', item:'uo', encode:'rs', withRarity:'ve', levelXp:'pt', level:'So', maxLevel:'jc',
-  accuracy:find('Math.round(_x*Ze(e,"warrior"))','function'), maxHit:find('s>1?Math.ceil(c*s):c','function'),
-  evasion:find('return 10+So(e.skills.defence)+PI(e)','function'), hitChance:'Bs', magic:'Rs', style:'ds',
-  attackTicks:'dp', maxHp:'oc', equipmentSlots:'_i', masteries:'ni', rooms:'st',
-  foodBuff:'F1', cropDuration:'fu', isCrop:'bl', damageReduction:'CA', brewScale:'Ze', combine:'qt',
-  bosses:'ff', bossStats:'xA', bossWeakMultiplier:'iu', bossOtherMultiplier:'ru', tickMs:'co',
-  strength:'GI', armour:'PI', magicDefenceScale:'kl', maxEnhancement:'nf', potions:'ml'
+  "monsters": "mc",
+  "equipment": "jy",
+  "items": "kt",
+  "gear": "ve",
+  "item": "po",
+  "encode": "bs",
+  "withRarity": "Se",
+  "levelXp": "pt",
+  "level": "$o",
+  "maxLevel": "Jc",
+  "accuracy": "$n",
+  "maxHit": "Mn",
+  "evasion": "qn",
+  "hitChance": "Os",
+  "magic": "Vs",
+  "style": "ps",
+  "attackTicks": "xp",
+  "maxHp": "cc",
+  "equipmentSlots": "Ki",
+  "masteries": "fi",
+  "rooms": "st",
+  "foodBuff": "c1",
+  "cropDuration": "ku",
+  "isCrop": "$l",
+  "damageReduction": "mT",
+  "brewScale": "Ze",
+  "combine": "Gt",
+  "bosses": "vm",
+  "bossStats": "aT",
+  "bossWeakMultiplier": "fu",
+  "bossOtherMultiplier": "bu",
+  "tickMs": "co",
+  "strength": "qW",
+  "armour": "MW",
+  "magicDefenceScale": "Wl",
+  "maxEnhancement": "If",
+  "potions": "Al",
+  "recipes": "bo",
+  "translations": "Z9",
+  "worldTranslations": "uH",
+  "uiTranslations": "Q9",
+  "homeTranslations": "oH",
+  "houseBonus": "Ma",
+  "houseDamageCap": "DS",
+  "masteryRankLimit": "h5",
+  "combatTick": "EW",
+  "killMonster": "RW",
+  "baseItemId": "lo",
+  "itemTier": "Go",
+  "coinItemId": "hc",
+  "hotSkill": "Tl",
+  "masteryOfflineBaseHours": "Au",
+  "predict": "Hi",
+  "offline": "f9",
+  "tick": "X3",
+  "world": "E",
+  "startFight": "Fn",
+  "resetActivity": "lt",
+  "depositPack": "R3",
+  "homeBank": "k1",
+  "combatTargetTile": "o6",
+  "nearbyTile": "rc",
+  "predictionStartTick": "g9",
+  "predictionChunkTicks": "z0",
+  "allSkills": "Ie",
+  "createContext": "k0",
+  "fullFoodLoad": "Tn",
+  "perks": "Dd",
+  "hotXp": "oB",
+  "hotRare": "eB",
+  "tools": "Oy",
+  "tool": "Xc",
+  "mountSpeed": "rB",
+  "randomFloat": "Jb"
 };
-exportsMap.recipes=find(`id:220,name:"Gatherer's draught",skill:"herblore"`);
-// Dictionary is upstream data, not a hand-maintained translation list.
-exportsMap.translations=find('"Bronze blade":"青铜剑"','const');
-exportsMap.worldTranslations=find('Gnawer:"啃噬者"','const');
-exportsMap.uiTranslations=find('"Vein Colossus":"矿脉巨像"','const');
-exportsMap.homeTranslations=find('"The mine":"矿井"','const');
-exportsMap.houseBonus='ka';
-exportsMap.houseDamageCap='mS';
-exportsMap.masteryRankLimit='x6';
-exportsMap.combatTick='VI';
-exportsMap.killMonster='zI';
-exportsMap.baseItemId='fo';
-exportsMap.itemTier='Eo';
-exportsMap.coinItemId='Ac';
-exportsMap.hotSkill='yl';
-exportsMap.masteryOfflineBaseHours='vu';
-exportsMap.predict='$i';
-exportsMap.offline='T9';
-exportsMap.tick='w3';
-exportsMap.world='P';
-exportsMap.startFight='Hn';
-exportsMap.resetActivity='ht';
-exportsMap.depositPack='c3';
-exportsMap.homeBank='sg';
-exportsMap.combatTargetTile='hq';
-exportsMap.nearbyTile='sc';
-exportsMap.predictionStartTick='I9';
-exportsMap.predictionChunkTicks='Mw';
-exportsMap.allSkills='Be';
-exportsMap.createContext='J0';
-exportsMap.fullFoodLoad='xn';
-exportsMap.perks=find('id:"pockets",name:"Deep pockets"');
-exportsMap.hotXp='hM';exportsMap.hotRare='uM';
-exportsMap.tools='v0';
-exportsMap.tool='zc';
-exportsMap.mountSpeed='wM';
-exportsMap.randomFloat=find('return af(ne(e,o,t))/4294967296','function');
 const selected=new Set(); const allowed=new Set(['WeakSet','WeakMap','Uint8Array','Uint16Array','Uint32Array','Int32Array','Float64Array','Math','Map','Set','Number','Object','Array','String','Error','Date','Boolean','Infinity','undefined','JSON','RegExp','parseInt','parseFloat']);
 function collect(name){
  const d=declarations.get(name);if(!d)throw Error('Missing declaration '+name);if(selected.has(d))return;selected.add(d);

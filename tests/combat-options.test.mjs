@@ -5,7 +5,7 @@ import {simulateMonster} from '../src/simulation.js';
 import {combatPotions,combatRooms,combatMasteries,combatPerks} from '../src/combat-options.js';
 import {manualControls} from '../src/manual-controls.js';
 // Keep non-forecast regression scenarios deterministic and independent of wall time.
-const preset=style=>{const s=presetBuild(style);s.manual.hotForecast=false;return s;};
+const preset=style=>{const s=presetBuild(style);s.manual.hotSetting='off';s.manual.simulationHours=24;return s;};
 
 
 test('removed settings do not alter combat across three styles and every monster',()=>{
@@ -20,7 +20,12 @@ test('settings lists expose combat options and omit ineffective manual controls 
  assert.equal(combatPotions.length,7);assert.equal(combatRooms.length,7);assert.equal(combatMasteries.length,6);assert.deepEqual(combatPerks.map(p=>p.id),['pockets','meals','rest']);
  for(const language of ['zh','en']){
   const controls=manualControls(preset('ranged'),{language,number:path=>`data-path="${path}"`,options:()=>'',esc:String,name:String,tiers:()=>''});
-  const html=controls.food+controls.other;
+  const html=controls.food+controls.other+controls.simulation;
+  assert.ok(!controls.other.includes('data-path="manual.hotSetting"'));
+  assert.ok(controls.simulation.includes('data-path="manual.hotSetting"'));
+  assert.ok(controls.simulation.includes('data-simulation-mode'));
+  const custom=preset('ranged');custom.manual.customSimulation=true;
+  assert.ok(manualControls(custom,{language,number:path=>`data-path="${path}"`,options:()=>'',esc:String,name:String}).simulation.includes('data-path="manual.simulationHours"'));
   for(const path of ['actualInventory','unlimitedBank','bankSlotsBought','hotMode','hotMinutes','playerId','seed','currentTick','coins','perks.hands','perks.quick','brewMinutes.gatherer','placed.storeroom','placed.mine','upgradeMinutes.mine','upgradeMinutes.storeroom','xp.ranged','progress.ranged','brewMinutes.warrior','fedMinutes','rootedMinutes','blessingMinutes'])assert.ok(!html.includes(`data-path="manual.${path}"`),path);
   for(const path of ['ironman','perks.rest','perks.pockets'])assert.ok(html.includes(`data-path="manual.${path}"`),path);
  }

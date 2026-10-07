@@ -1,0 +1,9 @@
+import fs from 'node:fs';
+import {parse} from 'acorn';
+import * as scope from 'eslint-scope';
+// Audit-only extractor for the inspected public build; does not replace project upstream.
+const source=fs.readFileSync(process.argv[2]??'/tmp/dvi-game-current.js','utf8'),a=parse(source,{ecmaVersion:'latest',sourceType:'module'}),declarations=new Map();
+for(const n of a.body){if(n.type==='FunctionDeclaration')declarations.set(n.id.name,{start:n.start,text:source.slice(n.start,n.end)});if(n.type==='VariableDeclaration')for(const d of n.declarations){const entry={start:d.start,text:n.kind+' '+source.slice(d.start,d.end)+';'};const walk=x=>{if(!x)return;if(x.type==='Identifier')declarations.set(x.name,entry);else if(x.type==='ObjectPattern')x.properties.forEach(y=>walk(y.value));else if(x.type==='ArrayPattern')x.elements.forEach(walk)};walk(d.id)};}
+const selected=new Set(),allowed=new Set(['WeakSet','WeakMap','Uint8Array','Uint16Array','Uint32Array','Int32Array','Float64Array','Math','Map','Set','Number','Object','Array','String','Error','Date','Boolean','Infinity','undefined','JSON','RegExp','parseInt','parseFloat']);
+function collect(name){const d=declarations.get(name);if(!d)throw Error('Missing '+name);if(selected.has(d))return;selected.add(d);const ast=parse(d.text,{ecmaVersion:'latest',sourceType:'module',ranges:true});for(const r of scope.analyze(ast,{ecmaVersion:2024,sourceType:'module'}).globalScope.through){const dep=r.identifier.name;if(declarations.has(dep))collect(dep);else if(!allowed.has(dep))throw Error('External '+dep);}}
+collect('Hi');collect('Fn');fs.writeFileSync('/tmp/dvi-current-engine.mjs',[...selected].sort((a,b)=>a.start-b.start).map(d=>d.text).join('\n')+'\nexport {Hi as predict,Fn as startFight};\n');console.log('Extracted declarations',selected.size);

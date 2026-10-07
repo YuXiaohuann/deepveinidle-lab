@@ -4,10 +4,9 @@ export const importTypes=[['skills','技能','Skills'],['equipment','装备','Eq
 const record=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const valid=(v,min=0,max=Number.MAX_SAFE_INTEGER)=>typeof v==='number'&&Number.isFinite(v)&&v>=min&&v<=max;
 const int=(v,min=0,max=Number.MAX_SAFE_INTEGER)=>valid(v,min,max)&&Number.isInteger(v);
-export function importCharacter(current,snapshot,selected){
- if(!record(snapshot)||snapshot.version!==1||!int(snapshot.capturedAt,1)||snapshot.capturedAt>Date.now()+60000||!record(snapshot.player)||!int(snapshot.player.lastTick))throw new Error('invalidSnapshot');
- const chosen=importTypes.filter(([id])=>selected.includes(id)).map(([id])=>id);
- if(!chosen.length)throw new Error('noTypes');
+export function importCharacter(current,snapshot){
+ if(!record(snapshot)||snapshot.version!==2||!int(snapshot.capturedAt,1)||snapshot.capturedAt>Date.now()+60000||!record(snapshot.player)||!int(snapshot.player.lastTick))throw new Error('invalidSnapshot');
+ const chosen=importTypes.map(([id])=>id);
  const state=structuredClone(current),p=snapshot.player,warnings=[],applied=new Set();let category;
  const warn=field=>warnings.push(`${category}: ${field}`);
  const put=(field,value,check,set)=>{if(check(value)){set(value);applied.add(category);}else warn(field);};
@@ -66,8 +65,8 @@ export function importCharacter(current,snapshot,selected){
    put('guildBonus',p.guildBonus,v=>valid(v,0,1e5),v=>state.manual.guildXp=v*100);
    if(record(p.brews)&&int(p.brews.blessing??0)){state.manual.blessing=active('blessing');applied.add(category);}else warn('blessing');
    const windows=snapshot.worldBuffs,tick=snapshot.worldTick;
-   if(int(tick)&&Array.isArray(windows)&&windows.every(w=>record(w)&&['Weekly goal: gathered','Weekly goal: felled'].includes(w.label)&&int(w.fromTick)&&int(w.toTick,w.fromTick)&&valid(w.xpMult,1,1e5))){
-    state.manual.weeklyXp=Math.round(windows.filter(w=>w.fromTick<=tick&&tick<=w.toTick).reduce((sum,w)=>sum+(w.xpMult-1)*100,0)*1e8)/1e8;
+   if(int(tick)&&Array.isArray(windows)&&windows.every(w=>record(w)&&int(w.fromTick)&&int(w.toTick,w.fromTick)&&valid(w.xpMult??1,1,1e5))){
+    state.manual.weeklyXp=Math.round(windows.filter(w=>['Weekly goal: gathered','Weekly goal: felled'].includes(w.label)&&w.fromTick<=tick&&tick<=w.toTick).reduce((sum,w)=>sum+(w.xpMult-1)*100,0)*1e8)/1e8;
     applied.add(category);
    }else warn('weeklyXp.retained');
   }

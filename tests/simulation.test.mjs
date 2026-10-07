@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 import {game,defaults as defaultBuild,preset as presetBuild,normalize,masteryValue,masteryRank} from '../src/model.js';
 import {simulateMonster,createScenario,START_TICK,HOUR_TICKS,DAY_TICKS} from '../src/simulation.js';
 // Keep non-forecast regression scenarios deterministic and independent of wall time.
-const preset=style=>{const s=presetBuild(style);s.manual.hotForecast=false;return s;};
-const defaults=()=>{const s=defaultBuild();s.manual.hotForecast=false;return s;};
+const preset=style=>{const s=presetBuild(style);s.manual.hotSetting='off';s.manual.simulationHours=24;return s;};
+const defaults=()=>{const s=defaultBuild();s.manual.hotSetting='off';s.manual.simulationHours=24;return s;};
 
 
 test('effective mastery values preserve existing ranks and original units',()=>{

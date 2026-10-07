@@ -1,4 +1,5 @@
 import {combatPerks} from './combat-options.js';
+import {MAX_SIMULATION_MINUTES} from './manual-settings.js';
 import {game} from './model.js';
 export function manualControls(state,{language,number,options,esc,name}){
  const m=state.manual,zh=language==='zh',label=(a,b)=>zh?a:b;
@@ -8,10 +9,13 @@ export function manualControls(state,{language,number,options,esc,name}){
  const section=(id,a,b,html)=>`<details class="config-detail" id="${id}"><summary>${label(a,b)}</summary>${html}</details>`;
  const food=select('foodRule','自动食物策略','Food selection',[[0,label('优先所选食物','Prefer selected food')],[1,label('优先好食物','Best food first')],[2,label('优先差食物','Worst food first')],[3,label('仅泉水，不进食','Fountain only')]])+`<label class="potion"><span>${label('食物品质','Food rarity')}</span><select data-path="food.tier">${options(Array.from({length:5},(_,i)=>[i,[label('普通','Normal'),label('罕见','Uncommon'),label('稀有','Rare'),label('史诗','Epic'),label('传说','Legendary')][i]]),state.food.tier)}</select></label>`+select('foodMaxTier','自动进食品质上限','Maximum food rarity',Array.from({length:5},(_,i)=>[i,[label('普通','Normal'),label('罕见','Uncommon'),label('稀有','Rare'),label('史诗','Epic'),label('传说','Legendary')][i]]))+select('foodPerTrip','每趟携带','Food per trip',[[5,'5'],[10,'10'],[20,'20'],[-2,label('留一格','Leave one slot')],[-1,label('满包','Full inventory')]])+`<label class="potion"><span>${label('模拟自动进食阈值','Auto-eat threshold')}</span><select data-path="eatAt">${options([25,50,75].map(value=>[value,value+'%']),state.eatAt)}</select></label>`;
  const perks=section('perk-settings','天赋','Perks',combatPerks.map(p=>(p.id==='meals'?number('meals',name(p.name),state.meals,p.ranks):n('perks.'+p.id,name(p.name),name(p.name),p.ranks))+`<p class="micro">${esc(name(p.each))}</p>`).join(''));
- const guild=n('guildXp','公会经验 (%)','Guild XP (%)',1e7,0,.1)+n('weeklyXp','每周目标经验 (%)','Weekly goal XP (%)',1e7,0,1)+check('blessing','矿脉祝福','Vein blessing')+`<p class="micro">${label('经验 +5% · 稀有 +10% · 无限仓库','XP +5% · Rarity +10% · Unlimited storage')}</p>`;
- const hot=`<label class="potion"><span>${label('热门加成','Hot bonuses')}</span><select data-path="manual.hotForecast" aria-label="${label('热门加成','Hot bonuses')}">${options([[0,label('不计算','Disabled')],[1,label('按当前时间计算','Calculate from now')]],m.hotForecast?1:0)}</select></label><div id="combat-hot-schedule"></div>`;
+ const guild=n('guildXp','公会经验 (%)','Guild XP (%)',1e7,0,.1)+n('weeklyXp','世界增益经验 (%)','World buff XP (%)',1e7,0,1)+`<p class="micro">${label('游戏内置模拟未计入此项；本模拟器计入。','The in-game predictor does not include this bonus; this simulator includes it.')}</p>`+check('blessing','矿脉祝福','Vein blessing')+`<p class="micro">${label('经验 +5% · 稀有 +10% · 无限仓库','XP +5% · Rarity +10% · Unlimited storage')}</p>`;
+ const hot=`<label class="potion"><span>${label('热门加成','Hot bonuses')}</span><select data-path="manual.hotSetting" aria-label="${label('热门加成','Hot bonuses')}">${options([['game',label('沿用游戏设置','Use game settings')],['current',label('按照当前时间','Use current time')],['off',label('不计入','Exclude')]],m.hotSetting)}</select></label><div id="combat-hot-schedule"></div>`;
  const supply=`<label class="potion"><span>${label('模拟初始仓库位置','Starting depot location')}</span><select data-path="homeBank">${options([[0,label('自动','Automatic')],...game.world.banks.map(b=>[b.id,`${label('仓库','Depot')} ${b.id} (${b.x}, ${b.y})`])],state.homeBank)}</select></label>`+check('ironman','铁人模式（不掉落坐骑）','Ironman (no mount drops)');
- const other=perks+section('other-settings','其它','Other',guild+hot+supply);
+ const other=perks+section('other-settings','其它','Other',guild+supply);
 
- return {food,other};
+ const custom=m.customSimulation||![1,24].includes(m.simulationHours);
+ const duration=`<label class="potion"><span>${label('模拟时间','Simulation time')}</span><select data-simulation-mode aria-label="${label('模拟时间','Simulation time')}">${options([[1,label('1 小时','1 hour')],[24,label('24 小时','24 hours')],['custom',label('自定义时长','Custom duration')]],custom?'custom':m.simulationHours)}</select></label>`+(custom?number('manual.simulationHours',label('自定义时长（小时）','Custom duration (hours)'),m.simulationHours,MAX_SIMULATION_MINUTES/60,1/60,'any'):'');
+ const simulation=section('simulation-settings','模拟配置','Simulation settings',duration+hot);
+ return {food,other,simulation};
 }

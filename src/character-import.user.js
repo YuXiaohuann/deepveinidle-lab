@@ -3,8 +3,8 @@
 // @name:en      Deep Vein Idle · Character import
 // @name:zh-cn   Deep Vein Idle · 角色配置导入
 // @namespace    https://dvi-lab.pages.dev/
-// @version      1.0
-// @description  只读角色配置，在战斗模拟器按菜单一键导入；不发送游戏指令。
+// @version      2.0
+// @description  捕获内置预测的完整角色输入，导入配置或临时快照；不发送游戏指令。
 // @match        https://deepveinidle.com/*
 // @match        https://dvi-lab.pages.dev/*
 // @match        http://localhost/*
@@ -16,62 +16,89 @@
 // ==/UserScript==
 (function(){
  'use strict';
- const key='dvi-character-config-v1';
+ const key='dvi-character-snapshot-v2';
  if(location.origin==='https://deepveinidle.com'){
-  const page=unsafeWindow,NativeSocket=page.WebSocket;let latestSocket,latestPlayer,worldBuffs,worldTick,visible=true,hideTimer=null,successShown=false,status='等待游戏数据 / Waiting for game data';
+  const page=unsafeWindow,NativeSocket=page.WebSocket;let latestSocket,latestPlayer,worldBuffs,worldTick,seed,prediction,serial=Promise.resolve(),parsingSocket,capturing=false,lastPrediction,visible=true,hideTimer=null,successShown=false,status='等待游戏数据 / Waiting for game data';
   const object=v=>v&&typeof v==='object'&&!Array.isArray(v);
-  const keys={skills:['melee','ranged','magic','defence','hitpoints'],equipment:['weapon','shield','helmet','body','legs','ring','amulet','mount'],brews:['swift','hunter','nourish','warrior','haste','elixir','abyssal','fed','rooted','blessing'],brewTier:['swift','hunter','nourish','warrior','haste','elixir','abyssal'],brewBuckets:['swift','hunter','nourish','warrior','haste','elixir','abyssal'],house:['yard','post','armour','target','altar','shrine','storeroom'],houseFurniture:['yard','post','armour','target','altar','shrine','storeroom'],masteries:['xp','move','hp','maxhit','accuracy','rare'],perks:['pockets','meals','rest']};
   function paint(){mount();const el=document.getElementById('dvi-character-capture');if(el&&el.textContent!==status)el.textContent=status;}
-  const weeklyLabels=new Set(['Weekly goal: gathered','Weekly goal: felled']);
-  function readWorldBuffs(windows){
-   if(!Array.isArray(windows)||!windows.every(object))return undefined;
-   const weekly=windows.filter(w=>weeklyLabels.has(w.label));
-   if(!weekly.every(w=>Number.isSafeInteger(w.fromTick)&&w.fromTick>=0&&Number.isSafeInteger(w.toTick)&&w.toTick>=w.fromTick&&typeof w.xpMult==='number'&&Number.isFinite(w.xpMult)&&w.xpMult>=1))return undefined;
-   return weekly.map(({label,fromTick,toTick,xpMult})=>({label,fromTick,toTick,xpMult}));
-  }
-  async function capture(you,socket){
-   if(!object(you)||!object(you.skills)||!object(you.equipment)||!Number.isSafeInteger(you.lastTick))throw new Error('角色数据结构不兼容 / Incompatible character data');
-   const player={};
-   for(const field of ['lastTick','foodItemId','eatAt','foodMaxTier','foodPerTrip','guildBonus','homeBank','ironman'])if(Object.hasOwn(you,field)&&(you[field]===null||['number','boolean'].includes(typeof you[field])))player[field]=you[field];
-   for(const [field,list]of Object.entries(keys))if(object(you[field])){
-    player[field]={};
-    for(const k of list)if(Object.hasOwn(you[field],k)){
-     const v=you[field][k];
-     if(field==='houseFurniture'&&object(v))player[field][k]={placed:true};
-     else if(field==='brewBuckets'&&Array.isArray(v)&&v.length===5&&v.every(n=>typeof n==='number'))player[field][k]=Array.from(v);
-     else if(v===null||typeof v==='number')player[field][k]=v;
+  // The game reads bankOrder while cloning the actual predictor input. Observe
+  // that read without changing the value or running another prediction.
+  // Names are audited for the two supported public client builds.
+  function observePlayer(player,socket){
+   if(!object(player)||!Array.isArray(player.bankOrder))return;
+   let order=player.bankOrder;
+   Object.defineProperty(player,'bankOrder',{enumerable:true,configurable:true,get(){
+    const stack=new Error().stack||'';
+    if(!capturing&&socket===latestSocket&&/\bat (?:(?:Module|Object)\.)?(?:Hi|\$i)(?: \[as predict\])?\s*\(/.test(stack)){
+     try{capturing=true;const copy=clonePlayer(player),signature=JSON.stringify({player:copy,seed,windows:worldBuffs??[]});
+      if(signature!==lastPrediction){lastPrediction=signature;prediction={player:copy,seed,windows:JSON.parse(JSON.stringify(worldBuffs??[])),capturedAt:Date.now(),source:'predictor',clientBuild:stack.match(/index-[A-Za-z0-9_-]+\.js/)?.[0]??null};capture(player,socket);}
+     }catch(error){failure(error,socket);}finally{capturing=false;}
     }
-   }
-   const capturedAt=Date.now(),snapshot={version:1,capturedAt,player};
-   if(worldBuffs!==undefined){snapshot.worldBuffs=worldBuffs;snapshot.worldTick=worldTick;}
-   await GM_setValue(key,snapshot);
-   if(socket!==latestSocket)return;
-   status='角色配置已读取 / Character configuration captured';
-   if(!successShown){
-    visible=true;successShown=true;
-    hideTimer=setTimeout(()=>{visible=false;document.getElementById('dvi-character-capture')?.remove();},15000);
-   }
-   paint();
+    return order;
+   },set(value){order=value;}});
   }
+  function clonePlayer(player){
+   // Capture the complete own-role object; transport and account credentials
+   // are never included. Defensive filtering also covers unexpected auth keys.
+   return JSON.parse(JSON.stringify(player,(key,value)=>/^(?:password|token|auth|authorization|cookie|email|chat)$/i.test(key)?undefined:value));
+  }
+  function failure(error,socket){if(socket!==latestSocket)return;clearTimeout(hideTimer);visible=true;successShown=false;status=`读取失败 / Capture failed: ${error.message}`;paint();console.error('[DVI character import]',error);}
+  function capture(you,socket){
+   if(!object(you)||!object(you.skills)||!object(you.equipment)||!Number.isSafeInteger(you.lastTick))throw new Error('角色数据结构不兼容 / Incompatible character data');
+   const snapshot={version:2,capturedAt:Date.now(),player:clonePlayer(you),worldBuffs,worldTick,prediction};
+   const write=async()=>{
+    if(socket!==latestSocket)return;
+    await GM_setValue(key,snapshot);
+    if(socket!==latestSocket)return;
+    status=prediction?'预测快照已读取 / Predictor snapshot captured':'角色配置已读取；打开战斗预测以捕获快照 / Character captured; open combat predictions';
+    if(!successShown){visible=true;successShown=true;hideTimer=setTimeout(()=>{visible=false;document.getElementById('dvi-character-capture')?.remove();},15000);}
+    paint();
+   };
+   serial=serial.then(write).catch(error=>failure(error,socket));
+   return serial;
+  }
+  function frameReceived(frame,socket,observe=false){
+   if(socket!==latestSocket||!Number.isInteger(frame?.tick)||!Array.isArray(frame.m))return;
+   for(const message of frame.m){
+    if(message?.t==='welcome'){latestPlayer=undefined;worldBuffs=undefined;prediction=undefined;lastPrediction=undefined;seed=message.seed;}
+    if(message?.t==='welcome'||message?.t==='snapshot'){
+     latestPlayer=message.you;
+     if(observe)observePlayer(latestPlayer,socket);
+    }else if(message?.t!=='windows')continue;
+    worldTick=frame.tick;
+    if(Object.hasOwn(message,'windows'))worldBuffs=Array.isArray(message.windows)?message.windows:undefined;
+    if(latestPlayer)try{capture(latestPlayer,socket);}catch(error){failure(error,socket);}
+   }
+  }
+  // Observe the object parsed by the client itself, including subsequent local
+  // mutations. A separately parsed socket copy would miss that predictor state.
+  const nativeParse=page.JSON?.parse;
+  if(nativeParse)page.JSON.parse=function(...args){
+   const value=Reflect.apply(nativeParse,this,args);
+   if(latestSocket&&typeof args[0]==='string'&&object(value)&&Array.isArray(value.m)&&Number.isInteger(value.tick))frameReceived(value,parsingSocket??latestSocket,true);
+   return value;
+  };
   page.WebSocket=new Proxy(NativeSocket,{construct(target,args){
    const socket=Reflect.construct(target,args);
    const url=new URL(String(args[0]),location.href);
    if(url.host===location.host&&url.pathname==='/ws'){
-    latestSocket=socket;latestPlayer=undefined;worldBuffs=undefined;worldTick=undefined;clearTimeout(hideTimer);visible=true;successShown=false;
+    latestSocket=socket;latestPlayer=undefined;worldBuffs=undefined;worldTick=undefined;seed=undefined;prediction=undefined;lastPrediction=undefined;clearTimeout(hideTimer);visible=true;successShown=false;
     status='等待游戏数据 / Waiting for game data';paint();
+    const listen=socket.addEventListener,remove=socket.removeEventListener,listeners=new WeakMap();
+    socket.addEventListener=function(type,listener,...options){
+     if(type!=='message'||typeof listener!=='function')return Reflect.apply(listen,this,[type,listener,...options]);
+     let wrapped=listeners.get(listener);if(!wrapped){wrapped=function(event){const previous=parsingSocket;parsingSocket=socket;try{return Reflect.apply(listener,this,[event]);}finally{parsingSocket=previous;}};listeners.set(listener,wrapped);}
+     return Reflect.apply(listen,this,[type,wrapped,...options]);
+    };
+    if(remove)socket.removeEventListener=function(type,listener,...options){return Reflect.apply(remove,this,[type,type==='message'?listeners.get(listener)??listener:listener,...options]);};
     socket.addEventListener('message',event=>{
      if(socket!==latestSocket||typeof event.data!=='string')return;
+     // In a page realm the JSON hook captures the shared object. This fallback
+     // only supplies configuration when that hook is unavailable.
+     if(nativeParse)return;
      let frame;try{frame=JSON.parse(event.data);}catch{return;}
-     if(!Number.isInteger(frame?.tick)||!Array.isArray(frame.m))return;
-     for(const message of frame.m){
-      if(message?.t==='welcome'){latestPlayer=undefined;worldBuffs=undefined;}
-      if(message?.t==='welcome'||message?.t==='snapshot')latestPlayer=message.you;
-      else if(message?.t!=='windows')continue;
-      worldTick=frame.tick;
-      if(message.t==='windows'||Object.hasOwn(message,'windows'))worldBuffs=readWorldBuffs(message.windows);
-      if(!latestPlayer)continue;
-      capture(latestPlayer,socket).catch(error=>{if(socket!==latestSocket)return;clearTimeout(hideTimer);visible=true;successShown=false;status=`读取失败 / Capture failed: ${error.message}`;paint();console.error('[DVI character import]',error);});
-     }
+     frameReceived(frame,socket);
+
     });
    }
    return socket;
@@ -85,7 +112,7 @@
    if(typeof event.detail!=='string')return;
    let data;try{data=JSON.parse(event.detail);}catch{return;}
    if(data?.source!=='dvi-simulator'||!['probe','read'].includes(data.action)||typeof data.id!=='string'||data.id.length>100)return;
-   const reply={source:'dvi-character-script',id:data.id,version:'1.0'};
+   const reply={source:'dvi-character-script',id:data.id,version:'2.0'};
    try{if(data.action==='probe')reply.ready=true;else reply.snapshot=await GM_getValue(key,null);}catch(error){reply.error=String(error.message||error);}
    document.dispatchEvent(new CustomEvent('dvi-character-response',{detail:JSON.stringify(reply)}));
   });

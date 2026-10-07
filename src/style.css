@@ -23,9 +23,8 @@ th.column-highlight,td.column-highlight{color:var(--gold);font-weight:650}.sort-
 .import-body .micro{margin:0}
 .import-body>.text-button{justify-self:start;display:inline-flex;align-items:center;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:#18272d;color:#b8c8ca;text-decoration:none;line-height:1.5}
 .import-body>.text-button:hover{border-color:var(--gold);color:var(--gold)}
-.import-types{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 12px;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.import-types .check{margin:0;min-width:0}
-.import-body>.secondary{min-height:38px}
+.import-actions{display:flex;flex-wrap:wrap;gap:10px}
+.import-actions>.secondary{min-height:38px;flex:1}
 #import-status{overflow-wrap:anywhere}
 #import-status:empty{display:none}
 .import-warning{display:block;margin-top:8px;color:var(--gold);font-weight:700;line-height:1.8}
@@ -45,10 +44,10 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
 @media(max-width:740px){.hot-current{align-items:flex-start;padding:18px;flex-direction:column;gap:14px}.hot-countdown{flex-direction:row;align-items:center;gap:14px}.forecast-filters{grid-template-columns:minmax(0,1fr);gap:18px;padding:18px}.forecast-filters fieldset:last-child{text-align:left}.forecast-filters fieldset:last-child legend{margin-left:0}.forecast-filters fieldset:last-child .forecast-options{justify-content:flex-start}.forecast-schedule td,.forecast-schedule th{padding:12px 10px;font-size:11px}.forecast-schedule td:first-child,.forecast-schedule th:first-child{padding-left:18px}.hot-current h2 span{display:block;margin:8px 0 0}}
 
 /* Other settings share one label/control layout. */
-#other-settings>label{display:grid;grid-template-columns:minmax(0,1fr) 120px;align-items:center;gap:10px;margin:9px 0;font-size:12px;color:#b8c8ca}
-#other-settings>label>span{min-width:0;overflow-wrap:anywhere}
-#other-settings>label>input[type="number"],#other-settings>label>select{width:120px;font-size:11px}
-#other-settings>label>input[type="checkbox"]{justify-self:end;margin:0}
+:is(#other-settings,#simulation-settings)>label{display:grid;grid-template-columns:minmax(0,1fr) 120px;align-items:center;gap:10px;margin:9px 0;font-size:12px;color:#b8c8ca}
+:is(#other-settings,#simulation-settings)>label>span{min-width:0;overflow-wrap:anywhere}
+:is(#other-settings,#simulation-settings)>label>input[type="number"],:is(#other-settings,#simulation-settings)>label>select{width:120px;font-size:11px}
+:is(#other-settings,#simulation-settings)>label>input[type="checkbox"]{justify-self:end;margin:0}
 
 .enemies th:not(:first-child),.enemies td:not(:first-child){text-align:right}
 .enemies .reward-detail>div{text-align:left}

@@ -5,8 +5,8 @@ import {game,defaults as defaultBuild,preset as presetBuild,normalize,makePlayer
 import {createScenario,simulateMonster,START_TICK} from '../src/simulation.js';
 import {manualWindows} from '../src/manual-settings.js';
 // Keep non-forecast regression scenarios deterministic and independent of wall time.
-const preset=style=>{const s=presetBuild(style);s.manual.hotForecast=false;return s;};
-const defaults=()=>{const s=defaultBuild();s.manual.hotForecast=false;return s;};
+const preset=style=>{const s=presetBuild(style);s.manual.hotSetting='off';s.manual.simulationHours=24;return s;};
+const defaults=()=>{const s=defaultBuild();s.manual.hotSetting='off';s.manual.simulationHours=24;return s;};
 
 
 test('old configurations keep defaults; all new manual settings survive normalization',()=>{
@@ -69,8 +69,8 @@ test('removed inventory and event overrides cannot affect manual simulation',()=
  const n=normalize(s);assert.equal(n.homeBank,0);assert.equal(n.manual.actualInventory,false);assert.equal(n.manual.unlimitedBank,true);assert.equal(n.manual.bankSlotsBought,0);assert.deepEqual(n.manual.bank,[]);assert.deepEqual(n.manual.pack,[]);assert.deepEqual(n.manual.overflow,[]);assert.deepEqual(n.manual.windows,[]);assert.equal(n.manual.hotMode,1);
  for(const monster of game.monsters)assert.deepEqual(simulateMonster(s,monster),simulateMonster(preset('ranged'),monster),monster.name);
 });
-test('snapshot inputs fail explicitly after snapshot mode removal',()=>{
- assert.throws(()=>createScenario({format:'snapshot',player:{}}),/snapshot mode has been removed/);
+test('incomplete snapshot inputs fail explicitly',()=>{
+ assert.throws(()=>createScenario({format:'snapshot',player:{}}),/invalidSnapshot|predictionMissing/);
 });
 
 
