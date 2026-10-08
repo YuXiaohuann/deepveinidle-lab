@@ -24,14 +24,13 @@ test('valuation preference defaults off, persists and renders bilingual controls
  assert.ok(html.includes(language==='zh'?'按商人价格计算掉落价值':'Value drops at vendor prices'));
  }
 });
-test('headers and pending, failed and Boss rows follow the visible column count',()=>{
+test('headers and pending and failed rows follow the visible column count',()=>{
  for(const enabled of [false,true]){
  const c=view(enabled);const columns=c.visibleEnemyColumns();
  assert.equal(columns.length,enabled?15:14);assert.equal(columns.at(-1)[0],'depot');
  assert.equal(columns.find(x=>x[0]==='normalHour')[1],enabled?'normalValue':'normal');
  assert.equal(columns.some(x=>x[0]==='totalIncomeHour'),enabled);
  assert.equal((c.hourlyCells({key:'m'}).match(/<td/g)||[]).length,enabled?7:6);
- assert.match(c.hourlyCells({boss:true}),new RegExp(`colspan="${enabled?7:6}"`));
  assert.match(view(enabled,null,true).hourlyCells({key:'m'}),/!/);
  }
 });

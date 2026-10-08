@@ -1,3 +1,4 @@
+import {normalizeEnemySelection} from './enemy-selection.js';
 import * as game from './upstream.js';
 export const MAX_SIMULATION_MINUTES=Math.floor(8.64e15/60000/2);
 const limit=(v,min,max,fallback)=>Number.isFinite(Number(v))?Math.min(max,Math.max(min,Number(v))):fallback;
@@ -5,7 +6,7 @@ const int=(v,min,max,fallback)=>Math.floor(limit(v,min,max,fallback));
 export function manualDefaults(){return {
  progress:Object.fromEntries(game.allSkills.map(k=>[k,0])),xp:Object.fromEntries(game.allSkills.map(k=>[k,-1])),
  perks:Object.fromEntries(game.perks.filter(p=>p.id!=='meals').map(p=>[p.id,0])),
- guildXp:0,weeklyXp:0,simulationHours:1,vendorValues:false,customSimulation:false,hotSetting:'game',blessing:false,blessingMinutes:-1,
+ enemySelection:'all',guildXp:0,weeklyXp:0,simulationHours:1,vendorValues:false,customSimulation:false,hotSetting:'game',blessing:false,blessingMinutes:-1,
  brewMinutes:Object.fromEntries(game.potions.map(p=>[p.kind,-1])),fedMinutes:-1,rootedMinutes:-1,
  foodRule:0,foodMaxTier:4,foodPerTrip:-1,actualInventory:false,bank:[],pack:[],overflow:[],
  bankSlotsBought:0,unlimitedBank:true,ironman:false,coins:0,
@@ -21,6 +22,7 @@ export function normalizeManual(raw={}){
  for(const key of ['foodRule','foodMaxTier'])s[key]=int(raw[key]??s[key],0,key==='foodMaxTier'?4:3,s[key]);
  s.foodPerTrip=[5,10,20,-2,-1].includes(Number(raw.foodPerTrip))?Number(raw.foodPerTrip):-1;
  s.hotSetting=['game','current','off'].includes(raw.hotSetting)?raw.hotSetting:typeof raw.hotForecast==='boolean'?(raw.hotForecast?'current':'off'):'game';
+ s.enemySelection=normalizeEnemySelection(raw.enemySelection);
  s.weeklyXp=int(raw.weeklyXp??0,0,1e7,0);
  s.simulationHours=Math.round(limit(Number(raw.simulationHours??1)*60,1,MAX_SIMULATION_MINUTES,60))/60;
  return s;

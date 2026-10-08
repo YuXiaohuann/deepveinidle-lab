@@ -1,3 +1,4 @@
+import {selectedEnemies} from './enemy-selection.js';
 import {manualDefaults,normalizeManual,skillXp,applyManualPlayer} from './manual-settings.js';
 import * as game from './upstream.js';
 export {game};
@@ -46,8 +47,8 @@ export function makePlayer(raw){
 }
 export function calculate(raw,snapshotPlayer=null){
  const {state,player:p,issues}=snapshotPlayer?{state:normalize(raw),player:snapshotPlayer,issues:[]}:makePlayer(raw),hit=game.maxHit(p),accuracy=game.accuracy(p),evasion=game.evasion(p),magic=game.magic(p),style=game.style(p);
- const rows=game.monsters.map(m=>({...m,key:`monster-${m.id}`,boss:false,max:hit,chance:game.hitChance(accuracy,10+m.defence*(magic?game.magicDefenceScale:1)),enemyChance:game.hitChance(10+m.attack,evasion),enemyMax:Math.max(1,Math.floor(m.maxHit*(1-game.damageReduction(p,p.lastTick))))}));
- for(const b of game.bosses){const m=game.bossStats.find(x=>x.id===b.contentId);rows.push({...m,...b,key:b.name,boss:true,level:m.recommendedLevel,hp:null,max:hit*(style===b.fears?game.bossWeakMultiplier:game.bossOtherMultiplier),chance:game.hitChance(accuracy,10+m.defence*(magic?game.magicDefenceScale:1)),enemyChance:null,enemyMax:null});}
+ const selected=selectedEnemies(state.manual.enemySelection);
+ const rows=selected.monsters.map(m=>({...m,key:`monster-${m.id}`,max:hit,chance:game.hitChance(accuracy,10+m.defence*(magic?game.magicDefenceScale:1)),enemyChance:game.hitChance(10+m.attack,evasion),enemyMax:Math.max(1,Math.floor(m.maxHit*(1-game.damageReduction(p,p.lastTick))))}));
  const food=game.item(game.withRarity(state.food.id,state.food.tier));
  const healing=Math.floor(food.heals*game.combine(1+.025*state.meals,1+.25*game.brewScale(p,'nourish')));
  return {state,player:p,issues,rows,stats:{hit,accuracy,evasion,style,strength:game.strength(p),armour:game.armour(p),hp:game.maxHp(p),seconds:game.attackTicks(p)*game.tickMs/1000},food:{...food,healing,fedSeconds:(game.foodBuff(state.food.tier)?.ticks??0)*game.tickMs/1000,rootSeconds:game.isCrop(food.id)?game.cropDuration(food.id)*game.tickMs/1000:0}};
@@ -61,7 +62,6 @@ export function selectStyle(raw,style){const s=normalize(raw);s.style=style;for(
 export function sortEnemies(rows,key,direction=key==='level'?'asc':'desc',value=row=>row[key]){
  const sign=direction==='asc'?1:-1;
  return [...rows].sort((a,b)=>{
-  const group=Number(a.boss)-Number(b.boss);if(group)return group;
   const av=value(a),bv=value(b),aValid=Number.isFinite(av),bValid=Number.isFinite(bv);
   if(aValid!==bValid)return aValid?-1:1;
   return aValid?(av-bv)*sign:0;
