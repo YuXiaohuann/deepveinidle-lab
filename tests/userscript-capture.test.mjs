@@ -8,22 +8,25 @@ import {createScenario} from '../src/simulation.js';
 import {importCharacter} from '../src/character-import.js';
 import {importSnapshot} from '../src/character-snapshot.js';
 
-const script=fs.readFileSync(new URL('../src/character-import.user.js',import.meta.url),'utf8');
+const script=fs.readFileSync(new URL('../src/debug-capture.user.js',import.meta.url),'utf8');
 const source=fs.readFileSync(new URL('../vendor/game-original.js',import.meta.url),'utf8');
 const manifest=JSON.parse(fs.readFileSync(new URL('../vendor/manifest.json',import.meta.url),'utf8'));
 const build='index-C3S-5Yeu.js',url=`https://deepveinidle.com/assets/${build}`;
 const table=vm.runInNewContext('('+script.match(/const auditedBuilds=(\{[\s\S]*?\n  \});/)[1]+')');
 const settle=()=>new Promise(resolve=>setImmediate(resolve));
-function harness(builds=[build]){
- const stored=[],scripts=builds.map(scriptNode);let observer;
- const page={JSON:{parse:JSON.parse},WebSocket:class{addEventListener(){}}};
+function harness(builds=[build],order=[]){
+ const stored=[],configStored=[],scripts=builds.map(scriptNode);let observer;
+ const page={JSON:{parse:JSON.parse},WebSocket:class{listeners=[];addEventListener(type,fn){if(type==='message')this.listeners.push(fn);}receive(text){for(const fn of this.listeners)fn({data:text});}}};
  const document={documentElement:{append(){}},querySelectorAll:()=>scripts,createElement:()=>({style:{},setAttribute(){}}),getElementById:()=>({textContent:''})};
- const context=vm.createContext({unsafeWindow:page,document,location:{origin:'https://deepveinidle.com',host:'deepveinidle.com',href:'https://deepveinidle.com/'},URL,Date,console,setTimeout:()=>0,clearTimeout(){},MutationObserver:class{constructor(fn){observer=fn;}observe(){}},GM_setValue:async(k,v)=>stored.push(structuredClone(v))});
- vm.runInContext(script,context);new page.WebSocket('wss://deepveinidle.com/ws');
+ const context=vm.createContext({unsafeWindow:page,document,location:{origin:'https://deepveinidle.com',host:'deepveinidle.com',href:'https://deepveinidle.com/'},URL,Date,console,setTimeout:()=>0,clearTimeout(){},MutationObserver:class{constructor(fn){observer=fn;}observe(){}},GM_setValue:async(k,v)=>(k==='dvi-debug-snapshot-v2'?stored:configStored).push(structuredClone(v))});
+ const roleScript=fs.readFileSync(new URL('../src/character-import.user.js',import.meta.url),'utf8');
+ for(const kind of order.length?order:['debug'])vm.runInContext(kind==='debug'?script:roleScript,context);
+ const socket=new page.WebSocket('wss://deepveinidle.com/ws');
  const player=createScenario(preset('ranged')).player;player.id=7;player.lastTick=100;player.bankLocked=[64];player.bank={64:12};player.forgeLog={3:7};
  context.frameText=JSON.stringify({tick:100,m:[{t:'welcome',seed:123,windows:[{fromTick:0,toTick:200,xpMult:1.5,label:'Event'}],you:player}]});
+ socket.receive(context.frameText);
  vm.runInContext('var actual=unsafeWindow.JSON.parse(frameText).m[0].you; actual.skills.ranged+=555;',context);
- return {context,stored,player,addScript(name){const node=scriptNode(name);scripts.push(node);observer([{addedNodes:[node]}]);}};
+ return {context,stored,configStored,player,addScript(name){const node=scriptNode(name);scripts.push(node);observer([{addedNodes:[node]}]);}};
 }
 function scriptNode(name){return {tagName:'SCRIPT',src:`https://deepveinidle.com/assets/${name}`};}
 function injectDeclaration(context,name,rename=name){
@@ -112,4 +115,17 @@ test('late script discovery enables capture; additional entry resources discard 
 
 test('compatibility failure also rejects stale predictor data saved under a new resource',()=>{
  assert.throws(()=>importSnapshot({version:2,clientBuild:'index-unreviewed.js',prediction:{source:'predictor',clientBuild:build}}),/incompatibleClient/);
+});
+
+
+test('both script installation orders preserve configuration capture and native prediction observation',async()=>{
+ for(const order of [['config','debug'],['debug','config']]){
+  const h=harness([build],order);
+  fakeRead(h.context,`at clone (${url}:2:274300)\nat predict (${url}:2:287860)`);
+  await settle();
+  assert.equal(h.stored.at(-1).prediction.source,'predictor');
+  assert.equal(h.configStored.length,1);
+  assert.equal(h.configStored[0].prediction,undefined);
+  assert.equal(h.stored.at(-1).prediction.player.skills.ranged,h.configStored[0].player.skills.ranged+555);
+ }
 });

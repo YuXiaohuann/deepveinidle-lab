@@ -76,7 +76,7 @@ function render(){
   }else el.onchange=()=>{update();render();document.querySelector(`[data-path="${el.dataset.path}"]`)?.focus();};
  });
  renderDebug(language,{applyCombat:applyCharacterImport,applyEnhancement:applyEnhancementImport,refresh:render});
- $('#import-character').onclick=()=>runCharacterImport('config');$('#import-snapshot').onclick=()=>runCharacterImport('snapshot');updateImportStatus();
+ $('#import-character').onclick=()=>runCharacterImport('config');updateImportStatus();
  $('#apply-food').onclick=()=>{const r=calculate(state);if(r.food.fedSeconds)state.fed=true;if(r.food.rootSeconds)state.rooted=true;save();render();};
  $('#period').onchange=e=>{period=e.target.value;render();};
  $('#search').oninput=e=>{query=e.target.value;renderResults();};$('#filter').onchange=e=>{filter=e.target.value;renderResults();};
@@ -152,7 +152,7 @@ function hourlyCells(monster){
 function importLabel(id){const type=importTypes.find(([key])=>key===id);return type?type[language==='zh'?1:2]:id;}
 function updateImportStatus(){
  const button=$('#import-character'),status=$('#import-status');if(!button||!status)return;
- button.disabled=importBusy;$('#import-snapshot').disabled=importBusy;
+ button.disabled=importBusy;
  status.textContent=importStatusText(language,importStatus,importBusy);
  if(importBusy||!importStatus||importStatus.error||importStatus.ready||importStatus.snapshot)return;
  const zh=language==='zh',warnings=importStatus.warnings??[];
@@ -176,7 +176,7 @@ async function runCharacterImport(mode){
  importBusy=true;updateImportStatus();
  try{
   const response=await requestCharacter('read');
-  if(response.version!=='2.2')throw new Error('scriptOutdated');
+  if(response.version!=='2.3')throw new Error('scriptOutdated');
   const {snapshot}=response;if(!snapshot)throw new Error('noSnapshot');
   applyCharacterImport(mode,snapshot);
  }catch(error){importStatus={error:error.message};}

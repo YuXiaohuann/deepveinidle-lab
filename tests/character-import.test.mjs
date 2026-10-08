@@ -91,7 +91,7 @@ function userscriptWorld(document,getValue){
 test('shared DOM bridge works across different windows and awaits asynchronous script storage',async()=>{
  const doc=new EventTarget(),page=simulatorWorld(doc),sandbox=userscriptWorld(doc,async()=>fixture());
  assert.notEqual(page.window,sandbox.window);
- const response=await page.requestCharacter('read');assert.equal(response.snapshot.version,2);assert.equal(response.version,'2.2');
+ const response=await page.requestCharacter('read');assert.equal(response.snapshot.version,2);assert.equal(response.version,'2.3');
 });
 test('bridge ignores malformed requests and reports asynchronous storage rejection',async()=>{
  const doc=new EventTarget(),page=simulatorWorld(doc);let reads=0;
@@ -131,7 +131,7 @@ test('success badge hides after fifteen seconds without reappearing on redraws o
  g.frame(socket,fixture().player);await new Promise(resolve=>setImmediate(resolve));
  assert.equal(g.stored.length,2);assert.equal(g.badge(),null);
  new g.page.WebSocket('wss://deepveinidle.com/ws');assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');
- assert.match(script,/^\/\/ @version\s+2\.2$/m);
+ assert.match(script,/^\/\/ @version\s+2\.3$/m);
 });
 
 const weeklyWindow=(label='Weekly goal: gathered',fromTick=100,toTick=200,xpMult=1.1)=>({label,fromTick,toTick,xpMult});
@@ -191,7 +191,7 @@ test('old bridge replies do not win over the current script and are reported if 
  const page=simulatorWorld(doc,{setInterval:()=>1,setTimeout:fn=>(timeout=fn,2),clearInterval(){},clearTimeout(){}});
  doc.addEventListener('dvi-character-request',event=>{const request=JSON.parse(event.detail);doc.dispatchEvent(new DomEvent('dvi-character-response',{detail:JSON.stringify({source:'dvi-character-script',id:request.id,version:'2.1',snapshot:fixture()})}));});
  const old=page.requestCharacter('read');timeout();await assert.rejects(old,/scriptOutdated/);
- userscriptWorld(doc,async()=>fixture());const current=await page.requestCharacter('read');assert.equal(current.version,'2.2');
+ userscriptWorld(doc,async()=>fixture());const current=await page.requestCharacter('read');assert.equal(current.version,'2.3');
 });
 
 test('both panels share one probe and common bilingual status messages',async()=>{
@@ -208,4 +208,32 @@ test('both panels share one probe and common bilingual status messages',async()=
   for(const error of ['incompatibleClient','predictionMissing','scriptMissing','scriptOutdated','scriptReadFailed','noSnapshot','invalidSnapshot','incompleteSnapshot'])assert.notEqual(page.importStatusText(language,{error}),error);
   assert.equal(page.importStatusText(language,{error:'unexpected detail'}),'unexpected detail');
  }
+});
+
+
+test('combat import controls omit snapshot action and explanation in both languages',()=>{
+ const page=simulatorWorld(new EventTarget());
+ for(const language of ['zh','en']){
+  const html=page.importControls(language);
+  assert.match(html,/id="import-character"/);
+  assert.doesNotMatch(html,/import-snapshot|导入快照|Import snapshot/);
+ }
+ assert.doesNotMatch(script,/auditedBuilds|predictorRead|observePlayer|page.JSON/);
+});
+
+test('debug and configuration bridges read independent storage and debug bridge only activates on debug path',async()=>{
+ const debugScript=fs.readFileSync(new URL('../src/debug-capture.user.js',import.meta.url),'utf8');
+ const doc=new EventTarget(),page=simulatorWorld(doc);const keys=[];
+ userscriptWorld(doc,async key=>{keys.push(key);return {kind:'config'};});
+ vm.runInNewContext(debugScript,{document:doc,location:{origin:'http://127.0.0.1:4173',pathname:'/debug'},CustomEvent:DomEvent,GM_getValue:async key=>{keys.push(key);return {kind:'debug'};}});
+ const config=await page.requestCharacter('read'),debug=await page.requestCharacter('read',true);
+ assert.equal(config.snapshot.kind,'config');assert.equal(debug.snapshot.kind,'debug');
+ assert.deepEqual(keys,['dvi-character-snapshot-v2','dvi-debug-snapshot-v2']);
+ const otherDoc=new EventTarget();let timeout,reads=0;
+ const otherPage=simulatorWorld(otherDoc,{setInterval:()=>1,setTimeout:fn=>(timeout=fn,2),clearInterval(){},clearTimeout(){}});
+ vm.runInNewContext(debugScript,{document:otherDoc,location:{origin:'http://127.0.0.1:4173',pathname:'/'},CustomEvent:DomEvent,GM_getValue:()=>{reads++;}});
+ const missing=otherPage.requestCharacter('read',true);timeout();await assert.rejects(missing,/debugScriptMissing/);assert.equal(reads,0);
+ otherDoc.addEventListener('dvi-debug-request',event=>{const request=JSON.parse(event.detail);otherDoc.dispatchEvent(new DomEvent('dvi-debug-response',{detail:JSON.stringify({source:'dvi-debug-script',id:request.id,version:'0.9'})}));});
+ const outdated=otherPage.requestCharacter('read',true);timeout();await assert.rejects(outdated,/debugScriptOutdated/);
+ for(const language of ['zh','en'])for(const error of ['debugScriptMissing','debugScriptOutdated','debugScriptReadFailed','debugNoSnapshot'])assert.notEqual(page.importStatusText(language,{error}),error);
 });

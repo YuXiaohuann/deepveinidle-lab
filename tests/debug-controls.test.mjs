@@ -17,12 +17,13 @@ test('debug download round-trips into all import modes; invalid files preserve s
  URL.createObjectURL=value=>{blob=value;return 'blob:test';};URL.revokeObjectURL=()=>{};
  const player=createScenario(preset('ranged')).player,capturedAt=Date.now();
  let source={version:2,capturedAt,player,prediction:{source:'predictor',clientBuild:'index-C3S-5Yeu.js',capturedAt,player,seed:123,windows:[]}};
- document.addEventListener('dvi-character-request',event=>{const request=JSON.parse(event.detail);document.dispatchEvent(new CustomEvent('dvi-character-response',{detail:JSON.stringify({source:'dvi-character-script',id:request.id,version:'2.2',snapshot:source})}));});
+ document.addEventListener('dvi-character-request',event=>{const request=JSON.parse(event.detail);document.dispatchEvent(new CustomEvent('dvi-character-response',{detail:JSON.stringify({source:'dvi-character-script',id:request.id,version:'2.3',snapshot:source})}));});
+ document.addEventListener('dvi-debug-request',event=>{const request=JSON.parse(event.detail);document.dispatchEvent(new CustomEvent('dvi-debug-response',{detail:JSON.stringify({source:'dvi-debug-script',id:request.id,version:'1.0',snapshot:source})}));});
  try{
   const {renderDebug}=await import('../src/debug-controls.js');
   let combat=preset('magic'),snapshot=null,enhancement=enhancementDefaults(),language='zh';
   const callbacks={applyCombat:(mode,input)=>{if(mode==='snapshot'){const next=importSnapshot(input);snapshot=next;return {snapshot:true,capturedAt:next.capturedAt};}const result=importCharacter(combat,input);combat=result.state;snapshot=null;return {...result,capturedAt:input.capturedAt};},applyEnhancement:input=>{const result=importEnhancement(enhancement,input);enhancement=result.state;return {capturedAt:result.capturedAt};},refresh:()=>renderDebug(language,callbacks)};
-  callbacks.refresh();assert.ok(buttons.every(button=>button.disabled));
+  callbacks.refresh();assert.match(host.innerHTML,/debug-capture.user.js/);assert.ok(buttons.every(button=>button.disabled));
   await host.querySelector('#debug-export').onclick();assert.ok(clicked);assert.equal(download,`dvi-character-${capturedAt}.json`);
   const json=await blob.text();assert.deepEqual(JSON.parse(json),source);
   host.querySelector('#debug-file').onchange({target:{files:[{name:'capture.json',text:async()=>json}]}});

@@ -12,7 +12,7 @@ test('userscript bridge imports enhancement independently, retains state on erro
  globalThis.document=document;globalThis.CustomEvent=class extends Event{constructor(type,args){super(type);this.detail=args.detail;}};
  globalThis.localStorage={getItem:key=>storage.get(key)??null,setItem:(key,value)=>{if(failStorage)throw Error('quota');storage.set(key,value);}};
  let snapshot={version:2,capturedAt:Date.now(),player:{skills:{enhancing:game.levelXp(42)},house:{lectern:7},houseFurniture:{lectern:{cell:1,slot:0}},masteries:{enhance:9},equipment:{mount:game.encode(game.withRarity(328,3),7)},bank:{328:3},pack:[],overflow:{}}};
- document.addEventListener('dvi-character-request',event=>{const request=JSON.parse(event.detail);document.dispatchEvent(new CustomEvent('dvi-character-response',{detail:JSON.stringify({source:'dvi-character-script',id:request.id,version:'2.2',snapshot})}));});
+ document.addEventListener('dvi-character-request',event=>{const request=JSON.parse(event.detail);document.dispatchEvent(new CustomEvent('dvi-character-response',{detail:JSON.stringify({source:'dvi-character-script',id:request.id,version:'2.3',snapshot})}));});
  try{
   const {renderEnhancement}=await import('../src/enhancement-controls.js');renderEnhancement('zh');
   await document.getElementById('enhance-import').onclick();
