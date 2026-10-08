@@ -10,7 +10,8 @@ test('debug download round-trips into all import modes; invalid files preserve s
  const original={document:globalThis.document,CustomEvent:globalThis.CustomEvent};
  const originalURL={create:URL.createObjectURL,revoke:URL.revokeObjectURL};
  const elements=new Map(),buttons=['config','snapshot','enhance'].map(mode=>({dataset:{debugImport:mode}}));
- const host={innerHTML:'',querySelector:id=>{if(!elements.has(id))elements.set(id,{});return elements.get(id);},querySelectorAll:()=>buttons};
+ const scriptButtons=['snapshot'].map(mode=>({dataset:{debugScriptImport:mode}}));
+ const host={innerHTML:'',querySelector:id=>{if(!elements.has(id))elements.set(id,{});return elements.get(id);},querySelectorAll:selector=>selector==='[data-debug-script-import]'?scriptButtons:buttons};
  let blob,download,clicked=false;
  class Document extends EventTarget{getElementById(){return host;}body={append(){}};createElement(){return {click(){clicked=true;download=this.download;},remove(){}};}}
  globalThis.document=new Document();globalThis.CustomEvent=class extends Event{constructor(type,args){super(type);this.detail=args.detail;}};
@@ -24,6 +25,9 @@ test('debug download round-trips into all import modes; invalid files preserve s
   let combat=preset('magic'),snapshot=null,enhancement=enhancementDefaults(),language='zh';
   const callbacks={applyCombat:(mode,input)=>{if(mode==='snapshot'){const next=importSnapshot(input);snapshot=next;return {snapshot:true,capturedAt:next.capturedAt};}const result=importCharacter(combat,input);combat=result.state;snapshot=null;return {...result,capturedAt:input.capturedAt};},applyEnhancement:input=>{const result=importEnhancement(enhancement,input);enhancement=result.state;return {capturedAt:result.capturedAt};},refresh:()=>renderDebug(language,callbacks)};
   callbacks.refresh();assert.match(host.innerHTML,/debug-capture.user.js/);assert.ok(buttons.every(button=>button.disabled));
+  assert.ok(scriptButtons.every(button=>!button.disabled));
+  await scriptButtons[0].onclick();assert.deepEqual(snapshot,importSnapshot(source));
+  assert.match(host.querySelector('#debug-script-status').textContent,/临时快照/);
   await host.querySelector('#debug-export').onclick();assert.ok(clicked);assert.equal(download,`dvi-character-${capturedAt}.json`);
   const json=await blob.text();assert.deepEqual(JSON.parse(json),source);
   host.querySelector('#debug-file').onchange({target:{files:[{name:'capture.json',text:async()=>json}]}});
@@ -47,6 +51,9 @@ test('debug download round-trips into all import modes; invalid files preserve s
    assert.deepEqual({combat,snapshot,enhancement},before);
   }
   const {prediction,...configuration}=source;source=configuration;clicked=false;
+  const directBefore=structuredClone({combat,snapshot,enhancement});
+  await scriptButtons[0].onclick();assert.match(host.querySelector('#debug-script-status').textContent,/No predictor input/);
+  assert.deepEqual({combat,snapshot,enhancement},directBefore);
   await host.querySelector('#debug-export-config').onclick();assert.ok(clicked);assert.equal(download,`dvi-character-config-${capturedAt}.json`);
   const configJson=await blob.text();assert.deepEqual(JSON.parse(configJson),configuration);assert.equal(JSON.parse(configJson).prediction,undefined);
   host.querySelector('#debug-file').onchange({target:{files:[{name:'configuration.json',text:async()=>configJson}]}});
