@@ -53,6 +53,23 @@ test('zero target cost, blank prices and explicit zero pricing stay distinct',()
 test('invalid configuration fails explicitly',()=>{
  for(const patch of [{current:7,target:6},{level:null},{current:1.5},{target:101},{lectern:-1},{mastery:.5},{protectFrom:1},{protect:'true'},{shardPrice:NaN},{scrollPrice:-1},{itemId:64}])assert.throws(()=>calculateEnhancement(config(patch)));
 });
+test('market tax includes gold, materials, scrolls and base item, with explicit pricing required',()=>{
+ const r=calculateEnhancement(config({target:3,protect:true,shardPrice:10,scrollPrice:20,basePrice:120}));
+ // For +0 to +3: costs at +2 are divided by .88; protected failure
+ // repeats +1 (chance .94), whose failure also repeats +0;
+ // each failed +2 attempt spends one scroll.
+ const goldStep1=(200+.06*100)/.94,shardStep1=(6+.06*3)/.94;
+ const gold=100+goldStep1+(300+.12*goldStep1)/.88;
+ const shards=3+shardStep1+(9+.12*shardStep1)/.88;
+ const scrolls=.12/.88;
+ near(r.taxedGold,(gold+shards*10+scrolls*20+120)*1.03);
+ assert.equal(calculateEnhancement(config({shardPrice:10})).taxedGold,null);
+ assert.equal(calculateEnhancement(config({basePrice:0})).taxedGold,null);
+ assert.equal(calculateEnhancement(config({protect:true,shardPrice:10,basePrice:0})).taxedGold,null);
+ const free=calculateEnhancement(config({shardPrice:0,basePrice:0}));near(free.taxedGold,free.totals.gold*1.03);
+ near(calculateEnhancement(config({current:5,target:5,basePrice:120})).taxedGold,123.6);
+ assert.equal(calculateEnhancement(config({current:5,target:5,basePrice:0})).taxedGold,0);
+});
 test('import captures enhancement-only fields and deduplicates worn and inventory candidates',()=>{
  const s=config({shardPrice:3}),r=importEnhancement(s,snapshot());assert.equal(r.state.level,32);assert.equal(r.state.lectern,12);assert.equal(r.state.mastery,3);assert.equal(r.state.shardPrice,3);assert.equal(r.candidates.length,4);assert.deepEqual(r.candidates[0],{itemId:328,tier:2,current:5,id:game.encode(game.withRarity(328,2),5)});assert.deepEqual(s,config({shardPrice:3}));
  const unplaced=snapshot();unplaced.player.houseFurniture={};assert.equal(importEnhancement(s,unplaced).state.lectern,0);

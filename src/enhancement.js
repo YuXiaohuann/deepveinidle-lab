@@ -45,8 +45,9 @@ export function calculateEnhancement(input){
  const missingPrices=['shards','scrolls'].filter(key=>totals[key]>0&&s[key==='shards'?'shardPrice':'scrollPrice']===null);
  const pricedGold=missingPrices.length?null:totals.gold+totals.shards*(s.shardPrice??0)+totals.scrolls*(s.scrollPrice??0);
  const purchaseTotal=pricedGold!==null&&s.basePrice!==null?pricedGold+s.basePrice:null;
- if([totals.seconds,pricedGold,purchaseTotal].some(v=>v!==null&&!Number.isFinite(v)))throw Error('unreliableCalculation');
- return {steps,totals,missingPrices,pricedGold,purchaseTotal};
+ const taxedGold=purchaseTotal===null?null:purchaseTotal*1.03;
+ if([totals.seconds,pricedGold,purchaseTotal,taxedGold].some(v=>v!==null&&!Number.isFinite(v)))throw Error('unreliableCalculation');
+ return {steps,totals,missingPrices,pricedGold,purchaseTotal,taxedGold};
 }
 export function decodeEnhancementItem(id){
  if(!integer(id,0,Number.MAX_SAFE_INTEGER))throw Error('invalidSnapshot');
