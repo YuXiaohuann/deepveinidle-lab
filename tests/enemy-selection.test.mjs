@@ -30,10 +30,10 @@ test('worker simulates only selected monsters, including snapshot requests',()=>
  }
 });
 
-test('character import preserves enemy choice and controls offer translated scopes and individual targets',()=>{
+test('character import resets enemy choice and controls offer translated scopes and individual targets',()=>{
  const state=defaults();state.manual.enemySelection=monsterKey(game.monsters[0]);
  const imported=importCharacter(state,{version:2,capturedAt:Date.now(),player:{lastTick:1}});
- assert.equal(imported.state.manual.enemySelection,state.manual.enemySelection);
+ assert.equal(imported.state.manual.enemySelection,'all');
  for(const language of ['zh','en']){
   const html=manualControls(state,{language,number:()=>'',esc:v=>v,name:v=>v,options:choices=>choices.map(([value,label])=>`<option value="${value}">${label}</option>`).join('')}).simulation;
   assert.ok(!html.includes('boss'));

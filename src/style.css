@@ -26,9 +26,9 @@ th.column-highlight,td.column-highlight{color:var(--gold);font-weight:650}.sort-
 .import-actions>a.secondary{display:flex;align-items:center;justify-content:center;padding:7px 12px;border:1px solid #3a4c53;border-radius:6px;background:#18272d;text-decoration:none}
 .import-actions>a.secondary:hover{border-color:var(--gold);color:#fff}
 .import-actions>a.secondary:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
-.import-status{overflow-wrap:anywhere}
+.import-status{overflow-wrap:anywhere;white-space:pre-line}
 .import-status:empty{display:none}
-.import-warning{display:block;margin-top:8px;color:var(--gold);font-weight:700;line-height:1.8}
+.import-warning{white-space:pre-line;display:block;margin-top:8px;color:var(--gold);font-weight:700;line-height:1.8}
 
 /* Top-level sections share the header and footer. */
 [hidden]{display:none!important}

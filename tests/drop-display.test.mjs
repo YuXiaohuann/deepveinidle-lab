@@ -51,7 +51,7 @@ test('quantities and vendor values render separately with optional highlighted i
  }
 });
 
-test('Sakura menu requires both guild fields and follows imported guild changes without resetting valuation',()=>{
+test('Sakura menu requires both guild fields and follows imported guild changes with default valuation on import',()=>{
  const state=defaults();state.manual.vendorValues=true;
  const render=state=>manualControls(state,{language:'zh',number:()=>'',options:()=>'',esc:String,name:String});
  for(const guild of [null,undefined,{name:'Other',tag:'SAKI'},{name:'SakuraSpring',tag:'OTHER'},{name:'sakuraspring',tag:'SAKI'}]){
@@ -61,6 +61,6 @@ test('Sakura menu requires both guild fields and follows imported guild changes 
  const imported=importCharacter(state,snapshot).state;
  assert.match(render(imported).sakura,/manual.vendorValues/);
  const left=importCharacter(imported,{...snapshot,guild:null}).state;
- assert.equal(render(left).sakura,'');assert.equal(left.manual.vendorValues,true);
- assert.equal(normalize(JSON.parse(JSON.stringify(left))).manual.vendorValues,true);
+ assert.equal(render(left).sakura,'');assert.equal(left.manual.vendorValues,false);
+ assert.equal(normalize(JSON.parse(JSON.stringify(left))).manual.vendorValues,false);
 });

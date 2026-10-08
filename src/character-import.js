@@ -1,16 +1,29 @@
 import {readGuild} from './guild.js';
-import {game,normalize,slots,skills,foods,gearDetails} from './model.js';
+import {game,defaults,normalize,slots,skills,foods,gearDetails} from './model.js';
 import {combatRooms,combatMasteries,combatPerks,combatPotions} from './combat-options.js';
 export const importTypes=[['skills','技能','Skills'],['equipment','装备','Equipment'],['food','食物','Food'],['potions','药水','Potions'],['home','家园','Home'],['masteries','精通','Masteries'],['guild','公会与祝福','Guild & blessing'],['supplies','补给','Supplies'],['perks','天赋','Perks']];
+export function importWarningText(language,warnings=[]){
+ const zh=language==='zh',categories=new Set(warnings.map(item=>item.split(': ')[0])),lines=[];
+ if(categories.has('food'))lines.push(zh?'【食物】无法导入，请手动配置':'[Food] could not be imported. Please configure manually.');
+ const others=importTypes.filter(([id])=>id!=='food'&&categories.has(id)).map(type=>type[zh?1:2]);
+ if(others.length)lines.push(zh?`【${others.join('、')}】导入失败，请手动配置`:`[${others.join(', ')}] import failed. Please configure manually.`);
+ return lines.join('\n');
+}
 const record=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const valid=(v,min=0,max=Number.MAX_SAFE_INTEGER)=>typeof v==='number'&&Number.isFinite(v)&&v>=min&&v<=max;
 const int=(v,min=0,max=Number.MAX_SAFE_INTEGER)=>valid(v,min,max)&&Number.isInteger(v);
-export function importCharacter(current,snapshot){
+export function importCharacter(current,snapshot,{preview=false}={}){
  if(!record(snapshot)||snapshot.version!==2||!int(snapshot.capturedAt,1)||snapshot.capturedAt>Date.now()+60000||!record(snapshot.player)||!int(snapshot.player.lastTick))throw new Error('invalidSnapshot');
- const guild=readGuild(snapshot.guild);
  const chosen=importTypes.map(([id])=>id);
- const state=structuredClone(current),p=snapshot.player,warnings=[],applied=new Set();let category;
- state.guild=guild;
+ const state=preview?structuredClone(current):defaults(),p=snapshot.player,warnings=[],applied=new Set();let category;
+ if(!preview){
+  for(const key of ['food','eatAt','fed','rooted'])state[key]=structuredClone(current[key]);
+  for(const key of ['foodRule','foodMaxTier','foodPerTrip'])state.manual[key]=current.manual[key];
+ }
+ try{state.guild=readGuild(snapshot.guild);}catch(error){
+  if(preview||error.message!=='invalidSnapshot')throw error;
+  state.guild=null;warnings.push('guild: guild');
+ }
  const warn=field=>warnings.push(`${category}: ${field}`);
  const put=(field,value,check,set)=>{if(check(value)){set(value);applied.add(category);}else warn(field);};
  const map=(field,entries,set,max=Number.MAX_SAFE_INTEGER)=>{
@@ -29,7 +42,7 @@ export function importCharacter(current,snapshot){
     if(!int(id)||!int(tier,0,4)||!int(plus,0,game.maxEnhancement)||!gearDetails(slot,id)||gearDetails(slot,id).slot!==slot){warn(`equipment.${slot}`);continue;}
     state.gear[slot]={id:base,tier,plus};applied.add(category);
    }
-   // Derive only when the weapon itself was readable; retain unsupported gear.
+   // Derive only when the weapon itself was readable.
    if(p.equipment.weapon===null||int(p.equipment.weapon)&&game.gear(p.equipment.weapon)?.slot==='weapon'){
     const weapon=game.gear(state.gear.weapon.id);state.style=weapon?.magic?'magic':weapon?.ranged?'ranged':'melee';
    }
@@ -43,7 +56,11 @@ export function importCharacter(current,snapshot){
    else put('eatAt',p.eatAt,v=>[.25,.5,.75].includes(v),v=>state.eatAt=v*100);
    put('foodMaxTier',p.foodMaxTier,v=>int(v,0,4),v=>state.manual.foodMaxTier=v);
    put('foodPerTrip',p.foodPerTrip,v=>[5,10,20,-2,-1].includes(v),v=>state.manual.foodPerTrip=v);
-   if(record(p.brews)&&['fed','rooted'].every(k=>int(p.brews[k]??0))){state.fed=active('fed');state.rooted=active('rooted');applied.add(category);}else warn('food.buffs');
+   if(preview){
+    if(record(p.brews)&&['fed','rooted'].every(k=>int(p.brews[k]??0))){state.fed=active('fed');state.rooted=active('rooted');applied.add(category);}else warn('food.buffs');
+   }else if(record(p.brews)){
+    for(const kind of ['fed','rooted'])put(`food.${kind}`,p.brews[kind]??0,v=>int(v),()=>state[kind]=active(kind));
+   }else warn('food.buffs');
   }
   if(category==='potions'){
    if(!record(p.brews)){warn('brews');continue;}
@@ -71,7 +88,7 @@ export function importCharacter(current,snapshot){
    if(int(tick)&&Array.isArray(windows)&&windows.every(w=>record(w)&&int(w.fromTick)&&int(w.toTick,w.fromTick)&&valid(w.xpMult??1,1,1e5))){
     state.manual.weeklyXp=Math.round(windows.filter(w=>['Weekly goal: gathered','Weekly goal: felled'].includes(w.label)&&w.fromTick<=tick&&tick<=w.toTick).reduce((sum,w)=>sum+(w.xpMult-1)*100,0)*1e8)/1e8;
     applied.add(category);
-   }else warn('weeklyXp.retained');
+   }else warn(preview?'weeklyXp.retained':'weeklyXp.reset');
   }
   if(category==='supplies'){
    put('homeBank',p.homeBank,v=>v===null||game.world.banks.some(b=>b.id===v),v=>state.homeBank=v??0);

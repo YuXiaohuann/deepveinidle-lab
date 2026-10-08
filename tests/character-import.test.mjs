@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {importCharacter} from '../src/character-import.js';
-import {game,preset,slots,normalize} from '../src/model.js';
+import {importCharacter,importWarningText} from '../src/character-import.js';
+import {game,defaults,preset,slots,normalize} from '../src/model.js';
 const fixture=()=>({version:2,capturedAt:Date.now(),player:{lastTick:100,skills:{melee:game.levelXp(37)+20,ranged:game.levelXp(82),magic:0,defence:game.levelXp(42),hitpoints:game.levelXp(51)},equipment:Object.fromEntries(slots.map(k=>[k,null])),foodItemId:game.withRarity(64,2),eatAt:.75,foodMaxTier:3,foodPerTrip:-2,brews:{warrior:200,haste:100,fed:200,rooted:99,blessing:200},brewTier:{warrior:2},house:{post:90,storeroom:4,target:50},houseFurniture:{post:{placed:true}},masteries:{xp:9,move:7},perks:{pockets:3,meals:4,rest:2},guildBonus:.12,homeBank:null,ironman:true}});
 test('nine categories import into existing manual rules, including sparse maps and inactive buffs',()=>{
  const old=preset('ranged');old.manual.weeklyXp=17;old.manual.simulationHours=6;old.manual.customSimulation=true;old.manual.hotSetting='off';
@@ -14,10 +14,10 @@ test('nine categories import into existing manual rules, including sparse maps a
  assert.equal(s.brews.warrior,2);assert.equal(s.brews.haste,-1);assert.equal(s.fed,true);assert.equal(s.rooted,false);
  assert.equal(s.house.post,90);assert.equal(s.house.target,0);assert.equal(s.house.storeroom,4);
  assert.equal(s.masteries.xp,9);assert.equal(s.masteries.rare,0);assert.equal(s.meals,4);
- assert.equal(s.manual.guildXp,12);assert.equal(s.manual.weeklyXp,17);assert.equal(s.manual.blessing,true);
+ assert.equal(s.manual.guildXp,12);assert.equal(s.manual.weeklyXp,0);assert.equal(s.manual.blessing,true);
  assert.equal(s.homeBank,0);assert.equal(s.manual.ironman,true);
- assert.equal(s.manual.simulationHours,6);assert.equal(s.manual.customSimulation,true);assert.equal(s.manual.hotSetting,'off');
- assert.ok(result.warnings.includes('guild: weeklyXp.retained'));assert.equal(old.levels.melee,85);
+ assert.equal(s.manual.simulationHours,1);assert.equal(s.manual.customSimulation,false);assert.equal(s.manual.hotSetting,'game');
+ assert.ok(result.warnings.includes('guild: weeklyXp.reset'));assert.equal(old.levels.melee,85);
 });
 test('configuration import always covers all categories and rejects incompatible data atomically',()=>{
  const old=preset('ranged'),r=importCharacter(old,fixture());assert.equal(r.applied.length,9);
@@ -31,27 +31,27 @@ test('encoded gear retains quality and enhancement; mixed armour is exposed and 
  snap.player.equipment.mount=game.encode(game.withRarity(328,4),8);snap.player.equipment.ring=9999;
  const old=preset('ranged'),r=importCharacter(old,snap);
  assert.deepEqual(r.state.gear.weapon,{id:110,tier:3,plus:17});assert.deepEqual(r.state.gear.mount,{id:328,tier:4,plus:8});
- assert.equal(r.state.manual.allGear,true);assert.deepEqual(r.state.gear.ring,old.gear.ring);
+ assert.equal(r.state.manual.allGear,true);assert.deepEqual(r.state.gear.ring,defaults().gear.ring);
  assert.ok(r.warnings.includes('equipment: equipment.ring'));
 });
-test('brew buckets choose current tier rather than highest stored tier; malformed buckets preserve config',()=>{
+test('brew buckets choose current tier rather than highest stored tier; malformed buckets reset config',()=>{
  const snap=fixture();snap.player.brews.warrior=150;snap.player.brewTier.warrior=4;snap.player.brewBuckets={warrior:[0,100,0,0,20]};
  assert.equal(importCharacter(preset('ranged'),snap).state.brews.warrior,1);
  const old=preset('ranged');old.brews.warrior=3;snap.player.brewBuckets.warrior=[1,-1,0,0,2];
- const r=importCharacter(old,snap);assert.equal(r.state.brews.warrior,3);assert.ok(r.warnings.includes('potions: brewBuckets.warrior'));
+ const r=importCharacter(old,snap);assert.equal(r.state.brews.warrior,-1);assert.ok(r.warnings.includes('potions: brewBuckets.warrior'));
 });
 test('food priority, fountain-only and missing fields preserve unsupported choices explicitly',()=>{
  for(const [id,rule]of [[null,1],[-2,2]]){const snap=fixture();snap.player.foodItemId=id;const old=preset('ranged');assert.deepEqual(importCharacter(old,snap).state.food,old.food);assert.equal(importCharacter(old,snap).state.manual.foodRule,rule);}
  const snap=fixture();snap.player.eatAt=0;assert.equal(importCharacter(preset('ranged'),snap).state.manual.foodRule,3);
  delete snap.player.masteries;const old=preset('ranged');old.masteries.xp=13;
- const r=importCharacter(old,snap);assert.equal(r.state.masteries.xp,13);assert.ok(!r.applied.includes('masteries'));assert.ok(r.warnings.length);
+ const r=importCharacter(old,snap);assert.equal(r.state.masteries.xp,0);assert.ok(!r.applied.includes('masteries'));assert.ok(r.warnings.length);
 });
 
-test('malformed sparse ranks preserve current values instead of silently resetting them',()=>{
+test('malformed sparse ranks reset to defaults with explicit warnings',()=>{
  const old=preset('ranged');old.masteries.xp=7;old.meals=4;old.house.post=18;
  const snap=fixture();snap.player.masteries.xp=null;snap.player.perks.meals=-1;snap.player.house.post='90';
  const r=importCharacter(old,snap);
- assert.equal(r.state.masteries.xp,7);assert.equal(r.state.meals,4);assert.equal(r.state.house.post,18);
+ assert.equal(r.state.masteries.xp,0);assert.equal(r.state.meals,0);assert.equal(r.state.house.post,0);
  assert.ok(r.warnings.includes('masteries: masteries.xp'));assert.ok(r.warnings.includes('perks: perks.meals'));assert.ok(r.warnings.includes('home: house.post'));
 });
 
@@ -139,15 +139,15 @@ test('weekly goals use inclusive server tick boundaries and additive combat XP',
  const snap=fixture();snap.worldTick=100;
  snap.worldBuffs=[weeklyWindow(),weeklyWindow('Weekly goal: felled',0,100),weeklyWindow('Weekly goal: gathered',101),weeklyWindow('Weekly goal: felled',0,99)];
  const old=preset('ranged');old.manual.weeklyXp=17;
- const r=importCharacter(old,snap);assert.equal(r.state.manual.weeklyXp,20);assert.ok(!r.warnings.includes('guild: weeklyXp.retained'));
+ const r=importCharacter(old,snap);assert.equal(r.state.manual.weeklyXp,20);assert.ok(!r.warnings.includes('guild: weeklyXp.reset'));
  assert.equal(importCharacter(old,snap).state.manual.weeklyXp,20);
  for(const windows of [[],[weeklyWindow('Weekly goal: gathered',101)]]){snap.worldBuffs=windows;assert.equal(importCharacter(old,snap).state.manual.weeklyXp,0);}
 });
-test('missing or invalid world data keeps weekly XP with an explicit warning',()=>{
+test('missing or invalid world data resets weekly XP with an explicit warning',()=>{
  const old=preset('ranged');old.manual.weeklyXp=17;
  for(const [tick,windows]of [[undefined,[]],[100,undefined],[-1,[]],[100,[weeklyWindow(undefined,200,100)]],[100,[weeklyWindow(undefined,0,200,NaN)]]]){
   const snap={...fixture(),worldTick:tick,worldBuffs:windows},r=importCharacter(old,snap);
-  assert.equal(r.state.manual.weeklyXp,17);assert.ok(r.warnings.includes('guild: weeklyXp.retained'));
+  assert.equal(r.state.manual.weeklyXp,0);assert.ok(r.warnings.includes('guild: weeklyXp.reset'));
  }
 });
 test('userscript captures complete world windows and refreshes standalone windows',async()=>{
@@ -238,7 +238,7 @@ test('debug and configuration bridges read independent storage and debug bridge 
  for(const language of ['zh','en'])for(const error of ['debugScriptMissing','debugScriptOutdated','debugScriptReadFailed','debugNoSnapshot'])assert.notEqual(page.importStatusText(language,{error}),error);
 });
 
-test('hidden guild identity survives save/load, clears old imports and rejects malformed identities',()=>{
+test('hidden guild identity survives save/load, clears old imports and resets malformed identities',()=>{
  const guild={name:'Deep miners',tag:'DM',members:[{name:'private'}],chat:['private']};
  const old=preset('melee'),snap={...fixture(),guild};
  const imported=importCharacter(old,snap).state;
@@ -246,7 +246,10 @@ test('hidden guild identity survives save/load, clears old imports and rejects m
  assert.deepEqual(normalize(JSON.parse(JSON.stringify(imported))).guild,imported.guild);
  assert.equal(importCharacter(imported,fixture()).state.guild,null);
  assert.equal(importCharacter(imported,{...fixture(),guild:null}).state.guild,null);
- for(const guild of [false,[],{}, {name:'Guild',tag:4}])assert.throws(()=>importCharacter(imported,{...fixture(),guild}),/invalidSnapshot/);
+ for(const guild of [false,[],{}, {name:'Guild',tag:4}]){
+  const result=importCharacter(imported,{...fixture(),guild});assert.equal(result.state.guild,null);assert.ok(result.warnings.includes('guild: guild'));
+  assert.throws(()=>importCharacter(imported,{...fixture(),guild},{preview:true}),/invalidSnapshot/);
+ }
  assert.deepEqual(imported.guild,{name:'Deep miners',tag:'DM'});
 });
 test('userscript captures guild welcome/updates/leave and isolates connections without private guild data',async()=>{
@@ -261,4 +264,56 @@ test('userscript captures guild welcome/updates/leave and isolates connections w
  g.frame(second,fixture().player,'welcome');await flush();
  g.frame(first,undefined,'guild',{info:{name:'Stale',tag:'OLD'}});await flush();assert.equal(g.stored.at(-1).guild,null);
  assert.equal(JSON.stringify(g.stored).includes('private'),false);
+});
+
+test('partial imports reset every non-food setting while retaining all unavailable food fields',()=>{
+ const old=preset('magic');
+ old.guild={name:'SakuraSpring',tag:'SAKI'};old.eatAt=75;old.fed=true;old.rooted=true;
+ old.manual.foodRule=2;old.manual.foodMaxTier=2;old.manual.foodPerTrip=10;
+ old.manual.enemySelection='1';old.manual.simulationHours=24;old.manual.customSimulation=true;old.manual.hotSetting='off';old.manual.vendorValues=true;old.manual.allGear=true;
+ old.manual.guildXp=20;old.manual.weeklyXp=17;old.manual.blessing=true;old.manual.ironman=true;old.homeBank=2;
+ old.brews.warrior=4;old.brews.gatherer=4;old.house.post=90;old.house.mine=50;old.masteries.xp=7;old.masteries.gather=8;old.meals=4;old.manual.perks.rest=3;
+ const before=structuredClone(old),expected=defaults();
+ for(const key of ['food','eatAt','fed','rooted'])expected[key]=structuredClone(old[key]);
+ for(const key of ['foodRule','foodMaxTier','foodPerTrip'])expected.manual[key]=old.manual[key];
+ const result=importCharacter(old,{version:2,capturedAt:Date.now(),player:{lastTick:100}});
+ assert.deepEqual(result.state,normalize(expected));assert.deepEqual(old,before);
+ assert.deepEqual(normalize(JSON.parse(JSON.stringify(result.state))),result.state);
+ assert.ok(result.warnings.includes('skills: skills.melee'));assert.ok(result.warnings.includes('equipment: equipment'));
+});
+test('invalid food fields preserve existing food settings while valid food fields still import',()=>{
+ const old=preset('ranged');old.eatAt=75;old.fed=true;old.rooted=true;
+ old.manual.foodRule=2;old.manual.foodMaxTier=2;old.manual.foodPerTrip=10;
+ const snap=fixture();snap.player.foodItemId=999999;snap.player.eatAt=.9;snap.player.foodMaxTier=-1;snap.player.foodPerTrip=7;snap.player.brews.fed=-1;snap.player.brews.rooted=-1;
+ const result=importCharacter(old,snap).state;
+ for(const key of ['food','eatAt','fed','rooted'])assert.deepEqual(result[key],old[key]);
+ for(const key of ['foodRule','foodMaxTier','foodPerTrip'])assert.equal(result.manual[key],old.manual[key]);
+ const valid=importCharacter(old,fixture()).state;
+ assert.deepEqual(valid.food,{id:64,tier:2});assert.equal(valid.eatAt,75);assert.equal(valid.manual.foodRule,0);assert.equal(valid.manual.foodMaxTier,3);assert.equal(valid.manual.foodPerTrip,-2);
+ assert.equal(valid.fed,true);assert.equal(valid.rooted,false);
+});
+test('imports recalculate mixed gear toggle and whole-import failures never clear current settings',()=>{
+ const old=preset('ranged');old.manual.allGear=true;old.manual.vendorValues=true;old.manual.simulationHours=24;
+ assert.equal(importCharacter(old,fixture()).state.manual.allGear,false);
+ const before=structuredClone(old);
+ for(const patch of [{version:1},{capturedAt:Date.now()+90000},{player:null}])assert.throws(()=>importCharacter(old,{...fixture(),...patch}),/invalidSnapshot/);
+ assert.deepEqual(old,before);
+});
+
+test('food buffs import independently when only one value is invalid',()=>{
+ const old=preset('ranged');old.fed=true;old.rooted=true;
+ const snap=fixture();snap.player.brews.fed=-1;
+ const result=importCharacter(old,snap);
+ assert.equal(result.state.fed,true);assert.equal(result.state.rooted,false);
+ assert.ok(result.warnings.includes('food: food.fed'));
+ assert.equal(importCharacter(old,snap,{preview:true}).state.rooted,true);
+});
+
+test('import warning text separates food and groups other failed categories without internal field names',()=>{
+ assert.equal(importWarningText('zh',[]),'');
+ assert.equal(importWarningText('zh',['food: foodItemId','food: eatAt']), '【食物】无法导入，请手动配置');
+ assert.equal(importWarningText('zh',['equipment: equipment.ring','skills: skills.magic','equipment: equipment.weapon']), '【技能、装备】导入失败，请手动配置');
+ const warnings=['potions: brewBuckets.warrior','food: foodItemId','guild: weeklyXp.reset','potions: brews'];
+ assert.equal(importWarningText('zh',warnings),'【食物】无法导入，请手动配置\n【药水、公会与祝福】导入失败，请手动配置');
+ assert.equal(importWarningText('en',warnings),'[Food] could not be imported. Please configure manually.\n[Potions, Guild & blessing] import failed. Please configure manually.');
 });
