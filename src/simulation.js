@@ -12,7 +12,7 @@ export function createScenario(raw,monster=null,{now=Date.now()}={}){
  if(raw?.format==='snapshot'){
   const input=importSnapshot({version:2,prediction:raw.snapshot});
   const context={...game.createContext(game.world,input.seed),windows:input.windows,hypothetical:true};
-  return {player:input.player,context,durationTicks:simulationTicks(raw.simulationHours??1)};
+  return {player:input.player,context,durationTicks:simulationTicks(raw.simulationHours??24)};
  }
  if(raw?.format)throw Error('Unsupported simulation format');
  const {state,player:p}=makePlayer(raw),zone=monster&&game.world.zones.find(z=>z.monsterId===monster.id);

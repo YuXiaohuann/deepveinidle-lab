@@ -33,7 +33,7 @@ test('debug download round-trips into all import modes; invalid files preserve s
   host.querySelector('#debug-file').onchange({target:{files:[{name:'capture.json',text:async()=>json}]}});
   combat.manual.vendorValues=true;combat.manual.hotSetting='off';combat.manual.simulationHours=24;combat.manual.customSimulation=true;
   await buttons[0].onclick();assert.deepEqual(combat,importCharacter(preset('magic'),source).state);
-  assert.equal(combat.manual.vendorValues,false);assert.equal(combat.manual.hotSetting,'game');assert.equal(combat.manual.simulationHours,1);assert.equal(combat.manual.customSimulation,false);
+  assert.equal(combat.manual.vendorValues,false);assert.equal(combat.manual.hotSetting,'game');assert.equal(combat.manual.simulationHours,24);assert.equal(combat.manual.customSimulation,false);
   await buttons[1].onclick();assert.deepEqual(snapshot,importSnapshot(source));
   await buttons[2].onclick();assert.deepEqual(enhancement,importEnhancement(enhancementDefaults(),source).state);
   language='en';callbacks.refresh();assert.equal(host.querySelector('#debug-filename').textContent,'capture.json');assert.match(host.innerHTML,/Import combat snapshot/);

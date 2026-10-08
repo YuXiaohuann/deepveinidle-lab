@@ -16,7 +16,7 @@ test('nine categories import into existing manual rules, including sparse maps a
  assert.equal(s.masteries.xp,9);assert.equal(s.masteries.rare,0);assert.equal(s.meals,4);
  assert.equal(s.manual.guildXp,12);assert.equal(s.manual.weeklyXp,0);assert.equal(s.manual.blessing,true);
  assert.equal(s.homeBank,0);assert.equal(s.manual.ironman,true);
- assert.equal(s.manual.simulationHours,1);assert.equal(s.manual.customSimulation,false);assert.equal(s.manual.hotSetting,'game');
+ assert.equal(s.manual.simulationHours,24);assert.equal(s.manual.customSimulation,false);assert.equal(s.manual.hotSetting,'game');
  assert.ok(result.warnings.includes('guild: weeklyXp.reset'));assert.equal(old.levels.melee,85);
 });
 test('configuration import always covers all categories and rejects incompatible data atomically',()=>{

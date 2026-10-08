@@ -6,11 +6,11 @@ import {combatHot,combatHotWindows,rewardAmount,simulationTicks} from '../src/co
 import {tickTime} from '../src/hot-forecast.js';
 import {nativeDay} from './native-day.mjs';
 const now=Date.UTC(2026,9,6,14,44);
-test('duration defaults to one hour and saved durations normalize predictably',()=>{
- assert.equal(defaults().manual.simulationHours,1);
- assert.equal(normalize({manual:{hotForecast:false}}).manual.simulationHours,1);
+test('duration defaults to 24 hours and saved durations normalize predictably',()=>{
+ assert.equal(defaults().manual.simulationHours,24);
+ assert.equal(normalize({manual:{hotForecast:false}}).manual.simulationHours,24);
  for(const hours of [.5,1,1.5,6,24,48])assert.equal(normalize({manual:{simulationHours:hours}}).manual.simulationHours,hours);
- for(const value of ['invalid',NaN,Infinity])assert.equal(normalize({manual:{simulationHours:value}}).manual.simulationHours,1);
+ for(const value of ['invalid',NaN,Infinity])assert.equal(normalize({manual:{simulationHours:value}}).manual.simulationHours,24);
  assert.equal(normalize({manual:{simulationHours:0}}).manual.simulationHours,1/60);
  assert.equal(normalize({manual:{simulationHours:25}}).manual.simulationHours,25);
  assert.equal(normalize({manual:{simulationHours:6.7}}).manual.simulationHours,6.7);

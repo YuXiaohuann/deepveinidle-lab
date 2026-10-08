@@ -13,17 +13,17 @@ function fixture(){
 test('complete snapshot preserves exact character and context without sharing mutable references',()=>{
  const input=fixture(),result=importSnapshot(input),scenario=createScenario({format:'snapshot',snapshot:result});
  assert.deepEqual(scenario.player,input.prediction.player);assert.equal(scenario.context.seed,314);assert.deepEqual(scenario.context.windows,input.prediction.windows);
- assert.equal(scenario.durationTicks,6000);assert.equal(createScenario({format:'snapshot',snapshot:result,simulationHours:.5}).durationTicks,3000);scenario.player.bank[66]=0;scenario.context.windows[0].xpMult=9;
+ assert.equal(scenario.durationTicks,144000);assert.equal(createScenario({format:'snapshot',snapshot:result,simulationHours:.5}).durationTicks,3000);scenario.player.bank[66]=0;scenario.context.windows[0].xpMult=9;
  assert.equal(result.player.bank[66],37);assert.equal(input.prediction.windows[0].xpMult,1.1);
  const view=calculate(preset('ranged'),result.player);assert.equal(view.player.skills.ranged,result.player.skills.ranged);
 });
-test('snapshot defaults match the native predictor and trial XP/items/death totals match exactly',()=>{
+test('one-hour snapshots match the native predictor and trial XP/items/death totals match exactly',()=>{
  const input=importSnapshot(fixture());
  for(const monster of [game.monsters[0],game.monsters[10],game.monsters.at(-1)]){
   const c={...game.createContext(game.world,input.seed),windows:structuredClone(input.windows)};
   const zone=game.world.zones.find(z=>z.monsterId===monster.id);
   const native=game.predict(input.player,c,p=>game.startFight(p,c,zone.id));
-  const result=simulateMonster({format:'snapshot',snapshot:input},monster);
+  const result=simulateMonster({format:'snapshot',snapshot:input,simulationHours:1},monster);
   assert.deepEqual(result.bySkill,native.bySkill);assert.equal(result.xp,Object.values(native.bySkill).reduce((a,b)=>a+b,0));assert.equal(result.elapsedTicks,native.ticks);assert.equal(result.deaths,native.deaths);
   const items={...result.normalItems};for(const [id,qty]of Object.entries(result.rareItems))items[id]=(items[id]??0)+qty;
   if(native.itemsGained[game.coinItemId])items[game.coinItemId]=result.kills;
@@ -40,7 +40,7 @@ test('snapshot errors reject old protocols, server-only data, incomplete fields 
 });
 test('configuration import has no category selection and resets simulation preferences',()=>{
  const old=preset('magic');old.manual.hotSetting='off';old.manual.simulationHours=24;
- const result=importCharacter(old,fixture());assert.equal(result.applied.length,9);assert.equal(result.state.manual.hotSetting,'game');assert.equal(result.state.manual.simulationHours,1);
+ const result=importCharacter(old,fixture());assert.equal(result.applied.length,9);assert.equal(result.state.manual.hotSetting,'game');assert.equal(result.state.manual.simulationHours,24);
  assert.equal(result.state.levels.ranged,game.level(fixture().player.skills.ranged));assert.equal(result.state.style,'ranged');assert.equal(old.style,'magic');
 });
 
