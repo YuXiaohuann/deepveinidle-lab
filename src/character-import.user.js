@@ -3,7 +3,7 @@
 // @name:en      Deep Vein Idle · Character import
 // @name:zh-cn   Deep Vein Idle · 角色配置导入
 // @namespace    https://dvi-lab.pages.dev/
-// @version      2.3
+// @version      2.4
 // @description  读取角色配置用于战斗与强化配置导入；不发送游戏指令。
 // @match        https://deepveinidle.com/*
 // @match        https://dvi-lab.pages.dev/*
@@ -18,7 +18,7 @@
  'use strict';
  const key='dvi-character-snapshot-v2';
  if(location.origin==='https://deepveinidle.com'){
-  const page=unsafeWindow,NativeSocket=page.WebSocket;let latestSocket,latestPlayer,worldBuffs,worldTick,serial=Promise.resolve(),visible=true,hideTimer=null,successShown=false,status='等待游戏数据 / Waiting for game data';
+  const page=unsafeWindow,NativeSocket=page.WebSocket;let latestSocket,latestPlayer,guild,worldBuffs,worldTick,serial=Promise.resolve(),visible=true,hideTimer=null,successShown=false,status='等待游戏数据 / Waiting for game data';
   const object=v=>v&&typeof v==='object'&&!Array.isArray(v);
   function paint(){mount();const el=document.getElementById('dvi-character-capture');if(el&&el.textContent!==status)el.textContent=status;}
   function clonePlayer(player){
@@ -29,7 +29,7 @@
   function failure(error,socket){if(socket!==latestSocket)return;clearTimeout(hideTimer);visible=true;successShown=false;status=`读取失败 / Capture failed: ${error.message}`;paint();console.error('[DVI character import]',error);}
   function capture(you,socket){
    if(!object(you)||!object(you.skills)||!object(you.equipment)||!Number.isSafeInteger(you.lastTick))throw new Error('角色数据结构不兼容 / Incompatible character data');
-   const snapshot={version:2,capturedAt:Date.now(),player:clonePlayer(you),worldBuffs,worldTick};
+   const snapshot={version:2,capturedAt:Date.now(),player:clonePlayer(you),guild,worldBuffs,worldTick};
    const write=async()=>{
     if(socket!==latestSocket)return;
     await GM_setValue(key,snapshot);
@@ -44,10 +44,14 @@
   function frameReceived(frame,socket){
    if(socket!==latestSocket||!Number.isInteger(frame?.tick)||!Array.isArray(frame.m))return;
    for(const message of frame.m){
-    if(message?.t==='welcome'){latestPlayer=undefined;worldBuffs=undefined;}
+    if(message?.t==='welcome'){latestPlayer=undefined;guild=undefined;worldBuffs=undefined;}
+    if(message?.t==='welcome'||message?.t==='guild'){
+     const info=message.t==='welcome'?message.guild:message.info;
+     guild=info==null?null:{name:info.name,tag:info.tag};
+    }
     if(message?.t==='welcome'||message?.t==='snapshot'){
      latestPlayer=message.you;
-    }else if(message?.t!=='windows')continue;
+    }else if(message?.t!=='windows'&&message?.t!=='guild')continue;
     worldTick=frame.tick;
     if(Object.hasOwn(message,'windows'))worldBuffs=Array.isArray(message.windows)?message.windows:undefined;
     if(latestPlayer)try{capture(latestPlayer,socket);}catch(error){failure(error,socket);}
@@ -57,7 +61,7 @@
    const socket=Reflect.construct(target,args);
    const url=new URL(String(args[0]),location.href);
    if(url.host===location.host&&url.pathname==='/ws'){
-    latestSocket=socket;latestPlayer=undefined;worldBuffs=undefined;worldTick=undefined;clearTimeout(hideTimer);visible=true;successShown=false;
+    latestSocket=socket;latestPlayer=undefined;guild=undefined;worldBuffs=undefined;worldTick=undefined;clearTimeout(hideTimer);visible=true;successShown=false;
     status='等待游戏数据 / Waiting for game data';paint();
     socket.addEventListener('message',event=>{
      if(socket!==latestSocket||typeof event.data!=='string')return;
@@ -77,7 +81,7 @@
    if(typeof event.detail!=='string')return;
    let data;try{data=JSON.parse(event.detail);}catch{return;}
    if(data?.source!=='dvi-simulator'||!['probe','read'].includes(data.action)||typeof data.id!=='string'||data.id.length>100)return;
-   const reply={source:'dvi-character-script',id:data.id,version:'2.3'};
+   const reply={source:'dvi-character-script',id:data.id,version:'2.4'};
    try{if(data.action==='probe')reply.ready=true;else reply.snapshot=await GM_getValue(key,null);}catch(error){reply.error=String(error.message||error);}
    document.dispatchEvent(new CustomEvent('dvi-character-response',{detail:JSON.stringify(reply)}));
   });

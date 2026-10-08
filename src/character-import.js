@@ -1,3 +1,4 @@
+import {readGuild} from './guild.js';
 import {game,normalize,slots,skills,foods,gearDetails} from './model.js';
 import {combatRooms,combatMasteries,combatPerks,combatPotions} from './combat-options.js';
 export const importTypes=[['skills','技能','Skills'],['equipment','装备','Equipment'],['food','食物','Food'],['potions','药水','Potions'],['home','家园','Home'],['masteries','精通','Masteries'],['guild','公会与祝福','Guild & blessing'],['supplies','补给','Supplies'],['perks','天赋','Perks']];
@@ -6,8 +7,10 @@ const valid=(v,min=0,max=Number.MAX_SAFE_INTEGER)=>typeof v==='number'&&Number.i
 const int=(v,min=0,max=Number.MAX_SAFE_INTEGER)=>valid(v,min,max)&&Number.isInteger(v);
 export function importCharacter(current,snapshot){
  if(!record(snapshot)||snapshot.version!==2||!int(snapshot.capturedAt,1)||snapshot.capturedAt>Date.now()+60000||!record(snapshot.player)||!int(snapshot.player.lastTick))throw new Error('invalidSnapshot');
+ const guild=readGuild(snapshot.guild);
  const chosen=importTypes.map(([id])=>id);
  const state=structuredClone(current),p=snapshot.player,warnings=[],applied=new Set();let category;
+ state.guild=guild;
  const warn=field=>warnings.push(`${category}: ${field}`);
  const put=(field,value,check,set)=>{if(check(value)){set(value);applied.add(category);}else warn(field);};
  const map=(field,entries,set,max=Number.MAX_SAFE_INTEGER)=>{

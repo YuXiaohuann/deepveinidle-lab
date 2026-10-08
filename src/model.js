@@ -1,3 +1,4 @@
+import {readGuild} from './guild.js';
 import {selectedEnemies} from './enemy-selection.js';
 import {manualDefaults,normalizeManual,skillXp,applyManualPlayer} from './manual-settings.js';
 import * as game from './upstream.js';
@@ -13,10 +14,11 @@ export const potions=game.potions.map(p=>{
 export const baseGear=[...game.equipment.filter(x=>slots.includes(x.slot)),...game.tools.filter(x=>x.slot==='mount').map(x=>({...x,needs:'none',levelReq:0}))];
 export const gearDetails=(slot,id)=>slot==='mount'?game.tool(id):game.gear(id);
 export const damageRooms=game.rooms.filter(x=>x.bonus.kind==='dmg');
-export function defaults(){return {manual:manualDefaults(),levels:{melee:1,ranged:1,magic:1,defence:1,hitpoints:10},gear:Object.fromEntries(slots.map(s=>[s,{id:0,tier:0,plus:0}])),food:{id:64,tier:0},eatAt:50,homeBank:0,fed:false,rooted:false,brews:Object.fromEntries(game.potions.map(p=>[p.kind,-1])),masteries:Object.fromEntries(game.masteries.map(x=>[x.id,0])),house:Object.fromEntries(game.rooms.map(x=>[x.id,0])),meals:0};}
+export function defaults(){return {guild:null,manual:manualDefaults(),levels:{melee:1,ranged:1,magic:1,defence:1,hitpoints:10},gear:Object.fromEntries(slots.map(s=>[s,{id:0,tier:0,plus:0}])),food:{id:64,tier:0},eatAt:50,homeBank:0,fed:false,rooted:false,brews:Object.fromEntries(game.potions.map(p=>[p.kind,-1])),masteries:Object.fromEntries(game.masteries.map(x=>[x.id,0])),house:Object.fromEntries(game.rooms.map(x=>[x.id,0])),meals:0};}
 const integer=(v,min,max,fallback=min)=>Number.isFinite(Number(v))?Math.min(max,Math.max(min,Math.floor(Number(v)))):fallback;
 export function normalize(raw){
  const s=defaults(); if(!raw||typeof raw!=='object')return s;
+ s.guild=readGuild(raw.guild);
  s.manual=normalizeManual(raw.manual);
  for(const k of skills)s.levels[k]=integer(raw.levels?.[k]??s.levels[k],1,game.maxLevel,s.levels[k]);
  for(const slot of slots){const v=raw.gear?.[slot];if(!v)continue;const id=integer(v.id,0,999);if(baseGear.some(x=>x.itemId===id&&x.slot===slot))s.gear[slot]={id,tier:integer(v.tier??0,0,4),plus:integer(v.plus??0,0,game.maxEnhancement)};}

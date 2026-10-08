@@ -27,7 +27,7 @@ export function renderDebug(language,{applyCombat,applyEnhancement,refresh}){
  };
  const exportCharacter=mode=>run('export',async()=>{
   const response=await requestCharacter('read',mode==='snapshot');
-  if(response.version!==(mode==='snapshot'?'1.0':'2.3'))throw Error(mode==='snapshot'?'debugScriptOutdated':'scriptOutdated');
+  if(response.version!==(mode==='snapshot'?'1.0':'2.4'))throw Error(mode==='snapshot'?'debugScriptOutdated':'scriptOutdated');
   if(!response.snapshot)throw Error(mode==='snapshot'?'debugNoSnapshot':'noSnapshot');
   let data=response.snapshot;
   if(mode==='snapshot')importSnapshot(data);

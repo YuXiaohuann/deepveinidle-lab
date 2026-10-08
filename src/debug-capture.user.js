@@ -24,7 +24,7 @@
    'index-C3S-5Yeu.js':{clone:[2,274152,275754],predict:[2,287754,288722]}
   };
   const entryResources=new Set();let clientBuild=null;
-  const page=unsafeWindow,NativeSocket=page.WebSocket;let latestSocket,latestPlayer,worldBuffs,worldTick,seed,prediction,serial=Promise.resolve(),parsingSocket,capturing=false,lastPrediction,visible=true,hideTimer=null,successShown=false,status='等待游戏数据 / Waiting for game data';
+  const page=unsafeWindow,NativeSocket=page.WebSocket;let latestSocket,latestPlayer,guild,worldBuffs,worldTick,seed,prediction,serial=Promise.resolve(),parsingSocket,capturing=false,lastPrediction,visible=true,hideTimer=null,successShown=false,status='等待游戏数据 / Waiting for game data';
   const object=v=>v&&typeof v==='object'&&!Array.isArray(v);
   function noteScript(node){
    if(node?.tagName!=='SCRIPT'||!node.src)return;
@@ -79,7 +79,7 @@
   function failure(error,socket){if(socket!==latestSocket)return;clearTimeout(hideTimer);visible=true;successShown=false;status=`读取失败 / Capture failed: ${error.message}`;paint();console.error('[DVI debug capture]',error);}
   function capture(you,socket){
    if(!object(you)||!object(you.skills)||!object(you.equipment)||!Number.isSafeInteger(you.lastTick))throw new Error('角色数据结构不兼容 / Incompatible character data');
-   const snapshot={version:2,capturedAt:Date.now(),player:clonePlayer(you),worldBuffs,worldTick,prediction,clientBuild,captureError:auditedBuilds[clientBuild]?undefined:'incompatibleClient'};
+   const snapshot={version:2,capturedAt:Date.now(),player:clonePlayer(you),guild,worldBuffs,worldTick,prediction,clientBuild,captureError:auditedBuilds[clientBuild]?undefined:'incompatibleClient'};
    const write=async()=>{
     if(socket!==latestSocket)return;
     await GM_setValue(key,snapshot);
@@ -94,11 +94,15 @@
   function frameReceived(frame,socket,observe=false){
    if(socket!==latestSocket||!Number.isInteger(frame?.tick)||!Array.isArray(frame.m))return;
    for(const message of frame.m){
-    if(message?.t==='welcome'){latestPlayer=undefined;worldBuffs=undefined;prediction=undefined;lastPrediction=undefined;seed=message.seed;}
+    if(message?.t==='welcome'){latestPlayer=undefined;guild=undefined;worldBuffs=undefined;prediction=undefined;lastPrediction=undefined;seed=message.seed;}
+    if(message?.t==='welcome'||message?.t==='guild'){
+     const info=message.t==='welcome'?message.guild:message.info;
+     guild=info==null?null:{name:info.name,tag:info.tag};
+    }
     if(message?.t==='welcome'||message?.t==='snapshot'){
      latestPlayer=message.you;
      if(observe)observePlayer(latestPlayer,socket);
-    }else if(message?.t!=='windows')continue;
+    }else if(message?.t!=='windows'&&message?.t!=='guild')continue;
     worldTick=frame.tick;
     if(Object.hasOwn(message,'windows'))worldBuffs=Array.isArray(message.windows)?message.windows:undefined;
     if(latestPlayer)try{capture(latestPlayer,socket);}catch(error){failure(error,socket);}
@@ -116,7 +120,7 @@
    const socket=Reflect.construct(target,args);
    const url=new URL(String(args[0]),location.href);
    if(url.host===location.host&&url.pathname==='/ws'){
-    latestSocket=socket;latestPlayer=undefined;worldBuffs=undefined;worldTick=undefined;seed=undefined;prediction=undefined;lastPrediction=undefined;clearTimeout(hideTimer);visible=true;successShown=false;
+    latestSocket=socket;latestPlayer=undefined;guild=undefined;worldBuffs=undefined;worldTick=undefined;seed=undefined;prediction=undefined;lastPrediction=undefined;clearTimeout(hideTimer);visible=true;successShown=false;
     status='等待游戏数据 / Waiting for game data';paint();
     const listen=socket.addEventListener,remove=socket.removeEventListener,listeners=new WeakMap();
     socket.addEventListener=function(type,listener,...options){

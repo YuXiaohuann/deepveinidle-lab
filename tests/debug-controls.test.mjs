@@ -18,7 +18,7 @@ test('debug download round-trips into all import modes; invalid files preserve s
  URL.createObjectURL=value=>{blob=value;return 'blob:test';};URL.revokeObjectURL=()=>{};
  const player=createScenario(preset('ranged')).player,capturedAt=Date.now();
  let source={version:2,capturedAt,player,prediction:{source:'predictor',clientBuild:'index-C3S-5Yeu.js',capturedAt,player,seed:123,windows:[]}};
- document.addEventListener('dvi-character-request',event=>{const request=JSON.parse(event.detail);document.dispatchEvent(new CustomEvent('dvi-character-response',{detail:JSON.stringify({source:'dvi-character-script',id:request.id,version:'2.3',snapshot:source})}));});
+ document.addEventListener('dvi-character-request',event=>{const request=JSON.parse(event.detail);document.dispatchEvent(new CustomEvent('dvi-character-response',{detail:JSON.stringify({source:'dvi-character-script',id:request.id,version:'2.4',snapshot:source})}));});
  document.addEventListener('dvi-debug-request',event=>{const request=JSON.parse(event.detail);document.dispatchEvent(new CustomEvent('dvi-debug-response',{detail:JSON.stringify({source:'dvi-debug-script',id:request.id,version:'1.0',snapshot:source})}));});
  try{
   const {renderDebug}=await import('../src/debug-controls.js');

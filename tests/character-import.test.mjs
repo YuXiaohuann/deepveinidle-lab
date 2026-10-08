@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {importCharacter} from '../src/character-import.js';
-import {game,preset,slots} from '../src/model.js';
+import {game,preset,slots,normalize} from '../src/model.js';
 const fixture=()=>({version:2,capturedAt:Date.now(),player:{lastTick:100,skills:{melee:game.levelXp(37)+20,ranged:game.levelXp(82),magic:0,defence:game.levelXp(42),hitpoints:game.levelXp(51)},equipment:Object.fromEntries(slots.map(k=>[k,null])),foodItemId:game.withRarity(64,2),eatAt:.75,foodMaxTier:3,foodPerTrip:-2,brews:{warrior:200,haste:100,fed:200,rooted:99,blessing:200},brewTier:{warrior:2},house:{post:90,storeroom:4,target:50},houseFurniture:{post:{placed:true}},masteries:{xp:9,move:7},perks:{pockets:3,meals:4,rest:2},guildBonus:.12,homeBank:null,ironman:true}});
 test('nine categories import into existing manual rules, including sparse maps and inactive buffs',()=>{
  const old=preset('ranged');old.manual.weeklyXp=17;old.manual.simulationHours=6;old.manual.customSimulation=true;old.manual.hotSetting='off';
@@ -91,7 +91,7 @@ function userscriptWorld(document,getValue){
 test('shared DOM bridge works across different windows and awaits asynchronous script storage',async()=>{
  const doc=new EventTarget(),page=simulatorWorld(doc),sandbox=userscriptWorld(doc,async()=>fixture());
  assert.notEqual(page.window,sandbox.window);
- const response=await page.requestCharacter('read');assert.equal(response.snapshot.version,2);assert.equal(response.version,'2.3');
+ const response=await page.requestCharacter('read');assert.equal(response.snapshot.version,2);assert.equal(response.version,'2.4');
 });
 test('bridge ignores malformed requests and reports asynchronous storage rejection',async()=>{
  const doc=new EventTarget(),page=simulatorWorld(doc);let reads=0;
@@ -131,7 +131,7 @@ test('success badge hides after fifteen seconds without reappearing on redraws o
  g.frame(socket,fixture().player);await new Promise(resolve=>setImmediate(resolve));
  assert.equal(g.stored.length,2);assert.equal(g.badge(),null);
  new g.page.WebSocket('wss://deepveinidle.com/ws');assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');
- assert.match(script,/^\/\/ @version\s+2\.3$/m);
+ assert.match(script,/^\/\/ @version\s+2\.4$/m);
 });
 
 const weeklyWindow=(label='Weekly goal: gathered',fromTick=100,toTick=200,xpMult=1.1)=>({label,fromTick,toTick,xpMult});
@@ -191,7 +191,7 @@ test('old bridge replies do not win over the current script and are reported if 
  const page=simulatorWorld(doc,{setInterval:()=>1,setTimeout:fn=>(timeout=fn,2),clearInterval(){},clearTimeout(){}});
  doc.addEventListener('dvi-character-request',event=>{const request=JSON.parse(event.detail);doc.dispatchEvent(new DomEvent('dvi-character-response',{detail:JSON.stringify({source:'dvi-character-script',id:request.id,version:'2.1',snapshot:fixture()})}));});
  const old=page.requestCharacter('read');timeout();await assert.rejects(old,/scriptOutdated/);
- userscriptWorld(doc,async()=>fixture());const current=await page.requestCharacter('read');assert.equal(current.version,'2.3');
+ userscriptWorld(doc,async()=>fixture());const current=await page.requestCharacter('read');assert.equal(current.version,'2.4');
 });
 
 test('both panels share one probe and common bilingual status messages',async()=>{
@@ -236,4 +236,29 @@ test('debug and configuration bridges read independent storage and debug bridge 
  otherDoc.addEventListener('dvi-debug-request',event=>{const request=JSON.parse(event.detail);otherDoc.dispatchEvent(new DomEvent('dvi-debug-response',{detail:JSON.stringify({source:'dvi-debug-script',id:request.id,version:'0.9'})}));});
  const outdated=otherPage.requestCharacter('read',true);timeout();await assert.rejects(outdated,/debugScriptOutdated/);
  for(const language of ['zh','en'])for(const error of ['debugScriptMissing','debugScriptOutdated','debugScriptReadFailed','debugNoSnapshot'])assert.notEqual(page.importStatusText(language,{error}),error);
+});
+
+test('hidden guild identity survives save/load, clears old imports and rejects malformed identities',()=>{
+ const guild={name:'Deep miners',tag:'DM',members:[{name:'private'}],chat:['private']};
+ const old=preset('melee'),snap={...fixture(),guild};
+ const imported=importCharacter(old,snap).state;
+ assert.deepEqual(imported.guild,{name:guild.name,tag:guild.tag});
+ assert.deepEqual(normalize(JSON.parse(JSON.stringify(imported))).guild,imported.guild);
+ assert.equal(importCharacter(imported,fixture()).state.guild,null);
+ assert.equal(importCharacter(imported,{...fixture(),guild:null}).state.guild,null);
+ for(const guild of [false,[],{}, {name:'Guild',tag:4}])assert.throws(()=>importCharacter(imported,{...fixture(),guild}),/invalidSnapshot/);
+ assert.deepEqual(imported.guild,{name:'Deep miners',tag:'DM'});
+});
+test('userscript captures guild welcome/updates/leave and isolates connections without private guild data',async()=>{
+ const g=gameScript(),first=new g.page.WebSocket('wss://deepveinidle.com/ws');
+ const flush=()=>new Promise(resolve=>setImmediate(resolve));
+ g.frame(first,fixture().player,'welcome',{guild:{name:'First',tag:'ONE',members:['private'],chat:['private']}});await flush();
+ assert.deepEqual(JSON.parse(JSON.stringify(g.stored.at(-1).guild)),{name:'First',tag:'ONE'});
+ g.frame(first,fixture().player);await flush();assert.equal(g.stored.at(-1).guild.name,'First');
+ g.frame(first,undefined,'guild',{info:{name:'Second',tag:'TWO',bank:['private']}});await flush();assert.equal(g.stored.at(-1).guild.name,'Second');
+ g.frame(first,undefined,'guild',{info:null});await flush();assert.equal(g.stored.at(-1).guild,null);
+ const second=new g.page.WebSocket('wss://deepveinidle.com/ws');
+ g.frame(second,fixture().player,'welcome');await flush();
+ g.frame(first,undefined,'guild',{info:{name:'Stale',tag:'OLD'}});await flush();assert.equal(g.stored.at(-1).guild,null);
+ assert.equal(JSON.stringify(g.stored).includes('private'),false);
 });

@@ -89,3 +89,15 @@ test('high target without protection matches an independent renewal calculation'
   for(const key of ['attempts','gold'])near(r.totals[key],remaining[key]+(1-remaining.survival)*initial[key]/initial.survival);
  }
 });
+
+test('enhancement imports and persists hidden guild identity without changing calculations',()=>{
+ const old=config(),snap={...snapshot(),guild:{name:'Deep miners',tag:'DM',members:['private']}};
+ const imported=importEnhancement(old,snap).state;
+ assert.deepEqual(imported.guild,{name:'Deep miners',tag:'DM'});
+ assert.deepEqual(validateEnhancement(JSON.parse(JSON.stringify(imported))).guild,imported.guild);
+ assert.deepEqual(calculateEnhancement(imported),calculateEnhancement({...imported,guild:null}));
+ assert.equal(importEnhancement(imported,snapshot()).state.guild,null);
+ assert.equal(importEnhancement(imported,{...snapshot(),guild:null}).state.guild,null);
+ assert.throws(()=>importEnhancement(imported,{...snapshot(),guild:{name:'Guild'}}),/invalidSnapshot/);
+ assert.deepEqual(imported.guild,{name:'Deep miners',tag:'DM'});
+});

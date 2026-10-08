@@ -129,3 +129,18 @@ test('both script installation orders preserve configuration capture and native 
   assert.equal(h.stored.at(-1).prediction.player.skills.ranged,h.configStored[0].player.skills.ranged+555);
  }
 });
+
+test('debug and role scripts both retain only own guild identity and clear it on leaving',async()=>{
+ for(const order of [['debug','role'],['role','debug']]){
+  const h=harness([build],order);
+  // Both passive socket listeners must receive the same update.
+  const socket=h.context.unsafeWindow.WebSocket;
+  const connected=new socket('wss://deepveinidle.com/ws');
+  connected.addEventListener('message',event=>h.context.unsafeWindow.JSON.parse(event.data));
+  connected.receive(h.context.frameText);await settle();
+  connected.receive(JSON.stringify({tick:101,m:[{t:'guild',info:{name:'Miners',tag:'MINE',members:['private'],chat:['private']}}]}));await settle();
+  for(const captures of [h.stored,h.configStored])assert.deepEqual(captures.at(-1).guild,{name:'Miners',tag:'MINE'});
+  connected.receive(JSON.stringify({tick:102,m:[{t:'guild',info:null}]}));await settle();
+  for(const captures of [h.stored,h.configStored])assert.equal(captures.at(-1).guild,null);
+ }
+});
