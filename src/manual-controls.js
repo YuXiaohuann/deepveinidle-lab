@@ -16,6 +16,6 @@ export function manualControls(state,{language,number,options,esc,name}){
 
  const custom=m.customSimulation||![1,24].includes(m.simulationHours);
  const duration=`<label class="potion"><span>${label('模拟时间','Simulation time')}</span><select data-simulation-mode aria-label="${label('模拟时间','Simulation time')}">${options([[1,label('1 小时','1 hour')],[24,label('24 小时','24 hours')],['custom',label('自定义时长','Custom duration')]],custom?'custom':m.simulationHours)}</select></label>`+(custom?number('manual.simulationHours',label('自定义时长（小时）','Custom duration (hours)'),m.simulationHours,MAX_SIMULATION_MINUTES/60,1/60,'any'):'');
- const simulation=section('simulation-settings','模拟配置','Simulation settings',duration+hot);
+ const simulation=section('simulation-settings','模拟配置','Simulation settings',duration+hot+check('vendorValues','按商人价格计算掉落价值','Value drops at vendor prices'));
  return {food,other,simulation};
 }

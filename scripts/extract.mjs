@@ -26,6 +26,8 @@ const exportsMap={
   "items": "kt",
   "gear": "ve",
   "item": "po",
+  "canSell": "Pe",
+  "vendorPrice": "me",
   "encode": "bs",
   "withRarity": "Se",
   "levelXp": "pt",

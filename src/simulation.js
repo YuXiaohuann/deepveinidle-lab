@@ -37,6 +37,10 @@ export function createScenario(raw,monster=null,{now=Date.now()}={}){
  return {player:p,context,durationTicks};
 }
 
+export function dropValue(items){
+ return Object.entries(items).reduce((total,[id,qty])=>total+(game.canSell(Number(id))?game.vendorPrice(Number(id))*qty:0),0);
+}
+
 export function simulateMonster(raw,monster,options={}){
  const scenario=createScenario(raw,monster,options),context=scenario.context,durationTicks=scenario.durationTicks;
  let p;
@@ -63,5 +67,8 @@ export function simulateMonster(raw,monster,options={}){
   if(tick%game.predictionChunkTicks===0&&(result.deaths>0||p.route===null)){result.endedEarly=true;break;}
  }
  for(const [skill,xp]of Object.entries(initialSkills)){const gain=p.skills[skill]-xp;if(gain){result.bySkill[skill]=gain;result.xp+=gain;}}
+ result.normalValue=dropValue(result.normalItems);
+ result.rareValue=dropValue(result.rareItems);
+ result.totalIncome=result.coins+result.normalValue+result.rareValue;
  return result;
 }

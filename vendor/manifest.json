@@ -9,6 +9,8 @@
     "items": "kt",
     "gear": "ve",
     "item": "po",
+    "canSell": "Pe",
+    "vendorPrice": "me",
     "encode": "bs",
     "withRarity": "Se",
     "levelXp": "pt",
@@ -607,6 +609,12 @@
       "start": 71261,
       "end": 71267,
       "sha256": "aa2b52f0ac073529fe5dc5b0433ace2cbc68e568a0586fdd7ae668bcd09d6c47"
+    },
+    {
+      "name": "eT",
+      "start": 71268,
+      "end": 71273,
+      "sha256": "8e6332fe156d6d0d1ed3176df1ebcacd97f4bfbcfe9d9456458243963e87ae45"
     },
     {
       "name": "hc",
@@ -1357,6 +1365,36 @@
       "start": 203726,
       "end": 203760,
       "sha256": "92588a9e28476d63da2e0083264509e0f26f388c8735f28cf162b0246bff921b"
+    },
+    {
+      "name": "m5",
+      "start": 203766,
+      "end": 203771,
+      "sha256": "7466bf3be9d65fb6e5e0041e578b5d2ad9d663c8aa772d9f03a8c802c3d24e8b"
+    },
+    {
+      "name": "f5",
+      "start": 203772,
+      "end": 203801,
+      "sha256": "6b2976659d5b13be5cefa48760d869141d0b0819af5266b67a8508910ab0704d"
+    },
+    {
+      "name": "Pe",
+      "start": 203802,
+      "end": 203887,
+      "sha256": "27cc90089cb29ca8c3c9f663716704790ff0e06f8c524a16e783d08fdadfb598"
+    },
+    {
+      "name": "me",
+      "start": 203887,
+      "end": 203985,
+      "sha256": "f4d4bef3cc4c99d15774a4a84132640676fee9ada30e711535e45da4f78e60aa"
+    },
+    {
+      "name": "RS",
+      "start": 203985,
+      "end": 204036,
+      "sha256": "5fd2baf19ecf0ace117ce1740c2f9c1ca77ccd9623e57c5c16b6d5a379213b80"
     },
     {
       "name": "st",
