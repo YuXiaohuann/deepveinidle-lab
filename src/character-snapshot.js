@@ -6,9 +6,10 @@ const maps=['skills','equipment','bank','overflow','plots','guide','perks','hous
 const lists=['pack','bankOrder','bankLocked','queue','tunics','houseCells','titles'];
 export function importSnapshot(snapshot){
  if(!record(snapshot)||snapshot.version!==2)throw Error('invalidSnapshot');
+ if(snapshot.captureError==='incompatibleClient'||snapshot.clientBuild!==undefined&&snapshot.clientBuild!=='index-C3S-5Yeu.js')throw Error('incompatibleClient');
  const input=snapshot.prediction;
  if(!input||input.source!=='predictor')throw Error('predictionMissing');
- if(input.clientBuild!=='index-DwK7yQ7O.js')throw Error('incompatibleClient');
+ if(input.clientBuild!=='index-C3S-5Yeu.js')throw Error('incompatibleClient');
  const p=input.player;
  if(!record(p)||!tick(input.capturedAt)||input.capturedAt>Date.now()+60000||!tick(p.lastTick)||!Number.isSafeInteger(p.id)||!Number.isSafeInteger(input.seed)||!Array.isArray(input.windows))throw Error('invalidSnapshot');
  if(maps.some(key=>!record(p[key]))||lists.some(key=>!Array.isArray(p[key]))||!Array.isArray(p.quests.daily)||!Array.isArray(p.quests.weekly)||!record(p.tally.items)||!record(p.tally.monsters))throw Error('incompleteSnapshot');

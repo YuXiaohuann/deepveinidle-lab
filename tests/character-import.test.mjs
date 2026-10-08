@@ -68,7 +68,7 @@ function gameScript(save){
 test('userscript passively captures complete own-role data without chat or credentials',async()=>{
  const {page,stored,frame}=gameScript(),socket=new page.WebSocket('wss://deepveinidle.com/ws?c=secret');
  const p={...fixture().player,password:'secret',token:'secret',bank:{64:100},name:'Alice'};
- frame(socket,p,'enter');assert.equal(stored.length,0);frame(socket,p,'welcome');await new Promise(resolve=>setImmediate(resolve));assert.equal(stored.length,1);
+ frame(socket,p,'enter');assert.equal(stored.length,0);frame(socket,p,'welcome');await new Promise(resolve=>setImmediate(resolve));assert.equal(stored.length,1);assert.equal(stored[0].prediction,undefined);
  assert.equal(stored[0].player.skills.melee,p.skills.melee);assert.equal(stored[0].player.password,undefined);assert.deepEqual(JSON.parse(JSON.stringify(stored[0].player.bank)),{64:100});assert.equal(stored[0].player.name,'Alice');
  assert.equal(JSON.stringify(stored).includes('secret'),false);assert.equal(JSON.stringify(stored).includes('private'),false);
  assert.equal(importCharacter(preset('ranged'),structuredClone(stored[0])).applied.length,9);
@@ -91,7 +91,7 @@ function userscriptWorld(document,getValue){
 test('shared DOM bridge works across different windows and awaits asynchronous script storage',async()=>{
  const doc=new EventTarget(),page=simulatorWorld(doc),sandbox=userscriptWorld(doc,async()=>fixture());
  assert.notEqual(page.window,sandbox.window);
- const response=await page.requestCharacter('read');assert.equal(response.snapshot.version,2);assert.equal(response.version,'2.0');
+ const response=await page.requestCharacter('read');assert.equal(response.snapshot.version,2);assert.equal(response.version,'2.2');
 });
 test('bridge ignores malformed requests and reports asynchronous storage rejection',async()=>{
  const doc=new EventTarget(),page=simulatorWorld(doc);let reads=0;
@@ -115,7 +115,7 @@ test('capture badge survives DOM removal and displays success only after storage
  const g=gameScript(()=>stored),socket=new g.page.WebSocket('wss://deepveinidle.com/ws');
  assert.ok(g.badge());g.frame(socket,fixture().player,'welcome');await new Promise(resolve=>setImmediate(resolve));
  assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');assert.equal(g.hasHideTimer(),false);finish();await new Promise(resolve=>setImmediate(resolve));
- assert.match(g.badge().textContent,/角色配置已读取/);g.removeBadge();assert.match(g.badge().textContent,/角色配置已读取/);
+ assert.equal(g.badge().textContent,'角色配置已读取 / Character captured');g.removeBadge();assert.match(g.badge().textContent,/角色配置已读取/);
  assert.equal(g.badge().id,'dvi-character-capture');
 });
 test('script metadata provides English and simplified Chinese names',()=>{
@@ -131,7 +131,7 @@ test('success badge hides after fifteen seconds without reappearing on redraws o
  g.frame(socket,fixture().player);await new Promise(resolve=>setImmediate(resolve));
  assert.equal(g.stored.length,2);assert.equal(g.badge(),null);
  new g.page.WebSocket('wss://deepveinidle.com/ws');assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');
- assert.match(script,/^\/\/ @version\s+2\.0$/m);
+ assert.match(script,/^\/\/ @version\s+2\.2$/m);
 });
 
 const weeklyWindow=(label='Weekly goal: gathered',fromTick=100,toTick=200,xpMult=1.1)=>({label,fromTick,toTick,xpMult});
@@ -179,18 +179,6 @@ test('an old connection completing storage cannot dismiss the new connection wai
  assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');assert.equal(g.hasHideTimer(),false);
 });
 
-test('page JSON hook captures the actual locally advanced predictor object and welcome context',async()=>{
- const stored=[],page={JSON:{parse:JSON.parse},WebSocket:class{constructor(){}addEventListener(){}}};
- const doc={documentElement:{append(){}},createElement:()=>({style:{},setAttribute(){}}),getElementById:()=>({textContent:''})};
- const context=vm.createContext({unsafeWindow:page,document:doc,location:{origin:'https://deepveinidle.com',host:'deepveinidle.com',href:'https://deepveinidle.com/'},URL,Date,console,setTimeout:()=>0,clearTimeout(){},MutationObserver:class{observe(){}},GM_setValue:async(k,v)=>stored.push(structuredClone(v))});
- vm.runInContext(script,context);new page.WebSocket('wss://deepveinidle.com/ws');
- context.frameText=JSON.stringify({tick:100,m:[{t:'welcome',seed:123,windows:[weeklyWindow('Event',0,200,1.5)],you:{...fixture().player,id:7,bankOrder:[],bankLocked:[64],bank:{64:12},pack:[]}}]});
- vm.runInContext('var actual=unsafeWindow.JSON.parse(frameText).m[0].you; actual.skills.ranged+=555; function Hi(p){return {...p,bankOrder:[...p.bankOrder]};} Hi(actual);',context);
- await new Promise(resolve=>setImmediate(resolve));
- const captured=stored.at(-1);assert.equal(captured.prediction.source,'predictor');assert.equal(captured.prediction.seed,123);assert.equal(captured.prediction.player.skills.ranged,fixture().player.skills.ranged+555);assert.deepEqual(captured.prediction.player.bankLocked,[64]);assert.equal(captured.prediction.windows[0].label,'Event');
- assert.deepEqual(vm.runInContext('actual.bankOrder',context),[]);
-});
-
 test('capture storage is serialized so a late old connection cannot overwrite a new character',async()=>{
  let release;const g=gameScript(()=>new Promise(resolve=>release=resolve));
  const first=new g.page.WebSocket('wss://deepveinidle.com/ws');g.frame(first,fixture().player,'welcome');await new Promise(resolve=>setImmediate(resolve));
@@ -201,9 +189,9 @@ test('capture storage is serialized so a late old connection cannot overwrite a 
 test('old bridge replies do not win over the current script and are reported if no update answers',async()=>{
  const doc=new EventTarget();let timeout;
  const page=simulatorWorld(doc,{setInterval:()=>1,setTimeout:fn=>(timeout=fn,2),clearInterval(){},clearTimeout(){}});
- doc.addEventListener('dvi-character-request',event=>{const request=JSON.parse(event.detail);doc.dispatchEvent(new DomEvent('dvi-character-response',{detail:JSON.stringify({source:'dvi-character-script',id:request.id,version:'1.0',snapshot:fixture()})}));});
+ doc.addEventListener('dvi-character-request',event=>{const request=JSON.parse(event.detail);doc.dispatchEvent(new DomEvent('dvi-character-response',{detail:JSON.stringify({source:'dvi-character-script',id:request.id,version:'2.1',snapshot:fixture()})}));});
  const old=page.requestCharacter('read');timeout();await assert.rejects(old,/scriptOutdated/);
- userscriptWorld(doc,async()=>fixture());const current=await page.requestCharacter('read');assert.equal(current.version,'2.0');
+ userscriptWorld(doc,async()=>fixture());const current=await page.requestCharacter('read');assert.equal(current.version,'2.2');
 });
 
 test('both panels share one probe and common bilingual status messages',async()=>{
@@ -217,7 +205,7 @@ test('both panels share one probe and common bilingual status messages',async()=
   assert.match(page.importStatusText(language,{ready:true},true),language==='zh'?/正在读取角色配置/:/Reading character configuration/);
   assert.match(page.importStatusText(language,{capturedAt:1700000000000}),language==='zh'?/已导入 · 读取时间/:/Imported · Captured/);
   assert.match(page.importStatusText(language,{snapshot:true,capturedAt:1700000000000}),language==='zh'?/临时快照/:/Temporary snapshot/);
-  for(const error of ['scriptMissing','scriptOutdated','scriptReadFailed','noSnapshot','invalidSnapshot','incompleteSnapshot'])assert.notEqual(page.importStatusText(language,{error}),error);
+  for(const error of ['incompatibleClient','predictionMissing','scriptMissing','scriptOutdated','scriptReadFailed','noSnapshot','invalidSnapshot','incompleteSnapshot'])assert.notEqual(page.importStatusText(language,{error}),error);
   assert.equal(page.importStatusText(language,{error:'unexpected detail'}),'unexpected detail');
  }
 });

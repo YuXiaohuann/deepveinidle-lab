@@ -17,10 +17,10 @@ export function validateEnhancement(input){
  return s;
 }
 export function enhancementSteps(input){
- const s=validateEnhancement(input),p={skills:{enhancing:game.levelXp(s.level)},house:{lectern:s.lectern},houseFurniture:s.lectern?{lectern:{cell:0,slot:0}}:{},masteries:{enhance:s.mastery}};
+ const s=validateEnhancement(input),p={skills:{enhancing:game.levelXp(s.level)},house:{lectern:s.lectern},houseFurniture:s.lectern?{lectern:{cell:0,slot:0}}:{},masteries:{enhance:s.mastery},brews:{},lastTick:0};
  return Array.from({length:s.target===s.current?0:s.target},(_,k)=>{
   const id=game.encode(game.withRarity(s.itemId,s.tier),k),chance=game.enhanceChance(p,k),cost=game.enhanceCost(id),protectedStep=s.protect&&k>=s.protectFrom;
-  return {from:k,to:k+1,chance,...cost,failTo:protectedStep?k-1:0,protected:protectedStep,xp:game.enhanceXp(game.withRarity(s.itemId,s.tier),k)};
+  return {from:k,to:k+1,chance,...cost,failTo:protectedStep?k-1:0,protected:protectedStep,xp:game.enhanceXp(p,{windows:[]},0,game.withRarity(s.itemId,s.tier),k)};
  });
 }
 // Solve the absorption equations using positive adjacent differences. This

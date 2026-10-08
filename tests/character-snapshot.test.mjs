@@ -8,7 +8,7 @@ function fixture(){
  const p=createScenario(preset('ranged')).player;
  p.id=127;p.lastTick=1500000;p.skills.ranged+=10000;p.bank={64:13,65:21,66:37};p.pack=[{itemId:64,qty:4}];p.bankLocked=[65];p.unlimitedBank=false;
  p.brews.warrior=p.lastTick+100;p.brewTier.warrior=2;p.brewBuckets={warrior:[0,0,100,0,0]};
- return {version:2,capturedAt:Date.now(),player:structuredClone(p),prediction:{source:'predictor',clientBuild:'index-DwK7yQ7O.js',capturedAt:Date.now(),player:p,seed:314,windows:[{fromTick:START_TICK,toTick:START_TICK+6000,xpMult:1.1,rarityMult:1.2}]}};
+ return {version:2,capturedAt:Date.now(),player:structuredClone(p),prediction:{source:'predictor',clientBuild:'index-C3S-5Yeu.js',capturedAt:Date.now(),player:p,seed:314,windows:[{fromTick:START_TICK,toTick:START_TICK+6000,xpMult:1.1,rarityMult:1.2}]}};
 }
 test('complete snapshot preserves exact character and context without sharing mutable references',()=>{
  const input=fixture(),result=importSnapshot(input),scenario=createScenario({format:'snapshot',snapshot:result});

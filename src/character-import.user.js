@@ -3,7 +3,7 @@
 // @name:en      Deep Vein Idle · Character import
 // @name:zh-cn   Deep Vein Idle · 角色配置导入
 // @namespace    https://dvi-lab.pages.dev/
-// @version      2.0
+// @version      2.2
 // @description  捕获内置预测的完整角色输入，导入配置或临时快照；不发送游戏指令。
 // @match        https://deepveinidle.com/*
 // @match        https://dvi-lab.pages.dev/*
@@ -18,20 +18,54 @@
  'use strict';
  const key='dvi-character-snapshot-v2';
  if(location.origin==='https://deepveinidle.com'){
+  // One-based line/column ranges, end exclusive. Reviewed against vendor/manifest.json.
+  // Update this table only after reviewing the source and simulation compatibility.
+  const auditedBuilds={
+   'index-C3S-5Yeu.js':{clone:[2,274152,275754],predict:[2,287754,288722]}
+  };
+  const entryResources=new Set();let clientBuild=null;
   const page=unsafeWindow,NativeSocket=page.WebSocket;let latestSocket,latestPlayer,worldBuffs,worldTick,seed,prediction,serial=Promise.resolve(),parsingSocket,capturing=false,lastPrediction,visible=true,hideTimer=null,successShown=false,status='等待游戏数据 / Waiting for game data';
   const object=v=>v&&typeof v==='object'&&!Array.isArray(v);
+  function noteScript(node){
+   if(node?.tagName!=='SCRIPT'||!node.src)return;
+   const url=new URL(node.src,location.href);
+   if(url.origin===location.origin&&/^\/assets\/index-[A-Za-z0-9_-]+\.js$/.test(url.pathname))entryResources.add(url.pathname.split('/').pop());
+  }
+  function scanScripts(root){
+   noteScript(root);
+   for(const node of root?.querySelectorAll?.('script[src]')??[])noteScript(node);
+  }
+  function updateBuild(){
+   const next=entryResources.size===1?[...entryResources][0]:null;
+   if(next===clientBuild)return;
+   clientBuild=next;prediction=undefined;lastPrediction=undefined;
+   if(latestPlayer)try{capture(latestPlayer,latestSocket);}catch(error){failure(error,latestSocket);}
+  }
+  scanScripts(document);updateBuild();
+  function predictorRead(stack){
+   const ranges=auditedBuilds[clientBuild];if(!ranges)return false;
+   // Parse V8's "at ... (URL:line:column)" and Firefox/Safari's "name@URL:line:column".
+   const frames=[];
+   for(const line of stack.split('\n')){
+    const match=line.match(/(https:\/\/[^\s()]+):(\d+):(\d+)\)?\s*$/);if(!match)continue;
+    const url=new URL(match[1]);
+    frames.push({game:url.origin===location.origin&&url.pathname===`/assets/${clientBuild}`,line:Number(match[2]),column:Number(match[3])});
+   }
+   const inside=(frame,range)=>frame?.game&&frame.line===range[0]&&frame.column>=range[1]&&frame.column<range[2];
+   const first=frames.findIndex(frame=>frame.game);
+   return first>=0&&inside(frames[first],ranges.clone)&&inside(frames[first+1],ranges.predict);
+  }
   function paint(){mount();const el=document.getElementById('dvi-character-capture');if(el&&el.textContent!==status)el.textContent=status;}
   // The game reads bankOrder while cloning the actual predictor input. Observe
   // that read without changing the value or running another prediction.
-  // Names are audited for the two supported public client builds.
   function observePlayer(player,socket){
    if(!object(player)||!Array.isArray(player.bankOrder))return;
    let order=player.bankOrder;
    Object.defineProperty(player,'bankOrder',{enumerable:true,configurable:true,get(){
     const stack=new Error().stack||'';
-    if(!capturing&&socket===latestSocket&&/\bat (?:(?:Module|Object)\.)?(?:Hi|\$i)(?: \[as predict\])?\s*\(/.test(stack)){
+    if(!capturing&&socket===latestSocket&&predictorRead(stack)){
      try{capturing=true;const copy=clonePlayer(player),signature=JSON.stringify({player:copy,seed,windows:worldBuffs??[]});
-      if(signature!==lastPrediction){lastPrediction=signature;prediction={player:copy,seed,windows:JSON.parse(JSON.stringify(worldBuffs??[])),capturedAt:Date.now(),source:'predictor',clientBuild:stack.match(/index-[A-Za-z0-9_-]+\.js/)?.[0]??null};capture(player,socket);}
+      if(signature!==lastPrediction){lastPrediction=signature;prediction={player:copy,seed,windows:JSON.parse(JSON.stringify(worldBuffs??[])),capturedAt:Date.now(),source:'predictor',clientBuild};capture(player,socket);}
      }catch(error){failure(error,socket);}finally{capturing=false;}
     }
     return order;
@@ -45,12 +79,12 @@
   function failure(error,socket){if(socket!==latestSocket)return;clearTimeout(hideTimer);visible=true;successShown=false;status=`读取失败 / Capture failed: ${error.message}`;paint();console.error('[DVI character import]',error);}
   function capture(you,socket){
    if(!object(you)||!object(you.skills)||!object(you.equipment)||!Number.isSafeInteger(you.lastTick))throw new Error('角色数据结构不兼容 / Incompatible character data');
-   const snapshot={version:2,capturedAt:Date.now(),player:clonePlayer(you),worldBuffs,worldTick,prediction};
+   const snapshot={version:2,capturedAt:Date.now(),player:clonePlayer(you),worldBuffs,worldTick,prediction,clientBuild,captureError:auditedBuilds[clientBuild]?undefined:'incompatibleClient'};
    const write=async()=>{
     if(socket!==latestSocket)return;
     await GM_setValue(key,snapshot);
     if(socket!==latestSocket)return;
-    status=prediction?'预测快照已读取 / Predictor snapshot captured':'角色配置已读取；打开战斗预测以捕获快照 / Character captured; open combat predictions';
+    status=prediction?'预测快照已读取 / Predictor snapshot captured':'角色配置已读取 / Character captured';
     if(!successShown){visible=true;successShown=true;hideTimer=setTimeout(()=>{visible=false;document.getElementById('dvi-character-capture')?.remove();},15000);}
     paint();
    };
@@ -104,7 +138,11 @@
    return socket;
   }});
   function mount(){if(!visible||!document.documentElement||document.getElementById('dvi-character-capture'))return;const el=document.createElement('div');el.id='dvi-character-capture';el.setAttribute('role','status');el.style.cssText='position:fixed;bottom:8px;left:8px;z-index:99999;max-width:calc(100vw - 32px);padding:6px 10px;border:1px solid #756440;border-radius:6px;background:#171c24;color:#e6d6ae;font:12px sans-serif;pointer-events:none';el.textContent=status;document.documentElement.append(el);}
-  new MutationObserver(()=>{if(!document.getElementById('dvi-character-capture'))mount();}).observe(document,{childList:true,subtree:true});
+  new MutationObserver((records=[])=>{
+   for(const record of records)for(const node of record.addedNodes)scanScripts(node);
+   updateBuild();
+   if(!document.getElementById('dvi-character-capture'))mount();
+  }).observe(document,{childList:true,subtree:true});
   mount();
  }else{
   // The document is shared across userscript/page worlds; window identities are not.
@@ -112,7 +150,7 @@
    if(typeof event.detail!=='string')return;
    let data;try{data=JSON.parse(event.detail);}catch{return;}
    if(data?.source!=='dvi-simulator'||!['probe','read'].includes(data.action)||typeof data.id!=='string'||data.id.length>100)return;
-   const reply={source:'dvi-character-script',id:data.id,version:'2.0'};
+   const reply={source:'dvi-character-script',id:data.id,version:'2.2'};
    try{if(data.action==='probe')reply.ready=true;else reply.snapshot=await GM_getValue(key,null);}catch(error){reply.error=String(error.message||error);}
    document.dispatchEvent(new CustomEvent('dvi-character-response',{detail:JSON.stringify(reply)}));
   });

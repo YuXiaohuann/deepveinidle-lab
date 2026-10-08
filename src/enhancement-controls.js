@@ -37,6 +37,11 @@ function renderResults(){const host=document.getElementById('enhance-results');i
  <details class="panel methodology" id="enhance-methodology"><summary>${text('计算依据与限制','Calculation and limitations')}</summary><p>${text('调用当前已核验游戏源码的成功率及费用函数。金币和碎片无论成败均消耗；不保护失败回 +0，保护生效失败降一级，仅失败扣卷轴。材料与卷轴供应充足，不使用巨像核心。','Uses success chances and fees from the verified game source. Gold and shards are spent on success and failure. Unprotected failures reset to +0; protected failures lose one level and spend one scroll. Materials and scrolls are plentiful. Colossus cores are excluded.')}</p><p>${text('强化技能等级在计算期间固定。真实强化成败均获得经验，可能升级并改变成功率，本版不模拟此过程。耗时按每次 2.4 秒计算，不含操作等待；不会执行游戏强化。','Enhancing skill level stays fixed. Actual attempts grant XP on success and failure and may raise your level and chances; this process is not simulated. Each attempt takes 2.4 seconds, excluding UI waiting. No game enhancements are executed.')}</p><p>${text('精通与符文书台倍率乘算。递推计算失败回退后的期望成本；高目标可能产生极大值，以科学计数法显示。','Mastery and rune lectern multipliers multiply. Recurrence equations include rebuilding after failures; very large costs use scientific notation.')}</p></details>`;
  document.getElementById('enhance-methodology').open=methodOpen;
 }
+export function applyEnhancementImport(snapshot){
+ const result=importEnhancement(state,snapshot);
+ state=result.state;candidates=result.candidates;status={capturedAt:result.capturedAt};save();
+ return {...status,saveOK};
+}
 export function renderEnhancement(nextLanguage){
  const openDetails=new Map([...document.querySelectorAll('#enhance-section details[id]')].map(el=>[el.id,el.open]));
  language=nextLanguage;const host=document.getElementById('enhance-content');if(!host)return;
@@ -63,7 +68,7 @@ export function renderEnhancement(nextLanguage){
  document.getElementById('enhance-candidate')?.addEventListener('change',event=>{const selected=candidates.find(x=>x.id===Number(event.target.value));if(!selected||event.target.value==='')return;state={...state,itemId:selected.itemId,tier:selected.tier,current:selected.current,target:Math.max(state.target??0,selected.current)};save();renderEnhancement(language);});
  document.getElementById('enhance-import').onclick=async()=>{
   if(busy)return;busy=true;renderStatus();
-  try{const response=await requestCharacter('read');if(!response.snapshot)throw Error('noSnapshot');const result=importEnhancement(state,response.snapshot);state=result.state;candidates=result.candidates;status={capturedAt:result.capturedAt};save();}
+  try{const response=await requestCharacter('read');if(!response.snapshot)throw Error('noSnapshot');applyEnhancementImport(response.snapshot);}
   catch(error){status={error:error.message};}finally{busy=false;renderEnhancement(language);}
  };
  if(!probeStarted){probeStarted=true;probeCharacter().then(()=>{if(!status&&!busy){status={ready:true};renderStatus();}}).catch(error=>{if(!status&&!busy){status={error:error.message};renderStatus();}});}
