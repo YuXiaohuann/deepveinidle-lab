@@ -311,9 +311,61 @@ test('food buffs import independently when only one value is invalid',()=>{
 
 test('import warning text separates food and groups other failed categories without internal field names',()=>{
  assert.equal(importWarningText('zh',[]),'');
- assert.equal(importWarningText('zh',['food: foodItemId','food: eatAt']), '【食物】无法导入，请手动配置');
+ assert.equal(importWarningText('zh',['food: foodItemId','food: eatAt']), '【食物】部分配置未导入，已保留原值，请手动检查');
  assert.equal(importWarningText('zh',['equipment: equipment.ring','skills: skills.magic','equipment: equipment.weapon']), '【技能、装备】导入失败，请手动配置');
  const warnings=['potions: brewBuckets.warrior','food: foodItemId','guild: weeklyXp.reset','potions: brews'];
- assert.equal(importWarningText('zh',warnings),'【食物】无法导入，请手动配置\n【药水、公会与祝福】导入失败，请手动配置');
- assert.equal(importWarningText('en',warnings),'[Food] could not be imported. Please configure manually.\n[Potions, Guild & blessing] import failed. Please configure manually.');
+ assert.equal(importWarningText('zh',warnings),'【食物】部分配置未导入，已保留原值，请手动检查\n【药水、公会与祝福】导入失败，请手动配置');
+ assert.equal(importWarningText('en',warnings),'[Food] Some settings were not imported; previous values were kept. Please check manually.\n[Potions, Guild & blessing] import failed. Please configure manually.');
+});
+
+
+test('automatic food import follows native warehouse selection and keeps simulation strategy',()=>{
+ const old=preset('ranged'),snap=fixture(),normal=64,rare=game.withRarity(64,2);
+ snap.player.bank={[normal]:10,[rare]:20};
+ for(const [strategy,expected,rule] of [[null,rare,1],[0,rare,1],[-2,normal,2]]){
+  snap.player.foodItemId=strategy;
+  const result=importCharacter(old,snap);
+  assert.deepEqual(result.state.food,{id:64,tier:game.itemTier(expected)});
+  assert.equal(result.state.manual.foodRule,rule);
+  assert.equal(result.warnings.some(w=>w.startsWith('food:')),false);
+  assert.deepEqual(normalize(JSON.parse(JSON.stringify(result.state))),result.state);
+ }
+ snap.player.foodItemId=null;snap.player.foodMaxTier=0;
+ assert.deepEqual(importCharacter(old,snap).state.food,{id:64,tier:0});
+ assert.deepEqual(importCharacter(old,snap,{preview:true}).state.food,old.food);
+ assert.deepEqual(old,preset('ranged'));
+});
+
+test('automatic food failures retain selection and still import independent fields',()=>{
+ const old=preset('ranged');old.food={id:64,tier:4};
+ for(const [bank,warning] of [[undefined,'food.bankMissing'],[{},'food.noCandidate'],[{64:0},'food.noCandidate'],[{64:-1},'food.bankInvalid'],[{999999999:1},'food.bankInvalid'],[{64:'2'},'food.bankInvalid'],[{[game.withRarity(64,4)]:1},'food.noCandidate']]){
+  const snap=fixture();snap.player.foodItemId=null;snap.player.bank=bank;
+  const result=importCharacter(old,snap);
+  assert.deepEqual(result.state.food,old.food);assert.equal(result.state.eatAt,75);
+  assert.equal(result.state.manual.foodRule,1);assert.ok(result.warnings.includes(`food: ${warning}`));
+  for(const language of ['zh','en'])assert.ok(!importWarningText(language,result.warnings).includes(warning));
+ }
+ const snap=fixture();snap.player.foodItemId=null;snap.player.bank={64:5};snap.player.foodMaxTier=-1;
+ assert.deepEqual(importCharacter(old,snap).state.food,old.food);
+ assert.ok(importCharacter(old,snap).warnings.includes('food: foodMaxTier'));
+});
+
+test('fountain-only import needs no food selection or warehouse; specified food needs no stock',()=>{
+ const old=preset('ranged'),snap=fixture();snap.player.eatAt=0;delete snap.player.foodItemId;
+ const result=importCharacter(old,snap);
+ assert.equal(result.state.manual.foodRule,3);assert.deepEqual(result.state.food,old.food);
+ assert.equal(result.state.eatAt,old.eatAt);assert.equal(result.warnings.some(w=>w.startsWith('food:')),false);
+ const specified=fixture();specified.player.foodMaxTier=0;
+ assert.deepEqual(importCharacter(old,specified).state.food,{id:64,tier:2});
+});
+
+test('automatic food ties use item id order and ignore nonfood stock',()=>{
+ assert.equal(game.item(60).heals,game.item(170).heals);
+ for(const strategy of [null,-2]){
+  const snap=fixture();snap.player.foodItemId=strategy;snap.player.bank={170:5,60:1,110:10};
+  assert.deepEqual(importCharacter(preset('ranged'),snap).state.food,{id:60,tier:0});
+ }
+ const warnings=['food: food.bankMissing','food: food.noCandidate'];
+ assert.match(importWarningText('zh',warnings),/仓库数据缺失；仓库没有符合策略及品质上限的食物/);
+ assert.match(importWarningText('en',warnings),/Warehouse data is missing; No warehouse food matches/);
 });

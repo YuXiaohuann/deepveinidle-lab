@@ -45,6 +45,7 @@ const exportsMap={
   "masteries": "vi",
   "rooms": "dt",
   "foodBuff": "K1",
+  "preferredBankFood": "Ll",
   "cropDuration": "Mu",
   "isCrop": "Tl",
   "damageReduction": "pP",

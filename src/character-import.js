@@ -4,7 +4,11 @@ import {combatRooms,combatMasteries,combatPerks,combatPotions} from './combat-op
 export const importTypes=[['skills','技能','Skills'],['equipment','装备','Equipment'],['food','食物','Food'],['potions','药水','Potions'],['home','家园','Home'],['masteries','精通','Masteries'],['guild','公会与祝福','Guild & blessing'],['supplies','补给','Supplies'],['perks','天赋','Perks']];
 export function importWarningText(language,warnings=[]){
  const zh=language==='zh',categories=new Set(warnings.map(item=>item.split(': ')[0])),lines=[];
- if(categories.has('food'))lines.push(zh?'【食物】无法导入，请手动配置':'[Food] could not be imported. Please configure manually.');
+ if(categories.has('food')){
+  const reasons=[['food.bankMissing','仓库数据缺失','Warehouse data is missing'],['food.bankInvalid','仓库数据异常','Warehouse data is invalid'],['food.noCandidate','仓库没有符合策略及品质上限的食物','No warehouse food matches the strategy and quality cap'],['foodMaxTier','自动进食品质上限无效','The automatic food quality cap is invalid']];
+  const details=reasons.filter(([key])=>warnings.includes(`food: ${key}`)).map(r=>r[zh?1:2]);
+  lines.push((zh?'【食物】部分配置未导入，已保留原值，请手动检查':'[Food] Some settings were not imported; previous values were kept. Please check manually.')+(details.length?(zh?'：': ' ')+details.join(zh?'；':'; '):''));
+ }
  const others=importTypes.filter(([id])=>id!=='food'&&categories.has(id)).map(type=>type[zh?1:2]);
  if(others.length)lines.push(zh?`【${others.join('、')}】导入失败，请手动配置`:`[${others.join(', ')}] import failed. Please configure manually.`);
  return lines.join('\n');
@@ -12,6 +16,18 @@ export function importWarningText(language,warnings=[]){
 const record=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const valid=(v,min=0,max=Number.MAX_SAFE_INTEGER)=>typeof v==='number'&&Number.isFinite(v)&&v>=min&&v<=max;
 const int=(v,min=0,max=Number.MAX_SAFE_INTEGER)=>valid(v,min,max)&&Number.isInteger(v);
+function warehouseFood(player){
+ if(!record(player.bank))return {warning:'food.bankMissing'};
+ for(const [key,qty] of Object.entries(player.bank)){
+  const id=Number(key);
+  if(!int(id,1)||String(id)!==key||!int(qty))return {warning:'food.bankInvalid'};
+  try{game.item(id);}catch{return {warning:'food.bankInvalid'};}
+ }
+ const id=game.preferredBankFood(player);
+ if(id===null)return {warning:'food.noCandidate'};
+ if(!foods.some(f=>f.id===game.baseItemId(id))||!int(game.itemTier(id),0,4))return {warning:'food.bankInvalid'};
+ return {food:{id:game.baseItemId(id),tier:game.itemTier(id)}};
+}
 export function importCharacter(current,snapshot,{preview=false}={}){
  if(!record(snapshot)||snapshot.version!==2||!int(snapshot.capturedAt,1)||snapshot.capturedAt>Date.now()+60000||!record(snapshot.player)||!int(snapshot.player.lastTick))throw new Error('invalidSnapshot');
  const chosen=importTypes.map(([id])=>id);
@@ -50,9 +66,17 @@ export function importCharacter(current,snapshot,{preview=false}={}){
   }
   if(category==='food'){
    const id=p.foodItemId;
-   if(id===null||id===0||id===-2){state.manual.foodRule=id===-2?2:1;applied.add(category);warn('food.selectionRetained');}
+   if(!preview&&p.eatAt===0){state.manual.foodRule=3;applied.add(category);}
+   else if(id===null||id===0||id===-2){
+    state.manual.foodRule=id===-2?2:1;applied.add(category);
+    if(preview)warn('food.selectionRetained');
+    else if(p.eatAt!==0&&int(p.foodMaxTier,0,4)){
+     const result=warehouseFood(p);
+     if(result.warning)warn(result.warning);else state.food=result.food;
+    }
+   }
    else if(int(id,1)&&foods.some(f=>f.id===game.baseItemId(id))&&int(game.itemTier(id),0,4)){state.food={id:game.baseItemId(id),tier:game.itemTier(id)};state.manual.foodRule=0;applied.add(category);}else warn('foodItemId');
-   if(p.eatAt===0){state.manual.foodRule=3;applied.add(category);warn('eatAt.retained');}
+   if(p.eatAt===0){state.manual.foodRule=3;applied.add(category);if(preview)warn('eatAt.retained');}
    else put('eatAt',p.eatAt,v=>[.25,.5,.75].includes(v),v=>state.eatAt=v*100);
    put('foodMaxTier',p.foodMaxTier,v=>int(v,0,4),v=>state.manual.foodMaxTier=v);
    put('foodPerTrip',p.foodPerTrip,v=>[5,10,20,-2,-1].includes(v),v=>state.manual.foodPerTrip=v);
