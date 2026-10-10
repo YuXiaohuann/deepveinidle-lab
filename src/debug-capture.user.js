@@ -3,10 +3,11 @@
 // @name:en      Deep Vein Idle · Debug snapshot capture
 // @name:zh-cn   Deep Vein Idle · 调试快照捕获
 // @namespace    https://dvi-lab.pages.dev/
-// @version      1.0
+// @version      1.0.1
 // @description  捕获内置预测的完整角色输入，供调试页面导出完整快照；不发送游戏指令。
 // @match        https://deepveinidle.com/*
 // @match        https://dvi-lab.pages.dev/*
+// @match        https://*.dvi-lab.pages.dev/*
 // @match        http://localhost/*
 // @match        http://127.0.0.1/*
 // @run-at       document-start

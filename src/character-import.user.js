@@ -3,10 +3,11 @@
 // @name:en      Deep Vein Idle · Character import
 // @name:zh-cn   Deep Vein Idle · 角色配置导入
 // @namespace    https://dvi-lab.pages.dev/
-// @version      2.4
-// @description  读取角色配置用于战斗与强化配置导入；不发送游戏指令。
+// @version      2.4.1
+// @description  读取角色配置供模拟器导入；不发送游戏指令。
 // @match        https://deepveinidle.com/*
 // @match        https://dvi-lab.pages.dev/*
+// @match        https://*.dvi-lab.pages.dev/*
 // @match        http://localhost/*
 // @match        http://127.0.0.1/*
 // @run-at       document-start

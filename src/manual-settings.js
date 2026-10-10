@@ -40,13 +40,13 @@ export function applyManualPlayer(p,s){
 }
 // The upstream engine adds hot bonuses to context windows. Cancel them for the
 // complete prediction clock, including initialization and the final tick.
-export function manualWindows(start=game.predictionStartTick,end=start+6000,weeklyXp=0,cancelHot=true){
+export function manualWindows(start=game.predictionStartTick,end=start+6000,weeklyXp=0,cancelHot=true,skill='combat'){
  const windows=weeklyXp?[{fromTick:start,toTick:end,xpMult:1+weeklyXp/100,rarityMult:1}]:[];
  if(!cancelHot)return windows;
  for(let tick=start;tick<=end;){
   const hot=game.hotSkill(tick),until=Math.min(end,hot.until-1);
-  const xp=hot.skill==='combat'&&hot.kind==='xp'?hot.mult-1:0;
-  const rare=hot.skill==='combat'&&hot.kind==='rarity'?hot.mult-1:0;
+  const xp=hot.skill===skill&&hot.kind==='xp'?hot.mult-1:0;
+  const rare=hot.skill===skill&&hot.kind==='rarity'?hot.mult-1:0;
   if(xp||rare)windows.push({fromTick:tick,toTick:until,xpMult:1-xp,rarityMult:1-rare});
   tick=until+1;
  }

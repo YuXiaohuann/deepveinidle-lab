@@ -96,6 +96,11 @@ const exportsMap={
   "hotRare": "yT",
   "tools": "r0",
   "tool": "Uc",
+  "toolLuck": "fp",
+  "equipmentLuck": "Mn",
+  "brewRarityMultiplier": "Bp",
+  "houseRarityMultiplier": "nl",
+  "masteryMultiplier": "St",
   "mountSpeed": "AT",
   "randomFloat": "mp",
   "canEnhance": "Oc",
@@ -103,7 +108,14 @@ const exportsMap={
   "enhanceCost": "hw",
   "enhanceXp": "TH",
   "enhanceTicks": "Is",
-  "protectionMin": "Ba"
+  "protectionMin": "Ba",
+  "startWork": "fs",
+  "workChance": "U3",
+  "workModifiers": "z3",
+  "caughtChance": "j3",
+  "packCapacity": "kt",
+  "lootBoxItemId": "Xc",
+  "nearestWorkSite": "mB"
 };
 const selected=new Set(); const allowed=new Set(['WeakSet','WeakMap','Uint8Array','Uint16Array','Uint32Array','Int32Array','Float64Array','Math','Map','Set','Number','Object','Array','String','Error','Date','Boolean','Infinity','undefined','JSON','RegExp','parseInt','parseFloat']);
 function collect(name){

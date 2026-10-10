@@ -131,7 +131,7 @@ test('success badge hides after fifteen seconds without reappearing on redraws o
  g.frame(socket,fixture().player);await new Promise(resolve=>setImmediate(resolve));
  assert.equal(g.stored.length,2);assert.equal(g.badge(),null);
  new g.page.WebSocket('wss://deepveinidle.com/ws');assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');
- assert.match(script,/^\/\/ @version\s+2\.4$/m);
+ assert.match(script,/^\/\/ @version\s+2\.4\.1$/m);
 });
 
 const weeklyWindow=(label='Weekly goal: gathered',fromTick=100,toTick=200,xpMult=1.1)=>({label,fromTick,toTick,xpMult});
@@ -368,4 +368,20 @@ test('automatic food ties use item id order and ignore nonfood stock',()=>{
  const warnings=['food: food.bankMissing','food: food.noCandidate'];
  assert.match(importWarningText('zh',warnings),/仓库数据缺失；仓库没有符合策略及品质上限的食物/);
  assert.match(importWarningText('en',warnings),/Warehouse data is missing; No warehouse food matches/);
+});
+
+test('userscripts match project preview channels and bridge on preview routes',async()=>{
+ const debugScript=fs.readFileSync(new URL('../src/debug-capture.user.js',import.meta.url),'utf8');
+ for(const [source,version,debug]of [[script,'2.4',false],[debugScript,'1.0',true]]){
+  const matches=[...source.matchAll(/^\/\/ @match\s+(\S+)$/gm)].map(m=>new RegExp('^'+m[1].replace(/[.+?^${}()|[\]\\]/g,'\\$&').replaceAll('*','.*')+'$'));
+  for(const host of ['dvi-lab.pages.dev','preview.dvi-lab.pages.dev','feature-x.dvi-lab.pages.dev','b32d355e.dvi-lab.pages.dev'])assert.ok(matches.some(m=>m.test(`https://${host}/gather`)));
+  assert.ok(!matches.some(m=>m.test('https://another-project.pages.dev/gather')));
+  for(const pathname of ['/gather','/debug','/debug/']){
+   const doc=new EventTarget(),page=simulatorWorld(doc),reads=[],snapshot=fixture();
+   vm.runInNewContext(source,{document:doc,location:{origin:'https://preview.dvi-lab.pages.dev',pathname},CustomEvent:DomEvent,GM_getValue:async key=>{reads.push(key);return snapshot;}});
+   if(debug&&pathname==='/gather')continue;
+   const probe=await page.requestCharacter('probe',debug);assert.equal(probe.ready,true);assert.equal(probe.version,version);assert.equal(reads.length,0);
+   const response=await page.requestCharacter('read',debug);assert.equal(response.snapshot.version,2);assert.deepEqual(reads,[debug?'dvi-debug-snapshot-v2':'dvi-character-snapshot-v2']);
+  }
+ }
 });

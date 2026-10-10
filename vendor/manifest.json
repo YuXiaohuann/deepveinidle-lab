@@ -79,6 +79,11 @@
     "hotRare": "yT",
     "tools": "r0",
     "tool": "Uc",
+    "toolLuck": "fp",
+    "equipmentLuck": "Mn",
+    "brewRarityMultiplier": "Bp",
+    "houseRarityMultiplier": "nl",
+    "masteryMultiplier": "St",
     "mountSpeed": "AT",
     "randomFloat": "mp",
     "canEnhance": "Oc",
@@ -86,7 +91,14 @@
     "enhanceCost": "hw",
     "enhanceXp": "TH",
     "enhanceTicks": "Is",
-    "protectionMin": "Ba"
+    "protectionMin": "Ba",
+    "startWork": "fs",
+    "workChance": "U3",
+    "workModifiers": "z3",
+    "caughtChance": "j3",
+    "packCapacity": "kt",
+    "lootBoxItemId": "Xc",
+    "nearestWorkSite": "mB"
   },
   "declarations": [
     {
@@ -2884,6 +2896,12 @@
       "start": 253870,
       "end": 254686,
       "sha256": "0dc21454904cc952a990cb8c9af08fdda127608f71f2fc92008df8713fe2bb3a"
+    },
+    {
+      "name": "mB",
+      "start": 254877,
+      "end": 255093,
+      "sha256": "d199e285828ba0a42b8ac8dc07dc7926ad6a90a39ec55904503a9c752ec512a0"
     },
     {
       "name": "_n",

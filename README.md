@@ -2,7 +2,7 @@
 
 ## 简介
 
-玩家制作的非官方 Deep Vein Idle 实验室，提供战斗收益比较、强化成功率与期望成本、热门加成预报。支持简体中文和英文，计算在浏览器本地执行，无需登录游戏。
+玩家制作的非官方 Deep Vein Idle 实验室，提供战斗收益比较、强化成功率与期望成本、热门加成预报。0.12.0 同时提供采矿、钓鱼、伐木、偷窃的采集模拟：默认逐个模拟任务的全部采集点并取等权平均，另支持最近采集点、指定单点及角色配置导入。支持简体中文和英文，计算在浏览器本地执行，无需登录游戏。
 
 [打开线上实验室](https://dvi-lab.pages.dev/) · [功能与设计](DESIGN.md) · [协作指引](AGENTS.md)
 
@@ -16,7 +16,7 @@
 node scripts/serve.mjs
 ```
 
-打开 [本机页面](http://127.0.0.1:4173)。服务仅监听本机，可通过 `PORT` 环境变量修改端口；支持 `/combat`、`/enhance`、`/forecast` 和隐藏调试页 `/debug`。
+打开 [本机页面](http://127.0.0.1:4173)。服务仅监听本机，可通过 `PORT` 环境变量修改端口；支持 `/combat`、`/gather`、`/enhance`、`/forecast` 和隐藏调试页 `/debug`。
 
 运行测试：
 
@@ -43,5 +43,9 @@ node scripts/extract.mjs
 npx wrangler login
 npx wrangler pages deploy <发布目录> --project-name dvi-lab --branch main
 ```
+
+预览页面导入角色前，安装／更新角色 userscript 2.4.1（调试脚本为 1.0.1），然后刷新游戏与预览页。两个脚本通过 `https://*.dvi-lab.pages.dev/*` 支持该项目全部预览通道与部署地址。
+
+发布预览通道时，将部署命令的分支改为 `--branch preview`；预览地址为 <https://preview.dvi-lab.pages.dev/>，生产不受影响。
 
 授权过期时，可用 `npx wrangler login --scopes account:read user:read pages:write` 重新授权。发布后核验页面路由、公开资源、双语界面及普通战斗计算，完整要求见 [静态托管与发布](DESIGN.md#65-静态托管与发布)。
