@@ -21,10 +21,9 @@ test('valuation preference defaults off, persists and renders bilingual controls
  assert.equal(normalize(JSON.parse(JSON.stringify(state))).manual.vendorValues,true);
  for(const language of ['zh','en']){
  const controls=manualControls(state,{language,number:()=>'',options:()=>'',esc:String,name:String});
- assert.doesNotMatch(controls.simulation,/manual.vendorValues/);
- const html=controls.sakura;
- assert.ok(html.includes(language==='zh'?'一起蛐蛐撒库拉':'Play with Sakura'));
- assert.match(html,/id="sakura-settings"/);
+ const html=controls.simulation;
+ assert.match(html,/id="simulation-settings"/);
+ assert.doesNotMatch(Object.values(controls).join(''),/sakura-settings|Play with Sakura|一起蛐蛐撒库拉/);
  assert.doesNotMatch(html,/<details[^>]* open/);
  assert.match(html,/data-path="manual.vendorValues" checked/);
  assert.ok(html.includes(language==='zh'?'按商人价格计算掉落价值':'Value drops at vendor prices'));
@@ -52,16 +51,16 @@ test('quantities and vendor values render separately with optional highlighted i
  }
 });
 
-test('Sakura menu requires both guild fields and follows imported guild changes with default valuation on import',()=>{
+test('valuation control is public regardless of guild and resets on configuration import',()=>{
  const state=defaults();state.manual.vendorValues=true;
  const render=state=>manualControls(state,{language:'zh',number:()=>'',options:()=>'',esc:String,name:String});
- for(const guild of [null,undefined,{name:'Other',tag:'SAKI'},{name:'SakuraSpring',tag:'OTHER'},{name:'sakuraspring',tag:'SAKI'}]){
-  state.guild=guild;assert.equal(render(state).sakura,'');assert.doesNotMatch(render(state).simulation,/manual.vendorValues/);
+ for(const guild of [null,undefined,{name:'Other',tag:'SAKI'},{name:'SakuraSpring',tag:'OTHER'},{name:'sakuraspring',tag:'SAKI'},{name:'SakuraSpring',tag:'SAKI'}]){
+  state.guild=guild;assert.match(render(state).simulation,/data-path="manual.vendorValues" checked/);assert.doesNotMatch(Object.values(render(state)).join(''),/sakura-settings/);
  }
  const snapshot={version:2,capturedAt:Date.now(),player:{lastTick:100},guild:{name:'SakuraSpring',tag:'SAKI'}};
  const imported=importCharacter(state,snapshot).state;
- assert.match(render(imported).sakura,/manual.vendorValues/);
+ assert.match(render(imported).simulation,/manual.vendorValues/);assert.equal(imported.manual.vendorValues,false);
  const left=importCharacter(imported,{...snapshot,guild:null}).state;
- assert.equal(render(left).sakura,'');assert.equal(left.manual.vendorValues,false);
+ assert.match(render(left).simulation,/manual.vendorValues/);assert.equal(left.manual.vendorValues,false);
  assert.equal(normalize(JSON.parse(JSON.stringify(left))).manual.vendorValues,false);
 });
