@@ -17,6 +17,21 @@ test('presets are valid for all styles',()=>{for(const style of ['melee','ranged
 test('language follows saved choice, then browser language list',()=>{assert.equal(chooseLanguage('en',['zh-CN']),'en');assert.equal(chooseLanguage(null,['en-US','zh-TW']),'zh');assert.equal(chooseLanguage(null,['fr']),'en');});
 test('snapshot hash and every extracted original declaration match manifest',()=>{const source=fs.readFileSync('vendor/game-original.js','utf8'),generated=fs.readFileSync('src/upstream.js','utf8'),manifest=JSON.parse(fs.readFileSync('vendor/manifest.json','utf8'));const hash=x=>crypto.createHash('sha256').update(x).digest('hex');assert.equal(hash(source),manifest.sha256);for(const d of manifest.declarations){const text=source.slice(d.start,d.end);assert.ok(generated.includes(text),d.name);const candidates=[text,...['const','let','var'].map(k=>k+' '+text+';')];assert.ok(candidates.some(x=>hash(x)===d.sha256),d.name);}});
 
+test('banking update preserves the reviewed source and explicit dependency bindings',()=>{
+ const manifest=JSON.parse(fs.readFileSync('vendor/manifest.json','utf8'));
+ const generated=fs.readFileSync('src/upstream.js','utf8');
+ assert.equal(manifest.overrides.length,1);
+ const update=manifest.overrides[0],source=fs.readFileSync(update.file,'utf8');
+ const hash=text=>crypto.createHash('sha256').update(text).digest('hex');
+ assert.equal(hash(source),update.sha256);
+ const declaration=source.slice(update.start,update.end);
+ assert.equal(hash(declaration),update.declarationSha256);
+ assert.ok(generated.includes(declaration));
+ assert.deepEqual(update.bindings,{uc:'Vc',p4:'v$',ie:'ze',tP:'sH',uf:'om',j3:'j5',xa:'he',Zq:'oH'});
+ assert.equal(update.target,'xB');
+ assert.ok(!manifest.declarations.some(d=>d.name==='xB'));
+});
+
 test('combat random samples include the upstream integer mixing step',()=>{
  // Fixed vectors independently checked using unbounded integer multiplication
  // modulo 2^32. Raw values are the pre-mix samples used by the old snapshot.

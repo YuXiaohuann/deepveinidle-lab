@@ -3124,12 +3124,6 @@
       "sha256": "885a58b34a3262c3729792c1d243c91388412db56d594062f1c596680936a16c"
     },
     {
-      "name": "xB",
-      "start": 260367,
-      "end": 260717,
-      "sha256": "20ff2a5749de0457556cb43c4a26030cb7c1888abd3a7af1ea94b844c50798e4"
-    },
-    {
       "name": "r$",
       "start": 261320,
       "end": 261351,
@@ -3842,6 +3836,30 @@
       "start": 623419,
       "end": 625683,
       "sha256": "51f4c7a9104a2fecbd3e5706b39589f364f9096a2cb113b573193e4fa5108a74"
+    }
+  ],
+  "overrides": [
+    {
+      "sourceUrl": "https://deepveinidle.com/assets/index-C6UxPVvd.js",
+      "retrieved": "2026-10-11",
+      "changelogVersion": "1.0.1186",
+      "sha256": "cfec2d6184f4d1b649c87731d06f8ed095655de6ad0da6689c9c67dc6f969b9b",
+      "file": "vendor/game-combat-update.js",
+      "target": "xB",
+      "name": "Sq",
+      "start": 284520,
+      "end": 284932,
+      "declarationSha256": "82dc02568fde9d8ac048d805deacac054ed37c44283b62ea8c2392b9453c8688",
+      "bindings": {
+        "uc": "Vc",
+        "p4": "v$",
+        "ie": "ze",
+        "tP": "sH",
+        "uf": "om",
+        "j3": "j5",
+        "xa": "he",
+        "Zq": "oH"
+      }
     }
   ]
 }

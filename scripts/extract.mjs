@@ -9,6 +9,17 @@ const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const source = fs.readFileSync('vendor/game-original.js','utf8');
 if(hash(source)!==sourceInfo.sha256)throw Error('Unreviewed upstream snapshot: review source metadata, export mappings and signatures before extraction');
 const ast = parse(source,{ecmaVersion:'latest',sourceType:'module',ranges:true});
+// Reviewed banking-only update; keep other mechanisms on the base snapshot.
+const bankingInfo={sourceUrl:'https://deepveinidle.com/assets/index-C6UxPVvd.js',retrieved:'2026-10-11',changelogVersion:'1.0.1186',sha256:'cfec2d6184f4d1b649c87731d06f8ed095655de6ad0da6689c9c67dc6f969b9b'};
+const bankingSource=fs.readFileSync('vendor/game-combat-update.js','utf8');
+if(hash(bankingSource)!==bankingInfo.sha256)throw Error('Unreviewed combat update snapshot');
+const bankingNode=parse(bankingSource,{ecmaVersion:'latest',sourceType:'module',ranges:true}).body.find(n=>n.type==='FunctionDeclaration'&&n.id.name==='Sq');
+if(!bankingNode)throw Error('Missing reviewed banking declaration');
+const bankingText=bankingSource.slice(bankingNode.start,bankingNode.end);
+if(hash(bankingText)!=='82dc02568fde9d8ac048d805deacac054ed37c44283b62ea8c2392b9453c8688')throw Error('Banking signature mismatch');
+const bankingBindings={uc:'Vc',p4:'v$',ie:'ze',tP:'sH',uf:'om',j3:'j5',xa:'he',Zq:'oH'};
+const bankingRefs=new Set(analyze(parse(bankingText,{ecmaVersion:'latest',sourceType:'module',ranges:true}),{ecmaVersion:2024,sourceType:'module'}).globalScope.through.map(r=>r.identifier.name));
+if(bankingRefs.size!==Object.keys(bankingBindings).length||Object.keys(bankingBindings).some(name=>!bankingRefs.has(name)))throw Error('Unexpected banking dependencies');
 const declarations = new Map();
 for (const node of ast.body) {
   if (node.type === 'FunctionDeclaration') declarations.set(node.id.name,{name:node.id.name,start:node.start,end:node.end,text:source.slice(node.start,node.end)});
@@ -129,8 +140,11 @@ function collect(name){
  for(const dep of new Set(refs))if(declarations.has(dep))collect(dep);else if(!allowed.has(dep))throw Error(`Unexpected external dependency ${dep} in ${name}`);
 }
 Object.values(exportsMap).forEach(collect);
+Object.values(bankingBindings).forEach(collect);
+if(!selected.has(declarations.get('xB')))throw Error('Reviewed banking target is not in the extracted dependency graph');
 const ordered=[...selected].sort((a,b)=>a.start-b.start);
+const bankingReplacement='const xB=(('+Object.keys(bankingBindings).join(',')+')=>{'+bankingText+';return Sq;})('+Object.values(bankingBindings).join(',')+');';
 fs.mkdirSync('src',{recursive:true});
-fs.writeFileSync('src/upstream.js','// GENERATED from vendor/game-original.js. Do not edit.\n'+ordered.map(d=>d.text).join('\n')+'\nexport { '+Object.entries(exportsMap).map(([alias,name])=>`${name} as ${alias}`).join(', ')+' };\n');
-fs.writeFileSync('vendor/manifest.json',JSON.stringify({...sourceInfo,exports:exportsMap,declarations:ordered.map(({name,start,end,text})=>({name,start,end,sha256:hash(text)}))},null,2));
+fs.writeFileSync('src/upstream.js','// GENERATED from reviewed vendor snapshots. Do not edit.\n'+ordered.map(d=>d.name==='xB'?bankingReplacement:d.text).join('\n')+'\nexport { '+Object.entries(exportsMap).map(([alias,name])=>`${name} as ${alias}`).join(', ')+' };\n');
+fs.writeFileSync('vendor/manifest.json',JSON.stringify({...sourceInfo,exports:exportsMap,declarations:ordered.filter(d=>d.name!=='xB').map(({name,start,end,text})=>({name,start,end,sha256:hash(text)})),overrides:[{...bankingInfo,file:'vendor/game-combat-update.js',target:'xB',name:'Sq',start:bankingNode.start,end:bankingNode.end,declarationSha256:hash(bankingText),bindings:bankingBindings}]},null,2));
 console.log(`Extracted ${ordered.length} original declarations (${fs.statSync('src/upstream.js').size} bytes).`);

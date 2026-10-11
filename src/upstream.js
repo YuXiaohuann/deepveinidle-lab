@@ -1,4 +1,4 @@
-// GENERATED from vendor/game-original.js. Do not edit.
+// GENERATED from reviewed vendor snapshots. Do not edit.
 const to=600;
 const qa=17672256e5;
 function Yd(e){return Math.floor((e-qa)/to)}
@@ -502,7 +502,7 @@ function ck(e,o,t){return o>=e.x&&t>=e.y&&o<e.x+e.width&&t<e.y+e.height}
 function yB(e,o,t,c){const s=e.route,a=o.world.zoneById.get(t);if(!a){ze(e,c,"noSuchSite");return}switch(s.phase){case"toWork":{if(ck(a,e.x,e.y)){s.phase="working";return}const n=wB(a,e.id);Sc(e,o,n.x,n.y,c)||ze(e,c,"unreachable");return}case"working":{const n=a$(e);if(n==="dead"){fB(e,o,c);return}if(n==="fountain"){e.eatAt>0&&c.push({kind:"outOfFood"}),s.phase="toFountain";return}if(n==="restock"||n==="full"){s.phase="toBank";return}if(!ck(a,e.x,e.y)){s.phase="toWork";return}e.activity="working";return}case"toFountain":{const n=XT(o,"fountain",e.x,e.y);if(!n){ze(e,c,"unreachable");return}if(zi(e,n.x,n.y)){s.phase="drinking",e.activity="drinking",e.attemptTicks=0;return}const i=rc(o.world,n.x,n.y,e.id);(!i||!Sc(e,o,i.x,i.y,c))&&ze(e,c,"unreachable");return}case"drinking":{s.phase="toWork";return}case"toBank":{const n=F1(o,e);if(!n){ze(e,c,"unreachable");return}if(zi(e,n.x,n.y)){s.phase="banking",e.activity="banking";return}const i=rc(o.world,n.x,n.y);(!i||!Sc(e,o,i.x,i.y,c))&&ze(e,c,"unreachable");return}case"banking":{s.phase="toWork";return}}}
 function kB(e,o){const t=cc(e);if(e.hp<t&&!sB(e)){e.attemptTicks=0,e.activity="idle";return}if(e.hp>=t){e.attemptTicks=0,e.activity="idle";return}e.attemptTicks++,!(e.attemptTicks<j1-e.perks.rest)&&(e.attemptTicks=0,e.hp++,o.push({kind:"drank"}),e.hp>=t&&(e.activity="idle"))}
 function vB(e,o,t,c){const s=e.route?.zoneId,a=s==null?void 0:o.world.zoneById.get(s);if(!a){e.activity="idle";return}cB(e,o,a,t,c),a$(e)!==null&&(e.activity="idle")}
-function xB(e,o){const t=Vc(e);v$(e);const c=t-Vc(e);if(c>0&&o.push({kind:"deposited",count:c}),Vc(e)>0){ze(e,o,"storageFull");return}const s=e.route;if(s?.zoneId!=null){const a=sH(e,om(e));a>0&&o.push({kind:"withdrew",jobId:0,batches:a})}else if(s){const a=he(s.jobId),n=oH(e,a);n>0&&o.push({kind:"withdrew",jobId:a.id,batches:n})}e.activity="idle"}
+const xB=((uc,p4,ie,tP,uf,j3,xa,Zq)=>{function Sq(a,o){const e=uc(a);p4(a);const t=e-uc(a);if(t>0&&o.push({kind:"deposited",count:t}),uc(a)>0){ie(a,o,"storageFull");return}const c=a.route;if(c?.zoneId!=null){const s=tP(a,uf(a));s>0&&o.push({kind:"withdrew",jobId:0,batches:s});for(let n=0;n<64;n++){const i=a.hp;if(j3(a,o),a.hp===i)break}}else if(c){const s=xa(c.jobId),n=Zq(a,s);n>0&&o.push({kind:"withdrew",jobId:s.id,batches:n})}a.activity="idle"};return Sq;})(Vc,v$,ze,sH,om,j5,he,oH);
 const r$=Math.round(7*24*3600*1e3/to);
 function Fp(e,o){e.route&&o&&o>0&&(e.route.until=e.lastTick+Math.min(o,r$))}
 function d$(e){return e.route?e.route.until??e.route.after?.until:void 0}
