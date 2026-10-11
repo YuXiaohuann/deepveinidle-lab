@@ -52,6 +52,10 @@
     "houseBonus": "Ta",
     "houseDamageCap": "P3",
     "masteryRankLimit": "PM",
+    "masteryRankCost": "nu",
+    "masteryTotalCost": "MM",
+    "masteriesTotalCost": "gd",
+    "masteryEarnedPoints": "Sp",
     "combatTick": "tB",
     "killMonster": "Q5",
     "baseItemId": "lo",
@@ -1362,6 +1366,72 @@
       "sha256": "05752f5b0fb23d61e41f7503d7f009722070b9ab6e742f0d7dceebaedfc244be"
     },
     {
+      "name": "bM",
+      "start": 205206,
+      "end": 205239,
+      "sha256": "5ea655dac8eef4fa491b403e70a3e1617783109cbd56d1f6e13053c9b79b1ca2"
+    },
+    {
+      "name": "pM",
+      "start": 205240,
+      "end": 205269,
+      "sha256": "88d532416d0b78cdde0b7be528ca33a6adc15536e4fa702f67c90a9dab222c49"
+    },
+    {
+      "name": "gM",
+      "start": 205270,
+      "end": 205288,
+      "sha256": "94b03e877fb278f178710064be0d1326396566b0790f37a99849bb540fb0a120"
+    },
+    {
+      "name": "W0",
+      "start": 205289,
+      "end": 205293,
+      "sha256": "ac31cb2acfb3a731113bfdabdb9c1de9f633c9e9490c82c02834e6e301830cc0"
+    },
+    {
+      "name": "wM",
+      "start": 205294,
+      "end": 205300,
+      "sha256": "40e54788e729c2ce7b6d4a1489395d578fb1502dfc319a8c8172085f28a40470"
+    },
+    {
+      "name": "yM",
+      "start": 205301,
+      "end": 205307,
+      "sha256": "7114bd04de687b1976f9ddc331028945c383cb6183ded194b1328d64a60b0792"
+    },
+    {
+      "name": "yi",
+      "start": 205308,
+      "end": 205354,
+      "sha256": "233ef9b895e708e3a48c98334659d258c904c155455d245105a8bb4dbf4d6aaa"
+    },
+    {
+      "name": "ki",
+      "start": 205354,
+      "end": 205445,
+      "sha256": "d6b5b031c87c59d5c442f2e91ea60a4ef9162022541d50f80aff1c11b5d30897"
+    },
+    {
+      "name": "li",
+      "start": 205445,
+      "end": 205551,
+      "sha256": "511a1c4c45fbf61b8fa3c33f7cae024f478964c2f7837d9da2b036ae645a5928"
+    },
+    {
+      "name": "b3",
+      "start": 205551,
+      "end": 205637,
+      "sha256": "797ce3a9df5a604392fe6fa1c075e8b99caf8e4db84dcaf108099699394a01e8"
+    },
+    {
+      "name": "kM",
+      "start": 205637,
+      "end": 205726,
+      "sha256": "d0257efbd2202bdc8b91d9f4939dcfae1a0fc9f76ae4126db53f302304814440"
+    },
+    {
       "name": "B1",
       "start": 205809,
       "end": 205813,
@@ -1372,6 +1442,12 @@
       "start": 205814,
       "end": 205818,
       "sha256": "8c50eb73bc1761f6f5f49f0210e9c92217fc1458bb603ad7f24cb80dc6a758bb"
+    },
+    {
+      "name": "Td",
+      "start": 205819,
+      "end": 205827,
+      "sha256": "99e170d04f1d2c0b3cbfb1436e6e790cd1940109a7447731ddb18a90df195371"
     },
     {
       "name": "ls",
@@ -1416,6 +1492,12 @@
       "sha256": "f0f054d2dfdc09a5ccd6d6a8629c56ab76a59f62c32639bef7149434205fd73e"
     },
     {
+      "name": "AM",
+      "start": 206065,
+      "end": 206124,
+      "sha256": "0aa2a4d2f7750d48b3b8f08d40df04737d44b3382e967e552303351e4d8008b0"
+    },
+    {
       "name": "Ci",
       "start": 206124,
       "end": 206255,
@@ -1428,10 +1510,28 @@
       "sha256": "89c056575a1096d38e464cc00815d06ce887166e3b86cb78639f152a8d4c51da"
     },
     {
+      "name": "H1",
+      "start": 206382,
+      "end": 206491,
+      "sha256": "f60bba209f5cd4e83b83bd548c265aed33cfd48983735b07904a70f21e2a4711"
+    },
+    {
+      "name": "xp",
+      "start": 206491,
+      "end": 206602,
+      "sha256": "d1b8615a001e96b2e261663aa834f5a958251c36cd57eb265bd661141daae8f7"
+    },
+    {
       "name": "qM",
       "start": 206704,
       "end": 206863,
       "sha256": "263681213847d407f4a1c4d6a0b51a48e19895aeebabef02c76e8b8b6b771ca1"
+    },
+    {
+      "name": "Sp",
+      "start": 206863,
+      "end": 206918,
+      "sha256": "06d3b86a1da54fa6fc326bacc1dca4f50be52fdbbe83d9cd4ef68776046ec4d7"
     },
     {
       "name": "vi",
@@ -1446,10 +1546,34 @@
       "sha256": "004b44b1dbb50ab38182170061319ee69563bcc740ff40bd3865f3a15122b94a"
     },
     {
+      "name": "nu",
+      "start": 208204,
+      "end": 208257,
+      "sha256": "c8b6e293e5ed623d6ad4fb9825de46f38545b4aa4985b211b4a410c51232806b"
+    },
+    {
+      "name": "uh",
+      "start": 208263,
+      "end": 208269,
+      "sha256": "704c572a3af17c903cbb16776948ed00d92f84171fdd476ed0bb20fa50552e4b"
+    },
+    {
       "name": "PM",
       "start": 208270,
       "end": 208276,
       "sha256": "ad35b0f0670a21c18c2b5dda199f4f0ad273ec1161c50cf91c6a5ba1ef680579"
+    },
+    {
+      "name": "MM",
+      "start": 208277,
+      "end": 208431,
+      "sha256": "11cdd8edceda3bdc674453ec8497dd6c67a1e5d886b1637025259a6511129177"
+    },
+    {
+      "name": "gd",
+      "start": 208431,
+      "end": 208514,
+      "sha256": "d58e2d4117f2def4b28126015eff3687bb8b9cec6fe133d18e5588304fa509e8"
     },
     {
       "name": "ua",
