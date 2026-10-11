@@ -6,7 +6,7 @@ import {importCharacter,importWarningText} from '../src/character-import.js';
 import {game,defaults,preset,slots,normalize} from '../src/model.js';
 const fixture=()=>({version:2,capturedAt:Date.now(),player:{lastTick:100,skills:{melee:game.levelXp(37)+20,ranged:game.levelXp(82),magic:0,defence:game.levelXp(42),hitpoints:game.levelXp(51)},equipment:Object.fromEntries(slots.map(k=>[k,null])),foodItemId:game.withRarity(64,2),eatAt:.75,foodMaxTier:3,foodPerTrip:-2,brews:{warrior:200,haste:100,fed:200,rooted:99,blessing:200},brewTier:{warrior:2},house:{post:90,storeroom:4,target:50},houseFurniture:{post:{placed:true}},masteries:{xp:9,move:7},perks:{pockets:3,meals:4,rest:2},guildBonus:.12,homeBank:null,ironman:true}});
 test('nine categories import into existing manual rules, including sparse maps and inactive buffs',()=>{
- const old=preset('ranged');old.manual.weeklyXp=17;old.manual.simulationHours=6;old.manual.customSimulation=true;old.manual.hotSetting='off';
+ const old=preset('ranged');old.manual.weeklyXp=17;old.manual.simulationHours=6;old.manual.customSimulation=true;old.manual.hotSetting='off';old.manual.enemySelection=`monster-${game.monsters[0].id}`;old.manual.vendorValues=true;
  const result=importCharacter(old,fixture()),s=result.state;
  assert.equal(result.applied.length,9);assert.equal(s.levels.melee,37);assert.equal(s.levels.ranged,82);
  assert.equal(s.style,'melee');assert.ok(slots.every(k=>s.gear[k].id===0));
@@ -16,7 +16,7 @@ test('nine categories import into existing manual rules, including sparse maps a
  assert.equal(s.masteries.xp,9);assert.equal(s.masteries.rare,0);assert.equal(s.meals,4);
  assert.equal(s.manual.guildXp,12);assert.equal(s.manual.weeklyXp,0);assert.equal(s.manual.blessing,true);
  assert.equal(s.homeBank,0);assert.equal(s.manual.ironman,true);
- assert.equal(s.manual.simulationHours,24);assert.equal(s.manual.customSimulation,false);assert.equal(s.manual.hotSetting,'game');
+ assert.equal(s.manual.simulationHours,6);assert.equal(s.manual.customSimulation,true);assert.equal(s.manual.hotSetting,'off');assert.equal(s.manual.enemySelection,old.manual.enemySelection);assert.equal(s.manual.vendorValues,true);
  assert.ok(result.warnings.includes('guild: weeklyXp.reset'));assert.equal(old.levels.melee,85);
 });
 test('configuration import always covers all categories and rejects incompatible data atomically',()=>{
@@ -216,6 +216,7 @@ test('combat import controls omit snapshot action and explanation in both langua
  for(const language of ['zh','en']){
   const html=page.importControls(language);
   assert.match(html,/id="import-character"/);
+  assert.match(html,/<details[^>]+id="character-import-settings" open>/);
   assert.doesNotMatch(html,/import-snapshot|导入快照|Import snapshot/);
  }
  assert.doesNotMatch(script,/auditedBuilds|predictorRead|observePlayer|page.JSON/);
@@ -266,16 +267,16 @@ test('userscript captures guild welcome/updates/leave and isolates connections w
  assert.equal(JSON.stringify(g.stored).includes('private'),false);
 });
 
-test('partial imports reset every non-food setting while retaining all unavailable food fields',()=>{
+test('partial imports retain simulation settings and unavailable food fields while resetting other settings',()=>{
  const old=preset('magic');
  old.guild={name:'SakuraSpring',tag:'SAKI'};old.eatAt=75;old.fed=true;old.rooted=true;
  old.manual.foodRule=2;old.manual.foodMaxTier=2;old.manual.foodPerTrip=10;
- old.manual.enemySelection='1';old.manual.simulationHours=24;old.manual.customSimulation=true;old.manual.hotSetting='off';old.manual.vendorValues=true;old.manual.allGear=true;
+ old.manual.enemySelection=`monster-${game.monsters[0].id}`;old.manual.simulationHours=6.5;old.manual.customSimulation=true;old.manual.hotSetting='off';old.manual.vendorValues=true;old.manual.allGear=true;
  old.manual.guildXp=20;old.manual.weeklyXp=17;old.manual.blessing=true;old.manual.ironman=true;old.homeBank=2;
  old.brews.warrior=4;old.brews.gatherer=4;old.house.post=90;old.house.mine=50;old.masteries.xp=7;old.masteries.gather=8;old.meals=4;old.manual.perks.rest=3;
  const before=structuredClone(old),expected=defaults();
  for(const key of ['food','eatAt','fed','rooted'])expected[key]=structuredClone(old[key]);
- for(const key of ['foodRule','foodMaxTier','foodPerTrip'])expected.manual[key]=old.manual[key];
+ for(const key of ['foodRule','foodMaxTier','foodPerTrip','enemySelection','simulationHours','customSimulation','hotSetting','vendorValues'])expected.manual[key]=old.manual[key];
  const result=importCharacter(old,{version:2,capturedAt:Date.now(),player:{lastTick:100}});
  assert.deepEqual(result.state,normalize(expected));assert.deepEqual(old,before);
  assert.deepEqual(normalize(JSON.parse(JSON.stringify(result.state))),result.state);

@@ -38,9 +38,9 @@ test('snapshot errors reject old protocols, server-only data, incomplete fields 
  const noSeed=fixture();delete noSeed.prediction.seed;assert.throws(()=>importSnapshot(noSeed),/invalidSnapshot/);
  const badWindow=fixture();badWindow.prediction.windows[0].toTick=-1;assert.throws(()=>importSnapshot(badWindow),/invalidSnapshot/);
 });
-test('configuration import has no category selection and resets simulation preferences',()=>{
- const old=preset('magic');old.manual.hotSetting='off';old.manual.simulationHours=24;
- const result=importCharacter(old,fixture());assert.equal(result.applied.length,9);assert.equal(result.state.manual.hotSetting,'game');assert.equal(result.state.manual.simulationHours,24);
+test('configuration import has no category selection and preserves simulation preferences',()=>{
+ const old=preset('magic');old.manual.hotSetting='off';old.manual.simulationHours=6.5;
+ const result=importCharacter(old,fixture());assert.equal(result.applied.length,9);assert.equal(result.state.manual.hotSetting,'off');assert.equal(result.state.manual.simulationHours,6.5);
  assert.equal(result.state.levels.ranged,game.level(fixture().player.skills.ranged));assert.equal(result.state.style,'ranged');assert.equal(old.style,'magic');
 });
 

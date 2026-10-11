@@ -51,7 +51,7 @@ test('quantities and vendor values render separately with optional highlighted i
  }
 });
 
-test('valuation control is public regardless of guild and resets on configuration import',()=>{
+test('valuation control is public regardless of guild and is preserved on configuration import',()=>{
  const state=defaults();state.manual.vendorValues=true;
  const render=state=>manualControls(state,{language:'zh',number:()=>'',options:()=>'',esc:String,name:String});
  for(const guild of [null,undefined,{name:'Other',tag:'SAKI'},{name:'SakuraSpring',tag:'OTHER'},{name:'sakuraspring',tag:'SAKI'},{name:'SakuraSpring',tag:'SAKI'}]){
@@ -59,8 +59,8 @@ test('valuation control is public regardless of guild and resets on configuratio
  }
  const snapshot={version:2,capturedAt:Date.now(),player:{lastTick:100},guild:{name:'SakuraSpring',tag:'SAKI'}};
  const imported=importCharacter(state,snapshot).state;
- assert.match(render(imported).simulation,/manual.vendorValues/);assert.equal(imported.manual.vendorValues,false);
+ assert.match(render(imported).simulation,/manual.vendorValues/);assert.equal(imported.manual.vendorValues,true);
  const left=importCharacter(imported,{...snapshot,guild:null}).state;
- assert.match(render(left).simulation,/manual.vendorValues/);assert.equal(left.manual.vendorValues,false);
- assert.equal(normalize(JSON.parse(JSON.stringify(left))).manual.vendorValues,false);
+ assert.match(render(left).simulation,/manual.vendorValues/);assert.equal(left.manual.vendorValues,true);
+ assert.equal(normalize(JSON.parse(JSON.stringify(left))).manual.vendorValues,true);
 });

@@ -20,7 +20,7 @@ export function requestCharacter(action,debug=false){return new Promise((resolve
 });}
 export function characterImportPanel(language,{id,statusId,buttons}){
  const zh=language==='zh';
- return `<details class="config-detail character-import" id="${id}"><summary>${zh?'导入游戏角色':'Import game character'}</summary><div class="import-body"><div class="import-actions"><a class="secondary" href="/src/character-import.user.js" target="_blank" rel="noopener">${zh?'安装 / 更新 userscript':'Install / update userscript'} ↗</a></div><div class="import-actions">${buttons.map(button=>`<button id="${button.id}" class="secondary">${button.label}</button>`).join('')}</div><p class="micro import-status" id="${statusId}" role="status"></p></div></details>`;
+ return `<details class="config-detail character-import" id="${id}" open><summary>${zh?'导入游戏角色':'Import game character'}</summary><div class="import-body"><div class="import-actions"><a class="secondary" href="/src/character-import.user.js" target="_blank" rel="noopener">${zh?'安装 / 更新 userscript':'Install / update userscript'} ↗</a></div><div class="import-actions">${buttons.map(button=>`<button id="${button.id}" class="secondary">${button.label}</button>`).join('')}</div><p class="micro import-status" id="${statusId}" role="status"></p></div></details>`;
 }
 export function importControls(language){
  const zh=language==='zh';
