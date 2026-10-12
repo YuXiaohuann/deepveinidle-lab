@@ -2,7 +2,7 @@ import {monsterKey} from './enemy-selection.js';
 import {combatPerks} from './combat-options.js';
 import {MAX_SIMULATION_MINUTES} from './manual-settings.js';
 import {game} from './model.js';
-export function manualControls(state,{language,number,options,esc,name}){
+export function manualControls(state,{language,number,options,esc,name,periodOptions=''}){
  const m=state.manual,zh=language==='zh',label=(a,b)=>zh?a:b;
  const n=(path,a,b,max=1e7,min=0,step=1)=>number('manual.'+path,label(a,b),path.split('.').reduce((v,k)=>v[k],m),max,min,step);
  const check=(path,a,b)=>`<label class="check"><span>${esc(label(a,b))}</span><input type="checkbox" data-path="manual.${path}" ${path.split('.').reduce((v,k)=>v[k],m)?'checked':''}></label>`;
@@ -17,6 +17,7 @@ export function manualControls(state,{language,number,options,esc,name}){
 
  const duration=number('manual.simulationHours',label('模拟时间（小时）','Simulation time (hours)'),m.simulationHours,Math.floor(MAX_SIMULATION_MINUTES/60),1,1);
  const enemies=select('enemySelection','敌人','Enemies',[["all",label('全部','All')],...[...game.monsters].sort((a,b)=>b.level-a.level).map(m=>[monsterKey(m),name(m.name)])]);
- const simulation=section('simulation-settings','模拟配置','Simulation settings',enemies+duration+hot);
+ const period=`<label class="potion"><span>${label('收益周期','Reward period')}</span><select id="period" aria-label="${label('收益周期','Reward period')}">${periodOptions}</select></label>`;
+ const simulation=section('simulation-settings','模拟配置','Simulation settings',enemies+duration+period+hot);
  return {food,other,simulation};
 }
