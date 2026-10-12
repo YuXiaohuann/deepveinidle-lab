@@ -15,8 +15,7 @@ export function manualControls(state,{language,number,options,esc,name}){
  const supply=`<label class="potion"><span>${label('模拟初始仓库位置','Starting depot location')}</span><select data-path="homeBank">${options([[0,label('自动','Automatic')],...game.world.banks.map(b=>[b.id,`${label('仓库','Depot')} ${b.id} (${b.x}, ${b.y})`])],state.homeBank)}</select></label>`+check('ironman','铁人模式（不掉落坐骑）','Ironman (no mount drops)');
  const other=perks+section('other-settings','其它','Other',guild+supply);
 
- const custom=m.customSimulation||![1,24].includes(m.simulationHours);
- const duration=`<label class="potion"><span>${label('模拟时间','Simulation time')}</span><select data-simulation-mode aria-label="${label('模拟时间','Simulation time')}">${options([[1,label('1 小时','1 hour')],[24,label('24 小时','24 hours')],['custom',label('自定义时长','Custom duration')]],custom?'custom':m.simulationHours)}</select></label>`+(custom?number('manual.simulationHours',label('自定义时长（小时）','Custom duration (hours)'),m.simulationHours,MAX_SIMULATION_MINUTES/60,1/60,'any'):'');
+ const duration=number('manual.simulationHours',label('模拟时间（小时）','Simulation time (hours)'),m.simulationHours,Math.floor(MAX_SIMULATION_MINUTES/60),1,1);
  const enemies=select('enemySelection','敌人','Enemies',[["all",label('全部','All')],...[...game.monsters].sort((a,b)=>b.level-a.level).map(m=>[monsterKey(m),name(m.name)])]);
  const simulation=section('simulation-settings','模拟配置','Simulation settings',enemies+duration+hot);
  return {food,other,simulation};

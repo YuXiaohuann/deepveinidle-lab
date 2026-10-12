@@ -34,7 +34,7 @@ export function normalizeGathering(raw){
  for(const r of gatheringRooms)s.house[r.id]=integer(raw.house?.[r.id]??0,0,Number.MAX_SAFE_INTEGER);
  for(const m of gatheringMasteries)s.masteries[m.id]=integer(raw.masteries?.[m.id]??0,0,game.masteryRankLimit);
  for(const p of gatheringPerks)s.perks[p.id]=integer(raw.perks?.[p.id]??0,0,p.ranks);
- const manual=normalizeManual(raw);for(const k of ['guildXp','weeklyXp','blessing','ironman','simulationHours','customSimulation','hotSetting','vendorValues','valuationMode'])s[k]=manual[k];
+ const manual=normalizeManual(raw,{wholeHours:false});for(const k of ['guildXp','weeklyXp','blessing','ironman','simulationHours','customSimulation','hotSetting','vendorValues','valuationMode'])s[k]=manual[k];
  s.homeBank=game.world.banks.some(b=>b.id===Number(raw.homeBank))?Number(raw.homeBank):0;
  s.guild=readGuild(raw.guild);
  const job=gatheringJobs.find(j=>j.id===Number(raw.jobSelection)&&j.skill===s.skill);

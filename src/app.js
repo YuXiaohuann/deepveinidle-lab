@@ -80,7 +80,6 @@ function render(){
  document.querySelectorAll('[data-path^="levels."]').forEach(el=>{const k=el.dataset.path.split('.')[1];el.closest('label').classList.toggle('active-skill',k===state.style);});
  $('#language').onchange=e=>{language=e.target.value;save();render();};$('#reset').onclick=()=>{if(confirm(t('resetConfirm'))){state=selectStyle(defaults(),'melee');save();render();}};
  document.querySelectorAll('[data-preset]').forEach(el=>el.onclick=()=>{state=selectStyle(state,el.dataset.preset);save();render();});
- document.querySelector('[data-simulation-mode]').onchange=e=>{state.manual.customSimulation=e.target.value==='custom';if(!state.manual.customSimulation)state.manual.simulationHours=Number(e.target.value);save();render();};
  document.querySelectorAll('[data-path]').forEach(el=>{
   const update=()=>{const keys=el.dataset.path.split('.');let obj=state;for(const key of keys.slice(0,-1))obj=obj[key];obj[keys.at(-1)]=keys[0]==='masteries'?masteryRank(keys[1],el.value):el.type==='checkbox'?el.checked:['manual.hotSetting','manual.enemySelection','manual.valuationMode'].includes(el.dataset.path)?el.value:Number(el.value);state=normalize(state);save();};
   if(el.type==='number'){

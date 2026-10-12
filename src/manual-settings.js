@@ -13,7 +13,7 @@ export function manualDefaults(){return {
  placed:Object.fromEntries(game.rooms.map(r=>[r.id,true])),upgradeMinutes:Object.fromEntries(game.rooms.map(r=>[r.id,-1])),
  windows:[],hotMode:1,hotMinutes:-1,allGear:false,playerId:1,seed:0,currentTick:game.predictionStartTick,
 };}
-export function normalizeManual(raw={}){
+export function normalizeManual(raw={}, {wholeHours=true}={}){
  const s=manualDefaults();raw=raw??{};
  for(const p of game.perks)if(p.id!=='meals')s.perks[p.id]=int(raw.perks?.[p.id]??0,0,p.ranks,0);
  for(const key of ['blessing','ironman','allGear','customSimulation','vendorValues'])s[key]=raw[key]===undefined?s[key]:raw[key]===true;
@@ -26,7 +26,9 @@ export function normalizeManual(raw={}){
  s.vendorValues=s.valuationMode!=='quantity';
  s.enemySelection=normalizeEnemySelection(raw.enemySelection);
  s.weeklyXp=int(raw.weeklyXp??0,0,1e7,0);
- s.simulationHours=Math.round(limit(Number(raw.simulationHours??s.simulationHours)*60,1,MAX_SIMULATION_MINUTES,s.simulationHours*60))/60;
+ s.simulationHours=wholeHours
+  ?Math.round(limit(raw.simulationHours??s.simulationHours,1,Math.floor(MAX_SIMULATION_MINUTES/60),s.simulationHours))
+  :Math.round(limit(Number(raw.simulationHours??s.simulationHours)*60,1,MAX_SIMULATION_MINUTES,s.simulationHours*60))/60;
  return s;
 }
 export function skillXp(s,k){return game.levelXp(s.levels[k]??1);}

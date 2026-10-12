@@ -19,11 +19,17 @@ test('removed settings do not alter combat across three styles and every monster
 test('settings lists expose combat options and omit ineffective manual controls in both languages',()=>{
  assert.equal(combatPotions.length,7);assert.equal(combatRooms.length,7);assert.equal(combatMasteries.length,6);assert.deepEqual(combatPerks.map(p=>p.id),['pockets','meals','rest']);
  for(const language of ['zh','en']){
-  const controls=manualControls(preset('ranged'),{language,number:path=>`data-path="${path}"`,options:()=>'',esc:String,name:String,tiers:()=>''});
+  const durationFields=[];
+  const controls=manualControls(preset('ranged'),{language,number:(path,label,value,max,min,step)=>{if(path==='manual.simulationHours')durationFields.push({label,value,max,min,step});return `data-path="${path}"`;},options:()=>'',esc:String,name:String,tiers:()=>''});
   const html=controls.food+controls.other+controls.simulation;
   assert.ok(!controls.other.includes('data-path="manual.hotSetting"'));
   assert.ok(controls.simulation.includes('data-path="manual.hotSetting"'));
-  assert.ok(controls.simulation.includes('data-simulation-mode'));
+  assert.ok(!controls.simulation.includes('data-simulation-mode'));
+  assert.equal(durationFields.length,1);
+  assert.equal(durationFields[0].value,24);assert.equal(durationFields[0].min,1);assert.equal(durationFields[0].step,1);
+  assert.equal(durationFields[0].label,language==='zh'?'模拟时间（小时）':'Simulation time (hours)');
+  assert.ok(!controls.simulation.includes(language==='zh'?'自定义时长':'Custom duration'));
+  assert.ok(controls.simulation.includes('data-path="manual.simulationHours"'));
   const custom=preset('ranged');custom.manual.customSimulation=true;
   assert.ok(manualControls(custom,{language,number:path=>`data-path="${path}"`,options:()=>'',esc:String,name:String}).simulation.includes('data-path="manual.simulationHours"'));
   for(const path of ['actualInventory','unlimitedBank','bankSlotsBought','hotMode','hotMinutes','playerId','seed','currentTick','coins','perks.hands','perks.quick','brewMinutes.gatherer','placed.storeroom','placed.mine','upgradeMinutes.mine','upgradeMinutes.storeroom','xp.ranged','progress.ranged','brewMinutes.warrior','fedMinutes','rootedMinutes','blessingMinutes'])assert.ok(!html.includes(`data-path="manual.${path}"`),path);
