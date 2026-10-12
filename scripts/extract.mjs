@@ -84,6 +84,7 @@ const exportsMap={
   "baseAttackTicks": "ur",
   "combatPetChance": "Ql",
   "combatPetItem": "zG",
+  "isPet": "$t",
   "voidShardChance": "U6",
   "voidShardQuantity": "J6",
   "voidShardItemId": "mn",

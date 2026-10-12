@@ -13,9 +13,34 @@ const names=['enemyColumns','visibleEnemyColumns','depotCell','priceWarning','ho
 const code=ast.body.filter(n=>names.includes(n.id?.name)||n.declarations?.some(d=>names.includes(d.id.name))).map(n=>source.slice(n.start,n.end)).join('\n');
 const quantityNames=['formatAmount','formatRate','formatDropQuantity','lootDetails'];
 const quantityCode=ast.body.filter(n=>quantityNames.includes(n.id?.name)||n.declarations?.some(d=>quantityNames.includes(d.id.name))).map(n=>source.slice(n.start,n.end)).join('\n');
+test('gathering pet price notes stay empty without looking up prices',()=>{
+ const gathering=fs.readFileSync(new URL('../src/gathering-controls.js',import.meta.url),'utf8');
+ const node=parse(gathering,{ecmaVersion:'latest',sourceType:'module'}).body.find(n=>n.id?.name==='priceNote');
+ for(const language of ['zh','en']){
+  const c=vm.createContext({game:{isPet:()=>true},text:(zh,en)=>language==='zh'?zh:en});
+  vm.runInContext(gathering.slice(node.start,node.end),c);
+  assert.equal(c.priceNote(280),'');
+ }
+});
+test('combat methodology note identifies simulated and expected fields in both languages below the table',()=>{
+ const assignments=ast.body.filter(n=>n.type==='ExpressionStatement'&&n.expression.type==='CallExpression'&&n.expression.callee.object?.name==='Object'&&n.expression.callee.property?.name==='assign'&&n.expression.arguments[1]?.properties.some(p=>p.key.name==='combatMethodNote'));
+ const c=vm.createContext({copy:{zh:{},en:{}}});
+ vm.runInContext(assignments.map(n=>source.slice(n.start,n.end)).join('\n'),c);
+ assert.match(c.copy.zh.combatMethodNote,/击杀次数、攻击次数、移动占比、经验及食物消耗来自<strong class="simulation-caveat">原始模拟<\/strong>/);
+ assert.match(c.copy.zh.combatMethodNote,/<strong class="simulation-caveat">数学期望<\/strong>/);
+ assert.match(c.copy.en.combatMethodNote,/<strong class="simulation-caveat">original simulation<\/strong>/);
+ assert.match(c.copy.en.combatMethodNote,/<strong class="simulation-caveat">mathematical expectations<\/strong>/);
+ assert.match(c.copy.zh.combatMethodNote,/金币、普通与稀有掉落.*数学期望/);
+ assert.match(c.copy.zh.combatMethodNote,/药剂成本按所选时长.*收入与收益.*物品价格/);
+ assert.match(c.copy.en.combatMethodNote,/Kills, attack attempts, moving share, XP and food consumption.*original simulation/);
+ assert.match(c.copy.en.combatMethodNote,/coins, normal and rare drops.*mathematical expectations/);
+ assert.match(c.copy.en.combatMethodNote,/potion cost uses the selected duration.*Income and profit.*item prices/);
+ assert.ok(source.includes('</tbody></table></div><p id="combat-method-note" class="table-note">${t(\'rounding\')} <strong class="simulation-caveat">'));
+ assert.ok(source.includes("</strong><br>${t('combatMethodNote')}</p></section>"));
+});
 test('drop quantities use adaptive precision after period conversion without changing consumables',()=>{
  for(const language of ['zh','en'])for(const period of ['hour','day','total']){
-  const c=vm.createContext({language,period,state:{manual:{simulationHours:48}},rewardAmount,game:{itemTier:()=>0,baseItemId:id=>id,item:()=>({name:'Item'})},valuationPrice:()=>({price:1,fallback:false}),priceState:()=>({prices:{}}),esc:String,name:String});
+  const c=vm.createContext({language,period,state:{manual:{simulationHours:48}},rewardAmount,game:{isPet:id=>id===280,itemTier:()=>0,baseItemId:id=>id,item:()=>({name:'Item'})},valuationPrice:()=>({price:1,fallback:false}),priceState:()=>({prices:{}}),esc:String,name:String});
   vm.runInContext(quantityCode,c);
   const factor=rewardAmount(1,period,48);
   for(const [value,expected] of [[0,'0'],[0.000001,'1/1,000,000'],[0.03,'1/33'],[0.026,'1/38'],[0.027,'1/37'],[0.099,'1/10'],[0.1,'0.10'],[0.1234,'0.12'],[1,'1.00'],[9.994,'9.99'],[10,'10'],[10.6,'11']]){
@@ -25,6 +50,10 @@ test('drop quantities use adaptive precision after period conversion without cha
   }
   assert.ok(c.lootDetails({1:0.03/factor}).includes('<span>0.0</span>'));
   assert.equal(c.lootDetails({},true),'');
+  const pet=c.lootDetails({280:0.03/factor},true);
+  assert.ok(pet.includes('<span>Item</span>'));
+  assert.ok(pet.includes('<span>1/33</span>'));
+  assert.ok(!pet.includes('title=')&&!pet.includes('⚠'));
  }
  assert.ok(source.includes("lootDetails(r.normalItems,true)||'0'"));
  assert.ok(source.includes("lootDetails(r.rareItems,true)||'0'"));

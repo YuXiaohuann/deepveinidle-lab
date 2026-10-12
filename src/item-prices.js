@@ -98,7 +98,7 @@ export function importItemPrices(state,snapshot,preferences=state.preferences,no
  return {state:{...state,prices,quotes},stats};
 }
 export function itemPrice(id,prices){return prices[id]?.price??null;}
-export function valuationPrice(id,prices={}){return {price:itemPrice(id,prices)??(game.canSell(Number(id))?game.vendorPrice(Number(id)):0),fallback:itemPrice(id,prices)===null};}
+export function valuationPrice(id,prices={}){if(game.isPet(Number(id)))return {price:0,fallback:false};return {price:itemPrice(id,prices)??(game.canSell(Number(id))?game.vendorPrice(Number(id)):0),fallback:itemPrice(id,prices)===null};}
 export function valueItems(items,mode,prices={}){
  let partial=0;const missing=[];
  for(const [key,qty]of Object.entries(items)){

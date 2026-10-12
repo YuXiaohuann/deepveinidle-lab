@@ -6,6 +6,21 @@ import {normalizeManual} from '../src/manual-settings.js';
 import {normalizeGathering,importGathering} from '../src/gathering-model.js';
 import {enhancementDefaults,validateEnhancement,resolveEnhancementPrices,calculateEnhancement} from '../src/enhancement.js';
 const at=Date.now()-1000;
+test('pets retain quantities but never contribute prices or missing-price warnings',()=>{
+ const pet=game.combatPetItem(game.monsters[0].id),item=game.monsters[0].drop;
+ assert.equal(game.isPet(pet),true);assert.equal(game.canSell(pet),false);assert.equal(itemFamily(pet),null);
+ for(const prices of [{},{[pet]:{price:999999}},{[pet]:{price:999999},[item]:{price:10}}]){
+  assert.deepEqual(valuationPrice(pet,prices),{price:0,fallback:false});
+  const result={coins:100,normalItems:{[item]:2},rareItems:{[pet]:0.03},foodItems:{},potionItems:{}};
+  const valued=valueCombatRewards(result,prices);
+  assert.equal(valued.rareValue,0);assert.deepEqual(valued.rareMissingPrices,[]);
+  assert.equal(valued.rareItems[pet],0.03);
+  assert.equal(valued.totalIncome,100+2*valuationPrice(item,prices).price);
+  assert.equal(valued.profit,valued.totalIncome);
+  assert.deepEqual(valued.missingPrices,prices[item]?[]:[item]);
+  assert.deepEqual(valued.profitMissingPrices,valued.missingPrices);
+ }
+});
 const side=value=>({value,capturedAt:at});
 const snapshot=quotes=>({version:1,quotes,invalid:0});
 const policy=(state,categories,fallback=false)=>({...state,preferences:{categories:Object.fromEntries(Object.entries({...state.preferences.categories,...categories}).map(([key,mode])=>[key,fallback&&mode==='bid'?'bidVendor':mode]))}});
