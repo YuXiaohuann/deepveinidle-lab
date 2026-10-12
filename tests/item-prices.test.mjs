@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
-import {priceDefaults,normalizePriceState,validItemId,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes,valueItems,valueRewards,valuationPrice,valueCombatRewards} from '../src/item-prices.js';
+import {priceDefaults,normalizePriceState,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes,valueItems,valueRewards,valuationPrice,valueCombatRewards} from '../src/item-prices.js';
 import {normalizeManual} from '../src/manual-settings.js';
 import {normalizeGathering,importGathering} from '../src/gathering-model.js';
 import {enhancementDefaults,validateEnhancement,resolveEnhancementPrices,calculateEnhancement} from '../src/enhancement.js';
@@ -122,4 +122,21 @@ test('fallback warnings follow positive quantities and aggregate income and prof
  const missing=valueCombatRewards(raw,{});
  assert.deepEqual(missing.normalMissingPrices,[1]);assert.deepEqual(missing.rareMissingPrices,[3]);
  assert.deepEqual(missing.missingPrices,[1,3]);assert.deepEqual(missing.profitMissingPrices,[1,3,64,4]);
+});
+
+test('vendor category imports without quotes, preserves locks and supports saved variants',()=>{
+ let state=policy(priceDefaults(),{ore:'vendor',weapons:'off'});
+ state=setItemPrice(setItemPrice(state,1001,999),2,999);state=lockItemPrices(state,[2],true).state;
+ assert.deepEqual(normalizePriceState(state).preferences,state.preferences);
+ const result=importItemPrices(state,snapshot({1:{bid:{invalid:true,capturedAt:at}}}));
+ for(const id of [1,1001])assert.deepEqual(result.state.prices[id],{price:game.vendorPrice(id),locked:false,source:'vendor',updatedAt:result.state.prices[id].updatedAt,quoteCapturedAt:null});
+ assert.equal(result.state.prices[2].price,999);assert.equal(result.stats.locked,1);assert.ok(result.stats.vendor>0);assert.equal(result.stats.stale,0);assert.equal(result.state.prices[110],undefined);
+ assert.equal(importItemPrices(result.state,snapshot({})).stats.vendor,0);
+});
+
+test('vendor category leaves unsellable items unchanged',()=>{
+ const id=game.items.find(i=>itemFamily(i.id)&&!game.canSell(i.id)).id;
+ const state=policy(setItemPrice(priceDefaults(),id,77),{[itemFamily(id)]:'vendor'});
+ const result=importItemPrices(state,snapshot({[id]:{bid:side(999)}}));
+ assert.equal(result.state.prices[id].price,77);assert.ok(result.stats.unavailable>0);
 });

@@ -20,7 +20,7 @@ export function normalizePriceState(raw){
  }
  const parsed=validateMarketSnapshot({version:1,quotes:raw.quotes,invalid:0});
  if(parsed.invalid)throw Error('invalidPriceStorage');next.quotes=parsed.quotes;
- for(const f of marketFamilies){const mode=raw.preferences.categories[f.key];if(!['off','ask','bid','bidVendor'].includes(mode))throw Error('invalidPriceStorage');next.preferences.categories[f.key]=mode;}
+ for(const f of marketFamilies){const mode=raw.preferences.categories[f.key];if(!['off','ask','bid','bidVendor','vendor'].includes(mode))throw Error('invalidPriceStorage');next.preferences.categories[f.key]=mode;}
  return next;
 }
 export function validateMarketSnapshot(raw){
@@ -70,8 +70,14 @@ export function importItemPrices(state,snapshot,preferences=state.preferences,no
  // Include configured items with no captured quote so missing coverage is visible.
  const ids=new Set([...game.items.filter(i=>i.id===game.baseItemId(i.id)&&itemFamily(i.id)&&game.canSell(i.id)).map(i=>i.id),...Object.keys(prices).map(Number),...Object.keys(quotes).map(Number)]);
  for(const id of ids){
-  const mode=preferences.categories[itemFamily(id)];if(!['ask','bid','bidVendor'].includes(mode))continue;const side=mode==='bidVendor'?'bid':mode;
+  const mode=preferences.categories[itemFamily(id)];if(!['ask','bid','bidVendor','vendor'].includes(mode))continue;const side=mode==='bidVendor'?'bid':mode;
   const old=prices[id];if(old?.locked){stats.locked++;continue;}
+  if(mode==='vendor'){
+   if(!game.canSell(id)){stats.unavailable++;continue;}
+   const value=game.vendorPrice(id);if(!validPrice(value))throw Error('invalidPrice');
+   if(old?.price===value&&old.source==='vendor'&&old.quoteCapturedAt===null)continue;
+   prices[id]={price:value,locked:false,source:'vendor',updatedAt:now,quoteCapturedAt:null};stats.updated++;stats.vendor++;continue;
+  }
   // Import only this read's observations, never silently reuse a cached old side.
   const q=parsed.quotes[id]?.[side];if(!q){stats.missing++;continue;}
   if(q.invalid){stats.invalid++;continue;}

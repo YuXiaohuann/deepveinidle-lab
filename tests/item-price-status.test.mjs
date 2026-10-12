@@ -43,3 +43,12 @@ test('clear prices requires confirmation and preserves state on cancellation',as
  h.controls.get('#price-clear').onclick();assert.match(prompted,/不限当前筛选/);assert.equal(h.ctx.priceState().prices[1].price,0);
  h.ctx.confirm=()=>true;h.controls.get('#price-clear').onclick();assert.equal(h.ctx.priceState().prices[1],undefined);assert.match(h.dialog.innerHTML,/已清空 1 件未锁定/);assert.deepEqual(h.ctx.priceState().quotes,state.quotes);
 });
+
+test('category radios place vendor price immediately before skip in both languages',()=>{
+ const h=harness(async()=>{throw Error('noMarketData');});h.button.onclick();
+ for(const [language,label]of [['zh','商人价'],['en','Vendor price']]){
+  h.ctx.mountItemPrices(language);
+  const options=[...h.dialog.innerHTML.matchAll(/name="price-category-ore"[^>]*value="([^"]+)"/g)].map(match=>match[1]);
+  assert.deepEqual(options,['ask','bid','bidVendor','vendor','off']);assert.ok(h.dialog.innerHTML.includes(label));
+ }
+});
