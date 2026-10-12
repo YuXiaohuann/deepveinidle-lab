@@ -23,9 +23,10 @@ test('all five rarities appear independently, with unit columns first and plan i
  }
 });
 test('hour/day toggles scale only cached rate columns and retain per-craft values',()=>{
- const p=page();vm.runInContext(`const plan=visibleJobs()[0];rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{completed:240,xp:480,items:{40:240},consumed:{20:240}}});`,p);
+ const p=page();vm.runInContext(`const plan=visibleJobs()[0];rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{seed:4294967295,completed:240,xp:480,items:{40:240},consumed:{20:240}}});`,p);
  vm.runInContext("state.period='hour'",p);
  const hour=vm.runInContext('recipeRow(visibleJobs()[0])',p);
+ assert.match(hour,/随机种子：4294967295/);
  vm.runInContext("state.period='day'",p);const day=vm.runInContext('recipeRow(visibleJobs()[0])',p);
  const cells=s=>s.match(/<td[^>]*>.*?<\/td>/g);
  assert.deepEqual(cells(hour).slice(0,5),cells(day).slice(0,5));
@@ -33,6 +34,7 @@ test('hour/day toggles scale only cached rate columns and retain per-craft value
  assert.match(cells(hour)[6],/>20</);assert.match(cells(day)[6],/>480</);
  vm.runInContext("state.plans={'61:0':90}",p);assert.equal(vm.runInContext('!!rateFor(visibleJobs()[0])',p),true);
  assert.match(vm.runInContext('headers()',p),/制造次数\/天/);
+ vm.runInContext("language='en'",p);assert.match(vm.runInContext('recipeRow(visibleJobs()[0])',p),/Random seed: 4294967295/);
 });
 
 

@@ -3,14 +3,15 @@ import {craftingPlayer,craftingMaterials,planKey,validQuantity,safeAdd} from './
 import {manualWindows} from './manual-settings.js';
 import {combatHot,combatHotWindows} from './combat-hot.js';
 import {START_TICK} from './simulation.js';
+import {validateSimulationSeed} from './simulation-seed.js';
 
 export const MAX_CRAFT_TICKS=30*24*3600000/game.tickMs;
-export function createCraftingScenario(raw,job,tier,count,{now=Date.now(),maxTicks=MAX_CRAFT_TICKS}={}){
+export function createCraftingScenario(raw,job,tier,count,{now=Date.now(),maxTicks=MAX_CRAFT_TICKS,seed=0}={}){
  if(!validQuantity(count)||count===0)throw Error('invalidQuantity');
  if(!Number.isSafeInteger(maxTicks)||maxTicks<1||maxTicks>MAX_CRAFT_TICKS)throw Error('invalidDuration');
  const {state:s,player:p}=craftingPlayer(raw);
  if(s.levels[job.skill]<job.levelReq)throw Error('levelTooLow');
- const materials=craftingMaterials(job,tier,count),context={...game.createContext(game.world,0),hypothetical:true,windows:manualWindows(START_TICK,START_TICK+maxTicks,s.weeklyXp,s.hotSetting!=='game',job.skill)};
+ const materials=craftingMaterials(job,tier,count),context={...game.createContext(game.world,validateSimulationSeed(seed)),hypothetical:true,windows:manualWindows(START_TICK,START_TICK+maxTicks,s.weeklyXp,s.hotSetting!=='game',job.skill)};
  if(s.hotSetting==='current')context.windows.push(...combatHotWindows(combatHot(now,maxTicks*game.tickMs/3600000,job.skill)));
  let prepared;game.predict(p,context,player=>{prepared=player;return false;});
  const siteId=game.nearestWorkSite(context,job.id,prepared.x,prepared.y),site=game.world.siteById.get(siteId);
@@ -31,6 +32,7 @@ export function createCraftingScenario(raw,job,tier,count,{now=Date.now(),maxTic
 export function simulateCrafting(raw,job,tier,count,{onProgress=()=>{},...options}={}){
  const {player:p,context,site,bank,maxTicks,materials}=createCraftingScenario(raw,job,tier,count,options),initialXp=p.skills[job.skill];
  const r={key:planKey(job.id,tier),jobId:job.id,skill:job.skill,tier,count,completed:0,success:0,burnt:0,xp:0,items:{},consumed:{},materials,elapsedTicks:0,movingTicks:0,workingTicks:0,deposits:0,siteId:site.id,homeBank:bank.id,startLevel:game.level(initialXp),endLevel:game.level(initialXp),complete:false,error:null};
+ r.seed=context.seed;
  for(let tick=1;tick<=maxTicks;tick++){
   if(p.activity==='walking')r.movingTicks++;
   if(p.activity==='working')r.workingTicks++;

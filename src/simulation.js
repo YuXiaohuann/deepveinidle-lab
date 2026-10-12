@@ -2,13 +2,14 @@ import {DAY_TICKS,simulationTicks,combatHot,combatHotWindows} from './combat-hot
 import {manualWindows} from './manual-settings.js';
 import {game,makePlayer} from './model.js';
 import {combatPotions} from './combat-options.js';
+import {validateSimulationSeed} from './simulation-seed.js';
 export const HOUR_TICKS=3600000/game.tickMs;
 export {DAY_TICKS};
 export const TRIALS=1;
 export const START_TICK=game.predictionStartTick;
 const add=(obj,key,amount=1)=>{obj[key]=(obj[key]??0)+amount;};
 
-export function createScenario(raw,monster=null,{now=Date.now()}={}){
+export function createScenario(raw,monster=null,{now=Date.now(),seed=0}={}){
  if(raw?.format)throw Error('Unsupported simulation format');
  const {state,player:p}=makePlayer(raw),zone=monster&&game.world.zones.find(z=>z.monsterId===monster.id);
  if(monster&&!zone)throw Error('No combat zone for monster '+monster.id);
@@ -27,7 +28,7 @@ export function createScenario(raw,monster=null,{now=Date.now()}={}){
  });
  const m=state.manual;
  if(m.foodRule===3)p.eatAt=0;
- const context={...game.createContext(game.world,m.seed),windows:manualWindows(START_TICK,START_TICK+durationTicks,m.weeklyXp,m.hotSetting!=='game'),hypothetical:true};
+ const context={...game.createContext(game.world,validateSimulationSeed(seed)),windows:manualWindows(START_TICK,START_TICK+durationTicks,m.weeklyXp,m.hotSetting!=='game'),hypothetical:true};
  if(m.hotSetting==='current')context.windows.push(...combatHotWindows(combatHot(now,m.simulationHours)));
  return {player:p,context,durationTicks};
 }
@@ -47,6 +48,7 @@ export function simulateMonster(raw,monster,options={}){
  const initialSkills={...p.skills};
  const potionItems=Object.fromEntries(combatPotions.filter(b=>(p.brews[b.kind]??0)>0).map(b=>[game.withRarity(b.itemId,p.brewTier[b.kind]??0),durationTicks/HOUR_TICKS]));
  const result={key:`monster-${monster.id}`,trials:1,durationTicks,homeBank:game.homeBank(context,p)?.id??null,kills:0,xp:0,coins:0,normal:0,rare:0,food:0,deaths:0,bySkill:{},normalItems:{},rareItems:{},foodItems:{},potionItems:{},elapsedTicks:0,movingTicks:0,restocks:0,endedEarly:false};
+ result.seed=context.seed;
  for(let tick=1;tick<=durationTicks;tick++){
   if(p.activity==='walking')result.movingTicks++;
   const events=[];

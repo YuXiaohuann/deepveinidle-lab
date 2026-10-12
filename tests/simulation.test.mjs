@@ -153,10 +153,10 @@ test('food priorities still enforce the quality cap and fountain-only never eats
 });
 
 test('enabled potions retain full quality IDs and charge one per selected hour',()=>{
- const state=defaults();state.manual.simulationHours=1/60;state.brews.hunter=3;
+ const state=defaults();state.manual.simulationHours=1;state.brews.hunter=3;
  const result=simulateMonster(state,game.monsters.find(m=>m.id===20));
  const potion=game.potions.find(p=>p.kind==='hunter');
- assert.deepEqual(result.potionItems,{[game.withRarity(potion.itemId,3)]:1/60});
+ assert.deepEqual(result.potionItems,{[game.withRarity(potion.itemId,3)]:1});
 });
 
 test('removed snapshot format is rejected instead of falling back to a manual simulation',()=>{

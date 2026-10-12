@@ -48,6 +48,8 @@ test('quantities and vendor values render separately with optional highlighted i
  assert.match(html,new RegExp(`<summary>${'50'}</summary>`));
  assert.equal(html.includes('<td class="column-highlight">93</td>'),true);
  assert.match(html,/item quantity/);assert.match(html,/^<td>1.0<\/td><td><details/);assert.match(html,/<summary>0%<\/summary>/);assert.match(html,/depot: 仓库 2/);
+ const seeded=view(enabled,{...result,seed:4294967295});assert.match(seeded.hourlyCells({key:'m'}),/随机种子：4294967295/);
+ seeded.language='en';assert.match(seeded.hourlyCells({key:'m'}),/Random seed: 4294967295/);
  }
 });
 

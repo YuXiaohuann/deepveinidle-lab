@@ -3,14 +3,15 @@ import {gatheringPlayer,selectedGatheringSites} from './gathering-model.js';
 import {simulationTicks,combatHot,combatHotWindows} from './combat-hot.js';
 import {manualWindows} from './manual-settings.js';
 import {dropValue,START_TICK} from './simulation.js';
+import {validateSimulationSeed} from './simulation-seed.js';
 const add=(items,id,qty)=>{items[id]=(items[id]??0)+qty;};
 const metrics=['completed','attempts','caught','stunnedTicks','xp','coins','normal','rare','elapsedTicks','workingTicks','movingTicks','deposits'];
-export function createGatheringScenario(raw,job,site,{now=Date.now()}={}){
+export function createGatheringScenario(raw,job,site,{now=Date.now(),seed=0}={}){
  const {state:s,player:p}=gatheringPlayer(raw);
  if(!site||!site.jobIds.includes(job.id)||job.skill!==s.skill)throw Error('invalidSite');
  if(s.levels[job.skill]<job.levelReq)throw Error('levelTooLow');
  const durationTicks=simulationTicks(s.simulationHours);
- const context={...game.createContext(game.world,0),hypothetical:true,windows:manualWindows(START_TICK,START_TICK+durationTicks,s.weeklyXp,s.hotSetting!=='game',job.skill)};
+ const context={...game.createContext(game.world,validateSimulationSeed(seed)),hypothetical:true,windows:manualWindows(START_TICK,START_TICK+durationTicks,s.weeklyXp,s.hotSetting!=='game',job.skill)};
  if(s.hotSetting==='current')context.windows.push(...combatHotWindows(combatHot(now,s.simulationHours,job.skill)));
  const bank=s.homeBank?game.world.bankById.get(s.homeBank):game.homeBank(context,site);
  if(!bank)throw Error('unreachable');
@@ -24,6 +25,7 @@ export function simulateGatheringSite(raw,job,site,options={}){
  if(!game.startWork(p,context,site.id,job.id,'bank',null))throw Error('invalidRoute');
  const initialXp=p.skills[job.skill];
  const result={siteId:site.id,x:site.x,y:site.y,homeBank:bank.id,durationTicks,normalItems:{},rareItems:{},startLevel:game.level(initialXp),endedEarly:false,...Object.fromEntries(metrics.map(k=>[k,0]))};
+ result.seed=context.seed;
  for(let tick=1;tick<=durationTicks;tick++){
   if(p.activity==='walking')result.movingTicks++;
   if(p.activity==='working'){if(START_TICK+tick<p.stunUntil)result.stunnedTicks++;else result.workingTicks++;}
@@ -46,7 +48,8 @@ export function averageGatheringSites(results,expectedCount=results.length){
  if(!results.length||results.length!==expectedCount)throw Error('incompleteSites');
  const durationTicks=results[0].durationTicks;
  if(results.some(r=>r.error||r.durationTicks!==durationTicks)||new Set(results.map(r=>r.siteId)).size!==results.length)throw Error('incompleteSites');
- const result={durationTicks,siteCount:results.length,sites:results,normalItems:{},rareItems:{},endedEarly:results.some(r=>r.endedEarly),startLevel:results[0].startLevel,endLevelMin:Math.min(...results.map(r=>r.endLevel)),endLevelMax:Math.max(...results.map(r=>r.endLevel))};
+ if(results.some(r=>r.seed!==results[0].seed))throw Error('inconsistentSeeds');
+ const result={seed:results[0].seed,durationTicks,siteCount:results.length,sites:results,normalItems:{},rareItems:{},endedEarly:results.some(r=>r.endedEarly),startLevel:results[0].startLevel,endLevelMin:Math.min(...results.map(r=>r.endLevel)),endLevelMax:Math.max(...results.map(r=>r.endLevel))};
  for(const key of metrics){if(results.some(r=>!Number.isFinite(r[key])||r[key]<0))throw Error('invalidResult');result[key]=results.reduce((sum,r)=>sum+r[key],0)/results.length;}
  for(const key of ['normalItems','rareItems'])for(const r of results)for(const [id,qty]of Object.entries(r[key])){if(!Number.isFinite(qty)||qty<0)throw Error('invalidResult');add(result[key],id,qty/results.length);}
  result.movingRatio=result.elapsedTicks?result.movingTicks/result.elapsedTicks:null;

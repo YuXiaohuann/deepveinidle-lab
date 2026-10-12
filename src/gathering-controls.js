@@ -5,12 +5,13 @@ import {translatedName,translatedItemName} from './i18n.js';
 import {masteryValue,masteryRank,sortEnemies} from './model.js';
 import {MAX_SIMULATION_MINUTES} from './manual-settings.js';
 import {combatHot,combatHotMarkup,rewardAmount} from './combat-hot.js';
+import {randomSimulationSeed} from './simulation-seed.js';
 import {requestCharacter,characterImportPanel,probeCharacter,importStatusText} from './import-controls.js';
 import {gatheringStorageKey,gatheringDefaults,normalizeGathering,gatheringSkills,toolSlots,slotItems,gatheringGear,gatheringPotions,gatheringRooms,gatheringMasteries,gatheringPerks,selectedGatheringJobs,selectedGatheringSites,gatheringStats,gatheringJobStats,importGathering} from './gathering-model.js';
 
 let state=gatheringDefaults(),language='zh',query='',period='day',sort='levelReq',direction='desc',saveOK=true,status=null,busy=false,probeStarted=false,active=false;
 let worker=null,timer=null,signature='',current=null;
-const caches=new Map(),detailState=new Map();
+const detailState=new Map();
 try{const saved=localStorage.getItem(gatheringStorageKey);if(saved)state=normalizeGathering(JSON.parse(saved));}catch{status={error:'savedGatheringInvalid'};}
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const text=(zh,en)=>language==='zh'?zh:en;
@@ -45,7 +46,7 @@ function priceWarning(missing){return missing?.length?`<span title="${text('部�
 function priceNote(id){const p=valuationPrice(id,priceState().prices);return (p.fallback?`<span title="${text('部分物品未设置价格，采用商人价格计算','Some items have no configured price; vendor prices are used')}">⚠</span> `:'')+format(p.price);}
 function itemDetail(items){return Object.entries(items).sort((a,b)=>Number(a[0])-Number(b[0])).map(([id,qty])=>`<div class="gather-item"><span>${esc(translatedItemName(Number(id),language))} · ${rarities()[game.itemTier(Number(id))]}${state.vendorValues?' '+(state.valuationMode==='custom'?(priceNote(id)):format(game.canSell(Number(id))?game.vendorPrice(Number(id)):0)):''}</span><span>${amount(qty)}</span></div>`).join('')||text('无','None');}
 function siteDetails(job,result){const sites=result?.sites??current?.sites.get(job.id)??[],count=selectedGatheringSites(state,job).length;
- return `<p>${state.siteSelection==='nearest'?text('最近采集点','Nearest site'):state.siteSelection?text('指定采集点','Selected site'):text('所有采集点等权平均','Equal average of all sites')} · ${count} ${text('个采集点','sites')}</p>`+sites.map(r=>`<p>${text('采集点','Site')} ${r.siteId} (${r.x}, ${r.y})${r.error?`<br>${esc(errorText(r.error))}`:`<br>${text('仓库','Depot')} ${r.homeBank} · ${text('完成','Completed')} ${amount(r.completed)}<br>${text('经验','XP')} ${amount(r.xp,'xp')} · ${text('金币','Coins')} ${amount(r.coins,'coins')}<br>${text('主产物','Main items')} ${amount(r.normal)} · ${text('额外','Extras')} ${amount(r.rare)}<br>${text('结束等级','End level')} ${r.endLevel} · ${text('移动','Moving')} ${minutes(r.movingTicks)} ${text('分钟','min')}${r.endedEarly?`<br>${text('提前停止','Stopped early')}`:''}`}</p>`).join('');
+ return `<p>${state.siteSelection==='nearest'?text('最近采集点','Nearest site'):state.siteSelection?text('指定采集点','Selected site'):text('所有采集点等权平均','Equal average of all sites')} · ${count} ${text('个采集点','sites')}${(result?.seed??current?.seed)===undefined?'':`<br>${text('随机种子：','Random seed: ')}${result?.seed??current?.seed}`}</p>`+sites.map(r=>`<p>${text('采集点','Site')} ${r.siteId} (${r.x}, ${r.y})${r.error?`<br>${esc(errorText(r.error))}`:`<br>${text('仓库','Depot')} ${r.homeBank} · ${text('完成','Completed')} ${amount(r.completed)}<br>${text('经验','XP')} ${amount(r.xp,'xp')} · ${text('金币','Coins')} ${amount(r.coins,'coins')}<br>${text('主产物','Main items')} ${amount(r.normal)} · ${text('额外','Extras')} ${amount(r.rare)}<br>${text('结束等级','End level')} ${r.endLevel} · ${text('移动','Moving')} ${minutes(r.movingTicks)} ${text('分钟','min')}${r.endedEarly?`<br>${text('提前停止','Stopped early')}`:''}`}</p>`).join('');
 }
 function headers(){const entries=[[text('任务','Task'),null],[text('所需等级','Level'),'levelReq'],[text('采集次数','Gathering'),'completed'],[text('移动占比','Moving share'),'movingRatio'],[text('经验','XP'),'xp'],[text('金币','Coins'),'coins'],[text('主要产物','Main items'),state.vendorValues?'normalValue':'normal'],[text('额外掉落','Extra drops'),state.vendorValues?'rareValue':'rare']];if(state.vendorValues)entries.push([text('收入','Income'),'totalIncome']);
  return entries.map(([label,key])=>`<th ${key?`aria-sort="${sort===key?(direction==='asc'?'ascending':'descending'):'none'}"`:''}>${key?`<button class="sort-header" data-gather-sort="${key}">${label} <span class="sort-arrow">${sort===key?(direction==='asc'?'↑':'↓'):'↕'}</span></button>`:label}</th>`).join('');
@@ -66,8 +67,9 @@ function renderResults(){const host=document.getElementById('gather-results');if
  return `<tr><td class="column-highlight"><strong>${esc(name(job.name))}</strong></td><td>${detail(`${job.id}-level`,job.levelReq,levelInfo)}</td>${cells}</tr>`;
  };
  const running=current?.running,progress=current?.progress;
- host.innerHTML=`<div class="result-heading"><div><span class="eyebrow">GATHERING OVERVIEW</span><h2>${text('采集属性','Gathering stats')}</h2></div><span class="style-badge">${skillName(state.skill)}</span></div><div class="stats gather-stats">${[[text('技能等级','Skill level'),stats.level],[text('采集速度加成','Gather speed bonus'),`${format(stats.speedBonus*100,2)}%`],[text('幸运加成','Luck bonus'),`${format(stats.luckBonus*100,2)}%`],[text('移动速度','Movement speed'),`${format(stats.moveSpeed,2)}×`],[text('背包容量','Inventory slots'),stats.capacity]].map(([label,value])=>`<div class="stat"><span>${label}</span><strong>${value}</strong></div>`).join('')}</div><section class="panel enemies"><div class="enemies-heading"><h2>${text('采集任务','Gathering tasks')} <span>${rows.length}</span></h2></div><div class="toolbar"><div class="search-wrap"><span>⌕</span><input id="gather-search" type="search" value="${esc(query)}" placeholder="${text('搜索任务名称（中 / 英）','Search tasks in English or Chinese')}" aria-label="${text('搜索采集任务','Search gathering tasks')}"></div></div><p class="table-note gather-progress" role="status" ${!running&&!current?.error?'hidden':''}>${current?.error?esc(errorText(current.error)):text('正在逐点模拟','Simulating each site')+' · '+(progress?`${progress.completed}/${progress.total}`:'…')+' · '+state.simulationHours+'h'}</p><div class="table-scroll"><table class="gather-table"><thead><tr>${headers()}</tr></thead><tbody>${rows.length?rows.map(rewardRow).join(''):`<tr><td colspan="${state.vendorValues?9:8}" class="empty-results">${text('没有匹配的任务','No matching tasks')}</td></tr>`}</tbody></table></div><p class="table-note">${text('初始背包为空，仓库无限，满包回仓；药水和祝福全程生效。未保留实际库存、队列、级内经验、建设进度、增益到期或账号随机种子。','Starts with an empty pack and unlimited storage; banks when full. Potions and blessing stay active. Actual inventory, queues, within-level XP, construction, buff expiry and account seeds are not preserved.')} <strong class="simulation-caveat">${text('结果可能与游戏内预测及实际情况不同；地点平均不代表长期随机期望。','Results may differ from in-game predictions and gameplay; a site average is not a long-run random expectation.')}</strong>${state.vendorValues?' '+text(state.valuationMode==='custom'?'按全局设置价格估价；未设置价格使用商人价，未扣药水成本。':'按商人价格估价，未扣药水成本。',state.valuationMode==='custom'?'Uses configured prices; unset prices use vendor prices. Potion costs are excluded.':'Vendor valuation excludes potion costs.'):''}</p></section>`;
+ host.innerHTML=`<div class="result-heading"><div><span class="eyebrow">GATHERING OVERVIEW</span><h2>${text('采集属性','Gathering stats')}</h2></div><span class="style-badge">${skillName(state.skill)}</span></div><div class="stats gather-stats">${[[text('技能等级','Skill level'),stats.level],[text('采集速度加成','Gather speed bonus'),`${format(stats.speedBonus*100,2)}%`],[text('幸运加成','Luck bonus'),`${format(stats.luckBonus*100,2)}%`],[text('移动速度','Movement speed'),`${format(stats.moveSpeed,2)}×`],[text('背包容量','Inventory slots'),stats.capacity]].map(([label,value])=>`<div class="stat"><span>${label}</span><strong>${value}</strong></div>`).join('')}</div><section class="panel enemies"><div class="enemies-heading"><h2>${text('采集任务','Gathering tasks')} <span>${rows.length}</span></h2></div><div class="toolbar"><div class="search-wrap"><span>⌕</span><input id="gather-search" type="search" value="${esc(query)}" placeholder="${text('搜索任务名称（中 / 英）','Search tasks in English or Chinese')}" aria-label="${text('搜索采集任务','Search gathering tasks')}"></div><button id="gather-rerun" class="secondary rerun-simulation">${text('重新模拟','Rerun simulation')}</button></div><p class="table-note gather-progress" role="status" ${!running&&!current?.error?'hidden':''}>${current?.error?esc(errorText(current.error)):text('正在逐点模拟','Simulating each site')+' · '+(progress?`${progress.completed}/${progress.total}`:'…')+' · '+state.simulationHours+'h'}</p><div class="table-scroll"><table class="gather-table"><thead><tr>${headers()}</tr></thead><tbody>${rows.length?rows.map(rewardRow).join(''):`<tr><td colspan="${state.vendorValues?9:8}" class="empty-results">${text('没有匹配的任务','No matching tasks')}</td></tr>`}</tbody></table></div><p class="table-note">${text('初始背包为空，仓库无限，满包回仓；药水和祝福全程生效。未保留实际库存、队列、级内经验、建设进度、增益到期或账号随机种子。','Starts with an empty pack and unlimited storage; banks when full. Potions and blessing stay active. Actual inventory, queues, within-level XP, construction, buff expiry and account seeds are not preserved.')} <strong class="simulation-caveat">${text('结果可能与游戏内预测及实际情况不同；地点平均不代表长期随机期望。','Results may differ from in-game predictions and gameplay; a site average is not a long-run random expectation.')}</strong>${state.vendorValues?' '+text(state.valuationMode==='custom'?'按全局设置价格估价；未设置价格使用商人价，未扣药水成本。':'按商人价格估价，未扣药水成本。',state.valuationMode==='custom'?'Uses configured prices; unset prices use vendor prices. Potion costs are excluded.':'Vendor valuation excludes potion costs.'):''}</p></section>`;
  document.getElementById('gather-search').oninput=event=>{query=event.target.value;const pos=event.target.selectionStart;renderResults();const input=document.getElementById('gather-search');input.focus();input.setSelectionRange(pos,pos);};
+ document.getElementById('gather-rerun').onclick=()=>startSimulation(true);
  host.querySelectorAll('[data-gather-sort]').forEach(el=>el.onclick=()=>{const key=el.dataset.gatherSort;direction=key===sort?(direction==='asc'?'desc':'asc'):'asc';sort=key;renderResults();});
  restoreDetails();
 }
@@ -75,24 +77,20 @@ function periodOptions(){
  if(period==='day'&&state.simulationHours<24)period='hour';
  return options([['hour',text('每小时','Per hour')],...(state.simulationHours>=24?[['day',text('每天','Per day')]]:[]),['total',text('总量','Total')]],period);
 }
-function startSimulation(){
+function startSimulation(force=false){
  const next=JSON.stringify({...state,vendorValues:undefined,valuationMode:undefined});
- if(signature===next){renderResults();return;}
+ if(!force&&signature===next){renderResults();return;}
  worker?.terminate();worker=null;clearTimeout(timer);signature=next;
- current=caches.get(next);
- if(current&&!current.running){renderResults();return;}
- current={results:new Map(),errors:new Map(),sites:new Map(),running:true,now:Date.now()};caches.set(next,current);
- // Keep one cached result per skill; edits replace only that skill's cache.
- for(const key of caches.keys())if(key!==next&&JSON.parse(key).skill===state.skill)caches.delete(key);
+ current={results:new Map(),errors:new Map(),sites:new Map(),running:true,now:Date.now()};
  const run=current,token=next;
  timer=setTimeout(()=>{
   if(current!==run||signature!==token)return;
-  try{worker=new Worker(new URL('./gathering-worker.js',import.meta.url),{type:'module'});
+  try{run.seed=randomSimulationSeed();worker=new Worker(new URL('./gathering-worker.js',import.meta.url),{type:'module'});
    worker.onmessage=({data})=>{if(current!==run||signature!==token)return;if(data.progress){run.progress=data.progress;if(data.progress.site){const arr=run.sites.get(data.progress.jobId)??[];arr.push(data.progress.site);run.sites.set(data.progress.jobId,arr);}}
     if(data.result)run.results.set(data.result.jobId,data.result);if(data.jobError)run.errors.set(data.jobError.jobId,data.jobError.message);if(data.error)run.error=data.error;
     if(data.done||data.error){run.running=false;worker?.terminate();worker=null;}renderResults();};
    worker.onerror=event=>{if(current!==run||signature!==token)return;run.error=event.message||text('采集模拟失败','Gathering simulation failed');run.running=false;worker?.terminate();worker=null;renderResults();};
-   worker.postMessage({state:JSON.parse(token),now:run.now});
+   worker.postMessage({state:JSON.parse(token),now:run.now,seed:run.seed});
   }catch(error){run.error=String(error.message??error);run.running=false;renderResults();}
  },150);
  renderResults();
