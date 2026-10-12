@@ -3,7 +3,7 @@
 // @name:en      Deep Vein Idle · Character import
 // @name:zh-cn   Deep Vein Idle · 角色配置导入
 // @namespace    https://dvi-lab.pages.dev/
-// @version      2.5.1
+// @version      2.5.2
 // @description  读取角色配置与市场报价供实验室导入；不发送游戏指令。
 // @match        https://deepveinidle.com/*
 // @match        https://dvi-lab.pages.dev/*
@@ -26,8 +26,8 @@
   function captured(kind){
    if(kind==='market'?marketSuccessShown:successShown)return;
    if(kind==='market')marketSuccessShown=true;else successShown=true;
-   status=[successShown?'角色配置已读取 / Character captured':null,marketSuccessShown?'市场报价已读取 / Market prices captured':null].filter(Boolean).join('\n');
-   clearTimeout(hideTimer);visible=true;hideTimer=setTimeout(()=>{visible=false;document.getElementById('dvi-character-capture')?.remove();},15000);paint();
+   status=kind==='market'?'市场报价已读取 / Market prices captured':'角色配置已读取 / Character captured';
+   clearTimeout(hideTimer);visible=true;hideTimer=setTimeout(()=>{visible=false;document.getElementById('dvi-character-capture')?.remove();},5000);paint();
   }
   function clonePlayer(player){
    // Capture the complete own-role object; transport and account credentials

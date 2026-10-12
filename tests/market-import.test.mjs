@@ -9,7 +9,7 @@ function harness(write){
  const page={WebSocket:class{listeners=[];addEventListener(type,fn){if(type==='message')this.listeners.push(fn);}receive(messages){for(const fn of this.listeners)fn({data:JSON.stringify({tick:1,m:messages})});}send(){throw Error('No game commands permitted');}}};
  const document={documentElement:{append(el){badge=el;}},createElement:()=>({style:{},setAttribute(){},remove(){badge=null;}}),getElementById:()=>badge};
  vm.runInNewContext(script,{unsafeWindow:page,document,location:{origin:'https://deepveinidle.com',host:'deepveinidle.com',href:'https://deepveinidle.com/'},URL,Date,console,setTimeout:(fn,ms)=>{const id=++timerId;timers.set(id,{fn,ms});return id;},clearTimeout:id=>timers.delete(id),MutationObserver:class{observe(){}},GM_setValue:async(k,v)=>{writes.push({key:k,value:structuredClone(v)});await write?.(k,v);storage.set(k,structuredClone(v));}});
- return {page,storage,writes,timers,badge:()=>badge,hideBadge(){const [id,timer]=[...timers].at(-1);assert.equal(timer.ms,15000);timers.delete(id);timer.fn();}};
+ return {page,storage,writes,timers,badge:()=>badge,hideBadge(){const [id,timer]=[...timers].at(-1);assert.equal(timer.ms,5000);timers.delete(id);timer.fn();}};
 }
 test('market capture stores only quotes and isolates role, orders and credentials',async()=>{
  const h=harness(),socket=new h.page.WebSocket('wss://deepveinidle.com/ws?token=secret');
@@ -51,7 +51,7 @@ test('shared market requests have bounded retries and reject outdated replies',a
  const promise=ctx.requestMarket('read');timeout();await assert.rejects(promise,/marketOutdated/);assert.equal(cleared,1);
 });
 
-test('market success waits for storage, hides after fifteen seconds and stays hidden on later quotes',async()=>{
+test('market success waits for storage, hides after five seconds and stays hidden on later quotes',async()=>{
  let finish;const h=harness(async(key,value)=>{if(key==='dvi-market-quotes-v1'&&Object.keys(value.quotes).length)await new Promise(resolve=>finish=resolve);});
  const socket=new h.page.WebSocket('wss://deepveinidle.com/ws');await flush();assert.equal(h.timers.size,0);
  socket.receive([{t:'marketBook',top:{itemId:1,ask:10,bid:null}}]);await flush();assert.match(h.badge().textContent,/Waiting for game data/);assert.equal(h.timers.size,0);
@@ -59,10 +59,10 @@ test('market success waits for storage, hides after fifteen seconds and stays hi
  h.hideBadge();assert.equal(h.badge(),null);socket.receive([{t:'marketBook',top:{itemId:1,ask:12}}]);await flush();finish();await flush();assert.equal(h.badge(),null);assert.equal(h.timers.size,0);
  new h.page.WebSocket('wss://deepveinidle.com/ws');await flush();assert.match(h.badge().textContent,/Waiting for game data/);
 });
-test('role and market successes share a badge without later role snapshots overwriting it',async()=>{
+test('market success replaces role success without later role snapshots overwriting it',async()=>{
  const h=harness(),socket=new h.page.WebSocket('wss://deepveinidle.com/ws'),you={lastTick:1,skills:{},equipment:{}};
  socket.receive([{t:'welcome',you}]);await flush();assert.equal(h.badge().textContent,'角色配置已读取 / Character captured');
- socket.receive([{t:'marketBook',top:{itemId:1,bid:12}}]);await flush();assert.match(h.badge().textContent,/Character captured\n市场报价已读取/);assert.equal(h.timers.size,1);
+ socket.receive([{t:'marketBook',top:{itemId:1,bid:12}}]);await flush();assert.equal(h.badge().textContent,'市场报价已读取 / Market prices captured');assert.equal(h.timers.size,1);
  const text=h.badge().textContent,timer=[...h.timers.keys()][0];socket.receive([{t:'snapshot',you}]);await flush();assert.equal(h.badge().textContent,text);assert.equal([...h.timers.keys()][0],timer);
 });
 test('invalid quotes and old socket writes never show market success',async()=>{

@@ -63,7 +63,7 @@ function gameScript(save){
  const context={setTimeout:(fn,ms)=>{hideTimer={fn,ms};return hideTimer;},clearTimeout:()=>{hideTimer=null;},MutationObserver:class{constructor(fn){observer=fn;}observe(){}},unsafeWindow:page,location:{origin:'https://deepveinidle.com',host:'deepveinidle.com',href:'https://deepveinidle.com/'},URL,Date,console,GM_setValue:(k,v)=>{if(k!=='dvi-character-snapshot-v2')return;stored.push(v);return save?.();},document:doc};
  vm.runInNewContext(script,context);
  const frame=(socket,you,t='snapshot',extra={},tick=100)=>socket.listeners.message({data:JSON.stringify({tick,m:[{t,you,chat:['private'],...extra}]})});
- return {page,sockets,stored,frame,doc,badge:()=>badge,hasHideTimer:()=>hideTimer!==undefined&&hideTimer!==null,removeBadge(){badge=null;observer();},hideBadge(){assert.equal(hideTimer.ms,15000);hideTimer.fn();}};
+ return {page,sockets,stored,frame,doc,badge:()=>badge,hasHideTimer:()=>hideTimer!==undefined&&hideTimer!==null,removeBadge(){badge=null;observer();},hideBadge(){assert.equal(hideTimer.ms,5000);hideTimer.fn();}};
 }
 test('userscript passively captures complete own-role data without chat or credentials',async()=>{
  const {page,stored,frame}=gameScript(),socket=new page.WebSocket('wss://deepveinidle.com/ws?c=secret');
@@ -123,7 +123,7 @@ test('script metadata provides English and simplified Chinese names',()=>{
  assert.match(script,/^\/\/ @name:zh-cn\s+Deep Vein Idle · 角色配置导入$/m);
 });
 
-test('success badge hides after fifteen seconds without reappearing on redraws or later snapshots',async()=>{
+test('success badge hides after five seconds without reappearing on redraws or later snapshots',async()=>{
  const g=gameScript(),socket=new g.page.WebSocket('wss://deepveinidle.com/ws');
  g.frame(socket,fixture().player,'welcome');await new Promise(resolve=>setImmediate(resolve));
  assert.match(g.badge().textContent,/角色配置已读取/);g.hideBadge();assert.equal(g.badge(),null);
@@ -131,7 +131,7 @@ test('success badge hides after fifteen seconds without reappearing on redraws o
  g.frame(socket,fixture().player);await new Promise(resolve=>setImmediate(resolve));
  assert.equal(g.stored.length,2);assert.equal(g.badge(),null);
  new g.page.WebSocket('wss://deepveinidle.com/ws');assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');
- assert.match(script,/^\/\/ @version\s+2\.5\.1$/m);
+ assert.match(script,/^\/\/ @version\s+2\.5\.2$/m);
 });
 
 const weeklyWindow=(label='Weekly goal: gathered',fromTick=100,toTick=200,xpMult=1.1)=>({label,fromTick,toTick,xpMult});
