@@ -115,7 +115,9 @@ export function valueCombatRewards(result,prices={}){
  const valued=valueRewards(result,'custom',prices);if(!valued)return valued;
  const food=valueItems(result.foodItems??{},'custom',prices);
  const potions=valueItems(result.potionItems??{},'custom',prices);
- const profit=valued.totalIncome-food.value-potions.value;
+ const consumableCost=food.value+potions.value;
+ if(!Number.isFinite(consumableCost)||consumableCost>Number.MAX_SAFE_INTEGER)throw Error('priceOverflow');
+ const profit=valued.totalIncome-consumableCost;
  if(!Number.isFinite(profit)||Math.abs(profit)>Number.MAX_SAFE_INTEGER)throw Error('priceOverflow');
- return {...valued,foodCost:food.value,potionCost:potions.value,foodMissingPrices:food.missing,potionMissingPrices:potions.missing,profitMissingPrices:[...valued.missingPrices,...food.missing,...potions.missing],profit};
+ return {...valued,consumableCost,consumableMissingPrices:[...food.missing,...potions.missing],foodCost:food.value,potionCost:potions.value,foodMissingPrices:food.missing,potionMissingPrices:potions.missing,profitMissingPrices:[...valued.missingPrices,...food.missing,...potions.missing],profit};
 }

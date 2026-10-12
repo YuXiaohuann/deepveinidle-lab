@@ -108,7 +108,7 @@ test('fallback distinguishes unset, zero and imported vendor prices; combat cost
  assert.deepEqual(valuationPrice(1,{1:{price:0}}),{price:0,fallback:false});
  assert.equal(valuationPrice(1,{1:{price:game.vendorPrice(1),source:'vendor'}}).fallback,false);
  const r=valueCombatRewards({coins:10,normalItems:{},rareItems:{},foodItems:{64:3},potionItems:{1:24}},{64:{price:2},1:{price:1}});
- assert.equal(r.foodCost,6);assert.equal(r.potionCost,24);assert.equal(r.profit,-20);
+ assert.equal(r.consumableCost,30);assert.equal(r.foodCost,6);assert.equal(r.potionCost,24);assert.equal(r.profit,-20);
 });
 
 test('fallback warnings follow positive quantities and aggregate income and profit separately',()=>{

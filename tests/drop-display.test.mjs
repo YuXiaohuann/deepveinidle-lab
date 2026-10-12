@@ -41,7 +41,7 @@ test('headers and pending and failed rows follow the visible column count',()=>{
  }
 });
 test('quantities and vendor values render separately with optional highlighted income',()=>{
- const result={homeBank:2,kills:1,xp:2,coins:3,normal:4,rare:5,normalValue:40,rareValue:50,totalIncome:93,profit:80,foodCost:10,potionCost:3,food:6,normalItems:{},rareItems:{},bySkill:{},elapsedTicks:1,movingTicks:0,restocks:0};
+ const result={homeBank:2,kills:1,xp:2,coins:3,normal:4,rare:5,normalValue:40,rareValue:50,totalIncome:93,profit:80,foodCost:10,potionCost:3,consumableCost:13,food:6,normalItems:{},rareItems:{},bySkill:{},elapsedTicks:1,movingTicks:0,restocks:0};
  for(const enabled of [false,true]){
  const html=view(enabled,result).hourlyCells({key:'m'});
  assert.match(html,new RegExp(`<summary>${'40'}</summary>`));
@@ -66,11 +66,12 @@ test('valuation control is public regardless of guild and is preserved on config
 });
 
 test('table amounts show fallback warnings before expanding and food displays its cost',()=>{
- const result={homeBank:2,kills:1,xp:2,coins:3,normalValue:40,rareValue:50,totalIncome:93,profit:20,food:6,foodCost:70,potionCost:3,normalItems:{},rareItems:{},bySkill:{},elapsedTicks:1,movingTicks:0,restocks:0,normalMissingPrices:[1],rareMissingPrices:[],missingPrices:[1],foodMissingPrices:[64],profitMissingPrices:[1,64]};
+ const result={homeBank:2,kills:1,xp:2,coins:3,normalValue:40,rareValue:50,totalIncome:93,profit:20,food:6,foodCost:70,potionCost:3,consumableCost:73,consumableMissingPrices:[64],normalItems:{},rareItems:{},bySkill:{},elapsedTicks:1,movingTicks:0,restocks:0,normalMissingPrices:[1],rareMissingPrices:[],missingPrices:[1],foodMissingPrices:[64],profitMissingPrices:[1,64]};
  const html=view(true,result).hourlyCells({key:'m'});
  assert.match(html,/<summary><span[^>]*>⚠<\/span> 40<\/summary>/);
- assert.match(html,/<summary><span[^>]*>⚠<\/span> 70<\/summary>/);
+ assert.match(html,/<summary><span[^>]*>⚠<\/span> 73<\/summary>/);
  assert.match(html,/<td class="column-highlight"><span[^>]*>⚠<\/span> 93<\/td>/);
- assert.match(html,/<summary><span[^>]*>⚠<\/span> 20<\/summary>/);
+ assert.match(html,/<td class="column-highlight"><span[^>]*>⚠<\/span> 20<\/td>/);
+ assert.match(html,/食物成本：/);assert.match(html,/药剂成本：/);
  assert.doesNotMatch(html,/<summary><span[^>]*>⚠<\/span> 50<\/summary>/);
 });
