@@ -47,8 +47,8 @@ export function makePlayer(raw){
  applyManualPlayer(p,s);
  return {state:s,player:p,issues};
 }
-export function calculate(raw,snapshotPlayer=null){
- const {state,player:p,issues}=snapshotPlayer?{state:normalize(raw),player:snapshotPlayer,issues:[]}:makePlayer(raw),hit=game.maxHit(p),accuracy=game.accuracy(p),evasion=game.evasion(p),magic=game.magic(p),style=game.style(p);
+export function calculate(raw){
+ const {state,player:p,issues}=makePlayer(raw),hit=game.maxHit(p),accuracy=game.accuracy(p),evasion=game.evasion(p),magic=game.magic(p),style=game.style(p);
  const selected=selectedEnemies(state.manual.enemySelection);
  const rows=selected.monsters.map(m=>({...m,key:`monster-${m.id}`,max:hit,chance:game.hitChance(accuracy,10+m.defence*(magic?game.magicDefenceScale:1)),enemyChance:game.hitChance(10+m.attack,evasion),enemyMax:Math.max(1,Math.floor(m.maxHit*(1-game.damageReduction(p,p.lastTick))))}));
  const food=game.item(game.withRarity(state.food.id,state.food.tier));

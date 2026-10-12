@@ -158,3 +158,7 @@ test('enabled potions retain full quality IDs and charge one per selected hour',
  const potion=game.potions.find(p=>p.kind==='hunter');
  assert.deepEqual(result.potionItems,{[game.withRarity(potion.itemId,3)]:1/60});
 });
+
+test('removed snapshot format is rejected instead of falling back to a manual simulation',()=>{
+ assert.throws(()=>createScenario({format:'snapshot',snapshot:{}}),/Unsupported simulation format/);
+});

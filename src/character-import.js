@@ -28,16 +28,14 @@ function warehouseFood(player){
  if(!foods.some(f=>f.id===game.baseItemId(id))||!int(game.itemTier(id),0,4))return {warning:'food.bankInvalid'};
  return {food:{id:game.baseItemId(id),tier:game.itemTier(id)}};
 }
-export function importCharacter(current,snapshot,{preview=false}={}){
+export function importCharacter(current,snapshot){
  if(!record(snapshot)||snapshot.version!==2||!int(snapshot.capturedAt,1)||snapshot.capturedAt>Date.now()+60000||!record(snapshot.player)||!int(snapshot.player.lastTick))throw new Error('invalidSnapshot');
  const chosen=importTypes.map(([id])=>id);
- const state=preview?structuredClone(current):defaults(),p=snapshot.player,warnings=[],applied=new Set();let category;
- if(!preview){
-  for(const key of ['food','eatAt','fed','rooted'])state[key]=structuredClone(current[key]);
-  for(const key of ['foodRule','foodMaxTier','foodPerTrip','enemySelection','simulationHours','customSimulation','hotSetting','vendorValues','valuationMode'])state.manual[key]=current.manual[key];
- }
+ const state=defaults(),p=snapshot.player,warnings=[],applied=new Set();let category;
+ for(const key of ['food','eatAt','fed','rooted'])state[key]=structuredClone(current[key]);
+ for(const key of ['foodRule','foodMaxTier','foodPerTrip','enemySelection','simulationHours','customSimulation','hotSetting','vendorValues','valuationMode'])state.manual[key]=current.manual[key];
  try{state.guild=readGuild(snapshot.guild);}catch(error){
-  if(preview||error.message!=='invalidSnapshot')throw error;
+  if(error.message!=='invalidSnapshot')throw error;
   state.guild=null;warnings.push('guild: guild');
  }
  const warn=field=>warnings.push(`${category}: ${field}`);
@@ -66,23 +64,20 @@ export function importCharacter(current,snapshot,{preview=false}={}){
   }
   if(category==='food'){
    const id=p.foodItemId;
-   if(!preview&&p.eatAt===0){state.manual.foodRule=3;applied.add(category);}
+   if(p.eatAt===0){state.manual.foodRule=3;applied.add(category);}
    else if(id===null||id===0||id===-2){
     state.manual.foodRule=id===-2?2:1;applied.add(category);
-    if(preview)warn('food.selectionRetained');
-    else if(p.eatAt!==0&&int(p.foodMaxTier,0,4)){
+    if(p.eatAt!==0&&int(p.foodMaxTier,0,4)){
      const result=warehouseFood(p);
      if(result.warning)warn(result.warning);else state.food=result.food;
     }
    }
    else if(int(id,1)&&foods.some(f=>f.id===game.baseItemId(id))&&int(game.itemTier(id),0,4)){state.food={id:game.baseItemId(id),tier:game.itemTier(id)};state.manual.foodRule=0;applied.add(category);}else warn('foodItemId');
-   if(p.eatAt===0){state.manual.foodRule=3;applied.add(category);if(preview)warn('eatAt.retained');}
+   if(p.eatAt===0){state.manual.foodRule=3;applied.add(category);}
    else put('eatAt',p.eatAt,v=>[.25,.5,.75].includes(v),v=>state.eatAt=v*100);
    put('foodMaxTier',p.foodMaxTier,v=>int(v,0,4),v=>state.manual.foodMaxTier=v);
    put('foodPerTrip',p.foodPerTrip,v=>[5,10,20,-2,-1].includes(v),v=>state.manual.foodPerTrip=v);
-   if(preview){
-    if(record(p.brews)&&['fed','rooted'].every(k=>int(p.brews[k]??0))){state.fed=active('fed');state.rooted=active('rooted');applied.add(category);}else warn('food.buffs');
-   }else if(record(p.brews)){
+   if(record(p.brews)){
     for(const kind of ['fed','rooted'])put(`food.${kind}`,p.brews[kind]??0,v=>int(v),()=>state[kind]=active(kind));
    }else warn('food.buffs');
   }
@@ -112,7 +107,7 @@ export function importCharacter(current,snapshot,{preview=false}={}){
    if(int(tick)&&Array.isArray(windows)&&windows.every(w=>record(w)&&int(w.fromTick)&&int(w.toTick,w.fromTick)&&valid(w.xpMult??1,1,1e5))){
     state.manual.weeklyXp=Math.round(windows.filter(w=>['Weekly goal: gathered','Weekly goal: felled'].includes(w.label)&&w.fromTick<=tick&&tick<=w.toTick).reduce((sum,w)=>sum+(w.xpMult-1)*100,0)*1e8)/1e8;
     applied.add(category);
-   }else warn(preview?'weeklyXp.retained':'weeklyXp.reset');
+   }else warn('weeklyXp.reset');
   }
   if(category==='supplies'){
    put('homeBank',p.homeBank,v=>v===null||game.world.banks.some(b=>b.id===v),v=>state.homeBank=v??0);

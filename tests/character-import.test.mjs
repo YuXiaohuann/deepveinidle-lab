@@ -204,8 +204,7 @@ test('both panels share one probe and common bilingual status messages',async()=
   assert.match(page.importStatusText(language,{ready:true}),language==='zh'?/脚本已连接/:/Script connected/);
   assert.match(page.importStatusText(language,{ready:true},true),language==='zh'?/正在读取角色配置/:/Reading character configuration/);
   assert.match(page.importStatusText(language,{capturedAt:1700000000000}),language==='zh'?/已导入 · 读取时间/:/Imported · Captured/);
-  assert.match(page.importStatusText(language,{snapshot:true,capturedAt:1700000000000}),language==='zh'?/临时快照/:/Temporary snapshot/);
-  for(const error of ['incompatibleClient','predictionMissing','scriptMissing','scriptOutdated','scriptReadFailed','noSnapshot','invalidSnapshot','incompleteSnapshot'])assert.notEqual(page.importStatusText(language,{error}),error);
+  for(const error of ['scriptMissing','scriptOutdated','scriptReadFailed','noSnapshot','invalidSnapshot','incompleteSnapshot'])assert.notEqual(page.importStatusText(language,{error}),error);
   assert.equal(page.importStatusText(language,{error:'unexpected detail'}),'unexpected detail');
  }
 });
@@ -222,21 +221,16 @@ test('combat import controls omit snapshot action and explanation in both langua
  assert.doesNotMatch(script,/auditedBuilds|predictorRead|observePlayer|page.JSON/);
 });
 
-test('debug and configuration bridges read independent storage and debug bridge only activates on debug path',async()=>{
- const debugScript=fs.readFileSync(new URL('../src/debug-capture.user.js',import.meta.url),'utf8');
- const doc=new EventTarget(),page=simulatorWorld(doc);const keys=[];
- userscriptWorld(doc,async key=>{keys.push(key);return {kind:'config'};});
- vm.runInNewContext(debugScript,{document:doc,location:{origin:'http://127.0.0.1:4173',pathname:'/debug'},CustomEvent:DomEvent,GM_getValue:async key=>{keys.push(key);return {kind:'debug'};}});
- const config=await page.requestCharacter('read'),debug=await page.requestCharacter('read',true);
- assert.equal(config.snapshot.kind,'config');assert.equal(debug.snapshot.kind,'debug');
- assert.deepEqual(keys,['dvi-character-snapshot-v2','dvi-debug-snapshot-v2']);
- const otherDoc=new EventTarget();let timeout,reads=0;
- const otherPage=simulatorWorld(otherDoc,{setInterval:()=>1,setTimeout:fn=>(timeout=fn,2),clearInterval(){},clearTimeout(){}});
- vm.runInNewContext(debugScript,{document:otherDoc,location:{origin:'http://127.0.0.1:4173',pathname:'/'},CustomEvent:DomEvent,GM_getValue:()=>{reads++;}});
- const missing=otherPage.requestCharacter('read',true);timeout();await assert.rejects(missing,/debugScriptMissing/);assert.equal(reads,0);
- otherDoc.addEventListener('dvi-debug-request',event=>{const request=JSON.parse(event.detail);otherDoc.dispatchEvent(new DomEvent('dvi-debug-response',{detail:JSON.stringify({source:'dvi-debug-script',id:request.id,version:'0.9'})}));});
- const outdated=otherPage.requestCharacter('read',true);timeout();await assert.rejects(outdated,/debugScriptOutdated/);
- for(const language of ['zh','en'])for(const error of ['debugScriptMissing','debugScriptOutdated','debugScriptReadFailed','debugNoSnapshot'])assert.notEqual(page.importStatusText(language,{error}),error);
+test('ordinary character requests ignore former debug responses and keep waiting for the role bridge',async()=>{
+ const doc=new EventTarget();let timeout;
+ const page=simulatorWorld(doc,{setInterval:()=>1,setTimeout:fn=>(timeout=fn,2),clearInterval(){},clearTimeout(){}});
+ doc.addEventListener('dvi-character-request',event=>{
+  const request=JSON.parse(event.detail);
+  const detail=JSON.stringify({source:'dvi-debug-script',id:request.id,version:'2.4',snapshot:fixture()});
+  doc.dispatchEvent(new DomEvent('dvi-character-response',{detail}));
+  doc.dispatchEvent(new DomEvent('dvi-debug-response',{detail}));
+ });
+ const pending=page.requestCharacter('read');timeout();await assert.rejects(pending,/scriptMissing/);
 });
 
 test('hidden guild identity survives save/load, clears old imports and resets malformed identities',()=>{
@@ -249,7 +243,6 @@ test('hidden guild identity survives save/load, clears old imports and resets ma
  assert.equal(importCharacter(imported,{...fixture(),guild:null}).state.guild,null);
  for(const guild of [false,[],{}, {name:'Guild',tag:4}]){
   const result=importCharacter(imported,{...fixture(),guild});assert.equal(result.state.guild,null);assert.ok(result.warnings.includes('guild: guild'));
-  assert.throws(()=>importCharacter(imported,{...fixture(),guild},{preview:true}),/invalidSnapshot/);
  }
  assert.deepEqual(imported.guild,{name:'Deep miners',tag:'DM'});
 });
@@ -307,7 +300,6 @@ test('food buffs import independently when only one value is invalid',()=>{
  const result=importCharacter(old,snap);
  assert.equal(result.state.fed,true);assert.equal(result.state.rooted,false);
  assert.ok(result.warnings.includes('food: food.fed'));
- assert.equal(importCharacter(old,snap,{preview:true}).state.rooted,true);
 });
 
 test('import warning text separates food and groups other failed categories without internal field names',()=>{
@@ -333,7 +325,6 @@ test('automatic food import follows native warehouse selection and keeps simulat
  }
  snap.player.foodItemId=null;snap.player.foodMaxTier=0;
  assert.deepEqual(importCharacter(old,snap).state.food,{id:64,tier:0});
- assert.deepEqual(importCharacter(old,snap,{preview:true}).state.food,old.food);
  assert.deepEqual(old,preset('ranged'));
 });
 
@@ -372,17 +363,15 @@ test('automatic food ties use item id order and ignore nonfood stock',()=>{
 });
 
 test('userscripts match project preview channels and bridge on preview routes',async()=>{
- const debugScript=fs.readFileSync(new URL('../src/debug-capture.user.js',import.meta.url),'utf8');
- for(const [source,version,debug]of [[script,'2.4',false],[debugScript,'1.0',true]]){
+ for(const [source,version]of [[script,'2.4']]){
   const matches=[...source.matchAll(/^\/\/ @match\s+(\S+)$/gm)].map(m=>new RegExp('^'+m[1].replace(/[.+?^${}()|[\]\\]/g,'\\$&').replaceAll('*','.*')+'$'));
   for(const host of ['dvi-lab.pages.dev','preview.dvi-lab.pages.dev','feature-x.dvi-lab.pages.dev','b32d355e.dvi-lab.pages.dev'])assert.ok(matches.some(m=>m.test(`https://${host}/gather`)));
   assert.ok(!matches.some(m=>m.test('https://another-project.pages.dev/gather')));
   for(const pathname of ['/gather','/debug','/debug/']){
    const doc=new EventTarget(),page=simulatorWorld(doc),reads=[],snapshot=fixture();
    vm.runInNewContext(source,{document:doc,location:{origin:'https://preview.dvi-lab.pages.dev',pathname},CustomEvent:DomEvent,GM_getValue:async key=>{reads.push(key);return snapshot;}});
-   if(debug&&pathname==='/gather')continue;
-   const probe=await page.requestCharacter('probe',debug);assert.equal(probe.ready,true);assert.equal(probe.version,version);assert.equal(reads.length,0);
-   const response=await page.requestCharacter('read',debug);assert.equal(response.snapshot.version,2);assert.deepEqual(reads,[debug?'dvi-debug-snapshot-v2':'dvi-character-snapshot-v2']);
+   const probe=await page.requestCharacter('probe');assert.equal(probe.ready,true);assert.equal(probe.version,version);assert.equal(reads.length,0);
+   const response=await page.requestCharacter('read');assert.equal(response.snapshot.version,2);assert.deepEqual(reads,['dvi-character-snapshot-v2']);
   }
  }
 });

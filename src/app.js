@@ -7,7 +7,6 @@ import {renderCrafting} from './crafting-controls.js';
 import {selectedEnemies} from './enemy-selection.js';
 import {renderDebug} from './debug-controls.js';
 import {renderEnhancement,applyEnhancementImport} from './enhancement-controls.js';
-import {importSnapshot} from './character-snapshot.js';
 import {combatHot,combatHotMarkup,rewardAmount} from './combat-hot.js';
 import {renderForecast,updateForecast} from './forecast-controls.js';
 import {importCharacter,importWarningText} from './character-import.js';
@@ -20,7 +19,6 @@ const $=s=>document.querySelector(s),storageKey='dvi-simulator-v1';
 let saved;try{saved=JSON.parse(localStorage.getItem(storageKey)||'null');}catch{}
 let language=chooseLanguage(saved?.language,navigator.languages||[navigator.language]),state=normalize(saved?.state||preset('ranged')),query='',sort='level',sortDirection='desc',period='hour',activeSection=sectionForPath();
 state=selectStyle(state,state.style);
-let activeSnapshot=null,storedState=structuredClone(state);
 let importBusy=false,importStatus=null;
 const copy={zh:{title:'实验室',sub:'配好装备，看看每一场战斗。',beta:'测试版 0.16.0',config:'角色配置',presets:'快速配装',melee:'近战',ranged:'远程',magic:'魔法',defence:'防御',hitpoints:'生命',levels:'技能',equipment:'装备',weapon:'武器',shield:'副手',helmet:'头部',body:'胸部',legs:'腿部',ring:'戒指',amulet:'护符',mount:'坐骑',moveSpeed:'移动速度',empty:'空',unarmed:'空手',rarity:['普通','罕见','稀有','史诗','传说'],food:'食物',healing:'单次治疗',fed:'伤害食物增益生效 +25%',rooted:'作物减伤生效 −20%',consume:'应用所选食物的增益',consumeHelp:'选择食物用于查看效果；点击应用才启用其增益。可分别关闭下方增益。',duration:'持续',minutes:'分钟',noBuff:'无伤害增益',potions:'药水',warrior:'战士补剂',haste:'急速药剂',nourish:'滋养药剂',off:'未启用',home:'家园',masteries:'精通',depot:'模拟仓库',accuracy:'命中值',maxhit:'最大伤害',hp:'最大生命',post:'练武桩',target:'箭靶',altar:'祭坛',mastery:'精通等级',house:'家园设施等级（已放置）',meals:'丰盛餐食等级',reset:'清空配置',resetConfirm:'重置技能、装备与增益？',stats:'战斗属性',evasion:'闪避',strength:'装备力量',speed:'攻击间隔',second:'秒',targets:'敌人',search:'搜索怪物名称（中 / 英）',all:'全部',normal:'普通怪物',level:'等级',chance:'我方命中',damage:'我方最大伤害',enemy:'敌人',health:'生命',enemyChance:'敌方命中',enemyDamage:'敌方最大伤害',count:'个目标',rounding:'手动及导入配置模拟未保留实际库存、队列、技能等级内的经验进度、家园升级进度、增益到期时间及账号随机种子等。',source:'代码快照',original:'原始代码',plan:'需求与设计',saved:'配置自动保存在此浏览器',saveFail:'浏览器存储不可用，配置无法保存',emptyResults:'没有匹配的敌人',warnings:'配装提示',levelIssue:'等级不足，本件未计入：需要',styleIssue:'流派不匹配，命中／力量按游戏规则扣减',twoHanded:'大剑占用双手，副手未计入',missing:'该品质不存在，本件未计入',presetHint:'85 级 · 稀有 +5',effective:'有效装备属性',acc:'命中',str:'力量',def:'防御',foodTime:'伤害增益',rootTime:'减伤增益',sourceNote:'基于 2026-10-08 公开资源 · 游戏版本 1.0.1181',noResults:'无结果',clear:'清除搜索'},en:{title:'Lab',sub:'Build your loadout. Know every matchup.',beta:'BETA 0.16.0',config:'Character build',presets:'Quick builds',melee:'Melee',ranged:'Ranged',magic:'Magic',defence:'Defence',hitpoints:'Hitpoints',levels:'Skills',equipment:'Equipment',weapon:'Weapon',shield:'Off-hand',helmet:'Head',body:'Body',legs:'Legs',ring:'Ring',amulet:'Amulet',mount:'Mount',moveSpeed:'Movement speed',empty:'None',unarmed:'Unarmed',rarity:['Normal','Uncommon','Rare','Epic','Legendary'],food:'Food',healing:'Healing per food',fed:'Food damage buff active +25%',rooted:'Crop protection active −20%',consume:'Apply selected food buffs',consumeHelp:'Selecting food previews its effects. Apply to enable its buffs; toggle them independently below.',duration:'Duration',minutes:'min',noBuff:'No damage buff',potions:'Potions',warrior:'Warrior tonic',haste:'Haste draught',nourish:'Nourishing draught',off:'Inactive',home:'Home',masteries:'Masteries',depot:'Simulated depot',accuracy:'Accuracy',maxhit:'Max hit',hp:'Max HP',post:'Sparring post',target:'Archery target',altar:'Altar',mastery:'Mastery ranks',house:'Placed home station levels',meals:'Hearty meals rank',reset:'Reset build',resetConfirm:'Reset all skills, equipment and buffs?',stats:'Character stats',evasion:'Evasion',strength:'Gear strength',speed:'Attack interval',second:'s',targets:'Enemies',search:'Search enemies in English or Chinese',all:'All',normal:'Monsters',level:'Level',chance:'Your hit chance',damage:'Your max hit',enemy:'Enemy',health:'HP',enemyChance:'Enemy hit chance',enemyDamage:'Enemy max hit',count:'targets',rounding:'Manual and imported build simulations do not preserve actual inventory, queued tasks, progress within skill levels, home upgrade progress, buff expiry times, or account random seeds.',source:'Source snapshot',original:'Original source',plan:'Requirements & design',saved:'Build saved automatically in this browser',saveFail:'Browser storage unavailable; build cannot be saved',emptyResults:'No matching enemies',warnings:'Loadout notes',levelIssue:'Excluded: requires',styleIssue:'Wrong style: accuracy / strength deducted by game rules',twoHanded:'Greatsword uses both hands; off-hand excluded',missing:'This rarity is unavailable; item excluded',presetHint:'Level 85 · Rare +5',effective:'Effective item stats',acc:'Accuracy',str:'Strength',def:'Defence',foodTime:'Damage buff',rootTime:'Protection buff',sourceNote:'Public source snapshot 2026-10-08 · Game version 1.0.1181',noResults:'No results',clear:'Clear search'}};
 Object.assign(copy.zh,{projectAuthor:'项目作者（游戏昵称）',community:'交流 QQ 群',copyright:'Deep Vein Idle 的名称、标识、相关设计、游戏代码，以及美术素材、截图、角色、世界设定和其他可识别的游戏资源，其知识产权归原游戏作者或相应权利人所有，保留所有权利。其他商标归各自权利人所有。',projectNotice:'本项目为玩家制作的非官方模拟工具，仅用于信息展示与交流，不代表原游戏官方立场或认可，也不声称已获得官方授权。工具的内容与运行由本项目作者独立维护。'});
@@ -35,7 +33,7 @@ const options=(arr,value)=>arr.map(([v,label])=>`<option value="${esc(v)}" ${Str
 const tiers=v=>options(t('rarity').map((n,i)=>[i,n]),v);
 const number=(path,label,value,max,min=0,step=1)=>`<label class="number-field"><span>${esc(label)}</span><input type="number" data-path="${path}" value="${value}" min="${min}" max="${max}" step="${step}" aria-label="${esc(label)}"></label>`;
 let saveOK=true;
-function save(){try{localStorage.setItem(storageKey,JSON.stringify({language,state:activeSnapshot?storedState:state}));saveOK=true;if(!activeSnapshot)storedState=structuredClone(state);}catch{saveOK=false;}}
+function save(){try{localStorage.setItem(storageKey,JSON.stringify({language,state}));saveOK=true;}catch{saveOK=false;}}
 function gearSummary(slot,g){return !g?'—':slot==='mount'?`${t('moveSpeed')} +${Number((g.bonus*100).toFixed(2))}%`:`${t('acc')} ${g.accuracy} · ${t('str')} ${g.strength} · ${t('def')} ${g.defence}`;}
 function equipRow(slot){const v=state.gear[slot],g=v.id?gearDetails(slot,game.encode(game.withRarity(v.id,v.tier),v.plus)):null;return `<div class="gear-row"><label class="gear-name"><span>${t(slot)}</span><select data-path="gear.${slot}.id" aria-label="${t(slot)}">${options([...(slot==='weapon'&&state.style!=='melee'?[]:[[0,slot==='weapon'?t('unarmed'):t('empty')]]),...(state.manual.allGear?baseGear.filter(g=>g.slot===slot):gearForStyle(slot,state.style)).sort((a,b)=>a.levelReq-b.levelReq).map(x=>[x.itemId,`${name(game.item(x.itemId).name)}${slot==='mount'?'':` · ${x.levelReq}`}`])],v.id)}</select></label><div class="gear-mods"><select data-path="gear.${slot}.tier" aria-label="${t(slot)} ${language==='zh'?'稀有度':'rarity'}" ${!v.id?'disabled':''}>${tiers(v.tier)}</select><label class="enhance"><span>+</span><input type="number" min="0" max="${game.maxEnhancement}" step="1" data-path="gear.${slot}.plus" value="${v.plus}" aria-label="${t(slot)} ${language==='zh'?'强化':'enhancement'}" ${!v.id?'disabled':''}></label></div><small class="gear-stats">${gearSummary(slot,g)}</small></div>`;}
 const nonCombatNote=()=>language==='zh'?' · 不影响本页静态战斗数值':' · no effect on these static combat stats';
@@ -80,7 +78,7 @@ function render(){
  });
  for(const [id,open]of openDetails){const el=document.getElementById(id);if(el)el.open=open;}
  document.querySelectorAll('[data-path^="levels."]').forEach(el=>{const k=el.dataset.path.split('.')[1];el.closest('label').classList.toggle('active-skill',k===state.style);});
- $('#language').onchange=e=>{language=e.target.value;save();render();};$('#reset').onclick=()=>{if(confirm(t('resetConfirm'))){activeSnapshot=null;state=selectStyle(defaults(),'melee');save();render();}};
+ $('#language').onchange=e=>{language=e.target.value;save();render();};$('#reset').onclick=()=>{if(confirm(t('resetConfirm'))){state=selectStyle(defaults(),'melee');save();render();}};
  document.querySelectorAll('[data-preset]').forEach(el=>el.onclick=()=>{state=selectStyle(state,el.dataset.preset);save();render();});
  document.querySelector('[data-simulation-mode]').onchange=e=>{state.manual.customSimulation=e.target.value==='custom';if(!state.manual.customSimulation)state.manual.simulationHours=Number(e.target.value);save();render();};
  document.querySelectorAll('[data-path]').forEach(el=>{
@@ -91,15 +89,11 @@ function render(){
   }else el.onchange=()=>{update();render();document.querySelector(`[data-path="${el.dataset.path}"]`)?.focus();};
  });
  renderDebug(language,{applyCombat:applyCharacterImport,applyEnhancement:applyEnhancementImport,refresh:render});
- $('#import-character').onclick=()=>runCharacterImport('config');updateImportStatus();
+ $('#import-character').onclick=()=>runCharacterImport();updateImportStatus();
  $('#apply-food').onclick=()=>{const r=calculate(state);if(r.food.fedSeconds)state.fed=true;if(r.food.rootSeconds)state.rooted=true;save();render();};
  $('#period').onchange=e=>{period=e.target.value;render();};
  $('#search').oninput=e=>{query=e.target.value;renderResults();};
  $('thead').onclick=e=>{const button=e.target.closest('[data-sort]');if(!button)return;const key=button.dataset.sort;sortDirection=key===sort&&sortDirection==='asc'?'desc':'asc';sort=key;renderResults();};
- if(activeSnapshot){
-  document.querySelectorAll('.config [data-path],.config [data-preset],#apply-food').forEach(el=>{if(!['manual.enemySelection','manual.simulationHours','manual.vendorValues','manual.valuationMode'].includes(el.dataset.path))el.disabled=true;});
-  $('#save-note').textContent=language==='zh'?'● 临时快照，刷新后丢失；角色配置仅供查看':'● Temporary snapshot; lost on refresh. Character settings are read-only.';
- }
  renderGathering(language,{isActive:activeSection==='gather'});
  renderCrafting(language,{isActive:activeSection==='craft'});
  renderEnhancement(language);
@@ -109,7 +103,7 @@ function render(){
  renderResults();
  for(const [id,open]of openDetails){const el=document.getElementById(id);if(el)el.open=open;}
 }
-function renderResults(){const openLevels=new Set([...document.querySelectorAll('#rows details.level-detail[open]')].map(el=>el.closest('tr').dataset.enemy));$('#period').innerHTML=periodOptions();if(!state.manual.vendorValues&&sort==='totalIncome'){sort='level';sortDirection='desc';}if(sort==='normal'||sort==='normalValue')sort=state.manual.vendorValues?'normalValue':'normal';if(sort==='rare'||sort==='rareValue')sort=state.manual.vendorValues?'rareValue':'rare';$('thead tr').innerHTML=enemyHeaders();scheduleSimulation();const r=calculate(state,activeSnapshot?.player),stats=r.stats;
+function renderResults(){const openLevels=new Set([...document.querySelectorAll('#rows details.level-detail[open]')].map(el=>el.closest('tr').dataset.enemy));$('#period').innerHTML=periodOptions();if(!state.manual.vendorValues&&sort==='totalIncome'){sort='level';sortDirection='desc';}if(sort==='normal'||sort==='normalValue')sort=state.manual.vendorValues?'normalValue':'normal';if(sort==='rare'||sort==='rareValue')sort=state.manual.vendorValues?'rareValue':'rare';$('thead tr').innerHTML=enemyHeaders();scheduleSimulation();const r=calculate(state),stats=r.stats;
  $('#style-badge').textContent=t(stats.style);$('#stats').innerHTML=[['maxhit',stats.hit],['accuracy',stats.accuracy],['evasion',stats.evasion],['hp',stats.hp],['strength',stats.strength],['speed',`${stats.seconds.toFixed(2)} <small>${t('second')}</small>`]].map(([k,v])=>`<div class="stat ${k==='maxhit'?'primary':''}"><span>${t(k)}</span><strong>${v}</strong></div>`).join('');
  $('#food-summary').innerHTML=`<strong>${t('healing')} <b>${r.food.healing}</b></strong><span>${t('foodTime')}: ${r.food.fedSeconds?`${r.food.fedSeconds/60} ${t('minutes')}`:'—'} · ${t('rootTime')}: ${r.food.rootSeconds?`${r.food.rootSeconds/60} ${t('minutes')}`:'—'}</span>`;
  $('#issues').innerHTML=r.issues.length?`<div class="issue-box"><strong>${t('warnings')}</strong>${r.issues.map(i=>`<p>${t(i.slot)}: ${i.kind==='level'?`${t('levelIssue')} ${t(i.skill)} ${i.level}`:t(i.kind==='style'?'styleIssue':i.kind==='twoHanded'?'twoHanded':'missing')}</p>`).join('')}</div>`:'';
@@ -123,15 +117,15 @@ Object.assign(copy.en,{movingShare:'Moving share',killsHour:'Kills',xpHour:'XP',
 let simulationSignature='',simulationWorker=null,simulationTimer=null,simulationError=false,hourly=new Map(),simulationNow=null;
 function scheduleSimulation(){
  const monsters=selectedEnemies(state.manual.enemySelection).monsters;
- const signature=JSON.stringify(activeSnapshot?{format:'snapshot',snapshot:activeSnapshot,enemySelection:state.manual.enemySelection,simulationHours:state.manual.simulationHours}:{...state,manual:{...state.manual,vendorValues:undefined,valuationMode:undefined}});
+ const signature=JSON.stringify({...state,manual:{...state.manual,vendorValues:undefined,valuationMode:undefined}});
  if(signature!==simulationSignature){
   simulationSignature=signature;simulationWorker?.terminate();clearTimeout(simulationTimer);hourly=new Map();simulationError=false;
-  const snapshot=JSON.parse(signature);simulationNow=Date.now();
+  const simulationState=JSON.parse(signature);simulationNow=Date.now();
   if(monsters.length)simulationTimer=setTimeout(()=>{
    try{simulationWorker=new Worker(new URL('./simulation-worker.js',import.meta.url),{type:'module'});
     simulationWorker.onmessage=({data})=>{if(signature!==simulationSignature)return;if(data.error)simulationError=data.error;if(data.result)hourly.set(data.result.key,data.result);if(data.done||data.error){simulationWorker?.terminate();simulationWorker=null;}renderResults();};
     simulationWorker.onerror=()=>{if(signature!==simulationSignature)return;simulationError=true;simulationWorker?.terminate();simulationWorker=null;renderResults();};
-    simulationWorker.postMessage({state:snapshot,enemySelection:state.manual.enemySelection,now:simulationNow});
+    simulationWorker.postMessage({state:simulationState,enemySelection:state.manual.enemySelection,now:simulationNow});
    }catch{simulationError=true;renderResults();}
   },180);
  }
@@ -140,7 +134,7 @@ function scheduleSimulation(){
  const status=$('#simulation-status');
  if(status){
   status.hidden=!simulationError&&hourly.size===monsters.length;
-  status.textContent=status.hidden?'':simulationError?t('simulationError')+' · '+simulationError:t('simulating')+' · '+hourly.size+'/'+monsters.length+' · '+state.manual.simulationHours+'h · '+(language==='zh'?activeSnapshot?'完整角色快照':'按设置选择仓库 · 食物充足':activeSnapshot?'Complete character snapshot':'Configured depot · plentiful food')+' · '+(state.manual.hotSetting==='current'?(language==='zh'?'按当前时间':'Current-time hot bonuses'):state.manual.hotSetting==='game'?(language==='zh'?'沿用游戏设置':'Game hot settings'):(language==='zh'?'不计入热门':'Hot bonuses excluded'));
+  status.textContent=status.hidden?'':simulationError?t('simulationError')+' · '+simulationError:t('simulating')+' · '+hourly.size+'/'+monsters.length+' · '+state.manual.simulationHours+'h · '+(language==='zh'?'按设置选择仓库 · 食物充足':'Configured depot · plentiful food')+' · '+(state.manual.hotSetting==='current'?(language==='zh'?'按当前时间':'Current-time hot bonuses'):state.manual.hotSetting==='game'?(language==='zh'?'沿用游戏设置':'Game hot settings'):(language==='zh'?'不计入热门':'Hot bonuses excluded'));
  }
 
 }
@@ -177,31 +171,24 @@ function updateImportStatus(){
  const button=$('#import-character'),status=$('#import-status');if(!button||!status)return;
  button.disabled=importBusy;
  status.textContent=importStatusText(language,importStatus,importBusy);
- if(importBusy||!importStatus||importStatus.error||importStatus.ready||importStatus.snapshot)return;
+ if(importBusy||!importStatus||importStatus.error||importStatus.ready)return;
  const warnings=importStatus.warnings??[];
  if(warnings.length){const warning=document.createElement('span');warning.className='import-warning';warning.textContent=importWarningText(language,warnings);status.append(warning);}
  if(!saveOK)status.append(document.createTextNode(' · '+t('saveFail')));
 }
-function applyCharacterImport(mode,snapshot){
-  if(mode==='snapshot'){
-   const input=importSnapshot(snapshot);
-   const preview=importCharacter(storedState,{...snapshot,player:input.player,capturedAt:input.capturedAt},{preview:true});
-   state=preview.state;state.manual.simulationHours=24;state.manual.customSimulation=false;state.manual.hotSetting='game';
-   activeSnapshot=input;importStatus={snapshot:true,capturedAt:input.capturedAt};
-  }else{
-   const result=importCharacter(activeSnapshot?storedState:state,snapshot);
-   activeSnapshot=null;state=result.state;save();importStatus={...result,capturedAt:snapshot.capturedAt};
-  }
- return {...importStatus,saveOK:activeSnapshot?true:saveOK};
+function applyCharacterImport(configuration){
+ const result=importCharacter(state,configuration);
+ state=result.state;save();importStatus={...result,capturedAt:configuration.capturedAt};
+ return {...importStatus,saveOK};
 }
-async function runCharacterImport(mode){
+async function runCharacterImport(){
  if(importBusy)return;
  importBusy=true;updateImportStatus();
  try{
   const response=await requestCharacter('read');
   if(response.version!=='2.4')throw new Error('scriptOutdated');
   const {snapshot}=response;if(!snapshot)throw new Error('noSnapshot');
-  applyCharacterImport(mode,snapshot);
+  applyCharacterImport(snapshot);
  }catch(error){importStatus={error:error.message};}
  finally{importBusy=false;render();}
 }

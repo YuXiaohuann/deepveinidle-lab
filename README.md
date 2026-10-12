@@ -36,7 +36,7 @@
 node scripts/serve.mjs
 ```
 
-打开 [本机页面](http://127.0.0.1:4173)。服务仅监听本机，可通过 `PORT` 环境变量修改端口；支持 `/combat`、`/gather`、`/craft`、`/enhance`、`/mastery`、`/forecast` 和隐藏调试页 `/debug`。
+打开 [本机页面](http://127.0.0.1:4173)。服务仅监听本机，可通过 `PORT` 环境变量修改端口；支持 `/combat`、`/gather`、`/craft`、`/enhance`、`/mastery`、`/forecast` 和隐藏调试页 `/debug`。调试页仅提供角色配置 JSON 导出、战斗／强化配置文件导入；完整角色快照捕获、导入、导出与模拟已在当前本地版本移除，尚未发布。
 
 运行测试：
 
@@ -64,7 +64,7 @@ npx wrangler login
 npx wrangler pages deploy <发布目录> --project-name dvi-lab --branch main
 ```
 
-市场导入需要安装／更新角色 userscript 2.5.1（调试脚本为 1.0.1），然后刷新游戏与实验室。两个脚本通过 `https://*.dvi-lab.pages.dev/*` 支持该项目全部预览通道与部署地址。
+市场导入需要安装／更新角色 userscript 2.5.1，然后刷新游戏与实验室。角色脚本通过 `https://*.dvi-lab.pages.dev/*` 支持该项目全部预览通道与部署地址。
 
 发布预览通道时，将部署命令的分支改为 `--branch preview`；预览地址为 <https://preview.dvi-lab.pages.dev/>，生产不受影响。
 
