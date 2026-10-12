@@ -6,11 +6,11 @@ import * as game from '../src/upstream.js';
 import {priceDefaults,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,validateMarketSnapshot,mergeQuotes} from '../src/item-prices.js';
 const source=fs.readFileSync(new URL('../src/item-price-controls.js',import.meta.url),'utf8').replace(/^import .*;\n/gm,'').replace('export function mountItemPrices','function mountItemPrices');
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
-function harness(requestMarket){
+function harness(requestMarket,priceInputs=[]){
  const state=priceDefaults();state.quotes={1:{bid:{value:36,capturedAt:Date.now()-1000}}};
  const frames=[];
  const controls=new Map(),element=()=>({focus(){},scrollTop:0,textContent:''});
- const dialog={open:false,innerHTML:'',showModal(){this.open=true;},setAttribute(){},addEventListener(){},querySelector(selector){if(!controls.has(selector))controls.set(selector,element());return controls.get(selector);},querySelectorAll(){return [];}};
+ const dialog={open:false,innerHTML:'',showModal(){this.open=true;},setAttribute(){},addEventListener(){},querySelector(selector){if(!controls.has(selector))controls.set(selector,element());return controls.get(selector);},querySelectorAll(selector){return selector==='[data-price-value]'?priceInputs:[];}};
  const button={};const document={createElement:()=>dialog,body:{append(){}},getElementById:()=>button};let current=state,subscriber;
  const ctx=vm.createContext({game,marketFamilies:game.marketFamilies,translatedName:s=>s,validItemId:()=>true,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,validateMarketSnapshot,mergeQuotes,document,Date,Set,Number,Object,String,structuredClone,requestAnimationFrame:fn=>frames.push(fn),requestMarket,priceState:()=>current,priceSaveError:()=>null,updatePrices:next=>{current=next;subscriber?.();},subscribePrices:fn=>subscriber=fn});
  vm.runInContext(source,ctx);ctx.mountItemPrices('zh');return {dialog,button,controls,ctx,nextFrame(){for(const fn of frames.splice(0))fn();},runFrames(){while(frames.length)this.nextFrame();}};
@@ -51,4 +51,18 @@ test('category radios place vendor price immediately before skip in both languag
   const options=[...h.dialog.innerHTML.matchAll(/name="price-category-ore"[^>]*value="([^"]+)"/g)].map(match=>match[1]);
   assert.deepEqual(options,['ask','bid','bidVendor','vendor','off']);assert.ok(h.dialog.innerHTML.includes(label));
  }
+});
+
+test('manual edits lock immediately, including zero and blank; invalid edits preserve state and users can unlock',()=>{
+ const input={dataset:{priceValue:'1'},value:'42',valueAsNumber:42,validity:{badInput:false},nextElementSibling:{textContent:''},setAttribute(){},removeAttribute(){}};
+ const h=harness(async()=>{throw Error('noMarketData');},[input]);h.button.onclick();
+ for(const [value,number,expected]of [['42',42,42],['0',0,0],['',NaN,null]]){
+  input.value=value;input.valueAsNumber=number;input.oninput();
+  assert.equal(h.ctx.priceState().prices[1].price,expected);assert.equal(h.ctx.priceState().prices[1].locked,true);
+  assert.equal(h.controls.get('[data-price-lock="1"]').checked,true);assert.equal(input.nextElementSibling.textContent,'手动');
+ }
+ const before=h.ctx.priceState();input.value='-1';input.valueAsNumber=-1;input.oninput();assert.equal(h.ctx.priceState(),before);
+ input.value='bad';input.validity.badInput=true;input.oninput();assert.equal(h.ctx.priceState(),before);
+ const unlocked=lockItemPrices(before,[1],false).state;h.ctx.updatePrices(unlocked);assert.equal(h.ctx.priceState().prices[1].locked,false);
+ input.validity.badInput=false;input.value='8';input.valueAsNumber=8;input.onchange();assert.equal(h.ctx.priceState().prices[1].locked,true);assert.equal(h.ctx.priceState().prices[1].price,8);
 });
