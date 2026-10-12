@@ -34,7 +34,7 @@ export function simulateGatheringSite(raw,job,site,options={}){
    if(e.kind==='produced'){result.completed++;result.attempts++;if(e.itemId===game.coinItemId)result.coins+=e.qty??1;else{result.normal+=e.qty??1;add(result.normalItems,e.itemId,e.qty??1);}}
    if(e.kind==='caught'){result.caught++;result.attempts++;}
    if(e.kind==='deposited')result.deposits++;
-   if(['bonus','pet','mount','voidshard','box'].includes(e.kind)){const id=e.kind==='box'?game.lootBoxItemId:e.itemId;if(!Number.isSafeInteger(id))throw Error('invalidReward');result.rare+=e.qty??1;add(result.rareItems,id,e.qty??1);}
+   if(['bonus','pet','mount','voidshard','box'].includes(e.kind)){const id=e.kind==='box'?(e.itemId??game.lootBoxItemId):e.itemId;if(!Number.isSafeInteger(id))throw Error('invalidReward');result.rare+=e.qty??1;add(result.rareItems,id,e.qty??1);}
    if(e.kind==='routeStopped'&&!['done'].includes(e.reason))throw Error(`routeStopped:${e.reason}`);
   }
   result.elapsedTicks=tick;

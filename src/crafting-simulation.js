@@ -43,7 +43,7 @@ export function simulateCrafting(raw,job,tier,count,{onProgress=()=>{},...option
     r.items[e.itemId]=safeAdd(r.items[e.itemId]??0,e.qty??1);
     for(const i of game.recipeInputs(job,tier))r.consumed[i.itemId]=safeAdd(r.consumed[i.itemId]??0,i.qty);
    }
-   if(['bonus','pet','mount','voidshard','box'].includes(e.kind)){const id=e.kind==='box'?game.lootBoxItemId:e.itemId;if(!Number.isSafeInteger(id))throw Error('invalidReward');r.items[id]=safeAdd(r.items[id]??0,e.qty??1);}
+   if(['bonus','pet','mount','voidshard','box'].includes(e.kind)){const id=e.kind==='box'?(e.itemId??game.lootBoxItemId):e.itemId;if(!Number.isSafeInteger(id))throw Error('invalidReward');r.items[id]=safeAdd(r.items[id]??0,e.qty??1);}
    if(e.kind==='deposited')r.deposits++;
    if(e.kind==='routeStopped'&&e.reason!=='done')r.error=`routeStopped:${e.reason}`;
   }

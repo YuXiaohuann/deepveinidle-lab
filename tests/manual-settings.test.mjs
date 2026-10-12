@@ -69,8 +69,8 @@ test('removed inventory and event overrides cannot affect manual simulation',()=
  const n=normalize(s);assert.equal(n.homeBank,0);assert.equal(n.manual.actualInventory,false);assert.equal(n.manual.unlimitedBank,true);assert.equal(n.manual.bankSlotsBought,0);assert.deepEqual(n.manual.bank,[]);assert.deepEqual(n.manual.pack,[]);assert.deepEqual(n.manual.overflow,[]);assert.deepEqual(n.manual.windows,[]);assert.equal(n.manual.hotMode,1);
  for(const monster of game.monsters)assert.deepEqual(simulateMonster(s,monster),simulateMonster(preset('ranged'),monster),monster.name);
 });
-test('incomplete snapshot inputs fail explicitly',()=>{
- assert.throws(()=>createScenario({format:'snapshot',player:{}}),/invalidSnapshot|predictionMissing/);
+test('removed snapshot inputs fail explicitly',()=>{
+ assert.throws(()=>createScenario({format:'snapshot',player:{}}),/Unsupported simulation format/);
 });
 
 

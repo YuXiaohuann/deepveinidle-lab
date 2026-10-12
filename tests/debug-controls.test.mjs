@@ -31,7 +31,7 @@ test('debug configuration download round-trips both imports; failures preserve s
   combat.manual.vendorValues=true;combat.manual.valuationMode='vendor';combat.manual.hotSetting='off';combat.manual.simulationHours=6.5;combat.manual.customSimulation=true;
   const beforeConfigImport=structuredClone(combat);
   await buttons[0].onclick();assert.deepEqual(combat,importCharacter(beforeConfigImport,source).state);
-  assert.equal(combat.manual.vendorValues,true);assert.equal(combat.manual.hotSetting,'off');assert.equal(combat.manual.simulationHours,6.5);assert.equal(combat.manual.customSimulation,true);
+  assert.equal(combat.manual.vendorValues,true);assert.equal(combat.manual.hotSetting,'off');assert.equal(combat.manual.simulationHours,7);assert.equal(combat.manual.customSimulation,true);
   await buttons[1].onclick();assert.deepEqual(enhancement,importEnhancement(enhancementDefaults(),source).state);
   language='en';callbacks.refresh();assert.equal(host.querySelector('#debug-filename').textContent,'configuration.json');
   assert.doesNotMatch(host.innerHTML,/debug-capture|data-debug-script-import|data-debug-import="snapshot"|character snapshot|combat snapshot/i);

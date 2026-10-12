@@ -1,0 +1,170 @@
+[
+  {
+    "debugButtons": [
+      "Export character configuration",
+      "Import combat configuration",
+      "Import enhancement configuration"
+    ],
+    "lang": "en",
+    "path": "/combat",
+    "scroll": 390,
+    "version": "1.0.0",
+    "width": 390
+  },
+  {
+    "debugButtons": [
+      "导出角色配置",
+      "导入战斗配置",
+      "导入强化配置"
+    ],
+    "lang": "zh-CN",
+    "path": "/combat",
+    "scroll": 390,
+    "version": "1.0.0",
+    "width": 390
+  },
+  {
+    "debugButtons": [
+      "Export character configuration",
+      "Import combat configuration",
+      "Import enhancement configuration"
+    ],
+    "lang": "en",
+    "path": "/gather",
+    "scroll": 390,
+    "version": "1.0.0",
+    "width": 390
+  },
+  {
+    "debugButtons": [
+      "导出角色配置",
+      "导入战斗配置",
+      "导入强化配置"
+    ],
+    "lang": "zh-CN",
+    "path": "/gather",
+    "scroll": 390,
+    "version": "1.0.0",
+    "width": 390
+  },
+  {
+    "debugButtons": [
+      "Export character configuration",
+      "Import combat configuration",
+      "Import enhancement configuration"
+    ],
+    "lang": "en",
+    "path": "/craft",
+    "scroll": 390,
+    "version": "1.0.0",
+    "width": 390
+  },
+  {
+    "debugButtons": [
+      "导出角色配置",
+      "导入战斗配置",
+      "导入强化配置"
+    ],
+    "lang": "zh-CN",
+    "path": "/craft",
+    "scroll": 390,
+    "version": "1.0.0",
+    "width": 390
+  },
+  {
+    "debugButtons": [
+      "Export character configuration",
+      "Import combat configuration",
+      "Import enhancement configuration"
+    ],
+    "lang": "en",
+    "path": "/enhance",
+    "scroll": 390,
+    "version": "1.0.0",
+    "width": 390
+  },
+  {
+    "debugButtons": [
+      "导出角色配置",
+      "导入战斗配置",
+      "导入强化配置"
+    ],
+    "lang": "zh-CN",
+    "path": "/enhance",
+    "scroll": 390,
+    "version": "1.0.0",
+    "width": 390
+  },
+  {
+    "debugButtons": [
+      "Export character configuration",
+      "Import combat configuration",
+      "Import enhancement configuration"
+    ],
+    "lang": "en",
+    "path": "/mastery",
+    "scroll": 390,
+    "version": "1.0.0",
+    "width": 390
+  },
+  {
+    "debugButtons": [
+      "导出角色配置",
+      "导入战斗配置",
+      "导入强化配置"
+    ],
+    "lang": "zh-CN",
+    "path": "/mastery",
+    "scroll": 390,
+    "version": "1.0.0",
+    "width": 390
+  },
+  {
+    "debugButtons": [
+      "Export character configuration",
+      "Import combat configuration",
+      "Import enhancement configuration"
+    ],
+    "lang": "en",
+    "path": "/forecast",
+    "scroll": 390,
+    "version": "1.0.0",
+    "width": 390
+  },
+  {
+    "debugButtons": [
+      "导出角色配置",
+      "导入战斗配置",
+      "导入强化配置"
+    ],
+    "lang": "zh-CN",
+    "path": "/forecast",
+    "scroll": 390,
+    "version": "1.0.0",
+    "width": 390
+  },
+  {
+    "debugButtons": [
+      "Export character configuration",
+      "Import combat configuration",
+      "Import enhancement configuration"
+    ],
+    "lang": "en",
+    "path": "/debug",
+    "scroll": 390,
+    "version": "1.0.0",
+    "width": 390
+  },
+  {
+    "debugButtons": [
+      "导出角色配置",
+      "导入战斗配置",
+      "导入强化配置"
+    ],
+    "lang": "zh-CN",
+    "path": "/debug",
+    "scroll": 390,
+    "version": "1.0.0",
+    "width": 390
+  }
+]

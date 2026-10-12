@@ -99,7 +99,9 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
 
 #enhance-results>.enemies{margin-bottom:24px}
 
-#debug-content{display:grid;gap:20px}
+#debug-content{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;min-width:0}
+#debug-content>*{min-width:0}
+#debug-content input[type=file]{width:100%;min-width:0;box-sizing:border-box}
 #debug-content>h1{margin-bottom:0}
 
 .simulation-caveat{color:var(--gold);font-weight:650}

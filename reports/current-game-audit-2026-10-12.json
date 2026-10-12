@@ -1,0 +1,46 @@
+{
+  "source": {
+    "build": "index-C6UxPVvd.js",
+    "version": "1.0.1186",
+    "sha256": "cfec2d6184f4d1b649c87731d06f8ed095655de6ad0da6689c9c67dc6f969b9b"
+  },
+  "data": {
+    "monsters": "identical",
+    "equipment": "identical",
+    "items": "identical",
+    "marketFamilies": "identical",
+    "recipes": "identical",
+    "world": "identical",
+    "masteries": "identical",
+    "rooms": "identical",
+    "potions": "identical",
+    "tools": "identical",
+    "perks": "identical",
+    "translations": "identical",
+    "uiTranslations": "identical",
+    "homeTranslations": "identical",
+    "worldTranslations": "identical"
+  },
+  "formulas": {
+    "enhancement": {
+      "costCases": 24150,
+      "chances": "all levels, ranks 0..limit step 10, plus 0..29"
+    },
+    "mastery": "all ranks identical",
+    "forecast": "366 days, every half hour identical",
+    "itemPrices": 1266
+  },
+  "gathering": {
+    "tested": 74,
+    "differences": []
+  },
+  "crafting": {
+    "tested": 910,
+    "differences": []
+  },
+  "craftingBanks": [],
+  "combat": {
+    "tested": 60,
+    "differences": []
+  }
+}

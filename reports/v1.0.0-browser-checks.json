@@ -1,0 +1,156 @@
+[
+  {
+    "lang": "zh",
+    "route": "combat",
+    "heading": [
+      "角色配置"
+    ],
+    "scroll": 390,
+    "source": "基于 2026-10-12 公开资源 · 游戏版本 1.0.1186",
+    "version": "正式版 1.0.0",
+    "width": 390
+  },
+  {
+    "lang": "zh",
+    "route": "gather",
+    "heading": [
+      "角色配置"
+    ],
+    "scroll": 390,
+    "source": "基于 2026-10-12 公开资源 · 游戏版本 1.0.1186",
+    "version": "正式版 1.0.0",
+    "width": 390
+  },
+  {
+    "lang": "zh",
+    "route": "craft",
+    "heading": [
+      "角色配置"
+    ],
+    "scroll": 390,
+    "source": "基于 2026-10-12 公开资源 · 游戏版本 1.0.1186",
+    "version": "正式版 1.0.0",
+    "width": 390
+  },
+  {
+    "lang": "zh",
+    "route": "enhance",
+    "heading": [
+      "角色配置"
+    ],
+    "scroll": 390,
+    "source": "基于 2026-10-12 公开资源 · 游戏版本 1.0.1186",
+    "version": "正式版 1.0.0",
+    "width": 390
+  },
+  {
+    "lang": "zh",
+    "route": "mastery",
+    "heading": [
+      "角色配置"
+    ],
+    "scroll": 390,
+    "source": "基于 2026-10-12 公开资源 · 游戏版本 1.0.1186",
+    "version": "正式版 1.0.0",
+    "width": 390
+  },
+  {
+    "lang": "zh",
+    "route": "forecast",
+    "heading": [
+      "热门加成"
+    ],
+    "scroll": 390,
+    "source": "基于 2026-10-12 公开资源 · 游戏版本 1.0.1186",
+    "version": "正式版 1.0.0",
+    "width": 390
+  },
+  {
+    "lang": "zh",
+    "route": "debug",
+    "heading": [
+      "调试"
+    ],
+    "scroll": 390,
+    "source": "基于 2026-10-12 公开资源 · 游戏版本 1.0.1186",
+    "version": "正式版 1.0.0",
+    "width": 390
+  },
+  {
+    "lang": "en",
+    "route": "combat",
+    "heading": [
+      "Character build"
+    ],
+    "scroll": 390,
+    "source": "Public source snapshot 2026-10-12 · Game version 1.0.1186",
+    "version": "1.0.0",
+    "width": 390
+  },
+  {
+    "lang": "en",
+    "route": "gather",
+    "heading": [
+      "Character build"
+    ],
+    "scroll": 390,
+    "source": "Public source snapshot 2026-10-12 · Game version 1.0.1186",
+    "version": "1.0.0",
+    "width": 390
+  },
+  {
+    "lang": "en",
+    "route": "craft",
+    "heading": [
+      "Character build"
+    ],
+    "scroll": 390,
+    "source": "Public source snapshot 2026-10-12 · Game version 1.0.1186",
+    "version": "1.0.0",
+    "width": 390
+  },
+  {
+    "lang": "en",
+    "route": "enhance",
+    "heading": [
+      "Character build"
+    ],
+    "scroll": 390,
+    "source": "Public source snapshot 2026-10-12 · Game version 1.0.1186",
+    "version": "1.0.0",
+    "width": 390
+  },
+  {
+    "lang": "en",
+    "route": "mastery",
+    "heading": [
+      "Character build"
+    ],
+    "scroll": 390,
+    "source": "Public source snapshot 2026-10-12 · Game version 1.0.1186",
+    "version": "1.0.0",
+    "width": 390
+  },
+  {
+    "lang": "en",
+    "route": "forecast",
+    "heading": [
+      "Hot bonuses"
+    ],
+    "scroll": 390,
+    "source": "Public source snapshot 2026-10-12 · Game version 1.0.1186",
+    "version": "1.0.0",
+    "width": 390
+  },
+  {
+    "lang": "en",
+    "route": "debug",
+    "heading": [
+      "Debug"
+    ],
+    "scroll": 390,
+    "source": "Public source snapshot 2026-10-12 · Game version 1.0.1186",
+    "version": "1.0.0",
+    "width": 390
+  }
+]
