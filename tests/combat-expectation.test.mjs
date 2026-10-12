@@ -89,7 +89,8 @@ test('simulation retains the original trajectory, counts misses, and values expe
   close(actual.coins,actual.kills*expectedGold(monster,1.25));close(actual.normal,actual.kills*.5);
   const prices=Object.fromEntries([...Object.keys(actual.normalItems),...Object.keys(actual.rareItems),...Object.keys(actual.foodItems),...Object.keys(actual.potionItems)].map(id=>[id,{price:2}]));
   const valued=valueCombatRewards(actual,prices);
-  close(valued.totalIncome,actual.coins+2*(actual.normal+actual.rare));
+  const tradableRare=Object.entries(actual.rareItems).filter(([id])=>!game.isPet(Number(id))).reduce((sum,[,qty])=>sum+qty,0);
+  close(valued.totalIncome,actual.coins+2*(actual.normal+tradableRare));
   close(valued.profit,valued.totalIncome-2*actual.food-2*Object.values(actual.potionItems).reduce((s,x)=>s+x,0));
  }
 });

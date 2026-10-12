@@ -1,0 +1,338 @@
+[
+  {
+    "active": [
+      "combat-section"
+    ],
+    "language": "zh-CN",
+    "path": "/combat",
+    "scrollWidth": 919,
+    "version": "1.1.0",
+    "width": 919
+  },
+  {
+    "active": [
+      "gather-section"
+    ],
+    "language": "zh-CN",
+    "path": "/gather",
+    "scrollWidth": 919,
+    "version": "1.1.0",
+    "width": 919
+  },
+  {
+    "active": [
+      "craft-section"
+    ],
+    "language": "zh-CN",
+    "path": "/craft",
+    "scrollWidth": 919,
+    "version": "1.1.0",
+    "width": 919
+  },
+  {
+    "active": [
+      "enhance-section"
+    ],
+    "language": "zh-CN",
+    "path": "/enhance",
+    "scrollWidth": 919,
+    "version": "1.1.0",
+    "width": 919
+  },
+  {
+    "active": [
+      "mastery-section"
+    ],
+    "language": "zh-CN",
+    "path": "/mastery",
+    "scrollWidth": 919,
+    "version": "1.1.0",
+    "width": 919
+  },
+  {
+    "active": [
+      "forecast-section"
+    ],
+    "language": "zh-CN",
+    "path": "/forecast",
+    "scrollWidth": 919,
+    "version": "1.1.0",
+    "width": 919
+  },
+  {
+    "active": [
+      "debug-section"
+    ],
+    "language": "zh-CN",
+    "path": "/debug",
+    "scrollWidth": 919,
+    "version": "1.1.0",
+    "width": 919
+  },
+  {
+    "active": [
+      "combat-section"
+    ],
+    "language": "en",
+    "path": "/combat",
+    "scrollWidth": 992,
+    "version": "1.1.0",
+    "width": 919
+  },
+  {
+    "active": [
+      "gather-section"
+    ],
+    "language": "en",
+    "path": "/gather",
+    "scrollWidth": 992,
+    "version": "1.1.0",
+    "width": 919
+  },
+  {
+    "active": [
+      "craft-section"
+    ],
+    "language": "en",
+    "path": "/craft",
+    "scrollWidth": 992,
+    "version": "1.1.0",
+    "width": 919
+  },
+  {
+    "active": [
+      "enhance-section"
+    ],
+    "language": "en",
+    "path": "/enhance",
+    "scrollWidth": 992,
+    "version": "1.1.0",
+    "width": 919
+  },
+  {
+    "active": [
+      "mastery-section"
+    ],
+    "language": "en",
+    "path": "/mastery",
+    "scrollWidth": 992,
+    "version": "1.1.0",
+    "width": 919
+  },
+  {
+    "active": [
+      "forecast-section"
+    ],
+    "language": "en",
+    "path": "/forecast",
+    "scrollWidth": 992,
+    "version": "1.1.0",
+    "width": 919
+  },
+  {
+    "active": [
+      "debug-section"
+    ],
+    "language": "en",
+    "path": "/debug",
+    "scrollWidth": 992,
+    "version": "1.1.0",
+    "width": 919
+  },
+  {
+    "language": "zh-CN",
+    "path": "/combat",
+    "scrollWidth": 390,
+    "version": "1.1.0",
+    "width": 390
+  },
+  {
+    "language": "zh-CN",
+    "path": "/gather",
+    "scrollWidth": 390,
+    "version": "1.1.0",
+    "width": 390
+  },
+  {
+    "language": "zh-CN",
+    "path": "/craft",
+    "scrollWidth": 390,
+    "version": "1.1.0",
+    "width": 390
+  },
+  {
+    "language": "zh-CN",
+    "path": "/enhance",
+    "scrollWidth": 390,
+    "version": "1.1.0",
+    "width": 390
+  },
+  {
+    "language": "zh-CN",
+    "path": "/mastery",
+    "scrollWidth": 390,
+    "version": "1.1.0",
+    "width": 390
+  },
+  {
+    "language": "zh-CN",
+    "path": "/forecast",
+    "scrollWidth": 390,
+    "version": "1.1.0",
+    "width": 390
+  },
+  {
+    "language": "zh-CN",
+    "path": "/debug",
+    "scrollWidth": 390,
+    "version": "1.1.0",
+    "width": 390
+  },
+  {
+    "language": "en",
+    "path": "/combat",
+    "scrollWidth": 390,
+    "version": "1.1.0",
+    "width": 390
+  },
+  {
+    "language": "en",
+    "path": "/gather",
+    "scrollWidth": 390,
+    "version": "1.1.0",
+    "width": 390
+  },
+  {
+    "language": "en",
+    "path": "/craft",
+    "scrollWidth": 390,
+    "version": "1.1.0",
+    "width": 390
+  },
+  {
+    "language": "en",
+    "path": "/enhance",
+    "scrollWidth": 390,
+    "version": "1.1.0",
+    "width": 390
+  },
+  {
+    "language": "en",
+    "path": "/mastery",
+    "scrollWidth": 390,
+    "version": "1.1.0",
+    "width": 390
+  },
+  {
+    "language": "en",
+    "path": "/forecast",
+    "scrollWidth": 390,
+    "version": "1.1.0",
+    "width": 390
+  },
+  {
+    "language": "en",
+    "path": "/debug",
+    "scrollWidth": 390,
+    "version": "1.1.0",
+    "width": 390
+  },
+  {
+    "language": "zh-CN",
+    "path": "/combat",
+    "scrollWidth": 1280,
+    "version": "1.1.0",
+    "width": 1280
+  },
+  {
+    "language": "zh-CN",
+    "path": "/gather",
+    "scrollWidth": 1280,
+    "version": "1.1.0",
+    "width": 1280
+  },
+  {
+    "language": "zh-CN",
+    "path": "/craft",
+    "scrollWidth": 1280,
+    "version": "1.1.0",
+    "width": 1280
+  },
+  {
+    "language": "zh-CN",
+    "path": "/enhance",
+    "scrollWidth": 1280,
+    "version": "1.1.0",
+    "width": 1280
+  },
+  {
+    "language": "zh-CN",
+    "path": "/mastery",
+    "scrollWidth": 1280,
+    "version": "1.1.0",
+    "width": 1280
+  },
+  {
+    "language": "zh-CN",
+    "path": "/forecast",
+    "scrollWidth": 1280,
+    "version": "1.1.0",
+    "width": 1280
+  },
+  {
+    "language": "zh-CN",
+    "path": "/debug",
+    "scrollWidth": 1280,
+    "version": "1.1.0",
+    "width": 1280
+  },
+  {
+    "language": "en",
+    "path": "/combat",
+    "scrollWidth": 1280,
+    "version": "1.1.0",
+    "width": 1280
+  },
+  {
+    "language": "en",
+    "path": "/gather",
+    "scrollWidth": 1280,
+    "version": "1.1.0",
+    "width": 1280
+  },
+  {
+    "language": "en",
+    "path": "/craft",
+    "scrollWidth": 1280,
+    "version": "1.1.0",
+    "width": 1280
+  },
+  {
+    "language": "en",
+    "path": "/enhance",
+    "scrollWidth": 1280,
+    "version": "1.1.0",
+    "width": 1280
+  },
+  {
+    "language": "en",
+    "path": "/mastery",
+    "scrollWidth": 1280,
+    "version": "1.1.0",
+    "width": 1280
+  },
+  {
+    "language": "en",
+    "path": "/forecast",
+    "scrollWidth": 1280,
+    "version": "1.1.0",
+    "width": 1280
+  },
+  {
+    "language": "en",
+    "path": "/debug",
+    "scrollWidth": 1280,
+    "version": "1.1.0",
+    "width": 1280
+  }
+]
