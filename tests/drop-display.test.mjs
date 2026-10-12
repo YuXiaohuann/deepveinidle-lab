@@ -32,10 +32,10 @@ test('valuation preference defaults off, persists and renders bilingual controls
 test('headers and pending and failed rows follow the visible column count',()=>{
  for(const enabled of [false,true]){
  const c=view(enabled);const columns=c.visibleEnemyColumns();
- assert.equal(columns.length,enabled?9:8);assert.equal(columns.at(-1)[0],'foodHour');
+ assert.equal(columns.length,enabled?10:9);assert.equal(columns.at(-1)[0],'foodHour');
  assert.equal(columns.find(x=>x[0]==='normalHour')[1],enabled?'normalValue':'normal');
  assert.equal(columns.some(x=>x[0]==='totalIncomeHour'),enabled);
- assert.equal((c.hourlyCells({key:'m'}).match(/<td/g)||[]).length,enabled?7:6);
+ assert.equal((c.hourlyCells({key:'m'}).match(/<td/g)||[]).length,enabled?8:7);
  assert.match(c.hourlyCells({key:'m'}),/<summary>…<\/summary><div>depot: …<\/div>/);
  assert.match(view(enabled,null,true).hourlyCells({key:'m'}),/<summary>!<\/summary><div>depot: !<\/div>/);
  }
@@ -47,7 +47,7 @@ test('quantities and vendor values render separately with optional highlighted i
  assert.match(html,new RegExp(`<summary>${enabled?'40':'4.0'}</summary>`));
  assert.match(html,new RegExp(`<summary>${enabled?'50':'5.0'}</summary>`));
  assert.equal(html.includes('<td class="column-highlight">93</td>'),enabled);
- assert.match(html,/item quantity/);assert.match(html,/^<td><details/);assert.match(html,/depot: 仓库 2/);
+ assert.match(html,/item quantity/);assert.match(html,/^<td>1.0<\/td><td><details/);assert.match(html,/<summary>0%<\/summary>/);assert.match(html,/depot: 仓库 2/);
  }
 });
 
