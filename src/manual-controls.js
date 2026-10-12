@@ -18,6 +18,6 @@ export function manualControls(state,{language,number,options,esc,name}){
  const custom=m.customSimulation||![1,24].includes(m.simulationHours);
  const duration=`<label class="potion"><span>${label('模拟时间','Simulation time')}</span><select data-simulation-mode aria-label="${label('模拟时间','Simulation time')}">${options([[1,label('1 小时','1 hour')],[24,label('24 小时','24 hours')],['custom',label('自定义时长','Custom duration')]],custom?'custom':m.simulationHours)}</select></label>`+(custom?number('manual.simulationHours',label('自定义时长（小时）','Custom duration (hours)'),m.simulationHours,MAX_SIMULATION_MINUTES/60,1/60,'any'):'');
  const enemies=select('enemySelection','敌人','Enemies',[["all",label('全部','All')],...[...game.monsters].sort((a,b)=>b.level-a.level).map(m=>[monsterKey(m),name(m.name)])]);
- const simulation=section('simulation-settings','模拟配置','Simulation settings',enemies+duration+hot+`<label class="potion"><span>${zh?'掉落估值':'Drop valuation'}</span><select data-path="manual.valuationMode">${options([['quantity',zh?'数量':'Quantity'],['vendor',zh?'商人估价':'Vendor prices'],['custom',zh?'设置价格估价':'Configured prices']],m.valuationMode)}</select></label><p class="micro">${zh?'设置价格在页头物品价格中管理，收入未扣食物或药水费用。':'Manage configured prices in the header. Income excludes food and potion costs.'}</p>`);
+ const simulation=section('simulation-settings','模拟配置','Simulation settings',enemies+duration+hot);
  return {food,other,simulation};
 }

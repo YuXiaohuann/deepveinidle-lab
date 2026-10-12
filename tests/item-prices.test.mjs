@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
-import {priceDefaults,normalizePriceState,validItemId,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes,valueItems,valueRewards} from '../src/item-prices.js';
+import {priceDefaults,normalizePriceState,validItemId,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes,valueItems,valueRewards,valuationPrice,valueCombatRewards} from '../src/item-prices.js';
 import {normalizeManual} from '../src/manual-settings.js';
 import {normalizeGathering,importGathering} from '../src/gathering-model.js';
 import {enhancementDefaults,validateEnhancement,resolveEnhancementPrices,calculateEnhancement} from '../src/enhancement.js';
@@ -64,13 +64,13 @@ test('quotes and imported prices cannot move backwards, including fallback',()=>
 test('valuation uses exact quantities and IDs, propagates missing prices and rejects overflow',()=>{
  const prices={1:{price:10},1001:{price:0}};
  assert.deepEqual(valueItems({1:2,1001:3},'custom',prices),{value:20,partial:20,missing:[]});
- assert.deepEqual(valueItems({1:2,1001:3,2:4},'custom',prices),{value:null,partial:20,missing:[2]});
- const result={coins:7,normalItems:{1:2},rareItems:{1001:3}};assert.equal(valueRewards(result,'custom',prices).totalIncome,27);assert.equal(valueRewards({...result,rareItems:{2:3}},'custom',prices).totalIncome,null);assert.equal(valueRewards(result,'quantity',prices),result);
+ assert.deepEqual(valueItems({1:2,1001:3,2:4},'custom',prices),{value:20+4*game.vendorPrice(2),partial:20+4*game.vendorPrice(2),missing:[2]});
+ const result={coins:7,normalItems:{1:2},rareItems:{1001:3}};assert.equal(valueRewards(result,'custom',prices).totalIncome,27);assert.equal(valueRewards({...result,rareItems:{2:3}},'custom',prices).totalIncome,7+20+3*game.vendorPrice(2));assert.equal(valueRewards(result,'quantity',prices).totalIncome,27);
  assert.throws(()=>valueItems({1:2},'custom',{1:{price:Number.MAX_SAFE_INTEGER}}),/priceOverflow/);
 });
 test('valuation modes default independently of old toggles',()=>{
- assert.equal(normalizeManual({vendorValues:true}).valuationMode,'quantity');assert.equal(normalizeManual({vendorValues:false}).valuationMode,'quantity');assert.equal(normalizeManual({valuationMode:'custom'}).vendorValues,true);
- assert.equal(normalizeGathering({valuationMode:'custom'}).valuationMode,'custom');assert.equal(normalizeGathering({vendorValues:true}).valuationMode,'quantity');
+ assert.equal(normalizeManual({vendorValues:true}).valuationMode,'custom');assert.equal(normalizeManual({vendorValues:false}).valuationMode,'custom');assert.equal(normalizeManual({valuationMode:'custom'}).vendorValues,true);
+ assert.equal(normalizeGathering({valuationMode:'custom'}).valuationMode,'custom');assert.equal(normalizeGathering({vendorValues:true}).valuationMode,'custom');
 });
 test('enhancement resolves explicit price modes and binds owned bases',()=>{
  const prices={208:{price:2},359:{price:3},110:{price:4},111:{price:9}};let s=enhancementDefaults();let resolved=resolveEnhancementPrices(s,prices);
@@ -101,4 +101,25 @@ test('old price formats are rejected and independent categories do not share flo
 test('clearing removes all unlocked prices including zero and preserves locked records and quote settings',()=>{
  let state=setItemPrice(setItemPrice(setItemPrice(priceDefaults(),1,0),2,17),3,88);state=lockItemPrices(state,[3,1001],true).state;state.quotes={1:{bid:side(36)}};
  const before=structuredClone(state),r=clearUnlockedPrices(state);assert.equal(r.cleared,2);assert.deepEqual(Object.keys(r.state.prices),['3','1001']);assert.deepEqual(r.state.prices[3],before.prices[3]);assert.deepEqual(r.state.prices[1001],before.prices[1001]);assert.deepEqual(r.state.quotes,before.quotes);assert.deepEqual(r.state.preferences,before.preferences);assert.deepEqual(state,before);assert.equal(clearUnlockedPrices(r.state).cleared,0);
+});
+
+test('fallback distinguishes unset, zero and imported vendor prices; combat costs allow negative profit',()=>{
+ assert.equal(valuationPrice(1,{}).fallback,true);
+ assert.deepEqual(valuationPrice(1,{1:{price:0}}),{price:0,fallback:false});
+ assert.equal(valuationPrice(1,{1:{price:game.vendorPrice(1),source:'vendor'}}).fallback,false);
+ const r=valueCombatRewards({coins:10,normalItems:{},rareItems:{},foodItems:{64:3},potionItems:{1:24}},{64:{price:2},1:{price:1}});
+ assert.equal(r.foodCost,6);assert.equal(r.potionCost,24);assert.equal(r.profit,-20);
+});
+
+test('fallback warnings follow positive quantities and aggregate income and profit separately',()=>{
+ const raw={coins:10,normalItems:{1:2,2:0},rareItems:{3:1},foodItems:{64:2},potionItems:{4:1}};
+ const prices={1:{price:0},3:{price:game.vendorPrice(3),source:'vendor'},4:{price:5}};
+ const valued=valueCombatRewards(raw,prices);
+ assert.deepEqual(valued.normalMissingPrices,[]);assert.deepEqual(valued.rareMissingPrices,[]);
+ assert.deepEqual(valued.missingPrices,[]);assert.deepEqual(valued.foodMissingPrices,[64]);
+ assert.deepEqual(valued.profitMissingPrices,[64]);assert.deepEqual(valued.potionMissingPrices,[]);
+ assert.equal(valued.foodCost,2*game.vendorPrice(64));
+ const missing=valueCombatRewards(raw,{});
+ assert.deepEqual(missing.normalMissingPrices,[1]);assert.deepEqual(missing.rareMissingPrices,[3]);
+ assert.deepEqual(missing.missingPrices,[1,3]);assert.deepEqual(missing.profitMissingPrices,[1,3,64,4]);
 });

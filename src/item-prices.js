@@ -92,20 +92,30 @@ export function importItemPrices(state,snapshot,preferences=state.preferences,no
  return {state:{...state,prices,quotes},stats};
 }
 export function itemPrice(id,prices){return prices[id]?.price??null;}
+export function valuationPrice(id,prices={}){return {price:itemPrice(id,prices)??(game.canSell(Number(id))?game.vendorPrice(Number(id)):0),fallback:itemPrice(id,prices)===null};}
 export function valueItems(items,mode,prices={}){
  let partial=0;const missing=[];
  for(const [key,qty]of Object.entries(items)){
   if(!Number.isFinite(qty)||qty<0)throw Error('invalidDropQuantity');if(!qty)continue;
-  const id=Number(key),price=mode==='vendor'?(game.canSell(id)?game.vendorPrice(id):0):itemPrice(id,prices);
-  if(price===null)missing.push(id);else partial+=qty*price;
+  const id=Number(key),{price,fallback}=valuationPrice(id,prices);
+  if(fallback)missing.push(id);partial+=qty*price;
  }
  if(!Number.isFinite(partial)||partial>Number.MAX_SAFE_INTEGER)throw Error('priceOverflow');
- return {value:missing.length?null:partial,partial,missing};
+ return {value:partial,partial,missing};
 }
 export function valueRewards(result,mode,prices={}){
- if(!result||mode==='quantity')return result;
+ if(!result)return result;
  const normal=valueItems(result.normalItems,mode,prices),rare=valueItems(result.rareItems,mode,prices);
  const totalIncome=normal.value===null||rare.value===null?null:result.coins+normal.value+rare.value;
  if(totalIncome!==null&&(!Number.isFinite(totalIncome)||totalIncome>Number.MAX_SAFE_INTEGER))throw Error('priceOverflow');
- return {...result,normalValue:normal.value,rareValue:rare.value,totalIncome,missingPrices:[...normal.missing,...rare.missing]};
+ return {...result,normalValue:normal.value,rareValue:rare.value,totalIncome,normalMissingPrices:normal.missing,rareMissingPrices:rare.missing,missingPrices:[...normal.missing,...rare.missing]};
+}
+
+export function valueCombatRewards(result,prices={}){
+ const valued=valueRewards(result,'custom',prices);if(!valued)return valued;
+ const food=valueItems(result.foodItems??{},'custom',prices);
+ const potions=valueItems(result.potionItems??{},'custom',prices);
+ const profit=valued.totalIncome-food.value-potions.value;
+ if(!Number.isFinite(profit)||Math.abs(profit)>Number.MAX_SAFE_INTEGER)throw Error('priceOverflow');
+ return {...valued,foodCost:food.value,potionCost:potions.value,foodMissingPrices:food.missing,potionMissingPrices:potions.missing,profitMissingPrices:[...valued.missingPrices,...food.missing,...potions.missing],profit};
 }

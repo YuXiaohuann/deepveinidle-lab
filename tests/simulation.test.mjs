@@ -49,7 +49,7 @@ test('full tick event counts agree with original offline report and food invento
  const report=game.offline(p,scenario.context,START_TICK+DAY_TICKS),actual=simulateMonster(state,monster);
  assert.equal(actual.kills,report.kills);assert.equal(actual.coins,report.coins);
  const food=game.withRarity(state.food.id,state.food.tier),left=(p.bank[food]??0)+p.pack.filter(x=>x.itemId===food).reduce((n,x)=>n+x.qty,0);
- assert.equal(actual.food,1e9-left);assert.ok(actual.food>0);assert.ok(actual.restocks>1);assert.ok(actual.movingTicks>0);
+ assert.equal(actual.foodItems[food],actual.food);assert.equal(actual.food,1e9-left);assert.ok(actual.food>0);assert.ok(actual.restocks>1);assert.ok(actual.movingTicks>0);
 });
 test('death follows predictor check boundaries without lifetime extrapolation',()=>{
  const r=simulateMonster(defaults(),game.monsters.find(m=>m.id===20));
@@ -150,4 +150,11 @@ test('food priorities still enforce the quality cap and fountain-only never eats
  }
  state.manual.foodRule=3;state.manual.foodMaxTier=4;
  assert.equal(simulateMonster(state,monster).food,0);
+});
+
+test('enabled potions retain full quality IDs and charge one per selected hour',()=>{
+ const state=defaults();state.manual.simulationHours=1/60;state.brews.hunter=3;
+ const result=simulateMonster(state,game.monsters.find(m=>m.id===20));
+ const potion=game.potions.find(p=>p.kind==='hunter');
+ assert.deepEqual(result.potionItems,{[game.withRarity(potion.itemId,3)]:1/60});
 });
