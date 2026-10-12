@@ -18,7 +18,7 @@ function harness(builds=[build],order=[]){
  const stored=[],configStored=[],scripts=builds.map(scriptNode);let observer;
  const page={JSON:{parse:JSON.parse},WebSocket:class{listeners=[];addEventListener(type,fn){if(type==='message')this.listeners.push(fn);}receive(text){for(const fn of this.listeners)fn({data:text});}}};
  const document={documentElement:{append(){}},querySelectorAll:()=>scripts,createElement:()=>({style:{},setAttribute(){}}),getElementById:()=>({textContent:''})};
- const context=vm.createContext({unsafeWindow:page,document,location:{origin:'https://deepveinidle.com',host:'deepveinidle.com',href:'https://deepveinidle.com/'},URL,Date,console,setTimeout:()=>0,clearTimeout(){},MutationObserver:class{constructor(fn){observer=fn;}observe(){}},GM_setValue:async(k,v)=>(k==='dvi-debug-snapshot-v2'?stored:configStored).push(structuredClone(v))});
+ const context=vm.createContext({unsafeWindow:page,document,location:{origin:'https://deepveinidle.com',host:'deepveinidle.com',href:'https://deepveinidle.com/'},URL,Date,console,setTimeout:()=>0,clearTimeout(){},MutationObserver:class{constructor(fn){observer=fn;}observe(){}},GM_setValue:async(k,v)=>{if(k==='dvi-debug-snapshot-v2')stored.push(structuredClone(v));else if(k==='dvi-character-snapshot-v2')configStored.push(structuredClone(v));}});
  const roleScript=fs.readFileSync(new URL('../src/character-import.user.js',import.meta.url),'utf8');
  for(const kind of order.length?order:['debug'])vm.runInContext(kind==='debug'?script:roleScript,context);
  const socket=new page.WebSocket('wss://deepveinidle.com/ws');

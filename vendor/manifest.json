@@ -7,6 +7,8 @@
     "monsters": "uc",
     "equipment": "h0",
     "items": "vt",
+    "marketFamilies": "w3",
+    "marketFamily": "Ym",
     "gear": "xe",
     "item": "go",
     "canSell": "Ne",
@@ -1616,6 +1618,18 @@
       "start": 208843,
       "end": 208894,
       "sha256": "5573fe64eda8b42b020860b315e8e78dfe181729acbe5134e64119ed874c3730"
+    },
+    {
+      "name": "w3",
+      "start": 208969,
+      "end": 209874,
+      "sha256": "833d3eb6f3a19f4cca8fd4bb9cb524175656e454f3906b2a1d34e0bf6b5b474f"
+    },
+    {
+      "name": "Ym",
+      "start": 209923,
+      "end": 210060,
+      "sha256": "cb31c4437592a9ec912198c0345646e512c6a5be61101304ac933831dbfaa1b7"
     },
     {
       "name": "dt",

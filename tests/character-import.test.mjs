@@ -6,7 +6,7 @@ import {importCharacter,importWarningText} from '../src/character-import.js';
 import {game,defaults,preset,slots,normalize} from '../src/model.js';
 const fixture=()=>({version:2,capturedAt:Date.now(),player:{lastTick:100,skills:{melee:game.levelXp(37)+20,ranged:game.levelXp(82),magic:0,defence:game.levelXp(42),hitpoints:game.levelXp(51)},equipment:Object.fromEntries(slots.map(k=>[k,null])),foodItemId:game.withRarity(64,2),eatAt:.75,foodMaxTier:3,foodPerTrip:-2,brews:{warrior:200,haste:100,fed:200,rooted:99,blessing:200},brewTier:{warrior:2},house:{post:90,storeroom:4,target:50},houseFurniture:{post:{placed:true}},masteries:{xp:9,move:7},perks:{pockets:3,meals:4,rest:2},guildBonus:.12,homeBank:null,ironman:true}});
 test('nine categories import into existing manual rules, including sparse maps and inactive buffs',()=>{
- const old=preset('ranged');old.manual.weeklyXp=17;old.manual.simulationHours=6;old.manual.customSimulation=true;old.manual.hotSetting='off';old.manual.enemySelection=`monster-${game.monsters[0].id}`;old.manual.vendorValues=true;
+ const old=preset('ranged');old.manual.weeklyXp=17;old.manual.simulationHours=6;old.manual.customSimulation=true;old.manual.hotSetting='off';old.manual.enemySelection=`monster-${game.monsters[0].id}`;old.manual.vendorValues=true;old.manual.valuationMode='vendor';
  const result=importCharacter(old,fixture()),s=result.state;
  assert.equal(result.applied.length,9);assert.equal(s.levels.melee,37);assert.equal(s.levels.ranged,82);
  assert.equal(s.style,'melee');assert.ok(slots.every(k=>s.gear[k].id===0));
@@ -60,7 +60,7 @@ function gameScript(save){
  const stored=[],sockets=[];class Socket{constructor(url){this.url=url;this.listeners={};sockets.push(this);}addEventListener(k,fn){this.listeners[k]=fn;}send(){throw new Error('script must never send');}}
  const page={WebSocket:Socket};let badge=null,observer,hideTimer;
  const doc={documentElement:{append(el){badge=el;}},createElement(){return {style:{},setAttribute(){},remove(){badge=null;observer();}};},getElementById(){return badge;}};
- const context={setTimeout:(fn,ms)=>{hideTimer={fn,ms};return hideTimer;},clearTimeout:()=>{hideTimer=null;},MutationObserver:class{constructor(fn){observer=fn;}observe(){}},unsafeWindow:page,location:{origin:'https://deepveinidle.com',host:'deepveinidle.com',href:'https://deepveinidle.com/'},URL,Date,console,GM_setValue:(k,v)=>{stored.push(v);return save?.();},document:doc};
+ const context={setTimeout:(fn,ms)=>{hideTimer={fn,ms};return hideTimer;},clearTimeout:()=>{hideTimer=null;},MutationObserver:class{constructor(fn){observer=fn;}observe(){}},unsafeWindow:page,location:{origin:'https://deepveinidle.com',host:'deepveinidle.com',href:'https://deepveinidle.com/'},URL,Date,console,GM_setValue:(k,v)=>{if(k!=='dvi-character-snapshot-v2')return;stored.push(v);return save?.();},document:doc};
  vm.runInNewContext(script,context);
  const frame=(socket,you,t='snapshot',extra={},tick=100)=>socket.listeners.message({data:JSON.stringify({tick,m:[{t,you,chat:['private'],...extra}]})});
  return {page,sockets,stored,frame,doc,badge:()=>badge,hasHideTimer:()=>hideTimer!==undefined&&hideTimer!==null,removeBadge(){badge=null;observer();},hideBadge(){assert.equal(hideTimer.ms,15000);hideTimer.fn();}};
@@ -131,7 +131,7 @@ test('success badge hides after fifteen seconds without reappearing on redraws o
  g.frame(socket,fixture().player);await new Promise(resolve=>setImmediate(resolve));
  assert.equal(g.stored.length,2);assert.equal(g.badge(),null);
  new g.page.WebSocket('wss://deepveinidle.com/ws');assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');
- assert.match(script,/^\/\/ @version\s+2\.4\.1$/m);
+ assert.match(script,/^\/\/ @version\s+2\.5\.1$/m);
 });
 
 const weeklyWindow=(label='Weekly goal: gathered',fromTick=100,toTick=200,xpMult=1.1)=>({label,fromTick,toTick,xpMult});
@@ -271,12 +271,12 @@ test('partial imports retain simulation settings and unavailable food fields whi
  const old=preset('magic');
  old.guild={name:'SakuraSpring',tag:'SAKI'};old.eatAt=75;old.fed=true;old.rooted=true;
  old.manual.foodRule=2;old.manual.foodMaxTier=2;old.manual.foodPerTrip=10;
- old.manual.enemySelection=`monster-${game.monsters[0].id}`;old.manual.simulationHours=6.5;old.manual.customSimulation=true;old.manual.hotSetting='off';old.manual.vendorValues=true;old.manual.allGear=true;
+ old.manual.enemySelection=`monster-${game.monsters[0].id}`;old.manual.simulationHours=6.5;old.manual.customSimulation=true;old.manual.hotSetting='off';old.manual.vendorValues=true;old.manual.valuationMode='vendor';old.manual.allGear=true;
  old.manual.guildXp=20;old.manual.weeklyXp=17;old.manual.blessing=true;old.manual.ironman=true;old.homeBank=2;
  old.brews.warrior=4;old.brews.gatherer=4;old.house.post=90;old.house.mine=50;old.masteries.xp=7;old.masteries.gather=8;old.meals=4;old.manual.perks.rest=3;
  const before=structuredClone(old),expected=defaults();
  for(const key of ['food','eatAt','fed','rooted'])expected[key]=structuredClone(old[key]);
- for(const key of ['foodRule','foodMaxTier','foodPerTrip','enemySelection','simulationHours','customSimulation','hotSetting','vendorValues'])expected.manual[key]=old.manual[key];
+ for(const key of ['foodRule','foodMaxTier','foodPerTrip','enemySelection','simulationHours','customSimulation','hotSetting','vendorValues','valuationMode'])expected.manual[key]=old.manual[key];
  const result=importCharacter(old,{version:2,capturedAt:Date.now(),player:{lastTick:100}});
  assert.deepEqual(result.state,normalize(expected));assert.deepEqual(old,before);
  assert.deepEqual(normalize(JSON.parse(JSON.stringify(result.state))),result.state);
@@ -294,7 +294,7 @@ test('invalid food fields preserve existing food settings while valid food field
  assert.equal(valid.fed,true);assert.equal(valid.rooted,false);
 });
 test('imports recalculate mixed gear toggle and whole-import failures never clear current settings',()=>{
- const old=preset('ranged');old.manual.allGear=true;old.manual.vendorValues=true;old.manual.simulationHours=24;
+ const old=preset('ranged');old.manual.allGear=true;old.manual.vendorValues=true;old.manual.valuationMode='vendor';old.manual.simulationHours=24;
  assert.equal(importCharacter(old,fixture()).state.manual.allGear,false);
  const before=structuredClone(old);
  for(const patch of [{version:1},{capturedAt:Date.now()+90000},{player:null}])assert.throws(()=>importCharacter(old,{...fixture(),...patch}),/invalidSnapshot/);

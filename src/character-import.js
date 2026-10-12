@@ -34,7 +34,7 @@ export function importCharacter(current,snapshot,{preview=false}={}){
  const state=preview?structuredClone(current):defaults(),p=snapshot.player,warnings=[],applied=new Set();let category;
  if(!preview){
   for(const key of ['food','eatAt','fed','rooted'])state[key]=structuredClone(current[key]);
-  for(const key of ['foodRule','foodMaxTier','foodPerTrip','enemySelection','simulationHours','customSimulation','hotSetting','vendorValues'])state.manual[key]=current.manual[key];
+  for(const key of ['foodRule','foodMaxTier','foodPerTrip','enemySelection','simulationHours','customSimulation','hotSetting','vendorValues','valuationMode'])state.manual[key]=current.manual[key];
  }
  try{state.guild=readGuild(snapshot.guild);}catch(error){
   if(preview||error.message!=='invalidSnapshot')throw error;

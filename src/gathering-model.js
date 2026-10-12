@@ -22,7 +22,7 @@ export function gatheringDefaults(){return {
  brews:Object.fromEntries(gatheringPotions.map(p=>[p.kind,-1])),
  house:Object.fromEntries(gatheringRooms.map(r=>[r.id,0])),masteries:Object.fromEntries(gatheringMasteries.map(m=>[m.id,0])),
  perks:Object.fromEntries(gatheringPerks.map(p=>[p.id,0])),guild:null,guildXp:0,weeklyXp:0,blessing:false,ironman:false,homeBank:0,
- jobSelection:'all',siteSelection:0,simulationHours:24,customSimulation:false,hotSetting:'game',vendorValues:false,
+ jobSelection:'all',siteSelection:0,simulationHours:24,customSimulation:false,hotSetting:'game',vendorValues:false,valuationMode:'quantity',
 };}
 export function normalizeGathering(raw){
  const s=gatheringDefaults();if(!raw||typeof raw!=='object')return s;
@@ -33,7 +33,7 @@ export function normalizeGathering(raw){
  for(const r of gatheringRooms)s.house[r.id]=integer(raw.house?.[r.id]??0,0,Number.MAX_SAFE_INTEGER);
  for(const m of gatheringMasteries)s.masteries[m.id]=integer(raw.masteries?.[m.id]??0,0,game.masteryRankLimit);
  for(const p of gatheringPerks)s.perks[p.id]=integer(raw.perks?.[p.id]??0,0,p.ranks);
- const manual=normalizeManual(raw);for(const k of ['guildXp','weeklyXp','blessing','ironman','simulationHours','customSimulation','hotSetting','vendorValues'])s[k]=manual[k];
+ const manual=normalizeManual(raw);for(const k of ['guildXp','weeklyXp','blessing','ironman','simulationHours','customSimulation','hotSetting','vendorValues','valuationMode'])s[k]=manual[k];
  s.homeBank=game.world.banks.some(b=>b.id===Number(raw.homeBank))?Number(raw.homeBank):0;
  s.guild=readGuild(raw.guild);
  const job=gatheringJobs.find(j=>j.id===Number(raw.jobSelection)&&j.skill===s.skill);
@@ -95,6 +95,6 @@ export function importGathering(current,snapshot){
  put('ironman',p.ironman,v=>typeof v==='boolean',v=>s.ironman=v);
  if(int(snapshot.worldTick)&&Array.isArray(snapshot.worldBuffs)&&snapshot.worldBuffs.every(w=>record(w)&&int(w.fromTick)&&int(w.toTick,w.fromTick)&&valid(w.xpMult??1,1,1e5)))s.weeklyXp=Math.round(snapshot.worldBuffs.filter(w=>['Weekly goal: gathered','Weekly goal: felled'].includes(w.label)&&w.fromTick<=snapshot.worldTick&&snapshot.worldTick<=w.toTick).reduce((sum,w)=>sum+(w.xpMult-1)*100,0));else warnings.push('weeklyXp');
  try{s.guild=readGuild(snapshot.guild);}catch{warnings.push('guild');}
- Object.assign(s,{jobSelection:'all',siteSelection:0,simulationHours:24,customSimulation:false,hotSetting:'game',vendorValues:false});
+ Object.assign(s,{jobSelection:'all',siteSelection:0,simulationHours:24,customSimulation:false,hotSetting:'game',vendorValues:false,valuationMode:'quantity'});
  return {state:normalizeGathering(s),capturedAt:snapshot.capturedAt,warnings};
 }

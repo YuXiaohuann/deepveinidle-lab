@@ -31,7 +31,7 @@ test('debug download round-trips into all import modes; invalid files preserve s
   await host.querySelector('#debug-export').onclick();assert.ok(clicked);assert.equal(download,`dvi-character-${capturedAt}.json`);
   const json=await blob.text();assert.deepEqual(JSON.parse(json),source);
   host.querySelector('#debug-file').onchange({target:{files:[{name:'capture.json',text:async()=>json}]}});
-  combat.manual.vendorValues=true;combat.manual.hotSetting='off';combat.manual.simulationHours=6.5;combat.manual.customSimulation=true;
+  combat.manual.vendorValues=true;combat.manual.valuationMode='vendor';combat.manual.hotSetting='off';combat.manual.simulationHours=6.5;combat.manual.customSimulation=true;
   const beforeConfigImport=structuredClone(combat);
   await buttons[0].onclick();assert.deepEqual(combat,importCharacter(beforeConfigImport,source).state);
   assert.equal(combat.manual.vendorValues,true);assert.equal(combat.manual.hotSetting,'off');assert.equal(combat.manual.simulationHours,6.5);assert.equal(combat.manual.customSimulation,true);

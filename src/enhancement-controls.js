@@ -1,8 +1,9 @@
+import {priceState,subscribePrices} from './item-price-store.js';
 import {searchSelectMarkup,bindSearchSelect} from './search-select.js';
 import * as game from './upstream.js';
 import {translatedName} from './i18n.js';
 import {requestCharacter,characterImportPanel,probeCharacter,importStatusText} from './import-controls.js';
-import {enhancementStorageKey,enhancementDefaults,enhanceableItems,validateEnhancement,calculateEnhancement,importEnhancement} from './enhancement.js';
+import {enhancementStorageKey,enhancementDefaults,enhanceableItems,validateEnhancement,calculateEnhancement,importEnhancement,resolveEnhancementPrices} from './enhancement.js';
 
 let probeStarted=false;
 let state=enhancementDefaults(),candidates=[],language='zh',busy=false,status=null,saveOK=true;
@@ -17,6 +18,8 @@ const errors={
 const errorMessage=code=>(errors[code]??[code,code])[language==='zh'?0:1];
 const format=v=>v>=1e12?v.toExponential(4):v.toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:2});
 const field=(key,label,min,max,step=1)=>`<label class="number-field"><span>${label}</span><input data-enhance-field="${key}" type="number" min="${min}" max="${max}" step="${step}" value="${state[key]??''}"></label>`;
+function resetBaseOverride(){const id=game.encode(game.withRarity(state.itemId,state.tier),state.current);if(state.basePriceItem!==null&&state.basePriceItem!==id){state.priceModes.basePrice='global';state.basePrice=null;state.basePriceItem=null;}}
+function previewPrices(){try{return resolveEnhancementPrices(state,priceState().prices);}catch{return {shardPrice:null,scrollPrice:null,basePrice:null};}}
 function save(){try{localStorage.setItem(enhancementStorageKey,JSON.stringify(validateEnhancement(state)));saveOK=true;}catch(error){saveOK=false;}}
 function renderStatus(){const el=document.getElementById('enhance-import-status');if(!el)return;
  el.textContent=importStatusText(language,status,busy);
@@ -24,20 +27,20 @@ function renderStatus(){const el=document.getElementById('enhance-import-status'
 }
 function renderResults(){const host=document.getElementById('enhance-results');if(!host)return;
  const note=document.getElementById('enhance-save-note');note.textContent=saveOK?text('● 强化配置独立保存在此浏览器','● Enhancement settings saved separately in this browser'):text('配置未保存：请检查输入或浏览器存储。','Settings were not saved. Check inputs or browser storage.');
- let result;try{result=calculateEnhancement(state);}catch(error){host.innerHTML=`<div class="issue-box" role="alert">${esc(errorMessage(error.message))}</div>`;return;}
+ let result,priced;try{priced=resolveEnhancementPrices(state,priceState().prices);result=calculateEnhancement(priced);}catch(error){host.innerHTML=`<div class="issue-box" role="alert">${esc(errorMessage(error.message))}</div>`;return;}
  const methodOpen=document.getElementById('enhance-methodology')?.open??false;
  const {totals,steps,purchaseTotal,taxedGold}=result;
  const incomplete=text('未完整定价','Incomplete pricing');
  const money=value=>value===null?incomplete:format(value);
- const shardCost=totals.shards===0?0:state.shardPrice===null?null:totals.shards*state.shardPrice;
- const scrollCost=totals.scrolls===0?0:state.scrollPrice===null?null:totals.scrolls*state.scrollPrice;
+ const shardCost=totals.shards===0?0:priced.shardPrice===null?null:totals.shards*priced.shardPrice;
+ const scrollCost=totals.scrolls===0?0:priced.scrollPrice===null?null:totals.scrolls*priced.scrollPrice;
  const materialCost=(quantity,price,cost)=>`${format(quantity)} × ${price===null?text('未填写','Not entered'):format(price)} = ${money(cost)}`;
  const valuationSteps=[
   [text('强化金币','Enhancement gold'),format(totals.gold)],
-  [text('碎片费用','Shard cost'),materialCost(totals.shards,state.shardPrice,shardCost)],
-  [text('保护卷轴费用','Protection scroll cost'),materialCost(totals.scrolls,state.scrollPrice,scrollCost)],
-  [text('底装购置费','Base item purchase'),money(state.basePrice)],
-  [text('税前合计','Subtotal before tax'),`${format(totals.gold)} + ${money(shardCost)} + ${money(scrollCost)} + ${money(state.basePrice)} = ${money(purchaseTotal)}`],
+  [text('碎片费用','Shard cost'),materialCost(totals.shards,priced.shardPrice,shardCost)],
+  [text('保护卷轴费用','Protection scroll cost'),materialCost(totals.scrolls,priced.scrollPrice,scrollCost)],
+  [text('底装购置费','Base item purchase'),money(priced.basePrice)],
+  [text('税前合计','Subtotal before tax'),`${format(totals.gold)} + ${money(shardCost)} + ${money(scrollCost)} + ${money(priced.basePrice)} = ${money(purchaseTotal)}`],
   [text('市场税','Market tax'),`${money(purchaseTotal)} × 3% = ${money(purchaseTotal===null?null:purchaseTotal*0.03)}`],
   [text('含税总投入','Total including tax'),`${money(purchaseTotal)} × 1.03 = ${money(taxedGold)}`]
  ];
@@ -71,15 +74,16 @@ export function renderEnhancement(nextLanguage){
  <label class="enhance-select"><span>${text('品质','Rarity')}</span><select data-enhance-field="tier">${options(rarities().map((x,i)=>[i,x]),state.tier)}</select></label></div>
  <div class="skill-grid">${field('current',text('当前强化值','Current enhancement'),0,game.maxEnhancement)}${field('target',text('目标强化值','Target enhancement'),0,game.maxEnhancement)}</div>
  <div class="enhance-item-row enhance-protection-row"><label class="check"><input data-enhance-field="protect" type="checkbox" ${state.protect?'checked':''}>${text('使用保护卷轴','Use protection scrolls')}</label>${field('protectFrom',text('保护卷轴起始等级','Protection scroll starting level'),game.protectionMin,game.maxEnhancement)}</div><p class="micro">${text('从 +2 起可保护，失败仍降一级；低于设定阈值时失败回 +0。','Protection is available from +2. Failures still lose one level; below the threshold they reset to +0.')}</p>
- <details class="config-detail" id="enhance-price-settings"><summary>${text('材料与底装估价','Material and base item prices')}</summary><p class="micro">${text('手动填写单价，空值表示未定价。底装费可填 0 表示已有装备。','Enter unit prices manually; blanks mean unpriced. Enter 0 for the base item if already owned.')}</p>${field('shardPrice',text('虚空碎片单价（金币）','Voidshard unit price (gold)'),0,Number.MAX_SAFE_INTEGER,'any')}${field('scrollPrice',text('保护卷轴单价（金币）','Protection scroll unit price (gold)'),0,Number.MAX_SAFE_INTEGER,'any')}${field('basePrice',text('底装购置费（金币）','Base item purchase (gold)'),0,Number.MAX_SAFE_INTEGER,'any')}</details></section><div id="enhance-results" aria-live="polite"></div></div>`;
+ <details class="config-detail" id="enhance-price-settings"><summary>${text('材料与底装估价','Material and base item prices')}</summary><p class="micro">${text('全局价格在页头设置。本方案填写只影响当前强化；底装费用关联当前品质及起始强化。空值表示未定价。','Manage global prices in the header. Overrides affect only this plan; base costs belong to the selected rarity and starting enhancement. Blank means unpriced.')}</p>${['shardPrice','scrollPrice','basePrice'].map(key=>{const label={shardPrice:text('虚空碎片单价（金币）','Voidshard unit price (gold)'),scrollPrice:text('保护卷轴单价（金币）','Protection scroll unit price (gold)'),basePrice:text('底装购置费（金币）','Base item purchase (gold)')}[key],mode=state.priceModes[key],price=previewPrices()[key];return `<label class="potion"><span>${label}</span><select data-enhance-price-mode="${key}">${options([['global',text('全局价格','Global price')],['manual',text('本方案填写','Plan override')],...(key==='basePrice'?[['owned',text('已有底装（0）','Already owned (0)')]]:[])],mode)}</select></label>${mode==='manual'?field(key,label,0,Number.MAX_SAFE_INTEGER,'any'):`<p class="micro" data-enhance-price-preview="${key}">${text('有效价格：','Effective price: ')}${price===null?text('未定价','Unpriced'):format(price)}</p>`}`;}).join('')}</details></section><div id="enhance-results" aria-live="polite"></div></div>`;
  host.querySelectorAll('[data-enhance-field]').forEach(el=>{
-  const update=()=>{const key=el.dataset.enhanceField;state[key]=el.type==='checkbox'?el.checked:el.value===''?null:Number(el.value)/(key==='mastery'?0.25:1);save();renderResults();};
-  if(el.type==='number')el.oninput=update;else el.onchange=update;
+  const update=()=>{const key=el.dataset.enhanceField;state[key]=el.type==='checkbox'?el.checked:el.value===''?null:Number(el.value)/(key==='mastery'?0.25:1);if(['current','tier'].includes(key))resetBaseOverride();save();if(['current','tier'].includes(key)&&Number.isInteger(state.current)&&state.current>=0&&state.current<=game.maxEnhancement)renderEnhancement(language);else renderResults();};
+  if(el.type==='number'&&el.dataset.enhanceField!=='current')el.oninput=update;else el.onchange=update;
  });
+ host.querySelectorAll('[data-enhance-price-mode]').forEach(el=>el.onchange=()=>{const key=el.dataset.enhancePriceMode;state.priceModes[key]=el.value;if(key==='basePrice')state.basePriceItem=el.value==='global'?null:game.encode(game.withRarity(state.itemId,state.tier),state.current);save();renderEnhancement(language);});
  const itemOptions=()=>enhanceableItems.map(x=>({value:x.id,label:name(x.name),search:`${x.name} ${translatedName(x.name,'zh')}`}));
- bindSearchSelect({id:'enhance-item-search',options:itemOptions(),value:state.itemId,selectedLabel:id=>name(game.item(id).name),onSelect:id=>{state.itemId=id;save();renderResults();},emptyText:text('没有匹配的装备或工具','No matching equipment or tools'),countText:count=>text(`${count} 件匹配物品`,`${count} matching items`)});
+ bindSearchSelect({id:'enhance-item-search',options:itemOptions(),value:state.itemId,selectedLabel:id=>name(game.item(id).name),onSelect:id=>{state.itemId=id;resetBaseOverride();save();renderEnhancement(language);},emptyText:text('没有匹配的装备或工具','No matching equipment or tools'),countText:count=>text(`${count} 件匹配物品`,`${count} matching items`)});
  document.getElementById('enhance-reset').onclick=()=>{state=enhancementDefaults();candidates=[];status=null;save();renderEnhancement(language);};
- document.getElementById('enhance-candidate')?.addEventListener('change',event=>{const selected=candidates.find(x=>x.id===Number(event.target.value));if(!selected||event.target.value==='')return;state={...state,itemId:selected.itemId,tier:selected.tier,current:selected.current,target:Math.max(state.target??0,selected.current)};save();renderEnhancement(language);});
+ document.getElementById('enhance-candidate')?.addEventListener('change',event=>{const selected=candidates.find(x=>x.id===Number(event.target.value));if(!selected||event.target.value==='')return;state=validateEnhancement({...state,itemId:selected.itemId,tier:selected.tier,current:selected.current,target:Math.max(state.target??0,selected.current)});save();renderEnhancement(language);});
  document.getElementById('enhance-import').onclick=async()=>{
   if(busy)return;busy=true;renderStatus();
   try{const response=await requestCharacter('read');if(!response.snapshot)throw Error('noSnapshot');applyEnhancementImport(response.snapshot);}
@@ -88,3 +92,10 @@ export function renderEnhancement(nextLanguage){
  if(!probeStarted){probeStarted=true;probeCharacter().then(()=>{if(!status&&!busy){status={ready:true};renderStatus();}}).catch(error=>{if(!status&&!busy){status={error:error.message};renderStatus();}});}
  renderStatus();renderResults();for(const [id,open]of openDetails){const el=document.getElementById(id);if(el)el.open=open;}
 }
+
+subscribePrices(()=>{
+ const host=document.getElementById('enhance-content');if(!host)return;
+ const priced=previewPrices();
+ for(const el of host.querySelectorAll('[data-enhance-price-preview]')){const v=priced[el.dataset.enhancePricePreview];el.textContent=text('有效价格：','Effective price: ')+(v===null?text('未定价','Unpriced'):format(v));}
+ renderResults();
+});

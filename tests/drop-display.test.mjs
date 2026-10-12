@@ -11,13 +11,13 @@ const ast=parse(source,{ecmaVersion:'latest',sourceType:'module'});
 const names=['enemyColumns','visibleEnemyColumns','depotCell','hourlyCells'];
 const code=ast.body.filter(n=>names.includes(n.id?.name)||n.declarations?.some(d=>names.includes(d.id.name))).map(n=>source.slice(n.start,n.end)).join('\n');
 function view(enabled,result,error=false){
- const c=vm.createContext({state:{manual:{vendorValues:enabled}},hourly:new Map(result?[['m',result]]:[]),simulationError:error,language:'zh',game:{tickMs:600},t:k=>k,formatRate:(n,metric='count')=>metric==='coins'?String(Math.round(n)):n.toFixed(1),formatAmount:String,esc:String,lootDetails:()=>'<span>item quantity</span>'});
+ const c=vm.createContext({state:{manual:{vendorValues:enabled}},hourly:new Map(result?[['m',result]]:[]),simulationError:error,valuedResult:r=>r,language:'zh',game:{tickMs:600},t:k=>k,formatRate:(n,metric='count')=>metric==='coins'?String(Math.round(n)):n.toFixed(1),formatAmount:String,esc:String,lootDetails:()=>'<span>item quantity</span>'});
  vm.runInContext(code,c);return c;
 }
 test('valuation preference defaults off, persists and renders bilingual controls',()=>{
  assert.equal(defaults().manual.vendorValues,false);
  assert.equal(normalize({manual:{}}).manual.vendorValues,false);
- const state=defaults();state.manual.vendorValues=true;state.guild={name:"SakuraSpring",tag:"SAKI"};
+ const state=defaults();state.manual.vendorValues=true;state.manual.valuationMode='vendor';state.guild={name:"SakuraSpring",tag:"SAKI"};
  assert.equal(normalize(JSON.parse(JSON.stringify(state))).manual.vendorValues,true);
  for(const language of ['zh','en']){
  const controls=manualControls(state,{language,number:()=>'',options:()=>'',esc:String,name:String});
@@ -25,8 +25,8 @@ test('valuation preference defaults off, persists and renders bilingual controls
  assert.match(html,/id="simulation-settings"/);
  assert.doesNotMatch(Object.values(controls).join(''),/sakura-settings|Play with Sakura|一起蛐蛐撒库拉/);
  assert.doesNotMatch(html,/<details[^>]* open/);
- assert.match(html,/data-path="manual.vendorValues" checked/);
- assert.ok(html.includes(language==='zh'?'按商人价格计算掉落价值':'Value drops at vendor prices'));
+ assert.match(html,/data-path="manual.valuationMode"/);
+ assert.ok(html.includes(language==='zh'?'掉落估值':'Drop valuation'));
  }
 });
 test('headers and pending and failed rows follow the visible column count',()=>{
@@ -52,15 +52,15 @@ test('quantities and vendor values render separately with optional highlighted i
 });
 
 test('valuation control is public regardless of guild and is preserved on configuration import',()=>{
- const state=defaults();state.manual.vendorValues=true;
+ const state=defaults();state.manual.vendorValues=true;state.manual.valuationMode='vendor';
  const render=state=>manualControls(state,{language:'zh',number:()=>'',options:()=>'',esc:String,name:String});
  for(const guild of [null,undefined,{name:'Other',tag:'SAKI'},{name:'SakuraSpring',tag:'OTHER'},{name:'sakuraspring',tag:'SAKI'},{name:'SakuraSpring',tag:'SAKI'}]){
-  state.guild=guild;assert.match(render(state).simulation,/data-path="manual.vendorValues" checked/);assert.doesNotMatch(Object.values(render(state)).join(''),/sakura-settings/);
+  state.guild=guild;assert.match(render(state).simulation,/data-path="manual.valuationMode"/);assert.doesNotMatch(Object.values(render(state)).join(''),/sakura-settings/);
  }
  const snapshot={version:2,capturedAt:Date.now(),player:{lastTick:100},guild:{name:'SakuraSpring',tag:'SAKI'}};
  const imported=importCharacter(state,snapshot).state;
- assert.match(render(imported).simulation,/manual.vendorValues/);assert.equal(imported.manual.vendorValues,true);
+ assert.match(render(imported).simulation,/manual.valuationMode/);assert.equal(imported.manual.vendorValues,true);
  const left=importCharacter(imported,{...snapshot,guild:null}).state;
- assert.match(render(left).simulation,/manual.vendorValues/);assert.equal(left.manual.vendorValues,true);
+ assert.match(render(left).simulation,/manual.valuationMode/);assert.equal(left.manual.vendorValues,true);
  assert.equal(normalize(JSON.parse(JSON.stringify(left))).manual.vendorValues,true);
 });

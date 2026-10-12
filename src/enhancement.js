@@ -6,7 +6,7 @@ export const enhanceableItems=[...new Set([...game.equipment,...game.tools].map(
  .filter(id=>game.canEnhance(id)).map(id=>game.item(id));
 const record=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const integer=(v,min,max)=>Number.isSafeInteger(v)&&v>=min&&v<=max;
-export function enhancementDefaults(){return {guild:null,itemId:110,tier:0,current:0,target:5,level:1,lectern:0,mastery:0,protect:false,protectFrom:game.protectionMin,shardPrice:null,scrollPrice:null,basePrice:null};}
+export function enhancementDefaults(){return {guild:null,itemId:110,tier:0,current:0,target:5,level:1,lectern:0,mastery:0,protect:false,protectFrom:game.protectionMin,shardPrice:null,scrollPrice:null,basePrice:null,priceModes:{shardPrice:'global',scrollPrice:'global',basePrice:'global'},basePriceItem:null};}
 export function validateEnhancement(input){
  if(!record(input))throw Error('invalidConfiguration');
  const s={...input,guild:readGuild(input.guild)};
@@ -14,6 +14,13 @@ export function validateEnhancement(input){
  for(const [key,min,max]of [['current',0,game.maxEnhancement],['target',0,game.maxEnhancement],['level',1,game.maxLevel],['lectern',0,Number.MAX_SAFE_INTEGER],['mastery',0,game.masteryRankLimit],['protectFrom',game.protectionMin,game.maxEnhancement]])if(!integer(s[key],min,max))throw Error('invalidConfiguration');
  if(typeof s.protect!=='boolean')throw Error('invalidConfiguration');
  for(const key of ['shardPrice','scrollPrice','basePrice'])if(s[key]!==null&&(typeof s[key]!=='number'||!Number.isFinite(s[key])||s[key]<0||s[key]>Number.MAX_SAFE_INTEGER))throw Error('invalidPrice');
+ if(!record(input.priceModes)||!Object.hasOwn(input,'basePriceItem'))throw Error('invalidPrice');
+ s.priceModes=Object.fromEntries(['shardPrice','scrollPrice','basePrice'].map(key=>[key,input.priceModes[key]]));
+ for(const [key,mode]of Object.entries(s.priceModes))if(!['global','manual',...(key==='basePrice'?['owned']:[])].includes(mode))throw Error('invalidPrice');
+ const baseId=game.encode(game.withRarity(s.itemId,s.tier),s.current);
+ s.basePriceItem=input.basePriceItem;
+ if(s.basePriceItem!==null&&!integer(s.basePriceItem,0,Number.MAX_SAFE_INTEGER))throw Error('invalidPrice');
+ if(s.priceModes.basePrice!=='global'&&s.basePriceItem!==baseId){s.priceModes.basePrice='global';s.basePrice=null;s.basePriceItem=null;}
  if(s.target<s.current)throw Error('targetBelowCurrent');
  return s;
 }
@@ -69,4 +76,14 @@ export function importEnhancement(current,snapshot){
  for(const stack of p.pack){if(!record(stack)||!integer(stack.qty,1,Number.MAX_SAFE_INTEGER))throw Error('invalidSnapshot');add(stack.itemId);}
  const state=validateEnhancement({...current,guild,level:game.level(p.skills.enhancing),lectern:Object.hasOwn(p.houseFurniture,'lectern')?lectern:0,mastery});
  return {state,candidates:[...found.values()],capturedAt:snapshot.capturedAt};
+}
+
+export const enhancementPriceItems={shardPrice:208,scrollPrice:359};
+export function resolveEnhancementPrices(input,prices={}){
+ const s=validateEnhancement(input),baseId=game.encode(game.withRarity(s.itemId,s.tier),s.current);
+ for(const key of ['shardPrice','scrollPrice','basePrice']){
+  if(s.priceModes[key]==='global')s[key]=prices[key==='basePrice'?baseId:enhancementPriceItems[key]]?.price??null;
+  else if(s.priceModes[key]==='owned')s[key]=0;
+ }
+ return s;
 }

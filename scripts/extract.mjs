@@ -35,6 +35,8 @@ const exportsMap={
   "monsters": "uc",
   "equipment": "h0",
   "items": "vt",
+  "marketFamilies": "w3",
+  "marketFamily": "Ym",
   "gear": "xe",
   "item": "go",
   "canSell": "Ne",

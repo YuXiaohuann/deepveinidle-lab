@@ -45,7 +45,7 @@ test('configuration import has no category selection and preserves simulation pr
 });
 
 test('snapshot preview preserves prior fallback fields and preferences',()=>{
- const old=preset('magic');old.manual.vendorValues=true;old.manual.enemySelection='custom';old.manual.simulationHours=24;old.manual.hotSetting='off';old.masteries.xp=7;
+ const old=preset('magic');old.manual.vendorValues=true;old.manual.valuationMode='vendor';old.manual.enemySelection='custom';old.manual.simulationHours=24;old.manual.hotSetting='off';old.masteries.xp=7;
  const snap=fixture();delete snap.player.masteries;
  const result=importCharacter(old,snap,{preview:true});
  assert.equal(result.state.manual.vendorValues,true);assert.equal(result.state.manual.simulationHours,24);assert.equal(result.state.manual.hotSetting,'off');assert.equal(result.state.masteries.xp,7);
