@@ -5,6 +5,8 @@ import {combatHot,combatHotWindows} from './combat-hot.js';
 import {START_TICK} from './simulation.js';
 import {validateSimulationSeed} from './simulation-seed.js';
 
+import {beforeWork,expectedWorkRewards,expectedCraftProduct,addExpected} from './work-expectation.js';
+
 export const MAX_CRAFT_TICKS=30*24*3600000/game.tickMs;
 export function createCraftingScenario(raw,job,tier,count,{now=Date.now(),maxTicks=MAX_CRAFT_TICKS,seed=0}={}){
  if(job.upgrade)throw Error('instantUpgrade');
@@ -33,19 +35,21 @@ export function createCraftingScenario(raw,job,tier,count,{now=Date.now(),maxTic
 export function simulateCrafting(raw,job,tier,count,{onProgress=()=>{},...options}={}){
  if(job.upgrade){const result=calculateUpgrade(raw,job,tier,count);return {...result,key:planKey(job.id,tier),jobId:job.id,skill:job.skill,tier,count,materials:craftingMaterials(job,tier,count),success:count,burnt:0,movingTicks:0,workingTicks:0,deposits:0};}
  const {player:p,context,site,bank,maxTicks,materials}=createCraftingScenario(raw,job,tier,count,options),initialXp=p.skills[job.skill];
- const r={key:planKey(job.id,tier),jobId:job.id,skill:job.skill,tier,count,completed:0,success:0,burnt:0,xp:0,items:{},consumed:{},materials,elapsedTicks:0,movingTicks:0,workingTicks:0,deposits:0,siteId:site.id,homeBank:bank.id,startLevel:game.level(initialXp),endLevel:game.level(initialXp),complete:false,error:null};
+ const r={key:planKey(job.id,tier),jobId:job.id,skill:job.skill,tier,count,completed:0,success:0,burnt:0,xp:0,items:{},sampleItems:{},consumed:{},materials,elapsedTicks:0,movingTicks:0,workingTicks:0,deposits:0,siteId:site.id,homeBank:bank.id,startLevel:game.level(initialXp),endLevel:game.level(initialXp),complete:false,error:null};
  r.seed=context.seed;
  for(let tick=1;tick<=maxTicks;tick++){
   if(p.activity==='walking')r.movingTicks++;
   if(p.activity==='working')r.workingTicks++;
-  const events=[];game.tick(p,context,START_TICK+tick,events);
+  const at=START_TICK+tick,before=beforeWork(p,job,at),events=[];game.tick(p,context,at,events);
+  const produced=events.find(e=>e.kind==='produced'),executed=produced||events.some(e=>e.kind==='burnt');
+  if(executed){if(!before)throw Error('missingWorkState');expectedCraftProduct(r.items,job,tier,before.burn);expectedWorkRewards(r.items,p,context,job,at,before,produced);}
   for(const e of events){
    if(e.kind==='produced'||e.kind==='burnt'){
     r.completed++;if(e.kind==='burnt')r.burnt++;else r.success++;
-    r.items[e.itemId]=safeAdd(r.items[e.itemId]??0,e.qty??1);
+    r.sampleItems[e.itemId]=safeAdd(r.sampleItems[e.itemId]??0,e.qty??1);
     for(const i of game.recipeInputs(job,tier))r.consumed[i.itemId]=safeAdd(r.consumed[i.itemId]??0,i.qty);
    }
-   if(['bonus','pet','mount','voidshard','box'].includes(e.kind)){const id=e.kind==='box'?(e.itemId??game.lootBoxItemId):e.itemId;if(!Number.isSafeInteger(id))throw Error('invalidReward');r.items[id]=safeAdd(r.items[id]??0,e.qty??1);}
+   if(['bonus','pet','mount','voidshard','box'].includes(e.kind)){const id=e.kind==='box'?(e.itemId??game.lootBoxItemId):e.itemId;if(!Number.isSafeInteger(id))throw Error('invalidReward');r.sampleItems[id]=safeAdd(r.sampleItems[id]??0,e.qty??1);if(e.kind==='box')addExpected(r.items,id,e.qty??1);}
    if(e.kind==='deposited')r.deposits++;
    if(e.kind==='routeStopped'&&e.reason!=='done')r.error=`routeStopped:${e.reason}`;
   }

@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import * as game from '../src/upstream.js';
+import {addExpected} from '../src/work-expectation.js';
 import * as model from '../src/crafting-model.js';
 import {valuationPrice} from '../src/item-prices.js';
 const source=fs.readFileSync(new URL('../src/crafting-controls.js',import.meta.url),'utf8');
 function page(language='zh'){
- const context=vm.createContext({...model,game,valuationPrice,localStorage:{getItem(){return null;}},translatedName:n=>n,translatedItemName:id=>String(id),priceState:()=>({prices:{}}),subscribePrices(){}});
+ const context=vm.createContext({...model,game,addExpected,valuationPrice,localStorage:{getItem(){return null;}},translatedName:n=>n,translatedItemName:id=>String(id),priceState:()=>({prices:{}}),subscribePrices(){}});
  vm.runInContext(source.replaceAll('import.meta.url',"'http://localhost/'").replace(/^import .*;\n/gm,'').replace('export function renderCrafting','function renderCrafting'),context);
  vm.runInContext(`language=${JSON.stringify(language)};state.levels.cooking=100;[1,2,3,4].forEach(t=>selectedTiers.add(t));`,context);return context;
 }

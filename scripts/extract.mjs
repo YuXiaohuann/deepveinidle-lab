@@ -144,7 +144,14 @@ const exportsMap={
   "upgradeResult": "xb",
   "upgradeMaterials": "O0",
   "applyUpgrade": "tF",
-  "recipeLevel": "OP"
+  "recipeLevel": "OP",
+  "windowModifiers": "An",
+  "hotRarityMultiplier": "uf",
+  "skillPet": "yG",
+  "skillPetChance": "uw",
+  "itemSupportsRarity": "Fh",
+  "bonusMinimumUncommon": "kf",
+  "addPack": "yt"
 };
 const selected=new Set(); const allowed=new Set(['WeakSet','WeakMap','Uint8Array','Uint16Array','Uint32Array','Int32Array','Float64Array','Math','Map','Set','Number','Object','Array','String','Error','Date','Boolean','Infinity','undefined','JSON','RegExp','parseInt','parseFloat']);
 function collect(name){

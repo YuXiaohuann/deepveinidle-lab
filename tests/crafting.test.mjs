@@ -52,7 +52,7 @@ test('budget zero, fallback warnings and quantity/money overflow fail explicitly
 for(const skill of craftingSkills)test(`${skill}: count-limited engine matches independent original offline XP, products, burning and banking`,()=>{
  const s=craftingDefaults();s.skill=skill;s.hotSetting='off';s.brews.elixir=2;s.masteries.xp=40;s.masteries.craft=10;s.perks.quick=5;s.house={...s.house,[{cooking:'range',smithing:'forge',fletching:'fletchrack',herblore:'herbrack',crafting:'loom'}[skill]]:5};
  const job=first(skill),actual=simulateCrafting(s,job,2,500),native=nativeResult(s,job,2,500);
- assert.equal(actual.complete,true);assert.equal(actual.completed,500);assert.equal(actual.success+actual.burnt,500);assert.equal(actual.xp,native.xp);assert.deepEqual(actual.items,native.report.itemsGained);assert.equal(actual.deposits,native.report.deposits);assert.equal(actual.burnt,native.report.burnt);
+ assert.equal(actual.complete,true);assert.equal(actual.completed,500);assert.equal(actual.success+actual.burnt,500);assert.equal(actual.xp,native.xp);assert.deepEqual(actual.sampleItems,native.report.itemsGained);assert.equal(actual.deposits,native.report.deposits);assert.equal(actual.burnt,native.report.burnt);
  assert.equal(actual.endLevel,game.level(native.player.skills[skill]));assert.equal(actual.elapsedTicks,native.player.lastStop.tick-START_TICK-1);
  assert.deepEqual(actual.consumed,craftingMaterials(job,2,500));assert.ok(actual.endLevel>actual.startLevel);if(skill==='cooking')assert.ok(actual.burnt>0);if(skill==='fletching'||skill==='crafting')assert.ok(actual.deposits>0);
 });
@@ -60,7 +60,7 @@ test('every saved crafting recipe and rarity completes at unlocked level with or
  const s=craftingDefaults();s.hotSetting='off';for(const k of craftingSkills)s.levels[k]=game.maxLevel;
  for(const job of craftingJobs.filter(j=>!j.upgrade))for(let tier=0;tier<5;tier++){
   const actual=simulateCrafting(s,job,tier,3),native=nativeResult(s,job,tier,3);
-  assert.equal(actual.complete,true,`${job.id}:${tier}`);assert.equal(actual.completed,3);assert.equal(actual.xp,native.xp,`${job.id}:${tier} XP`);assert.deepEqual(actual.items,native.report.itemsGained,`${job.id}:${tier} products`);
+  assert.equal(actual.complete,true,`${job.id}:${tier}`);assert.equal(actual.completed,3);assert.equal(actual.xp,native.xp,`${job.id}:${tier} XP`);assert.deepEqual(actual.sampleItems,native.report.itemsGained,`${job.id}:${tier} products`);
  }
 });
 test('burns award no XP; safe cooking levels remove burns; per-craft rounding precedes summation',()=>{

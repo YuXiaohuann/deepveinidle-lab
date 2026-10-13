@@ -22,7 +22,7 @@ test('gathering seeded results reproduce and match original offline reports in a
    assert.deepEqual(r,simulateGatheringSite(state,job,site,{seed,now:Date.UTC(2026,9,19)}));
    const native=nativeDay(scenario.player,scenario.context,p=>game.startWork(p,scenario.context,site.id,job.id,'bank',null),scenario.durationTicks);
    assert.equal(r.xp,native.bySkill[skill]);
-   const items={...r.normalItems};for(const [id,n]of Object.entries(r.rareItems))items[id]=(items[id]??0)+n;if(r.coins)items[game.coinItemId]=r.coins;
+   const items=r.sampleItems;
    assert.deepEqual(items,native.itemsGained);
    const {seed:ignored,...outcome}=r;outcomes.push(outcome);
   }
@@ -46,7 +46,7 @@ test('crafting seeds reproduce all five skills and match original finite-route r
    const scenario=createCraftingScenario(state,job,0,100,{seed}),xp=scenario.player.skills[skill];assert.equal(scenario.context.seed,seed);
    const report=game.offline(scenario.player,scenario.context,START_TICK+60000),r=simulateCrafting(state,job,0,100,{seed});
    assert.equal(r.seed,seed);assert.equal(r.complete,true);assert.equal(r.xp,scenario.player.skills[skill]-xp);
-   assert.deepEqual(r.items,report.itemsGained);assert.equal(r.burnt,report.burnt);assert.equal(r.deposits,report.deposits);
+   assert.deepEqual(r.sampleItems,report.itemsGained);assert.equal(r.burnt,report.burnt);assert.equal(r.deposits,report.deposits);
    assert.deepEqual(r,simulateCrafting(state,job,0,100,{seed,now:Date.UTC(2026,9,19)}));
    const {seed:ignored,...outcome}=r;outcomes.push(outcome);
   }

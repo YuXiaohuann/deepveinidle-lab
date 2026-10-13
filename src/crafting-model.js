@@ -65,9 +65,9 @@ export function materialRequirements(raw){
  const items={};for(const p of craftingPlan(raw))for(const [id,n]of Object.entries(craftingMaterials(p.job,p.tier,p.count)))items[id]=safeAdd(items[id]??0,n);return items;
 }
 const money=v=>{if(!Number.isFinite(v)||v<0||v>Number.MAX_SAFE_INTEGER)throw Error('priceOverflow');return v;};
-export function priceItems(items,prices){
+export function priceItems(items,prices,{expected=false}={}){
  let value=0;const missing=[];
- for(const [id,n]of Object.entries(items)){if(!validQuantity(n))throw Error('quantityOverflow');const p=valuationPrice(Number(id),prices);value=money(value+money(n*p.price));if(n>0&&p.fallback)missing.push(Number(id));}
+ for(const [id,n]of Object.entries(items)){if(!(expected?Number.isFinite(n)&&n>=0&&n<=Number.MAX_SAFE_INTEGER:validQuantity(n)))throw Error('quantityOverflow');const p=valuationPrice(Number(id),prices);value=money(value+money(n*p.price));if(n>0&&p.fallback)missing.push(Number(id));}
  return {value,missing};
 }
 export function materialBudget(raw,prices){

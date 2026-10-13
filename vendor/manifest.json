@@ -127,7 +127,14 @@
     "upgradeResult": "xb",
     "upgradeMaterials": "O0",
     "applyUpgrade": "tF",
-    "recipeLevel": "OP"
+    "recipeLevel": "OP",
+    "windowModifiers": "An",
+    "hotRarityMultiplier": "uf",
+    "skillPet": "yG",
+    "skillPetChance": "uw",
+    "itemSupportsRarity": "Fh",
+    "bonusMinimumUncommon": "kf",
+    "addPack": "yt"
   },
   "declarations": [
     {

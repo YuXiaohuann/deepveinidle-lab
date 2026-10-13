@@ -4,6 +4,7 @@ import {simulationTicks,combatHot,combatHotWindows} from './combat-hot.js';
 import {manualWindows} from './manual-settings.js';
 import {dropValue,START_TICK} from './simulation.js';
 import {validateSimulationSeed} from './simulation-seed.js';
+import {beforeWork,workQualities,expectedWorkRewards,addExpected} from './work-expectation.js';
 const add=(items,id,qty)=>{items[id]=(items[id]??0)+qty;};
 const metrics=['completed','attempts','caught','stunnedTicks','xp','coins','normal','rare','elapsedTicks','workingTicks','movingTicks','deposits'];
 export function createGatheringScenario(raw,job,site,{now=Date.now(),seed=0}={}){
@@ -24,22 +25,29 @@ export function simulateGatheringSite(raw,job,site,options={}){
  p.offlineCapTicks=durationTicks*2;
  if(!game.startWork(p,context,site.id,job.id,'bank',null))throw Error('invalidRoute');
  const initialXp=p.skills[job.skill];
- const result={siteId:site.id,x:site.x,y:site.y,homeBank:bank.id,durationTicks,normalItems:{},rareItems:{},startLevel:game.level(initialXp),endedEarly:false,...Object.fromEntries(metrics.map(k=>[k,0]))};
+ const result={siteId:site.id,x:site.x,y:site.y,homeBank:bank.id,durationTicks,normalItems:{},rareItems:{},sampleItems:{},startLevel:game.level(initialXp),endedEarly:false,...Object.fromEntries(metrics.map(k=>[k,0]))};
  result.seed=context.seed;
  for(let tick=1;tick<=durationTicks;tick++){
   if(p.activity==='walking')result.movingTicks++;
   if(p.activity==='working'){if(START_TICK+tick<p.stunUntil)result.stunnedTicks++;else result.workingTicks++;}
-  const events=[];game.tick(p,context,START_TICK+tick,events);
+  const at=START_TICK+tick,before=beforeWork(p,job,at),events=[];game.tick(p,context,at,events);
+  const produced=events.find(e=>e.kind==='produced');
+  if(produced){
+   if(produced.itemId===game.coinItemId)result.coins+=job.output.qty;
+   else workQualities(p,context,job,at).forEach((prob,tier)=>addExpected(result.normalItems,game.withRarity(job.output.itemId,tier),job.output.qty*prob));
+   expectedWorkRewards(result.rareItems,p,context,job,at,before,produced);
+  }
   for(const e of events){
-   if(e.kind==='produced'){result.completed++;result.attempts++;if(e.itemId===game.coinItemId)result.coins+=e.qty??1;else{result.normal+=e.qty??1;add(result.normalItems,e.itemId,e.qty??1);}}
+   if(e.kind==='produced'){result.completed++;result.attempts++;add(result.sampleItems,e.itemId,e.qty??1);}
    if(e.kind==='caught'){result.caught++;result.attempts++;}
    if(e.kind==='deposited')result.deposits++;
-   if(['bonus','pet','mount','voidshard','box'].includes(e.kind)){const id=e.kind==='box'?(e.itemId??game.lootBoxItemId):e.itemId;if(!Number.isSafeInteger(id))throw Error('invalidReward');result.rare+=e.qty??1;add(result.rareItems,id,e.qty??1);}
+   if(['bonus','pet','mount','voidshard','box'].includes(e.kind)){const id=e.kind==='box'?(e.itemId??game.lootBoxItemId):e.itemId;if(!Number.isSafeInteger(id))throw Error('invalidReward');add(result.sampleItems,id,e.qty??1);if(e.kind==='box')addExpected(result.rareItems,id,e.qty??1);}
    if(e.kind==='routeStopped'&&!['done'].includes(e.reason))throw Error(`routeStopped:${e.reason}`);
   }
   result.elapsedTicks=tick;
   if(tick%game.predictionChunkTicks===0&&p.route===null){result.endedEarly=true;break;}
  }
+ result.normal=Object.values(result.normalItems).reduce((a,b)=>a+b,0);result.rare=Object.values(result.rareItems).reduce((a,b)=>a+b,0);
  result.xp=p.skills[job.skill]-initialXp;result.endLevel=game.level(p.skills[job.skill]);
  result.normalValue=dropValue(result.normalItems);result.rareValue=dropValue(result.rareItems);result.totalIncome=result.coins+result.normalValue+result.rareValue;
  return result;

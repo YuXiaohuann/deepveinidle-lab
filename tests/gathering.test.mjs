@@ -35,7 +35,7 @@ for(const skill of gatheringSkills)test(`${skill}: adapter matches independent o
  const native=nativeDay(scenario.player,scenario.context,p=>game.startWork(p,scenario.context,site.id,job.id,'bank',null),scenario.durationTicks);
  const actual=simulateGatheringSite(s,job,site);
  assert.equal(actual.xp,native.bySkill[skill]);assert.equal(actual.elapsedTicks,native.ticks);
- const expected={...actual.normalItems};for(const [id,qty]of Object.entries(actual.rareItems))expected[id]=(expected[id]??0)+qty;if(actual.coins)expected[game.coinItemId]=actual.coins;
+ const expected=actual.sampleItems;
  assert.deepEqual(expected,native.itemsGained);assert.ok(actual.endLevel>actual.startLevel);assert.ok(actual.completed>0);
  if(skill!=='thieving')assert.ok(actual.deposits>0);else{assert.ok(actual.caught>0);assert.equal(actual.attempts,actual.completed+actual.caught);assert.ok(actual.stunnedTicks>0);assert.equal(actual.normal,0);}
 });
@@ -71,7 +71,7 @@ for(const skill of gatheringSkills)test(`${skill}: every task and point matches 
   assert.ok(game.startWork(p,scenario.context,site.id,job.id,'bank',null));
   const initialXp=p.skills[skill];for(let tick=game.predictionChunkTicks;tick<=scenario.durationTicks;tick+=game.predictionChunkTicks)game.offline(p,scenario.context,game.predictionStartTick+tick);
   const actual=simulateGatheringSite(s,job,site),inventory={...p.bank};for(const item of p.pack)inventory[item.itemId]=(inventory[item.itemId]??0)+item.qty;for(const [id,qty]of Object.entries(p.overflow))inventory[id]=(inventory[id]??0)+qty;
-  const expected={...actual.normalItems};for(const [id,qty]of Object.entries(actual.rareItems))expected[id]=(expected[id]??0)+qty;
+  const expected={...actual.sampleItems};delete expected[game.coinItemId];
   assert.deepEqual(expected,inventory,`${skill} job ${job.id} site ${site.id}`);assert.equal(actual.coins,p.coins);assert.equal(actual.xp,p.skills[skill]-initialXp);
  }
 });
