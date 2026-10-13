@@ -1,0 +1,2 @@
+Other pages: 74 gathering sites, 860 ordinary recipe/quality cases, 85 upgrade/quality cases, 105 enhancement costs and 49 forecast slots matched independent native code.
+Native 1.0.1187 comparison: 260/260 complete 1-hour predictions matched; world geometry, monsters and 105 new-gear variants matched.

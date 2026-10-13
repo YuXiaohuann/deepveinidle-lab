@@ -1,0 +1,366 @@
+[
+  {
+    "route": "combat",
+    "lang": "zh",
+    "width": 1280,
+    "height": 800,
+    "heading": [
+      "角色配置",
+      "战斗属性",
+      "敌人 20 个目标"
+    ],
+    "scroll": 1280,
+    "version": "1.2.0"
+  },
+  {
+    "route": "gather",
+    "lang": "zh",
+    "width": 1280,
+    "height": 800,
+    "heading": [
+      "角色配置",
+      "采集属性",
+      "采集任务 8"
+    ],
+    "scroll": 1280,
+    "version": "1.2.0"
+  },
+  {
+    "route": "craft",
+    "lang": "zh",
+    "width": 1280,
+    "height": 800,
+    "heading": [
+      "角色配置",
+      "制造属性",
+      "制造配方 8",
+      "材料需求",
+      "计划汇总"
+    ],
+    "scroll": 1280,
+    "version": "1.2.0"
+  },
+  {
+    "route": "enhance",
+    "lang": "zh",
+    "width": 1280,
+    "height": 800,
+    "heading": [
+      "角色配置",
+      "强化装备",
+      "期望强化成本"
+    ],
+    "scroll": 1280,
+    "version": "1.2.0"
+  },
+  {
+    "route": "mastery",
+    "lang": "zh",
+    "width": 1280,
+    "height": 800,
+    "heading": [
+      "角色配置",
+      "精通模拟"
+    ],
+    "scroll": 1280,
+    "version": "1.2.0"
+  },
+  {
+    "route": "forecast",
+    "lang": "zh",
+    "width": 1280,
+    "height": 800,
+    "heading": [
+      "热门加成",
+      "钓鱼 经验 +20%"
+    ],
+    "scroll": 1280,
+    "version": "1.2.0"
+  },
+  {
+    "route": "debug",
+    "lang": "zh",
+    "width": 1280,
+    "height": 800,
+    "heading": [
+      "调试",
+      "导出为文件",
+      "从文件导入"
+    ],
+    "scroll": 1280,
+    "version": "1.2.0"
+  },
+  {
+    "route": "combat",
+    "lang": "en",
+    "width": 1280,
+    "height": 800,
+    "heading": [
+      "Character build",
+      "Character stats",
+      "Enemies 20 targets"
+    ],
+    "scroll": 1280,
+    "version": "1.2.0"
+  },
+  {
+    "route": "gather",
+    "lang": "en",
+    "width": 1280,
+    "height": 800,
+    "heading": [
+      "Character build",
+      "Gathering stats",
+      "Gathering tasks 8"
+    ],
+    "scroll": 1280,
+    "version": "1.2.0"
+  },
+  {
+    "route": "craft",
+    "lang": "en",
+    "width": 1280,
+    "height": 800,
+    "heading": [
+      "Character build",
+      "Crafting stats",
+      "Crafting recipes 8",
+      "Material requirements",
+      "Plan summary"
+    ],
+    "scroll": 1280,
+    "version": "1.2.0"
+  },
+  {
+    "route": "enhance",
+    "lang": "en",
+    "width": 1280,
+    "height": 800,
+    "heading": [
+      "Character build",
+      "Enhancement item",
+      "Expected enhancement costs"
+    ],
+    "scroll": 1280,
+    "version": "1.2.0"
+  },
+  {
+    "route": "mastery",
+    "lang": "en",
+    "width": 1280,
+    "height": 800,
+    "heading": [
+      "Character build",
+      "Mastery planner"
+    ],
+    "scroll": 1280,
+    "version": "1.2.0"
+  },
+  {
+    "route": "forecast",
+    "lang": "en",
+    "width": 1280,
+    "height": 800,
+    "heading": [
+      "Hot bonuses",
+      "Fishing XP +20%"
+    ],
+    "scroll": 1280,
+    "version": "1.2.0"
+  },
+  {
+    "route": "debug",
+    "lang": "en",
+    "width": 1280,
+    "height": 800,
+    "heading": [
+      "Debug",
+      "Export to file",
+      "Import from file"
+    ],
+    "scroll": 1280,
+    "version": "1.2.0"
+  },
+  {
+    "route": "combat",
+    "lang": "zh",
+    "width": 390,
+    "height": 844,
+    "heading": [
+      "角色配置",
+      "战斗属性",
+      "敌人 20 个目标"
+    ],
+    "scroll": 390,
+    "version": "1.2.0"
+  },
+  {
+    "route": "gather",
+    "lang": "zh",
+    "width": 390,
+    "height": 844,
+    "heading": [
+      "角色配置",
+      "采集属性",
+      "采集任务 8"
+    ],
+    "scroll": 390,
+    "version": "1.2.0"
+  },
+  {
+    "route": "craft",
+    "lang": "zh",
+    "width": 390,
+    "height": 844,
+    "heading": [
+      "角色配置",
+      "制造属性",
+      "制造配方 8",
+      "材料需求",
+      "计划汇总"
+    ],
+    "scroll": 390,
+    "version": "1.2.0"
+  },
+  {
+    "route": "enhance",
+    "lang": "zh",
+    "width": 390,
+    "height": 844,
+    "heading": [
+      "角色配置",
+      "强化装备",
+      "期望强化成本"
+    ],
+    "scroll": 390,
+    "version": "1.2.0"
+  },
+  {
+    "route": "mastery",
+    "lang": "zh",
+    "width": 390,
+    "height": 844,
+    "heading": [
+      "角色配置",
+      "精通模拟"
+    ],
+    "scroll": 390,
+    "version": "1.2.0"
+  },
+  {
+    "route": "forecast",
+    "lang": "zh",
+    "width": 390,
+    "height": 844,
+    "heading": [
+      "热门加成",
+      "钓鱼 经验 +20%"
+    ],
+    "scroll": 390,
+    "version": "1.2.0"
+  },
+  {
+    "route": "debug",
+    "lang": "zh",
+    "width": 390,
+    "height": 844,
+    "heading": [
+      "调试",
+      "导出为文件",
+      "从文件导入"
+    ],
+    "scroll": 390,
+    "version": "1.2.0"
+  },
+  {
+    "route": "combat",
+    "lang": "en",
+    "width": 390,
+    "height": 844,
+    "heading": [
+      "Character build",
+      "Character stats",
+      "Enemies 20 targets"
+    ],
+    "scroll": 390,
+    "version": "1.2.0"
+  },
+  {
+    "route": "gather",
+    "lang": "en",
+    "width": 390,
+    "height": 844,
+    "heading": [
+      "Character build",
+      "Gathering stats",
+      "Gathering tasks 8"
+    ],
+    "scroll": 390,
+    "version": "1.2.0"
+  },
+  {
+    "route": "craft",
+    "lang": "en",
+    "width": 390,
+    "height": 844,
+    "heading": [
+      "Character build",
+      "Crafting stats",
+      "Crafting recipes 8",
+      "Material requirements",
+      "Plan summary"
+    ],
+    "scroll": 390,
+    "version": "1.2.0"
+  },
+  {
+    "route": "enhance",
+    "lang": "en",
+    "width": 390,
+    "height": 844,
+    "heading": [
+      "Character build",
+      "Enhancement item",
+      "Expected enhancement costs"
+    ],
+    "scroll": 390,
+    "version": "1.2.0"
+  },
+  {
+    "route": "mastery",
+    "lang": "en",
+    "width": 390,
+    "height": 844,
+    "heading": [
+      "Character build",
+      "Mastery planner"
+    ],
+    "scroll": 390,
+    "version": "1.2.0"
+  },
+  {
+    "route": "forecast",
+    "lang": "en",
+    "width": 390,
+    "height": 844,
+    "heading": [
+      "Hot bonuses",
+      "Fishing XP +20%"
+    ],
+    "scroll": 390,
+    "version": "1.2.0"
+  },
+  {
+    "route": "debug",
+    "lang": "en",
+    "width": 390,
+    "height": 844,
+    "heading": [
+      "Debug",
+      "Export to file",
+      "Import from file"
+    ],
+    "scroll": 390,
+    "version": "1.2.0"
+  }
+]
