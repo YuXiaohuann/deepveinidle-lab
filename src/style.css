@@ -51,6 +51,8 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
 
 .enemies th:not(:first-child),.enemies td:not(:first-child){text-align:right}
 .enemies .reward-detail>div{text-align:left}
+.world-bosses{margin-top:24px;min-width:0}
+.world-bosses .enemies-heading{padding-bottom:18px}
 
 .loot-line{display:grid;grid-template-columns:minmax(0,1fr) max-content;gap:12px}
 .loot-line>span:first-child{overflow-wrap:anywhere}

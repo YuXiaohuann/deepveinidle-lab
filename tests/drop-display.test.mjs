@@ -61,7 +61,7 @@ test('drop quantities use adaptive precision after daily conversion without chan
  assert.ok(source.includes('lootDetails(r.potionItems??{})'));
 });
 function view(enabled,result,error=false){
- const c=vm.createContext({state:{manual:{vendorValues:enabled}},hourly:new Map(result?[['m',result]]:[]),simulationError:error,valuedResult:r=>r,language:'zh',game:{tickMs:600},t:k=>k,formatRate:(n,metric='count')=>metric==='coins'?String(Math.round(n)):n.toFixed(1),formatAmount:String,esc:String,lootDetails:()=>'<span>item quantity</span>'});
+ const c=vm.createContext({state:{manual:{vendorValues:enabled}},hourly:new Map(result?[['m',result]]:[]),simulationError:error,valuedResult:r=>r,language:'zh',game:{tickMs:600},t:k=>k,formatRate:(n,metric='count')=>['coins','attempts'].includes(metric)?String(Math.round(n)):n.toFixed(1),formatAmount:String,esc:String,lootDetails:()=>'<span>item quantity</span>'});
  vm.runInContext(code,c);return c;
 }
 test('valuation preference defaults off, persists and renders bilingual controls',()=>{
@@ -97,10 +97,10 @@ test('quantities and vendor values render separately with optional highlighted i
  assert.match(html,new RegExp(`<summary>${'40'}</summary>`));
  assert.match(html,new RegExp(`<summary>${'50'}</summary>`));
  assert.equal(html.includes('<td class="column-highlight">93</td>'),true);
- assert.match(html,/item quantity/);assert.match(html,/^<td><details[^>]*><summary>1<\/summary><div>攻击次数：7/);assert.match(html,/<summary>0%<\/summary>/);assert.match(html,/depot: 仓库 2/);
+ assert.match(html,/item quantity/);assert.match(html,/^<td><details[^>]*><summary>1<\/summary><div>攻击次数\/天：7/);assert.match(html,/<summary>0%<\/summary>/);assert.match(html,/depot: 仓库 2/);
  const seeded=view(enabled,{...result,seed:4294967295});assert.match(seeded.hourlyCells({key:'m'}),/随机种子：4294967295/);
  seeded.language='en';assert.match(seeded.hourlyCells({key:'m'}),/Random seed: 4294967295/);
- assert.match(seeded.hourlyCells({key:'m'}),/Attack attempts: 7/);
+ assert.match(seeded.hourlyCells({key:'m'}),/Attack attempts\/day: 7/);
  }
 });
 
@@ -129,20 +129,21 @@ test('table amounts show fallback warnings before expanding and food displays it
  assert.doesNotMatch(html,/<summary><span[^>]*>⚠<\/span> 50<\/summary>/);
 });
 
-test('kills and attack attempts preserve raw simulated counts while rewards always scale per day',()=>{
+test('kills and attack attempts scale per day using selected duration even after death',()=>{
  const result={homeBank:2,kills:12345,attacks:67890,xp:48,coins:48,normalValue:48,rareValue:48,totalIncome:144,profit:96,foodCost:24,potionCost:24,consumableCost:48,normalItems:{},rareItems:{},bySkill:{melee:48},elapsedTicks:1,movingTicks:0,restocks:0,deaths:1};
  const formatter=ast.body.find(n=>n.declarations?.some(d=>d.id.name==='formatRate'));
  for(const language of ['zh','en'])for(const hours of [1,6,24,48])for(const kills of [0,12345,12345.6789]){
   const c=view(true,{...result,kills});c.language=language;c.state.manual.simulationHours=hours;c.rewardAmount=rewardAmount;
   vm.runInContext(source.slice(formatter.start,formatter.end),c);
   const html=c.hourlyCells({key:'m'});
-  assert.ok(html.includes(`<summary>${kills}</summary><div>${language==='zh'?'攻击次数：':'Attack attempts: '}67890</div>`));
+  const daily=n=>rewardAmount(n,'day',hours).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:0});
+  assert.ok(html.includes(`<summary>${daily(kills)}</summary><div>${language==='zh'?'攻击次数/天：':'Attack attempts/day: '}${daily(67890)}</div>`));
   assert.ok(html.includes(`<td class="column-highlight">${rewardAmount(48,'day',hours).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:0})}</td>`));
   assert.ok(html.includes(`melee: ${rewardAmount(48,'day',hours).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:0})}`));
  }
 });
 
-test('combat controls omit reward period and bilingual headers label only daily rewards',()=>{
+test('combat controls omit reward period and bilingual headers label daily counts and rewards',()=>{
  const assignments=ast.body.filter(n=>n.type==='ExpressionStatement'&&n.expression.type==='CallExpression'&&n.expression.callee.object?.name==='Object'&&n.expression.callee.property?.name==='assign'&&n.expression.arguments[1]?.properties.some(p=>p.key.name==='combatMethodNote'));
  const headers=ast.body.find(n=>n.id?.name==='enemyHeaders');
  for(const language of ['zh','en']){
@@ -154,8 +155,8 @@ test('combat controls omit reward period and bilingual headers label only daily 
   vm.runInContext(source.slice(headers.start,headers.end),c);
   const html=c.enemyHeaders();
   assert.equal((html.match(/<th /g)||[]).length,11);
-  assert.equal((html.match(language==='zh'?/\/天/g:/\/day/g)||[]).length,7);
-  assert.ok(html.includes(language==='zh'?'击杀次数 <span':'Kills <span'));
+  assert.equal((html.match(language==='zh'?/\/天/g:/\/day/g)||[]).length,8);
+  assert.ok(html.includes(language==='zh'?'击杀次数/天 <span':'Kills/day <span'));
  }
  assert.doesNotMatch(source,/\$\('#period'\)|periodOptions/);
 });
