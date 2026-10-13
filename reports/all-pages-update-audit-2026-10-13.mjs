@@ -71,7 +71,8 @@ try{
    let player;native.predict(scenario.player,scenario.context,p=>{player=p;return false;});player.offlineCapTicks=12000;
    assert.ok(native.startWork(player,scenario.context,site.id,job.id,'bank',null));
    const report=native.offline(player,scenario.context,START_TICK+6000);
-   const expectedItems={...actual.normalItems};for(const[id,n]of Object.entries(actual.rareItems))expectedItems[id]=(expectedItems[id]??0)+n;if(actual.coins)expectedItems[game.coinItemId]=actual.coins;
+   // Compare the sampled inventory; displayed rewards now use opportunity expectations.
+   const expectedItems={...actual.sampleItems};if(actual.coins)expectedItems[game.coinItemId]=actual.coins;
    assert.deepEqual(expectedItems,report.itemsGained);assert.equal(actual.xp,report.skills[job.skill]?.xp??0);gatheringCount++;
   }
  }
@@ -86,7 +87,7 @@ try{
   }else{
    const scenario=createCraftingScenario(state,job,tier,3,{seed:314}),before=scenario.player.skills[job.skill];
    const report=native.offline(scenario.player,scenario.context,START_TICK+6000);
-   assert.equal(actual.xp,scenario.player.skills[job.skill]-before);assert.deepEqual(actual.items,report.itemsGained);craftingCount++;
+   assert.equal(actual.xp,scenario.player.skills[job.skill]-before);assert.deepEqual(actual.sampleItems,report.itemsGained);craftingCount++;
   }
  }
  let costs=0;for(const id of [629,630,631,632,633,634,635])for(let tier=0;tier<5;tier++)for(const plus of [0,17,100]){
