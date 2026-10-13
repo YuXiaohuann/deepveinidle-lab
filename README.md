@@ -66,7 +66,7 @@ node scripts/extract.mjs
 
 使用 Cloudflare Pages 的已有项目 `dvi-lab`，通过 Wrangler Direct Upload 发布到生产分支 `main`。
 
-将 `index.html`、`_redirects`、`src/`、`vendor/`、`DESIGN.md`、`README.md` 、`AGENTS.md` 及文档引用的报告和截图复制到独立发布目录，再执行：
+将 `index.html`、`_redirects`、`src/`、`vendor/` 复制到独立发布目录，再执行：
 
 ```sh
 npx wrangler login
