@@ -36,7 +36,7 @@ export function makePlayer(raw){
  const s=normalize(raw),p={skills:Object.fromEntries(skills.map(k=>[k,skillXp(s,k)])),equipment:Object.fromEntries(game.equipmentSlots.map(k=>[k,null])),lastTick:0,brews:{},brewTier:{},masteries:s.masteries,house:s.house,houseFurniture:{},perks:{meals:s.meals}},issues=[];
  for(const slot of slots){const v=s.gear[slot];if(!v.id)continue;const id=game.encode(game.withRarity(v.id,v.tier),v.plus),g=gearDetails(slot,id);
   if(!g){issues.push({kind:'missing',slot});continue;}
-  if(slot!=='mount'&&g.needs!=='none'&&s.levels[g.needs]<g.levelReq){issues.push({kind:'level',slot,skill:g.needs,level:g.levelReq});continue;}
+  if(slot!=='mount'&&g.needs!=='none'&&s.levels[g.needs]<g.levelReq){issues.push({kind:'level',slot,skill:g.needs,level:g.levelReq});}
   p.equipment[slot]=id;
  }
  if(game.gear(p.equipment.weapon)?.twoHanded&&p.equipment.shield!==null){p.equipment.shield=null;issues.push({kind:'twoHanded',slot:'shield'});}
