@@ -38,14 +38,14 @@ test('combat methodology note identifies simulated and expected fields in both l
  assert.ok(source.includes('</tbody></table></div><p id="combat-method-note" class="table-note">${t(\'rounding\')} <strong class="simulation-caveat">'));
  assert.ok(source.includes("</strong><br>${t('combatMethodNote')}</p></section>"));
 });
-test('drop quantities use adaptive precision after period conversion without changing consumables',()=>{
- for(const language of ['zh','en'])for(const period of ['hour','day','total']){
-  const c=vm.createContext({language,period,state:{manual:{simulationHours:48}},rewardAmount,game:{isPet:id=>id===280,itemTier:()=>0,baseItemId:id=>id,item:()=>({name:'Item'})},valuationPrice:()=>({price:1,fallback:false}),priceState:()=>({prices:{}}),esc:String,name:String});
+test('drop quantities use adaptive precision after daily conversion without changing consumables',()=>{
+ for(const language of ['zh','en'])for(const hours of [1,6,24,48]){
+  const c=vm.createContext({language,state:{manual:{simulationHours:hours}},rewardAmount,game:{isPet:id=>id===280,itemTier:()=>0,baseItemId:id=>id,item:()=>({name:'Item'})},valuationPrice:()=>({price:1,fallback:false}),priceState:()=>({prices:{}}),esc:String,name:String});
   vm.runInContext(quantityCode,c);
-  const factor=rewardAmount(1,period,48);
+  const factor=rewardAmount(1,'day',hours);
   for(const [value,expected] of [[0,'0'],[0.000001,'1/1,000,000'],[0.03,'1/33'],[0.026,'1/38'],[0.027,'1/37'],[0.099,'1/10'],[0.1,'0.10'],[0.1234,'0.12'],[1,'1.00'],[9.994,'9.99'],[10,'10'],[10.6,'11']]){
    const quantity=value/factor;
-   assert.equal(vm.runInContext(`formatDropQuantity(${quantity})`,c),expected,`${language}/${period}/${value}`);
+   assert.equal(vm.runInContext(`formatDropQuantity(${quantity})`,c),expected,`${language}/${hours}/${value}`);
    assert.ok(c.lootDetails({1:quantity},true).includes(`<span>${expected}</span>`));
   }
   assert.ok(c.lootDetails({1:0.03/factor}).includes('<span>0.0</span>'));
@@ -97,10 +97,10 @@ test('quantities and vendor values render separately with optional highlighted i
  assert.match(html,new RegExp(`<summary>${'40'}</summary>`));
  assert.match(html,new RegExp(`<summary>${'50'}</summary>`));
  assert.equal(html.includes('<td class="column-highlight">93</td>'),true);
- assert.match(html,/item quantity/);assert.match(html,/^<td><details[^>]*><summary>1.0<\/summary><div>攻击次数：7.0/);assert.match(html,/<summary>0%<\/summary>/);assert.match(html,/depot: 仓库 2/);
+ assert.match(html,/item quantity/);assert.match(html,/^<td><details[^>]*><summary>1<\/summary><div>攻击次数：7/);assert.match(html,/<summary>0%<\/summary>/);assert.match(html,/depot: 仓库 2/);
  const seeded=view(enabled,{...result,seed:4294967295});assert.match(seeded.hourlyCells({key:'m'}),/随机种子：4294967295/);
  seeded.language='en';assert.match(seeded.hourlyCells({key:'m'}),/Random seed: 4294967295/);
- assert.match(seeded.hourlyCells({key:'m'}),/Attack attempts: 7.0/);
+ assert.match(seeded.hourlyCells({key:'m'}),/Attack attempts: 7/);
  }
 });
 
@@ -129,14 +129,33 @@ test('table amounts show fallback warnings before expanding and food displays it
  assert.doesNotMatch(html,/<summary><span[^>]*>⚠<\/span> 50<\/summary>/);
 });
 
-test('attack details scale with kills in both languages and all reward periods',()=>{
- const result={homeBank:2,kills:48,attacks:240,xp:0,coins:0,normalValue:0,rareValue:0,totalIncome:0,profit:0,foodCost:0,potionCost:0,consumableCost:0,normalItems:{},rareItems:{},bySkill:{},elapsedTicks:1,movingTicks:0,restocks:0};
+test('kills and attack attempts preserve raw simulated counts while rewards always scale per day',()=>{
+ const result={homeBank:2,kills:12345,attacks:67890,xp:48,coins:48,normalValue:48,rareValue:48,totalIncome:144,profit:96,foodCost:24,potionCost:24,consumableCost:48,normalItems:{},rareItems:{},bySkill:{melee:48},elapsedTicks:1,movingTicks:0,restocks:0,deaths:1};
  const formatter=ast.body.find(n=>n.declarations?.some(d=>d.id.name==='formatRate'));
- for(const language of ['zh','en'])for(const period of ['hour','day','total']){
-  const c=view(true,result);c.language=language;c.period=period;c.state.manual.simulationHours=48;c.rewardAmount=rewardAmount;
+ for(const language of ['zh','en'])for(const hours of [1,6,24,48])for(const kills of [0,12345,12345.6789]){
+  const c=view(true,{...result,kills});c.language=language;c.state.manual.simulationHours=hours;c.rewardAmount=rewardAmount;
   vm.runInContext(source.slice(formatter.start,formatter.end),c);
-  const attacks=rewardAmount(240,period,48).toFixed(1),kills=rewardAmount(48,period,48).toFixed(1);
   const html=c.hourlyCells({key:'m'});
-  assert.ok(html.includes(`<summary>${kills}</summary><div>${language==='zh'?'攻击次数：':'Attack attempts: '}${attacks}</div>`));
+  assert.ok(html.includes(`<summary>${kills}</summary><div>${language==='zh'?'攻击次数：':'Attack attempts: '}67890</div>`));
+  assert.ok(html.includes(`<td class="column-highlight">${rewardAmount(48,'day',hours).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:0})}</td>`));
+  assert.ok(html.includes(`melee: ${rewardAmount(48,'day',hours).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:0})}`));
  }
+});
+
+test('combat controls omit reward period and bilingual headers label only daily rewards',()=>{
+ const assignments=ast.body.filter(n=>n.type==='ExpressionStatement'&&n.expression.type==='CallExpression'&&n.expression.callee.object?.name==='Object'&&n.expression.callee.property?.name==='assign'&&n.expression.arguments[1]?.properties.some(p=>p.key.name==='combatMethodNote'));
+ const headers=ast.body.find(n=>n.id?.name==='enemyHeaders');
+ for(const language of ['zh','en']){
+  const controls=manualControls(defaults(),{language,number:()=>'',options:()=>'',esc:String,name:String});
+  assert.doesNotMatch(controls.simulation,/id="period"|收益周期|Reward period/);
+  const c=view(true);c.language=language;c.copy={zh:{},en:{}};c.sort='level';c.sortDirection='desc';
+  vm.runInContext(assignments.map(n=>source.slice(n.start,n.end)).join('\n'),c);
+  c.t=k=>c.copy[language][k]??k;
+  vm.runInContext(source.slice(headers.start,headers.end),c);
+  const html=c.enemyHeaders();
+  assert.equal((html.match(/<th /g)||[]).length,11);
+  assert.equal((html.match(language==='zh'?/\/天/g:/\/day/g)||[]).length,7);
+  assert.ok(html.includes(language==='zh'?'击杀次数 <span':'Kills <span'));
+ }
+ assert.doesNotMatch(source,/\$\('#period'\)|periodOptions/);
 });
