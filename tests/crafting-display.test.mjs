@@ -83,3 +83,15 @@ test('toolbar orders group, search, rarity, filled button and clear, with no bat
  assert.match(toolbar,/<button id="craft-filled"[^>]+aria-pressed/);
  assert.doesNotMatch(source,/craft-batch|applyCraftingBatch|data-craft-tier/);
 });
+
+test('upgrades stay in the original nine-column table without extra recipe notes and keep per-upgrade units',()=>{
+ for(const lang of ['zh','en']){
+  const p=page(lang);vm.runInContext("state.skill='smithing';query='Colossus blade';state.levels.smithing=99",p);
+  const plans=vm.runInContext('visibleJobs()',p);assert.equal(plans.length,5);
+  const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
+  assert.equal((row.match(/<td[ >]/g)||[]).length,9);
+  assert.doesNotMatch(row,/即时升级 · 底装 \+0|Instant upgrade · base \+0|gear-stats/);
+  assert.match(row,lang==='zh'?/1,900 \/次/:/1,900 \/ upgrade/);
+  assert.match(row,/data-craft-count="upgrade-271:0"/);assert.doesNotMatch(row,/data-craft-upgrade-plus/);
+ }
+});

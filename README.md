@@ -1,6 +1,8 @@
 # Deep Vein Idle · Lab
 
-1.1.0 minor 已发布至生产站点，游戏公开资源保持 1.0.1186，角色 userscript 保持 2.5.2。本次核验与发布状态见[1.1.0 发布报告](reports/v1.1.0-release-2026-10-12.md)。
+1.1.0 minor 已发布至生产站点，生产游戏资源基线为 1.0.1186，角色 userscript 保持 2.5.2。
+
+本地已完整同步游戏 1.0.1187，并适配所有页面，尚未发布。制造页将 17 种装备升级配方按 +0 底装列入原配方表，材料包含底装，升级为即时操作、经验与收益按单次显示；旧巨像／幼龙计划保留品质和次数并迁移提示核对。强化页补齐七件新装备，共 168 种。战斗、采集、精通、预报及共用价格／导入均已核验；角色脚本仍为 2.5.2。详细验证见[全部页面适配报告](reports/all-pages-update-2026-10-13.md)。已发布版本 1.1.0 的核验与发布状态见[1.1.0 发布报告](reports/v1.1.0-release-2026-10-12.md)。
 
 
 ## 简介
@@ -58,7 +60,7 @@ pnpm install --frozen-lockfile
 node scripts/extract.mjs
 ```
 
-当前完整公开资源位于 `vendor/game-original.js`，来源、摘要、语义导出及声明摘要记录于 `vendor/manifest.json`；当前生成模块不混合旧版本。`vendor/game-combat-update.js` 保留为历史局部更新的原始证据。禁止手工修改生成文件 `src/upstream.js`；更新原始资源须遵循 [上游更新流程](DESIGN.md#64-上游更新流程)，完成映射审阅、重新提取及回归验证。
+当前完整公开资源位于 `vendor/game-original.js`，来源、摘要、语义导出及声明摘要记录于 `vendor/manifest.json`；当前生成模块完整来自已核验的 1.0.1187，无混合版本或局部替换；`vendor/game-combat-1187.js` 和局部映射文件仅保留为本次先前战斗阶段的证据，不再被当前提取器使用。`vendor/game-combat-update.js` 保留为历史局部更新的原始证据。禁止手工修改生成文件 `src/upstream.js`；更新原始资源须遵循 [上游更新流程](DESIGN.md#64-上游更新流程)，完成映射审阅、重新提取及回归验证。
 
 ## 部署
 

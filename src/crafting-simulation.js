@@ -1,5 +1,5 @@
 import * as game from './upstream.js';
-import {craftingPlayer,craftingMaterials,planKey,validQuantity,safeAdd} from './crafting-model.js';
+import {craftingPlayer,craftingMaterials,planKey,validQuantity,safeAdd,calculateUpgrade} from './crafting-model.js';
 import {manualWindows} from './manual-settings.js';
 import {combatHot,combatHotWindows} from './combat-hot.js';
 import {START_TICK} from './simulation.js';
@@ -7,6 +7,7 @@ import {validateSimulationSeed} from './simulation-seed.js';
 
 export const MAX_CRAFT_TICKS=30*24*3600000/game.tickMs;
 export function createCraftingScenario(raw,job,tier,count,{now=Date.now(),maxTicks=MAX_CRAFT_TICKS,seed=0}={}){
+ if(job.upgrade)throw Error('instantUpgrade');
  if(!validQuantity(count)||count===0)throw Error('invalidQuantity');
  if(!Number.isSafeInteger(maxTicks)||maxTicks<1||maxTicks>MAX_CRAFT_TICKS)throw Error('invalidDuration');
  const {state:s,player:p}=craftingPlayer(raw);
@@ -30,6 +31,7 @@ export function createCraftingScenario(raw,job,tier,count,{now=Date.now(),maxTic
  return {player:prepared,context,site,bank,maxTicks,materials};
 }
 export function simulateCrafting(raw,job,tier,count,{onProgress=()=>{},...options}={}){
+ if(job.upgrade){const result=calculateUpgrade(raw,job,tier,count);return {...result,key:planKey(job.id,tier),jobId:job.id,skill:job.skill,tier,count,materials:craftingMaterials(job,tier,count),success:count,burnt:0,movingTicks:0,workingTicks:0,deposits:0};}
  const {player:p,context,site,bank,maxTicks,materials}=createCraftingScenario(raw,job,tier,count,options),initialXp=p.skills[job.skill];
  const r={key:planKey(job.id,tier),jobId:job.id,skill:job.skill,tier,count,completed:0,success:0,burnt:0,xp:0,items:{},consumed:{},materials,elapsedTicks:0,movingTicks:0,workingTicks:0,deposits:0,siteId:site.id,homeBank:bank.id,startLevel:game.level(initialXp),endLevel:game.level(initialXp),complete:false,error:null};
  r.seed=context.seed;
@@ -58,6 +60,7 @@ export function simulateCrafting(raw,job,tier,count,{onProgress=()=>{},...option
 
 // A completed time window is valid even though an unlimited count is unfinished.
 export function simulateCraftingWindow(raw,job,tier,options={}){
+ if(job.upgrade)return simulateCrafting(raw,job,tier,1,options);
  const ticks=24*3600000/game.tickMs;
  const result=simulateCrafting(raw,job,tier,ticks,{...options,maxTicks:ticks});
  if(result.error==='timeLimit'){result.error=null;result.complete=true;}

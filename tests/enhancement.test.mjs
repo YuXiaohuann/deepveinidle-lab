@@ -17,7 +17,7 @@ function linearExpected(steps,start,reward){
 const snapshot=()=>({version:2,capturedAt:Date.now(),player:{skills:{enhancing:game.levelXp(32)+3},house:{lectern:12},houseFurniture:{lectern:{cell:1,slot:0}},masteries:{enhance:3},equipment:{mount:game.encode(game.withRarity(328,2),5)},bank:{[game.encode(game.withRarity(328,2),5)]:1,80:3,64:100},pack:[{itemId:110,qty:1}],overflow:{81:1}}});
 
 test('all original enhanceable equipment and tools appear once',()=>{
- const expected=[...new Set([...game.equipment,...game.tools].map(x=>x.itemId))].filter(game.canEnhance);
+ const expected=[...new Set([...game.equipment,...game.tools].map(x=>x.itemId))].filter(id=>game.canEnhance(id));
  assert.deepEqual(enhanceableItems.map(x=>x.id),expected);
  for(const x of enhanceableItems)for(let tier=0;tier<5;tier++)assert.doesNotThrow(()=>validateEnhancement(config({itemId:x.id,tier})));
 });
@@ -26,7 +26,7 @@ test('original chances, costs, XP and multipliers match independent vectors',()=
  step=enhancementSteps(config({itemId:328,tier:4,level:32,lectern:7,mastery:11,target:20}))[19];near(step.chance,.2*1.062*1.07*1.0275);assert.equal(step.gold,3000000);assert.equal(step.shards,60);assert.equal(step.xp,10000);
  for(const [tier,multiplier]of [1,3,8,20,50].entries())assert.equal(enhancementSteps(config({itemId:328,tier,target:1}))[0].gold,3000*multiplier);
  const levels=[15,30,50,75,90],bases=[100,300,1000,3000,8000,20000];
- for(const item of enhanceableItems){const recipe=game.recipes.find(x=>x.output.itemId===item.id),base=recipe?bases[levels.filter(x=>recipe.levelReq>=x).length]:3000;assert.equal(enhancementSteps(config({itemId:item.id,target:1}))[0].gold,base);}
+ for(const item of enhanceableItems){const recipe=game.recipes.find(x=>x.output.itemId===item.id),upgrade=game.upgradeRecipes.find(r=>r.to.includes(item.id)),level=recipe?.levelReq??upgrade?.levelReq,base=level===undefined?3000:bases[levels.filter(x=>level>=x).length];assert.equal(enhancementSteps(config({itemId:item.id,target:1}))[0].gold,base);}
 });
 test('protection uses current +2 and only charges a scroll on failure',()=>{
  const steps=enhancementSteps(config({protect:true,target:4}));assert.equal(steps[1].protected,false);assert.equal(steps[2].protected,true);assert.equal(steps[2].failTo,1);assert.equal(steps[3].failTo,2);
@@ -100,4 +100,14 @@ test('enhancement imports and persists hidden guild identity without changing ca
  assert.equal(importEnhancement(imported,{...snapshot(),guild:null}).state.guild,null);
  assert.throws(()=>importEnhancement(imported,{...snapshot(),guild:{name:'Guild'}}),/invalidSnapshot/);
  assert.deepEqual(imported.guild,{name:'Deep miners',tag:'DM'});
+});
+
+test('all seven upgrade-only items use their native 95/99 crafting tier for costs and import',()=>{
+ for(const id of [629,630,631,632,633,634,635]){
+  for(const[tier,mult]of[1,3,8,20,50].entries()){
+   const step=enhancementSteps(config({itemId:id,tier,target:4}))[3];
+   assert.equal(step.gold,20000*mult*4);assert.equal(step.shards,12);
+   assert.deepEqual(decodeEnhancementItem(game.encode(game.withRarity(id,tier),17)),{itemId:id,tier,current:17,id:game.encode(game.withRarity(id,tier),17)});
+  }
+ }
 });

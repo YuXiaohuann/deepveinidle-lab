@@ -17,12 +17,13 @@ test('presets are valid for all styles',()=>{for(const style of ['melee','ranged
 test('language follows saved choice, then browser language list',()=>{assert.equal(chooseLanguage('en',['zh-CN']),'en');assert.equal(chooseLanguage(null,['en-US','zh-TW']),'zh');assert.equal(chooseLanguage(null,['fr']),'en');});
 test('snapshot hash and every extracted original declaration match manifest',()=>{const source=fs.readFileSync('vendor/game-original.js','utf8'),generated=fs.readFileSync('src/upstream.js','utf8'),manifest=JSON.parse(fs.readFileSync('vendor/manifest.json','utf8'));const hash=x=>crypto.createHash('sha256').update(x).digest('hex');assert.equal(hash(source),manifest.sha256);for(const d of manifest.declarations){const text=source.slice(d.start,d.end);assert.ok(generated.includes(text),d.name);const candidates=[text,...['const','let','var'].map(k=>k+' '+text+';')];assert.ok(candidates.some(x=>hash(x)===d.sha256),d.name);}});
 
-test('full current snapshot includes native banking without mixed-version overrides',()=>{
+test('full reviewed 1.0.1187 snapshot includes native upgrades without overrides',()=>{
  const manifest=JSON.parse(fs.readFileSync('vendor/manifest.json','utf8'));
- assert.equal(manifest.changelogVersion,'1.0.1186');
+ assert.equal(manifest.changelogVersion,'1.0.1187');
  assert.deepEqual(manifest.overrides,[]);
- assert.ok(manifest.declarations.some(d=>d.name==='Sq'));
- assert.equal(manifest.exports.tick,'F4');
+ assert.ok(manifest.declarations.some(d=>d.name==='PI'));
+ assert.equal(manifest.exports.tick,'W$');
+ assert.equal(game.upgradeRecipes.length,17);
  assert.equal(game.item(397).name,'Moon box');
  assert.equal(game.vendorPrice(397),10);
  assert.equal(game.marketFamily(397),'valuables');

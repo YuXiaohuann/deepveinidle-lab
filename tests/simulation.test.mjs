@@ -7,8 +7,8 @@ import {simulateMonster,createScenario,START_TICK,HOUR_TICKS,DAY_TICKS} from '..
 const preset=style=>{const s=presetBuild(style);s.manual.hotSetting='off';s.manual.simulationHours=24;return s;};
 const defaults=()=>{const s=defaultBuild();s.manual.hotSetting='off';s.manual.simulationHours=24;return s;};
 
-test('banking eats immediately until above the threshold, with independent healing and inventory totals',()=>{
- for(const [hp,eatAt,stock,expectedHp,eaten]of [[12,.5,28,52,2],[42,.5,28,62,1],[43,.5,28,43,0],[12,0,28,12,0],[12,.5,0,12,0],[0,.5,28,0,0],[12,.5,1,32,1]]){
+test('banking first eats warehouse food without overflowing HP, then loads trip food',()=>{
+ for(const [hp,eatAt,stock,expectedHp,eaten]of [[12,.5,28,72,3],[42,.5,28,82,2],[43,.5,28,83,2],[12,0,28,12,0],[12,.5,0,12,0],[0,.5,28,80,4],[12,.5,1,32,1]]){
   const {player:p,context}=createScenario(preset('magic'));
   p.bank={66:stock};p.pack=[];p.foodItemId=66;p.foodPerTrip=28;
   p.eatAt=eatAt;p.hp=hp;p.perks.meals=0;p.brews={};
@@ -25,7 +25,7 @@ test('banking eats immediately until above the threshold, with independent heali
 
 test('effective mastery values preserve existing ranks and original units',()=>{
  for(const m of game.masteries)for(const rank of [0,1,13,20000])assert.equal(masteryRank(m.id,masteryValue(m.id,rank)),rank);
- assert.equal(masteryValue('accuracy',1),0.5);assert.equal(masteryRank('accuracy',10.5),21);
+ assert.equal(masteryValue('accuracy',1),1);assert.equal(masteryRank('accuracy',11),11);
  assert.equal(masteryRank('enhance',0.5),2);assert.equal(masteryValue('enhance',1),0.25);assert.equal(masteryValue('offline',1),0.12);
 });
 test('all monsters match the original predictor XP, timing and deaths',()=>{
