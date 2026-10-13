@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import * as game from '../src/upstream.js';
-import {priceDefaults,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,validateMarketSnapshot,mergeQuotes} from '../src/item-prices.js';
+import {priceDefaults,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,validateMarketSnapshot,mergeQuotes} from '../src/item-prices.js';
 const source=fs.readFileSync(new URL('../src/item-price-controls.js',import.meta.url),'utf8').replace(/^import .*;\n/gm,'').replace('export function mountItemPrices','function mountItemPrices');
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 function harness(requestMarket,priceInputs=[]){
@@ -12,9 +12,22 @@ function harness(requestMarket,priceInputs=[]){
  const controls=new Map(),element=()=>({focus(){},scrollTop:0,textContent:''});
  const dialog={open:false,innerHTML:'',showModal(){this.open=true;},setAttribute(){},addEventListener(){},querySelector(selector){if(!controls.has(selector))controls.set(selector,element());return controls.get(selector);},querySelectorAll(selector){return selector==='[data-price-value]'?priceInputs:[];}};
  const button={};const document={createElement:()=>dialog,body:{append(){}},getElementById:()=>button};let current=state,subscriber;
- const ctx=vm.createContext({game,marketFamilies:game.marketFamilies,translatedName:s=>s,validItemId:()=>true,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,validateMarketSnapshot,mergeQuotes,document,Date,Set,Number,Object,String,structuredClone,requestAnimationFrame:fn=>frames.push(fn),requestMarket,priceState:()=>current,priceSaveError:()=>null,updatePrices:next=>{current=next;subscriber?.();},subscribePrices:fn=>subscriber=fn});
+ const ctx=vm.createContext({game,marketFamilies:game.marketFamilies,translatedName:s=>s,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,validateMarketSnapshot,mergeQuotes,document,Date,Set,Number,Object,String,structuredClone,requestAnimationFrame:fn=>frames.push(fn),requestMarket,priceState:()=>current,priceSaveError:()=>null,updatePrices:next=>{current=next;subscriber?.();},subscribePrices:fn=>subscriber=fn});
  vm.runInContext(source,ctx);ctx.mountItemPrices('zh');return {dialog,button,controls,ctx,nextFrame(){for(const fn of frames.splice(0))fn();},runFrames(){while(frames.length)this.nextFrame();}};
 }
+test('price list includes all legal rarities without quotes and generates enhancements only on selection',()=>{
+ const h=harness(async()=>{throw Error('noMarketData');});h.ctx.updatePrices(priceDefaults());h.button.onclick();
+ const ids=()=>[...h.dialog.innerHTML.matchAll(/data-price-value="(\d+)"/g)].map(match=>Number(match[1]));
+ for(const id of [110,1110,2110,3110,4110])assert.ok(ids().includes(id),`missing rarity ${id}`);
+ assert.equal(ids().includes(5110),false);assert.ok(ids().every(id=>id<game.encode(0,1)));
+ h.ctx.updatePrices(setItemPrice(h.ctx.priceState(),50110,10));
+ assert.ok(ids().includes(50110));assert.equal(ids().includes(51110),false);
+ const plus=h.controls.get('#price-plus');plus.value='1';plus.onchange();
+ for(const id of [10110,11110,12110,13110,14110])assert.ok(ids().includes(id),`missing enhanced rarity ${id}`);
+ assert.ok(ids().every(id=>Math.floor(id/game.encode(0,1))===1));
+ const tier=h.controls.get('#price-tier');tier.value='4';tier.onchange();
+ assert.ok(ids().includes(14110));assert.ok(ids().every(id=>game.itemTier(id)===4));
+});
 for(const [error,label]of [['marketMissing','未连接市场脚本'],['noMarketData','未读取市场报价']])test(`${error} replaces cached summary with a highlighted persistent notice`,async()=>{
  const h=harness(async()=>{throw Error(error);});h.button.onclick();h.runFrames();await flush();
  const summary=h.dialog.innerHTML.match(/<p id="price-market-status"[^>]*>(.*?)<\/p>/s)?.[0];

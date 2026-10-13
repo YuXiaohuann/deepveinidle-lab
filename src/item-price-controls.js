@@ -27,11 +27,11 @@ function message(){
 function candidates(){
  const s=priceState(),ids=new Set(game.items.filter(i=>i.id===game.baseItemId(i.id)&&itemFamily(i.id)&&game.canSell(i.id)).map(i=>i.id));
  for(const key of [...Object.keys(s.prices),...Object.keys(s.quotes)])ids.add(Number(key));
- if(tier!=='all'||plus){for(const id of [...ids]){
+ for(const id of [...ids]){
   const base=game.baseItemId(id);for(const t of tier==='all'?[0,1,2,3,4]:[Number(tier)]){
    const encoded=game.encode(game.withRarity(base,t),plus);if(validItemId(encoded)&&(!plus||game.canEnhance(encoded)))ids.add(encoded);
   }
- }}
+ }
  return [...ids].filter(id=>{
   const base=game.item(game.baseItemId(id)),p=s.prices[id],q=query.trim().toLowerCase();
   return (family==='all'||itemFamily(id)===family)&&(tier==='all'||game.itemTier(id)===Number(tier))&&(!plus||Math.floor(id/game.encode(0,1))===plus)&&(!q||`${base.name} ${translatedName(base.name,'zh')} ${id}`.toLowerCase().includes(q))&&(filter==='all'||filter==='priced'&&p?.price!==null&&p?.price!==undefined||filter==='unpriced'&&p?.price==null||filter==='locked'&&p?.locked||filter==='unlocked'&&!p?.locked);
