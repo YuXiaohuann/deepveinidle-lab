@@ -1,0 +1,16 @@
+✔ character import uses shared protocol and retains plans, stock, failures and independent settings (22.498333ms)
+✔ import captures enhancement-only fields and deduplicates worn and inventory candidates (1.984ms)
+✔ import rejects missing or illegal data atomically and ignores ordinary inventory items (0.471625ms)
+✔ enhancement imports and persists hidden guild identity without changing calculations (1.062542ms)
+✔ all seven upgrade-only items use their native 95/99 crafting tier for costs and import (1.351709ms)
+✔ configuration import maps gathering fields and restores simulation defaults (21.948375ms)
+✔ mastery import replaces ranks and points and resets targets and mode (1.584583ms)
+✔ bad mastery imports fail atomically instead of silently mapping invalid ranks to zero (0.583875ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 210.642

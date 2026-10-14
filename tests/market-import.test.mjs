@@ -2,15 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {captureHarness} from './helpers/capture-harness.mjs';
 const script=fs.readFileSync(new URL('../src/character-import.user.js',import.meta.url),'utf8');
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
-function harness(write){
- const storage=new Map(),writes=[],timers=new Map();let badge,timerId=0;
- const page={WebSocket:class{listeners=[];addEventListener(type,fn){if(type==='message')this.listeners.push(fn);}receive(messages){for(const fn of this.listeners)fn({data:JSON.stringify({tick:1,m:messages})});}send(){throw Error('No game commands permitted');}}};
- const document={documentElement:{append(el){badge=el;}},createElement:()=>({style:{},setAttribute(){},remove(){badge=null;}}),getElementById:()=>badge};
- vm.runInNewContext(script,{unsafeWindow:page,document,location:{origin:'https://deepveinidle.com',host:'deepveinidle.com',href:'https://deepveinidle.com/'},URL,Date,console,setTimeout:(fn,ms)=>{const id=++timerId;timers.set(id,{fn,ms});return id;},clearTimeout:id=>timers.delete(id),MutationObserver:class{observe(){}},GM_setValue:async(k,v)=>{writes.push({key:k,value:structuredClone(v)});await write?.(k,v);storage.set(k,structuredClone(v));}});
- return {page,storage,writes,timers,badge:()=>badge,hideBadge(){const [id,timer]=[...timers].at(-1);assert.equal(timer.ms,5000);timers.delete(id);timer.fn();}};
-}
+const harness=write=>captureHarness(write);
 test('market capture stores only quotes and isolates role, orders and credentials',async()=>{
  const h=harness(),socket=new h.page.WebSocket('wss://deepveinidle.com/ws?token=secret');
  socket.receive([{t:'marketBooks',tops:[{itemId:1,ask:10,bid:2,floor:1,owner:'private',token:'secret'},{itemId:1001,ask:null,bid:null}]},{t:'chat',text:'private'},{t:'marketFilled',itemId:1,price:100,qty:2}]);await flush();

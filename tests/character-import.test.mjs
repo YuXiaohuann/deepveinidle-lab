@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {captureHarness} from './helpers/capture-harness.mjs';
 import {importCharacter,importWarningText} from '../src/character-import.js';
 import {game,defaults,preset,slots,normalize} from '../src/model.js';
 const fixture=()=>({version:2,capturedAt:Date.now(),player:{lastTick:100,skills:{melee:game.levelXp(37)+20,ranged:game.levelXp(82),magic:0,defence:game.levelXp(42),hitpoints:game.levelXp(51)},equipment:Object.fromEntries(slots.map(k=>[k,null])),foodItemId:game.withRarity(64,2),eatAt:.75,foodMaxTier:3,foodPerTrip:-2,brews:{warrior:200,haste:100,fed:200,rooted:99,blessing:200},brewTier:{warrior:2},house:{post:90,storeroom:4,target:50},houseFurniture:{post:{placed:true}},masteries:{xp:9,move:7},perks:{pockets:3,meals:4,rest:2},guildBonus:.12,homeBank:null,ironman:true}});
@@ -57,19 +58,17 @@ test('malformed sparse ranks reset to defaults with explicit warnings',()=>{
 
 const script=fs.readFileSync(new URL('../src/character-import.user.js',import.meta.url),'utf8');
 function gameScript(save){
- const stored=[],sockets=[];class Socket{constructor(url){this.url=url;this.listeners={};sockets.push(this);}addEventListener(k,fn){this.listeners[k]=fn;}send(){throw new Error('script must never send');}}
- const page={WebSocket:Socket};let badge=null,observer,hideTimer;
- const doc={documentElement:{append(el){badge=el;}},createElement(){return {style:{},setAttribute(){},remove(){badge=null;observer();}};},getElementById(){return badge;}};
- const context={setTimeout:(fn,ms)=>{hideTimer={fn,ms};return hideTimer;},clearTimeout:()=>{hideTimer=null;},MutationObserver:class{constructor(fn){observer=fn;}observe(){}},unsafeWindow:page,location:{origin:'https://deepveinidle.com',host:'deepveinidle.com',href:'https://deepveinidle.com/'},URL,Date,console,GM_setValue:(k,v)=>{if(k!=='dvi-character-snapshot-v2')return;stored.push(v);return save?.();},document:doc};
- vm.runInNewContext(script,context);
- const frame=(socket,you,t='snapshot',extra={},tick=100)=>socket.listeners.message({data:JSON.stringify({tick,m:[{t,you,chat:['private'],...extra}]})});
- return {page,sockets,stored,frame,doc,badge:()=>badge,hasHideTimer:()=>hideTimer!==undefined&&hideTimer!==null,removeBadge(){badge=null;observer();},hideBadge(){assert.equal(hideTimer.ms,5000);hideTimer.fn();}};
+ const h=captureHarness((key,value)=>key==='dvi-character-snapshot-v2'?save?.():undefined),stored=[];
+ const original=h.context.GM_setValue;
+ h.context.GM_setValue=(key,value)=>{if(key==='dvi-character-snapshot-v2')stored.push(structuredClone(value));return original(key,value);};
+ const frame=(socket,you,t='snapshot',extra={},tick=100)=>socket.receive([{t,you,chat:['private'],...extra}],tick);
+ return {...h,stored,frame,doc:h.context.document,hasHideTimer:()=>/captured/i.test(h.badge()?.textContent??'')&&[...h.timers.values()].some(t=>t.ms===5000)};
 }
-test('userscript passively captures complete own-role data without chat or credentials',async()=>{
+test('userscript captures required own-role fields without unrelated data or credentials',async()=>{
  const {page,stored,frame}=gameScript(),socket=new page.WebSocket('wss://deepveinidle.com/ws?c=secret');
  const p={...fixture().player,password:'secret',token:'secret',bank:{64:100},name:'Alice'};
  frame(socket,p,'enter');assert.equal(stored.length,0);frame(socket,p,'welcome');await new Promise(resolve=>setImmediate(resolve));assert.equal(stored.length,1);assert.equal(stored[0].prediction,undefined);
- assert.equal(stored[0].player.skills.melee,p.skills.melee);assert.equal(stored[0].player.password,undefined);assert.deepEqual(JSON.parse(JSON.stringify(stored[0].player.bank)),{64:100});assert.equal(stored[0].player.name,'Alice');
+ assert.equal(stored[0].player.skills.melee,p.skills.melee);assert.equal(stored[0].player.password,undefined);assert.deepEqual(JSON.parse(JSON.stringify(stored[0].player.bank)),{64:100});assert.equal(stored[0].player.name,undefined);
  assert.equal(JSON.stringify(stored).includes('secret'),false);assert.equal(JSON.stringify(stored).includes('private'),false);
  assert.equal(importCharacter(preset('ranged'),structuredClone(stored[0])).applied.length,9);
 });
@@ -131,7 +130,7 @@ test('success badge hides after five seconds without reappearing on redraws or l
  g.frame(socket,fixture().player);await new Promise(resolve=>setImmediate(resolve));
  assert.equal(g.stored.length,2);assert.equal(g.badge(),null);
  new g.page.WebSocket('wss://deepveinidle.com/ws');assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');
- assert.match(script,/^\/\/ @version\s+2\.5\.2$/m);
+ assert.match(script,/^\/\/ @version\s+2\.6\.0$/m);
 });
 
 const weeklyWindow=(label='Weekly goal: gathered',fromTick=100,toTick=200,xpMult=1.1)=>({label,fromTick,toTick,xpMult});

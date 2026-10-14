@@ -27,6 +27,12 @@ node scripts/extract.mjs
 
 本机服务有意不开放 `docs/`、`reports/` 与 `AGENTS.md`；文档通过仓库或本地编辑器阅读。README 与 DESIGN 仍可直接访问，但其拆分文档链接不属于网页预览服务范围。无需为文档整理扩大服务器访问范围。
 
+## 角色捕获 Worker 专项
+
+运行 `node --test tests/capture-worker.test.mjs tests/character-import.test.mjs tests/market-import.test.mjs` 验证捕获、保存协调及桥接。运行 `node scripts/check-capture-browser.mjs` 后，在 Chrome 打开 `http://127.0.0.1:4186/`，页面自动验证真实 Blob Worker、字段裁剪、慢存储合并、跨连接隔离和失败提示，完成后显示 PASS。此服务只暴露测试页与当前候选脚本，不连接游戏，GM 存储和 WebSocket 使用合成替身；`PORT` 可修改端口。源码变化后刷新重测，结束后停止服务。
+
+本地真实 Worker 验证不代表脚本管理器沙箱兼容或真实账号卡顿改善；安装／更新 2.6.0 后仍须刷新游戏和实验室，并单独记录该环境的验收。Worker 不可用时明确提示失败并要求刷新，不会回退到主线程捕获。
+
 ## 发布工具开发
 
 发布前检查、打包及目标验收使用 `pnpm release:check`、`pnpm release:package`、`pnpm release:verify`，参数及证据规则见 [发布流程](release.md)。三个入口不自动提交、登录或部署。开发发布工具时先运行 `node --test --test-reporter=tap tests/release-tools.test.mjs`；其中 HTTP 测试只使用临时回环服务器。完整应用测试仍在正式发布前执行。

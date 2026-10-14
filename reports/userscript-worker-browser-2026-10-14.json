@@ -1,0 +1,15 @@
+{
+  "candidate": "src/character-import.user.js",
+  "version": "2.6.0",
+  "sha256": "fd461b210dbeab02ccf502f6c8503a9c2b16dc1bb7f44921630dc3d27ec8c850",
+  "environment": "Chrome/154.0.0.0 on macOS",
+  "fixture": "tests/fixtures/capture-worker.html",
+  "nativeWorker": true,
+  "syntheticSocketAndStorage": true,
+  "passed": ["role field selection", "bounded snapshot pulls during slow storage", "100 incremental market updates merged", "cross-connection ordering and market clear", "visible Worker failure"],
+  "result": "PASS",
+  "mainMessageCallbackMaxMs": 0.7000000029802322,
+  "ackCount": 104,
+  "storageWriteCount": 7,
+  "limitations": ["synthetic workload only", "not installed in userscript manager", "no actual account performance comparison", "intentional Worker error used to verify failure UI"]
+}
