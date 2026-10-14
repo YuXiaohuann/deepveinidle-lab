@@ -41,7 +41,16 @@ const tiers=v=>options(t('rarity').map((n,i)=>[i,n]),v);
 const number=(path,label,value,max,min=0,step=1)=>`<label class="number-field"><span>${esc(label)}</span><input type="number" data-path="${path}" value="${value}" min="${min}" max="${max}" step="${step}" aria-label="${esc(label)}"></label>`;
 let saveOK=true;
 function save(){try{localStorage.setItem(storageKey,JSON.stringify({language,state}));saveOK=true;}catch{saveOK=false;}}
-function gearSummary(slot,g){return !g?'—':slot==='mount'?`${t('moveSpeed')} +${Number((g.bonus*100).toFixed(2))}%`:`${t('acc')} ${g.accuracy} · ${t('str')} ${g.strength} · ${t('def')} ${g.defence}`;}
+function gearSummary(slot,g){
+ if(!g)return '—';
+ const percent=value=>`+${Number((value*100).toFixed(2))}%`;
+ const attributes=slot==='mount'?[[g.bonus,t('moveSpeed'),percent]]:[
+  [g.accuracy,t('acc')],[g.strength,t('str')],[g.defence,t('def')],
+  [g.speed,language==='zh'?'基础攻击间隔':'Base attack interval',value=>`${Number((value*game.tickMs/1000).toFixed(2))} ${t('second')}`],
+  [g.luck,language==='zh'?'幸运加成':'Luck bonus',percent]
+ ];
+ return attributes.filter(([value])=>Number.isFinite(value)&&value!==0).map(([value,label,format])=>`${label} ${format?format(value):value}`).join(' · ')||'—';
+}
 function equipRow(slot){const v=state.gear[slot],g=v.id?gearDetails(slot,game.encode(game.withRarity(v.id,v.tier),v.plus)):null;return `<div class="gear-row"><label class="gear-name"><span>${t(slot)}</span><select data-path="gear.${slot}.id" aria-label="${t(slot)}">${options([...(slot==='weapon'&&state.style!=='melee'?[]:[[0,slot==='weapon'?t('unarmed'):t('empty')]]),...(state.manual.allGear?baseGear.filter(g=>g.slot===slot):gearForStyle(slot,state.style)).sort((a,b)=>a.levelReq-b.levelReq).map(x=>[x.itemId,`${name(game.item(x.itemId).name)}${slot==='mount'?'':` · ${x.levelReq}`}`])],v.id)}</select></label><div class="gear-mods"><select data-path="gear.${slot}.tier" aria-label="${t(slot)} ${language==='zh'?'稀有度':'rarity'}" ${!v.id?'disabled':''}>${tiers(v.tier)}</select><label class="enhance"><span>+</span><input type="number" min="0" max="${game.maxEnhancement}" step="1" data-path="gear.${slot}.plus" value="${v.plus}" aria-label="${t(slot)} ${language==='zh'?'强化':'enhancement'}" ${!v.id?'disabled':''}></label></div><small class="gear-stats">${gearSummary(slot,g)}</small></div>`;}
 const nonCombatNote=()=>language==='zh'?' · 不影响本页静态战斗数值':' · no effect on these static combat stats';
 function houseDescription(r){const labels=language==='zh'?{gatherSpeed:'采集速度',craftSpeed:'制作速度',combatXp:'战斗经验',skillXp:'技能经验',enhanceChance:'强化成功率',dmg:'伤害',rareChance:'稀有掉落概率',bankSlots:'仓库容量'}:{gatherSpeed:'Gather speed',craftSpeed:'Craft speed',combatXp:'Combat XP',skillXp:'Skill XP',enhanceChance:'Enhance odds',dmg:'Damage',rareChance:'Rare-find',bankSlots:'Storage slots'};return labels[r.bonus.kind]+(r.bonus.kind==='dmg'?(language==='zh'?' · 每级 +0.5%，上限 +50%':' · +0.5% per level, capped at +50%'):['combatXp','skillXp','rareChance'].includes(r.bonus.kind)?(language==='zh'?' · 参与小时利润':' · affects hourly rewards'):(language==='zh'?' · 原始效果为仓库容量；当前无限仓库，不影响模拟':' · native storage capacity; no effect with unlimited storage'));}
