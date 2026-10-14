@@ -31,7 +31,7 @@ test('combat methodology note identifies simulated and expected fields in both l
  assert.match(c.copy.en.combatMethodNote,/<strong class="simulation-caveat">original simulation<\/strong>/);
  assert.match(c.copy.en.combatMethodNote,/<strong class="simulation-caveat">mathematical expectations<\/strong>/);
  assert.match(c.copy.zh.combatMethodNote,/金币、普通与稀有掉落.*数学期望/);
- assert.match(c.copy.zh.combatMethodNote,/药剂成本按所选时长.*收入与收益.*物品价格/);
+ assert.match(c.copy.zh.combatMethodNote,/药剂成本按所选时长.*收入与利润.*物品价格/);
  assert.match(c.copy.en.combatMethodNote,/Kills, attack attempts, moving share, XP and food consumption.*original simulation/);
  assert.match(c.copy.en.combatMethodNote,/coins, normal and rare drops.*mathematical expectations/);
  assert.match(c.copy.en.combatMethodNote,/potion cost uses the selected duration.*Income and profit.*item prices/);
@@ -148,7 +148,7 @@ test('combat controls omit reward period and bilingual headers label daily count
  const headers=ast.body.find(n=>n.id?.name==='enemyHeaders');
  for(const language of ['zh','en']){
   const controls=manualControls(defaults(),{language,number:()=>'',options:()=>'',esc:String,name:String});
-  assert.doesNotMatch(controls.simulation,/id="period"|收益周期|Reward period/);
+  assert.doesNotMatch(controls.simulation,/id="period"|利润周期|Reward period/);
   const c=view(true);c.language=language;c.copy={zh:{},en:{}};c.sort='level';c.sortDirection='desc';
   vm.runInContext(assignments.map(n=>source.slice(n.start,n.end)).join('\n'),c);
   c.t=k=>c.copy[language][k]??k;
