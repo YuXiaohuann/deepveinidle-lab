@@ -1,0 +1,24 @@
+{
+  "version": "1.2.4",
+  "base": "https://dvi-lab.pages.dev",
+  "verifiedFiles": 47,
+  "routes": [
+    "/",
+    "/combat",
+    "/combat/",
+    "/gather",
+    "/gather/",
+    "/craft",
+    "/craft/",
+    "/enhance",
+    "/enhance/",
+    "/mastery",
+    "/mastery/",
+    "/forecast",
+    "/forecast/",
+    "/debug",
+    "/debug/"
+  ],
+  "html": "App entry verified; hosting HTML injection allowed",
+  "redirects": "Verified by route behavior"
+}
