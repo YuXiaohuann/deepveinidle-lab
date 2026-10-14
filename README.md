@@ -14,6 +14,8 @@ node scripts/serve.mjs
 
 打开 [本机页面](http://127.0.0.1:4173)。安装依赖、测试、原始代码提取与本机服务边界见 [本地开发](docs/development.md)。
 
+发布使用 `release:check`、`release:package`、`release:verify` 三个入口，完整日志落盘、终端只返回摘要；依赖安装、参数和部署步骤见 [发布流程](docs/release.md)。
+
 ## 文档入口
 
 | 用途 | 文件 |

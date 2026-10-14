@@ -14,6 +14,9 @@ importers:
       eslint-scope:
         specifier: 8.4.0
         version: 8.4.0
+      playwright-core:
+        specifier: 1.62.1
+        version: 1.62.1
 
 packages:
 
@@ -34,6 +37,11 @@ packages:
     resolution: {integrity: sha512-MMdARuVEQziNTeJD8DgMqmhwR11BRQ/cBP+pLtYdSTnf3MIO8fFeiINEbX36ZdNlfU/7A9f3gUw49B3oQsvwBA==}
     engines: {node: '>=4.0'}
 
+  playwright-core@1.62.1:
+    resolution: {integrity: sha512-wPYSwEBJY9GHraISXqyqtx0na0LpO3XEX7jNDhntbex7tzUS7kLnZsOlFruFJB4Hi/rhDMjXGqHewDZ68nYZVw==}
+    engines: {node: '>=20'}
+    hasBin: true
+
 snapshots:
 
   acorn@8.15.0: {}
@@ -48,3 +56,5 @@ snapshots:
       estraverse: 5.3.0
 
   estraverse@5.3.0: {}
+
+  playwright-core@1.62.1: {}

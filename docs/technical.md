@@ -59,6 +59,8 @@
 | `src/debug-controls.js`、`tests/debug-controls.test.mjs` | 隐藏调试页、角色配置 JSON 文件下载与战斗／强化两个共用导入入口、文件往返及失败状态验证 |
 | `src/mastery.js`、`src/mastery-controls.js` | 独立精通预算、升级成本、配置校验与双语交互 |
 | `src/app.js`、`src/style.css` | 双语交互、呈现、本地保存和响应式布局 |
+| `scripts/release.mjs`、`scripts/release-*.mjs` | 发布三阶段编排、证据摘要、隔离提取、HTTP／浏览器验收与完整日志 |
+| `scripts/native-audit.mjs` | 全部页面独立原始计算对照，常规发布唯一完整对照入口 |
 | `scripts/serve.mjs` | 仅监听本机的静态预览服务 |
 | `tests/model.test.mjs` | 计算、配置、完整性及源码一致性回归测试 |
 
