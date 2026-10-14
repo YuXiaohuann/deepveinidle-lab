@@ -179,3 +179,6 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
  .scroll-information{width:100%}
  .scroll-information .project-footer{padding-bottom:24px}
 }
+
+.enemies td:first-child .reward-detail>div{margin-left:0;margin-right:0;font-weight:400;color:var(--muted)}
+.enemies td:first-child .enemy-name{display:inline-flex;vertical-align:middle}

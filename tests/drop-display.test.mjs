@@ -83,7 +83,7 @@ test('valuation preference defaults off, persists and renders bilingual controls
 test('headers and pending and failed rows follow the visible column count',()=>{
  for(const enabled of [false,true]){
  const c=view(enabled);const columns=c.visibleEnemyColumns();
- assert.equal(columns.length,11);assert.deepEqual(Array.from(columns,x=>x[0]),['enemy','xpHour','totalIncomeHour','profitHour','level','killsHour','movingShare','coinsHour','normalHour','rareHour','foodHour']);
+ assert.equal(columns.length,10);assert.deepEqual(Array.from(columns,x=>x[0]),['enemy','xpHour','totalIncomeHour','profitHour','movingShare','killsHour','coinsHour','normalHour','rareHour','foodHour']);
  assert.equal(columns.find(x=>x[0]==='normalHour')[1],'normalValue');
  assert.equal(columns.some(x=>x[0]==='totalIncomeHour'),true);
  assert.equal((c.hourlyCells({key:'m'}).match(/<td/g)||[]).length,9);
@@ -155,7 +155,7 @@ test('combat controls omit reward period and bilingual headers label daily count
   c.t=k=>c.copy[language][k]??k;
   vm.runInContext(source.slice(headers.start,headers.end),c);
   const html=c.enemyHeaders();
-  assert.equal((html.match(/<th /g)||[]).length,11);
+  assert.equal((html.match(/<th /g)||[]).length,10);
   assert.equal((html.match(language==='zh'?/\/天/g:/\/day/g)||[]).length,8);
   assert.ok(html.includes(language==='zh'?'击杀次数/天 <span':'Kills/day <span'));
  }

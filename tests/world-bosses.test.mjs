@@ -55,17 +55,19 @@ test('ordinary enemy selection and simulation hours do not affect boss rows',()=
  assert.deepEqual(rows(state),base);
 });
 
-test('bilingual nine-column markup, details and independent sort without a table note',()=>{
+test('bilingual eight-column markup, details and independent sort without a table note',()=>{
  const result=rows(preset('melee'));
  for(const language of ['zh','en']){
   const sorted=sortEnemies(result,'dps','asc');
   const html=renderWorldBosses(sorted,{language,sort:'dps',direction:'asc',open:new Set([result[0].key])});
-  assert.equal((html.match(/<th[ >]/g)||[]).length,9);
+  assert.equal((html.match(/<th[ >]/g)||[]).length,8);
   assert.equal((html.match(/<tr data-boss=/g)||[]).length,3);
   assert.ok(html.includes(`<details id="${result[0].key}-details" class="reward-detail" open>`));
   assert.match(html,/aria-sort="ascending"><button class="sort-header" data-boss-sort="dps"/);
   assert.doesNotMatch(html,/data-sort=|data-enemy=|5000/);
-  assert.ok(html.includes(language==='zh'?'推荐等级':'Recommended level'));
+  assert.ok(html.includes(`<small>${language==='zh'?'推荐等级':'Recommended level'} 110</small>`));
+  assert.doesNotMatch(html,/enemy-icon/);
+  assert.match(renderWorldBosses(sorted,{language,sort:'level',direction:'asc'}),/aria-sort="ascending"><button class="sort-header" data-boss-sort="level"/);
   assert.ok(html.includes(language==='zh'?'理论 DPS':'Theoretical DPS'));
   assert.doesNotMatch(html,/table-note|服务端实际团战规则尚未完整核验|actual server raid rules have not been fully verified/);
  }
