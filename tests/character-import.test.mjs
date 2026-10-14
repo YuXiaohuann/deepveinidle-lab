@@ -358,7 +358,7 @@ test('automatic food ties use item id order and ignore nonfood stock',()=>{
   assert.deepEqual(importCharacter(preset('ranged'),snap).state.food,{id:60,tier:0});
  }
  const warnings=['food: food.bankMissing','food: food.noCandidate'];
- assert.match(importWarningText('zh',warnings),/仓库数据缺失；仓库没有符合策略及品质上限的食物/);
+ assert.match(importWarningText('zh',warnings),/仓库数据缺失；仓库没有符合策略及稀有度上限的食物/);
  assert.match(importWarningText('en',warnings),/Warehouse data is missing; No warehouse food matches/);
 });
 

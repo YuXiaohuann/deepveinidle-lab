@@ -1,11 +1,11 @@
 import {readGuild} from './guild.js';
 import {game,defaults,normalize,slots,skills,foods,gearDetails} from './model.js';
 import {combatRooms,combatMasteries,combatPerks,combatPotions} from './combat-options.js';
-export const importTypes=[['skills','技能','Skills'],['equipment','装备','Equipment'],['food','食物','Food'],['potions','药水','Potions'],['home','家园','Home'],['masteries','精通','Masteries'],['guild','公会与祝福','Guild & blessing'],['supplies','补给','Supplies'],['perks','天赋','Perks']];
+export const importTypes=[['skills','技能','Skills'],['equipment','装备','Equipment'],['food','食物','Food'],['potions','药水','Potions'],['home','家园','Home'],['masteries','精通','Masteries'],['guild','公会与祝福','Guild & blessing'],['supplies','补给','Supplies'],['perks','特权','Perks']];
 export function importWarningText(language,warnings=[]){
  const zh=language==='zh',categories=new Set(warnings.map(item=>item.split(': ')[0])),lines=[];
  if(categories.has('food')){
-  const reasons=[['food.bankMissing','仓库数据缺失','Warehouse data is missing'],['food.bankInvalid','仓库数据异常','Warehouse data is invalid'],['food.noCandidate','仓库没有符合策略及品质上限的食物','No warehouse food matches the strategy and quality cap'],['foodMaxTier','自动进食品质上限无效','The automatic food quality cap is invalid']];
+  const reasons=[['food.bankMissing','仓库数据缺失','Warehouse data is missing'],['food.bankInvalid','仓库数据异常','Warehouse data is invalid'],['food.noCandidate','仓库没有符合策略及稀有度上限的食物','No warehouse food matches the strategy and rarity cap'],['foodMaxTier','自动进食稀有度上限无效','The automatic food rarity cap is invalid']];
   const details=reasons.filter(([key])=>warnings.includes(`food: ${key}`)).map(r=>r[zh?1:2]);
   lines.push((zh?'【食物】部分配置未导入，已保留原值，请手动检查':'[Food] Some settings were not imported; previous values were kept. Please check manually.')+(details.length?(zh?'：': ' ')+details.join(zh?'；':'; '):''));
  }
