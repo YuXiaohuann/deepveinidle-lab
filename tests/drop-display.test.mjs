@@ -83,7 +83,7 @@ test('valuation preference defaults off, persists and renders bilingual controls
 test('headers and pending and failed rows follow the visible column count',()=>{
  for(const enabled of [false,true]){
  const c=view(enabled);const columns=c.visibleEnemyColumns();
- assert.equal(columns.length,11);assert.equal(columns.at(-1)[0],'profitHour');
+ assert.equal(columns.length,11);assert.deepEqual(Array.from(columns,x=>x[0]),['enemy','xpHour','totalIncomeHour','profitHour','level','killsHour','movingShare','coinsHour','normalHour','rareHour','foodHour']);
  assert.equal(columns.find(x=>x[0]==='normalHour')[1],'normalValue');
  assert.equal(columns.some(x=>x[0]==='totalIncomeHour'),true);
  assert.equal((c.hourlyCells({key:'m'}).match(/<td/g)||[]).length,9);
@@ -98,7 +98,7 @@ test('quantities and vendor values render separately with optional highlighted i
  assert.match(html,new RegExp(`<summary>${'40'}</summary>`));
  assert.match(html,new RegExp(`<summary>${'50'}</summary>`));
  assert.equal(html.includes('<td class="column-highlight">93</td>'),true);
- assert.match(html,/item quantity/);assert.match(html,/^<td><details[^>]*><summary>1<\/summary><div>攻击次数\/天：7/);assert.match(html,/<summary>0%<\/summary>/);assert.match(html,/depot: 仓库 2/);
+ assert.match(html,/item quantity/);assert.ok(html.startsWith('<td class="column-highlight"><details'));assert.match(html,/<td>3<\/td>/);assert.match(html,/<td><details[^>]*><summary>1<\/summary><div>攻击次数\/天：7/);assert.match(html,/<summary>0%<\/summary>/);assert.match(html,/depot: 仓库 2/);
  const seeded=view(enabled,{...result,seed:4294967295});assert.match(seeded.hourlyCells({key:'m'}),/随机种子：4294967295/);
  seeded.language='en';assert.match(seeded.hourlyCells({key:'m'}),/Random seed: 4294967295/);
  assert.match(seeded.hourlyCells({key:'m'}),/Attack attempts\/day: 7/);
@@ -139,7 +139,7 @@ test('kills and attack attempts scale per day using selected duration even after
   const html=c.hourlyCells({key:'m'});
   const daily=n=>rewardAmount(n,'day',hours).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:0});
   assert.ok(html.includes(`<summary>${daily(kills)}</summary><div>${language==='zh'?'攻击次数/天：':'Attack attempts/day: '}${daily(67890)}</div>`));
-  assert.ok(html.includes(`<td class="column-highlight">${compactNumber(rewardAmount(48,'day',hours))??rewardAmount(48,'day',hours).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:0})}</td>`));
+  assert.ok(html.includes(`<td>${compactNumber(rewardAmount(48,'day',hours))??rewardAmount(48,'day',hours).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:0})}</td>`));
   assert.ok(html.includes(`melee: ${compactNumber(rewardAmount(48,'day',hours))??rewardAmount(48,'day',hours).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:0})}`));
  }
 });
