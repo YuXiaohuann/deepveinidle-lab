@@ -1,0 +1,119 @@
+{
+  "version": "1.2.6",
+  "candidateCommit": "e0bf389",
+  "inputId": "90aa33fdf2ff61b7196cf02c398f3743f60191f999975bc115d9cca17796a7d5",
+  "environment": {
+    "node": "v26.11.1",
+    "platform": "darwin",
+    "arch": "arm64",
+    "browserOverride": null,
+    "dependencies": {
+      "acorn": "8.15.0",
+      "eslint-scope": "8.4.0",
+      "playwright-core": "1.62.1"
+    },
+    "browser": {
+      "executable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "sha256": "bc9471268736dd16b9ee1bd2404f0823facf0a450d254940ce383eb4cf6d390e"
+    }
+  },
+  "check": {
+    "status": "passed",
+    "steps": [
+      {
+        "name": "static",
+        "status": "passed",
+        "milliseconds": 10616,
+        "summary": {
+          "syntaxFiles": 92,
+          "documents": 64,
+          "links": 332,
+          "version": "1.2.6",
+          "routes": 15
+        }
+      },
+      {
+        "name": "tests",
+        "status": "passed",
+        "milliseconds": 172099,
+        "summary": {
+          "tests": 304,
+          "pass": 304,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "name": "native",
+        "status": "passed",
+        "milliseconds": 5590,
+        "summary": {
+          "predictions": 260,
+          "gearVariants": 105,
+          "gatheringSites": 74,
+          "craftingCases": 860,
+          "upgradeCases": 85,
+          "enhancementCosts": 105,
+          "forecastSlots": 49
+        }
+      },
+      {
+        "name": "extraction",
+        "status": "passed",
+        "milliseconds": 1244,
+        "summary": {
+          "repeatExtraction": true,
+          "currentOutputs": true,
+          "unknownHashRejected": true,
+          "rejectedOutputsPreserved": true
+        }
+      },
+      {
+        "name": "local",
+        "status": "passed",
+        "milliseconds": 22064,
+        "summary": {
+          "http": {
+            "base": "http://127.0.0.1:59464",
+            "routes": 15,
+            "assets": 47,
+            "html": "exact except Cloudflare analytics loader",
+            "redirects": "verified by route behavior"
+          },
+          "browser": {
+            "cases": 28,
+            "combatTargets": 20,
+            "browser": "155.0.8059.41",
+            "executablePath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+          }
+        }
+      }
+    ]
+  },
+  "deployment": {
+    "url": "https://0103bd62.dvi-lab.pages.dev",
+    "project": "dvi-lab",
+    "branch": "main",
+    "packageFiles": 49,
+    "warning": "Wrangler reported uncommitted working-directory files; only unrelated untracked reports/images remained and the upload used the verified isolated package."
+  },
+  "productionAttempts": [
+    {
+      "directory": "1.2.6-production-verify",
+      "status": "failed",
+      "error": "src/character-import.user.js: byte length mismatch\n\n8571 !== 12253\n"
+    },
+    {
+      "directory": "1.2.6-production-verify-2",
+      "status": "passed",
+      "url": "https://dvi-lab.pages.dev"
+    }
+  ],
+  "limitations": [
+    "No paired old-version or disabled-userscript performance comparison",
+    "Initial production alias briefly returned old userscript; exact deployment returned candidate and subsequent production verification passed",
+    "No full acceptance of the optional exact deployment URL; production origin was fully verified"
+  ]
+}

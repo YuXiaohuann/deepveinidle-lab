@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "status": "passed",
+  "version": "1.2.6",
+  "inputId": "90aa33fdf2ff61b7196cf02c398f3743f60191f999975bc115d9cca17796a7d5",
+  "url": "https://dvi-lab.pages.dev",
+  "startedAt": "2026-10-14T12:02:28.727Z",
+  "http": {
+    "base": "https://dvi-lab.pages.dev",
+    "routes": 15,
+    "assets": 47,
+    "html": "exact except Cloudflare analytics loader",
+    "redirects": "verified by route behavior"
+  },
+  "browser": {
+    "cases": 28,
+    "combatTargets": 20,
+    "browser": "155.0.8059.41",
+    "executablePath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+  },
+  "finishedAt": "2026-10-14T12:03:03.117Z"
+}
