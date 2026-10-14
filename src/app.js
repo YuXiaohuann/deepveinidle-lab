@@ -1,3 +1,4 @@
+import {compactNumber} from './number-format.js';
 import {mountScrollLayout,rememberScrollLayout} from './scroll-layout.js';
 import {mountItemPrices} from './item-price-controls.js';
 import {calculateWorldBosses,renderWorldBosses} from './world-bosses.js';
@@ -148,8 +149,8 @@ function scheduleSimulation(force=false){
 }
 const formatAmount=n=>n.toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:2});
 const formatDropQuantity=n=>{const value=rewardAmount(n,'day',state.manual.simulationHours),locale=language==='zh'?'zh-CN':'en';if(value===0)return '0';if(value<0.1)return '1/'+(1/value).toLocaleString(locale,{maximumFractionDigits:0});const digits=value>=10?0:2;return value.toLocaleString(locale,{minimumFractionDigits:digits,maximumFractionDigits:digits});};
-const formatRate=(n,metric='count')=>{if(n===null)return language==='zh'?'未完整定价':'Incomplete pricing';const digits=['xp','coins','attempts'].includes(metric)?0:1;return rewardAmount(n,'day',state.manual.simulationHours).toLocaleString(language==='zh'?'zh-CN':'en',{minimumFractionDigits:digits,maximumFractionDigits:digits});};
-function lootDetails(items,drop=false){return Object.entries(items).sort((a,b)=>b[1]-a[1]).map(([id,qty])=>{const tier=game.itemTier(Number(id)),base=game.item(game.baseItemId(Number(id)));const p=valuationPrice(id,priceState().prices);const note=game.isPet(Number(id))?'':' '+(p.fallback?'<span title="'+(language==='zh'?'部分物品未设置价格，采用商人价格计算':'Some items have no configured price; vendor prices are used')+'">⚠</span> ':'')+formatAmount(p.price);return '<div class="loot-line"><span>'+esc(name(base.name))+(tier?' · '+t('rarity')[tier]:'')+note+'</span><span>'+(drop?formatDropQuantity(qty):formatRate(qty))+'</span></div>';}).join('');}
+const formatRate=(n,metric='count')=>{if(n===null)return language==='zh'?'未完整定价':'Incomplete pricing';const value=rewardAmount(n,'day',state.manual.simulationHours);if(['xp','coins'].includes(metric)){const compact=compactNumber(value);if(compact!==null)return compact;}const digits=['xp','coins','attempts'].includes(metric)?0:1;return value.toLocaleString(language==='zh'?'zh-CN':'en',{minimumFractionDigits:digits,maximumFractionDigits:digits});};
+function lootDetails(items,drop=false){return Object.entries(items).sort((a,b)=>b[1]-a[1]).map(([id,qty])=>{const tier=game.itemTier(Number(id)),base=game.item(game.baseItemId(Number(id)));const p=valuationPrice(id,priceState().prices);const note=game.isPet(Number(id))?'':' '+(p.fallback?'<span title="'+(language==='zh'?'部分物品未设置价格，采用商人价格计算':'Some items have no configured price; vendor prices are used')+'">⚠</span> ':'')+(compactNumber(p.price)??formatAmount(p.price));return '<div class="loot-line"><span>'+esc(name(base.name))+(tier?' · '+t('rarity')[tier]:'')+note+'</span><span>'+(drop?formatDropQuantity(qty):formatRate(qty))+'</span></div>';}).join('');}
 
 function depotCell(monster){
  const result=hourly.get(monster.key);

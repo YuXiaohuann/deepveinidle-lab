@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {compactNumber} from '../src/number-format.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -17,14 +18,14 @@ test('gathering pet price notes stay empty without looking up prices',()=>{
  const gathering=fs.readFileSync(new URL('../src/gathering-controls.js',import.meta.url),'utf8');
  const node=parse(gathering,{ecmaVersion:'latest',sourceType:'module'}).body.find(n=>n.id?.name==='priceNote');
  for(const language of ['zh','en']){
-  const c=vm.createContext({game:{isPet:()=>true},text:(zh,en)=>language==='zh'?zh:en});
+  const c=vm.createContext({compactNumber,game:{isPet:()=>true},text:(zh,en)=>language==='zh'?zh:en});
   vm.runInContext(gathering.slice(node.start,node.end),c);
   assert.equal(c.priceNote(280),'');
  }
 });
 test('combat methodology note identifies simulated and expected fields in both languages below the table',()=>{
  const assignments=ast.body.filter(n=>n.type==='ExpressionStatement'&&n.expression.type==='CallExpression'&&n.expression.callee.object?.name==='Object'&&n.expression.callee.property?.name==='assign'&&n.expression.arguments[1]?.properties.some(p=>p.key.name==='combatMethodNote'));
- const c=vm.createContext({copy:{zh:{},en:{}}});
+ const c=vm.createContext({compactNumber,copy:{zh:{},en:{}}});
  vm.runInContext(assignments.map(n=>source.slice(n.start,n.end)).join('\n'),c);
  assert.match(c.copy.zh.combatMethodNote,/击杀次数、攻击次数、移动占比、经验及食物消耗来自<strong class="simulation-caveat">原始模拟<\/strong>/);
  assert.match(c.copy.zh.combatMethodNote,/<strong class="simulation-caveat">数学期望<\/strong>/);
@@ -40,7 +41,7 @@ test('combat methodology note identifies simulated and expected fields in both l
 });
 test('drop quantities use adaptive precision after daily conversion without changing consumables',()=>{
  for(const language of ['zh','en'])for(const hours of [1,6,24,48]){
-  const c=vm.createContext({language,state:{manual:{simulationHours:hours}},rewardAmount,game:{isPet:id=>id===280,itemTier:()=>0,baseItemId:id=>id,item:()=>({name:'Item'})},valuationPrice:()=>({price:1,fallback:false}),priceState:()=>({prices:{}}),esc:String,name:String});
+  const c=vm.createContext({compactNumber,language,state:{manual:{simulationHours:hours}},rewardAmount,game:{isPet:id=>id===280,itemTier:()=>0,baseItemId:id=>id,item:()=>({name:'Item'})},valuationPrice:()=>({price:1,fallback:false}),priceState:()=>({prices:{}}),esc:String,name:String});
   vm.runInContext(quantityCode,c);
   const factor=rewardAmount(1,'day',hours);
   for(const [value,expected] of [[0,'0'],[0.000001,'1/1,000,000'],[0.03,'1/33'],[0.026,'1/38'],[0.027,'1/37'],[0.099,'1/10'],[0.1,'0.10'],[0.1234,'0.12'],[1,'1.00'],[9.994,'9.99'],[10,'10'],[10.6,'11']]){
@@ -61,7 +62,7 @@ test('drop quantities use adaptive precision after daily conversion without chan
  assert.ok(source.includes('lootDetails(r.potionItems??{})'));
 });
 function view(enabled,result,error=false){
- const c=vm.createContext({state:{manual:{vendorValues:enabled}},hourly:new Map(result?[['m',result]]:[]),simulationError:error,valuedResult:r=>r,language:'zh',game:{tickMs:600},t:k=>k,formatRate:(n,metric='count')=>['coins','attempts'].includes(metric)?String(Math.round(n)):n.toFixed(1),formatAmount:String,esc:String,lootDetails:()=>'<span>item quantity</span>'});
+ const c=vm.createContext({compactNumber,state:{manual:{vendorValues:enabled}},hourly:new Map(result?[['m',result]]:[]),simulationError:error,valuedResult:r=>r,language:'zh',game:{tickMs:600},t:k=>k,formatRate:(n,metric='count')=>['coins','attempts'].includes(metric)?String(Math.round(n)):n.toFixed(1),formatAmount:String,esc:String,lootDetails:()=>'<span>item quantity</span>'});
  vm.runInContext(code,c);return c;
 }
 test('valuation preference defaults off, persists and renders bilingual controls',()=>{
@@ -138,8 +139,8 @@ test('kills and attack attempts scale per day using selected duration even after
   const html=c.hourlyCells({key:'m'});
   const daily=n=>rewardAmount(n,'day',hours).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:0});
   assert.ok(html.includes(`<summary>${daily(kills)}</summary><div>${language==='zh'?'攻击次数/天：':'Attack attempts/day: '}${daily(67890)}</div>`));
-  assert.ok(html.includes(`<td class="column-highlight">${rewardAmount(48,'day',hours).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:0})}</td>`));
-  assert.ok(html.includes(`melee: ${rewardAmount(48,'day',hours).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:0})}`));
+  assert.ok(html.includes(`<td class="column-highlight">${compactNumber(rewardAmount(48,'day',hours))??rewardAmount(48,'day',hours).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:0})}</td>`));
+  assert.ok(html.includes(`melee: ${compactNumber(rewardAmount(48,'day',hours))??rewardAmount(48,'day',hours).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:0})}`));
  }
 });
 
