@@ -94,6 +94,7 @@ try{
   const encoded=game.encode(game.withRarity(id,tier),plus);assert.deepEqual(game.enhanceCost(encoded),native.enhanceCost(encoded));costs++;
  }
  const schedule=forecast(Date.UTC(2026,9,13));for(const entry of [schedule.current,...schedule.entries])assert.deepEqual(entry,native.hotSkill(entry.from));
+ if(process.argv[2])fs.writeFileSync(process.argv[2],JSON.stringify({predictions:count,gearVariants:105,gatheringSites:gatheringCount,craftingCases:craftingCount,upgradeCases:upgradeCount,enhancementCosts:costs,forecastSlots:49})+'\n');
  console.log(`Other pages: ${gatheringCount} gathering sites, ${craftingCount} ordinary recipe/quality cases, ${upgradeCount} upgrade/quality cases, ${costs} enhancement costs and 49 forecast slots matched independent native code.`);
  console.log(`Native 1.0.1187 comparison: ${count}/${count} complete 1-hour predictions matched; world geometry, monsters and 105 new-gear variants matched.`);
 }finally{fs.rmSync(directory,{recursive:true});}

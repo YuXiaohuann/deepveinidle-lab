@@ -67,16 +67,22 @@ test('HTTP checks verify all routes, content and asset hashes and reject route/v
 });
 test('only known analytics injection and inter-tag whitespace are normalized',()=>{
  const base='<html><body>Content</body></html>';const injected='<html>\n<body>Content<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v123" data-cf-beacon="{}"></script></body></html>';
- assert.equal(normalizeHostedHtml(injected),normalizeHostedHtml(base));assert.notEqual(normalizeHostedHtml(base.replace('Content','Different')),normalizeHostedHtml(base));assert.notEqual(normalizeHostedHtml(base.replace('</body>','<script src="https://other.example/evil.js"></script></body>')),normalizeHostedHtml(base));
+ assert.equal(normalizeHostedHtml(injected),normalizeHostedHtml(base));assert.equal(normalizeHostedHtml(injected.replace('<script','<!-- Cloudflare Pages Analytics --><script').replace('</script>','</script><!-- Cloudflare Pages Analytics -->')),normalizeHostedHtml(base));assert.notEqual(normalizeHostedHtml(base.replace('</body>','<!-- Unknown hosting change --></body>')),normalizeHostedHtml(base));assert.notEqual(normalizeHostedHtml(base.replace('Content','Different')),normalizeHostedHtml(base));assert.notEqual(normalizeHostedHtml(base.replace('</body>','<script src="https://other.example/evil.js"></script></body>')),normalizeHostedHtml(base));
 });
 
 test('check orchestration persists passed and failed receipts with full step logs',async t=>{
  const {root}=await fixture(t);
- for(const [name,text]of Object.entries({'release-static.mjs':'console.log(JSON.stringify({syntaxFiles:1}));','native-audit.mjs':'console.log("native matched");','release-extraction.mjs':'console.log(JSON.stringify({unknownHashRejected:true}));','release-local.mjs':'console.log(JSON.stringify({browser:{cases:28}}));'}))await fs.writeFile(path.join(root,'scripts',name),text);
+ // Deliberately emit no stdout: durable result files, not console output, are the contract.
+ for(const [name,result]of Object.entries({'release-static.mjs':{syntaxFiles:1},'native-audit.mjs':{predictions:1},'release-extraction.mjs':{unknownHashRejected:true},'release-local.mjs':{browser:{cases:28}}})){
+  const destination=name==='release-local.mjs'?'process.argv[2]+"/local.json"':'process.argv[2]';
+  await fs.writeFile(path.join(root,'scripts',name),`import fs from "node:fs";fs.writeFileSync(${destination},${JSON.stringify(JSON.stringify(result))});`);
+ }
  await fs.writeFile(path.join(root,'tests','sample.test.mjs'),'import test from "node:test";import assert from "node:assert/strict";test("release fixture",()=>assert.equal(2+2,4));');
- const good=path.join(root,'.test-artifacts/good');const receipt=await check(root,good);assert.equal(receipt.status,'passed');assert.equal(receipt.steps.length,5);assert.equal(receipt.steps[1].summary.tests,1);assert.match(await fs.readFile(path.join(good,'tests.log'),'utf8'),/release fixture/);
+ const good=path.join(root,'.test-artifacts/good');const receipt=await check(root,good);assert.equal(receipt.status,'passed');assert.equal(receipt.steps.length,5);assert.equal(receipt.steps[1].summary.tests,1);assert.equal(await fs.readFile(path.join(good,'static.log'),'utf8'),'');assert.match(await fs.readFile(path.join(good,'tests.log'),'utf8'),/release fixture/);
  await fs.writeFile(path.join(root,'scripts','native-audit.mjs'),'console.error("native difference sentinel");process.exit(3);');
  const bad=path.join(root,'.test-artifacts/bad');await assert.rejects(check(root,bad),/native difference sentinel/);const failure=JSON.parse(await fs.readFile(path.join(bad,'check.json')));assert.equal(failure.status,'failed');assert.equal(failure.steps.at(-1).name,'native');assert.equal(failure.steps.at(-1).exitCode,3);assert.equal(failure.steps.length,3);
+ await fs.writeFile(path.join(root,'scripts','native-audit.mjs'),'// exit successfully but omit the required result file');
+ const missing=path.join(root,'.test-artifacts/missing');await assert.rejects(check(root,missing),/ENOENT/);const incomplete=JSON.parse(await fs.readFile(path.join(missing,'check.json')));assert.equal(incomplete.status,'failed');assert.equal(incomplete.steps.at(-1).status,'failed');
 });
 test('verification refuses modified package bytes before contacting its target',async t=>{
  const {root,evidence}=await fixture(t),out=path.join(root,'.test-artifacts/package');await buildPackage(root,evidence,out);await fs.writeFile(path.join(out,'src/app.js'),'changed bytes');

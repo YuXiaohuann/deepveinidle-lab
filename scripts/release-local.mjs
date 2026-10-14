@@ -24,5 +24,5 @@ try{
  assert.ok(ready,'Local server startup timed out');
  const base=`http://127.0.0.1:${port}`,version=(await readJson('package.json')).version;
  const http=await verifyHttp(base,process.cwd(),await packageFiles(process.cwd()));await json(path.join(directory,'local-http.json'),http);
- const browser=await verifyBrowser(base,version,directory);console.log(JSON.stringify({http,browser}));
+ const browser=await verifyBrowser(base,version,directory);const result={http,browser};await json(path.join(directory,'local.json'),result);console.log(JSON.stringify(result));
 }finally{if(child.exitCode===null)child.kill('SIGTERM');await serverClosed;await log.close();}

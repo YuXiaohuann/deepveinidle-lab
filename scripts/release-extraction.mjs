@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
+import {json} from './release-common.mjs';
 const root=process.cwd(),directory=await fs.mkdtemp(path.join(os.tmpdir(),'dvi-extraction-'));
 try{
  for(const sub of ['scripts','vendor','src'])await fs.mkdir(path.join(directory,sub));
@@ -19,5 +20,5 @@ try{
  await fs.appendFile(path.join(directory,'vendor/game-original.js'),'\n');
  const rejected=execute();assert.notEqual(rejected.status,0);assert.match(rejected.stderr,/Unreviewed upstream snapshot/);
  for(let i=0;i<outputs.length;i++)assert.deepEqual(await fs.readFile(path.join(directory,outputs[i])),initial[i],`Rejected input changed output: ${outputs[i]}`);
- console.log(JSON.stringify({repeatExtraction:true,currentOutputs:true,unknownHashRejected:true,rejectedOutputsPreserved:true}));
+ const result={repeatExtraction:true,currentOutputs:true,unknownHashRejected:true,rejectedOutputsPreserved:true};if(process.argv[2])await json(process.argv[2],result);console.log(JSON.stringify(result));
 }finally{await fs.rm(directory,{recursive:true,force:true});}

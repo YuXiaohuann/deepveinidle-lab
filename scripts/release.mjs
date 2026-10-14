@@ -17,15 +17,15 @@ export async function check(root,out){
  await json(path.join(directory,'check.json'),receipt);
  try{
   receipt.inputs=await inputs(root);receipt.version=receipt.inputs.version;await json(path.join(directory,'check.json'),receipt);
-  const definitions=[['static',['scripts/release-static.mjs']],['tests',['--test','--test-reporter=tap',...(await filesIn(root,'tests')).filter(p=>p.endsWith('.test.mjs'))]],['native',['scripts/native-audit.mjs']],['extraction',['scripts/release-extraction.mjs']],['local',['scripts/release-local.mjs',directory]]];
+  const definitions=[['static',['scripts/release-static.mjs',path.join(directory,'static.json')]],['tests',['--test','--test-reporter=tap',...(await filesIn(root,'tests')).filter(p=>p.endsWith('.test.mjs'))]],['native',['scripts/native-audit.mjs',path.join(directory,'native.json')]],['extraction',['scripts/release-extraction.mjs',path.join(directory,'extraction.json')]],['local',['scripts/release-local.mjs',directory]]];
   for(const [name,args]of definitions){
    const log=path.join(directory,name+'.log');const result=await runLogged(process.execPath,args,{cwd:root,log,timeout:name==='local'?900000:600000});
    const step={name,status:'failed',...result};receipt.steps.push(step);
    const text=await fs.readFile(log,'utf8');
    if(result.exitCode!==0||result.timedOut){await json(path.join(directory,'check.json'),receipt);throw Error(`${name}: ${result.timedOut?'timed out':'exit '+result.exitCode}\n${failureExcerpt(text)}\nFull log: ${log}`);}
    if(name==='tests')step.summary=tapSummary(text);
-   else if(name==='static'||name==='extraction'||name==='local')step.summary=JSON.parse(text.trim().split('\n').at(-1));
-   else step.summary=text.trim();
+   else step.summary=await readJson(path.join(directory,name+'.json'));
+   assert.ok(step.summary&&typeof step.summary==='object',`${name}: missing structured result`);
    step.status='passed';await json(path.join(directory,'check.json'),receipt);
    console.log(`PASS ${name} ${(result.milliseconds/1000).toFixed(1)}s ${name==='tests'?JSON.stringify(step.summary):''}`.trim());
   }

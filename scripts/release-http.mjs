@@ -5,7 +5,7 @@ import {routes,sha256} from './release-common.mjs';
 
 export function normalizeHostedHtml(html){
  // Cloudflare's analytics loader is the only permitted hosting modification.
- return html.replace(/<script\b(?=[^>]*\bsrc=["']https:\/\/static\.cloudflareinsights\.com\/beacon\.min\.js(?:\/[^"']*)?["'])[^>]*>\s*<\/script>/gi,'').replace(/<!--\s*Cloudflare Web Analytics\s*-->/gi,'').replace(/<!--\s*End Cloudflare Web Analytics\s*-->/gi,'').replace(/>\s+</g,'><').trim();
+ return html.replace(/<script\b(?=[^>]*\bsrc=["']https:\/\/static\.cloudflareinsights\.com\/beacon\.min\.js(?:\/[^"']*)?["'])[^>]*>\s*<\/script>/gi,'').replace(/<!--\s*Cloudflare (?:Web|Pages) Analytics\s*-->/gi,'').replace(/<!--\s*End Cloudflare (?:Web|Pages) Analytics\s*-->/gi,'').replace(/>\s+</g,'><').trim();
 }
 export async function verifyHttp(base,root,manifest){
  const url=new URL(base);assert.ok(['http:','https:'].includes(url.protocol),'Expected HTTP(S) target');assert.equal(url.pathname,'/','Target must be an origin URL');assert.ok(!url.search&&!url.hash&&!url.username&&!url.password,'Target must not contain credentials/query/fragment');
