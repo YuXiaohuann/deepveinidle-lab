@@ -1,0 +1,136 @@
+{
+  "version": "1.2.5",
+  "applicationCommit": "00201b0",
+  "toolingCommit": "6058203",
+  "deployment": "7a3c6820",
+  "productionStatus": "passed",
+  "inputId": "8846d57f622391e2e53660e157e1405243989e35a23698aa3616164d30d1fad1",
+  "environment": {
+    "node": "v26.11.1",
+    "platform": "darwin",
+    "arch": "arm64",
+    "browserOverride": null,
+    "dependencies": {
+      "acorn": "8.15.0",
+      "eslint-scope": "8.4.0",
+      "playwright-core": "1.62.1"
+    },
+    "browser": {
+      "executable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "sha256": "bc9471268736dd16b9ee1bd2404f0823facf0a450d254940ce383eb4cf6d390e"
+    }
+  },
+  "checks": [
+    {
+      "name": "static",
+      "status": "passed",
+      "milliseconds": 10589,
+      "summary": {
+        "syntaxFiles": 89,
+        "documents": 60,
+        "links": 318,
+        "version": "1.2.5",
+        "routes": 15
+      }
+    },
+    {
+      "name": "tests",
+      "status": "passed",
+      "milliseconds": 186694,
+      "summary": {
+        "tests": 291,
+        "pass": 291,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "name": "native",
+      "status": "passed",
+      "milliseconds": 8380,
+      "summary": {
+        "predictions": 260,
+        "gearVariants": 105,
+        "gatheringSites": 74,
+        "craftingCases": 860,
+        "upgradeCases": 85,
+        "enhancementCosts": 105,
+        "forecastSlots": 49
+      }
+    },
+    {
+      "name": "extraction",
+      "status": "passed",
+      "milliseconds": 1378,
+      "summary": {
+        "repeatExtraction": true,
+        "currentOutputs": true,
+        "unknownHashRejected": true,
+        "rejectedOutputsPreserved": true
+      }
+    },
+    {
+      "name": "local",
+      "status": "passed",
+      "milliseconds": 22773,
+      "summary": {
+        "http": {
+          "base": "http://127.0.0.1:55320",
+          "routes": 15,
+          "assets": 47,
+          "html": "exact except Cloudflare analytics loader",
+          "redirects": "verified by route behavior"
+        },
+        "browser": {
+          "cases": 28,
+          "combatTargets": 20,
+          "browser": "155.0.8059.41",
+          "executablePath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+        }
+      }
+    }
+  ],
+  "packageFiles": 49,
+  "productionReviewCases": 4,
+  "optionalDeploymentVerification": {
+    "status": "failed",
+    "url": "https://7a3c6820.dvi-lab.pages.dev",
+    "http": {
+      "base": "https://7a3c6820.dvi-lab.pages.dev",
+      "routes": 15,
+      "assets": 47,
+      "html": "exact except Cloudflare analytics loader",
+      "redirects": "verified by route behavior"
+    },
+    "layoutCases": 28,
+    "combatChecks": 4,
+    "consoleErrors": 186,
+    "messages": [
+      "Access to XMLHttpRequest at 'https://cloudflareinsights.com/cdn-cgi/rum' from origin 'https://7a3c6820.dvi-lab.pages.dev' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.",
+      "Failed to load resource: net::ERR_FAILED",
+      "Access to resource at 'https://cloudflareinsights.com/cdn-cgi/rum' from origin 'https://7a3c6820.dvi-lab.pages.dev' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+    ]
+  },
+  "attempts": [
+    {
+      "check": "1.2.5-check",
+      "status": "passed"
+    },
+    {
+      "check": "1.2.5-check-2",
+      "status": "failed"
+    },
+    {
+      "check": "1.2.5-check-3",
+      "status": "failed"
+    },
+    {
+      "check": "1.2.5-check-4",
+      "status": "passed"
+    }
+  ],
+  "fullTestLogBytes": 67625,
+  "productionConsoleErrors": 0
+}
