@@ -17,7 +17,7 @@ pnpm release:package --evidence .test-artifacts/release/candidate-check --out /p
 
 检查证据包含 `check.json`、五阶段完整日志、32 张截图、浏览器与 HTTP 机器结果及简短 `report.md`。终端仅输出步骤、耗时与测试总结，失败返回非零退出码、有限诊断及完整日志路径。通常只读取 report 和目标字段，不整份展开输入清单、成功日志或历史归档。
 
-打包须使用同轮通过的证据；功能文件、测试、脚本、文档／报告、依赖清单及记录的运行环境变化后拒绝旧证据。包目录已存在、包含符号链接、隐藏文件或非应用文件时明确失败；只允许根入口／路由和 src、vendor 内的 js、css、svg、json 文件，以及公式专用目录的 Markdown、指定 markdown-it ESM／源码映射／许可证文件。`package.json` 清单保存在检查证据目录，绝不加入发布包。
+打包须使用同轮通过的证据；功能文件、测试、脚本、文档／报告、依赖清单及记录的运行环境变化后拒绝旧证据。包目录已存在、包含符号链接、隐藏文件或非应用文件时明确失败；只允许根入口／路由和 src、vendor 内的 js、css、svg、json 文件，以及指定赞赏图片 `src/assets/appreciation.jpg`、公式专用目录的 Markdown、指定 markdown-it ESM／源码映射／许可证文件。`package.json` 清单保存在检查证据目录，绝不加入发布包。
 
 使用 Cloudflare Pages 项目 `dvi-lab`，通过 Wrangler Direct Upload 发布到生产分支 `main`；此命令由发布者明确执行，工具不会自动部署：
 

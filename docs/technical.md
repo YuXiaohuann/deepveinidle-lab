@@ -59,6 +59,7 @@
 | `tests/gathering.test.mjs` | 全点平均人工算例、四技能全部任务／点位原始离线对照、配置与导入回归 |
 | `src/enhancement.js`、`src/enhancement-controls.js` | 强化专用校验、导入、解析期望与独立页面交互 |
 | `src/hot-forecast.js`、`src/forecast-controls.js` | 热门日程计算与预报页面交互 |
+| `src/appreciation-controls.js`、`src/assets/appreciation.jpg` | 共用赞赏弹窗及原始赞赏图片；复用物品价格弹窗样式与交互约定 |
 | `src/formulas-controls.js`、`src/formulas-markdown.js`、`src/content/formulas/` | 中文公式正文、按需加载、Markdown 渲染、章节目录与独立阅读布局 |
 | `scripts/vendor-markdown.mjs`、`vendor/markdown-it/` | 从固定开发依赖同步浏览器发行文件与许可证，校验版本、内容摘要和来源 |
 | `src/combat-hot.js` | 战斗热门加成映射与抵消，采集和制造复用带技能参数的日程和窗口换算 |
