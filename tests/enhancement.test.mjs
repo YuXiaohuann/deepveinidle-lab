@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
 import {enhancementDefaults,enhanceableItems,validateEnhancement,enhancementSteps,calculateEnhancement,importEnhancement,decodeEnhancementItem} from '../src/enhancement.js';
-const config=patch=>({...enhancementDefaults(),...patch});
+const config=patch=>({...enhancementDefaults(),tier:0,target:5,protect:false,...patch});
 const near=(actual,expected)=>assert.ok(Math.abs(actual-expected)<=1e-9*Math.max(1,Math.abs(expected)),`${actual} != ${expected}`);
 // Independent Gaussian elimination of the absorbing chain (small targets).
 function linearExpected(steps,start,reward){

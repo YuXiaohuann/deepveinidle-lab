@@ -6,7 +6,7 @@ export const enhanceableItems=[...new Set([...game.equipment,...game.tools].map(
  .filter(id=>game.canEnhance(id)).map(id=>game.item(id));
 const record=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const integer=(v,min,max)=>Number.isSafeInteger(v)&&v>=min&&v<=max;
-export function enhancementDefaults(){return {guild:null,itemId:110,tier:0,current:0,target:5,level:1,lectern:0,mastery:0,protect:false,protectFrom:game.protectionMin,shardPrice:null,scrollPrice:null,basePrice:null,priceModes:{shardPrice:'global',scrollPrice:'global',basePrice:'global'},basePriceItem:null};}
+export function enhancementDefaults(){return {guild:null,itemId:110,tier:3,current:0,target:7,level:1,lectern:0,mastery:0,protect:true,protectFrom:game.protectionMin,shardPrice:null,scrollPrice:null,basePrice:null,priceModes:{shardPrice:'global',scrollPrice:'global',basePrice:'global'},basePriceItem:null};}
 export function validateEnhancement(input){
  if(!record(input))throw Error('invalidConfiguration');
  const s={...input,guild:readGuild(input.guild)};
