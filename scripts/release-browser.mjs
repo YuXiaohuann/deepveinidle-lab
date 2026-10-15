@@ -23,7 +23,9 @@ export async function verifyBrowser(base,version,directory){
    for(const id of pages){
     if(id==='debug'){await page.goto(new URL('/debug',base).href,{waitUntil:'networkidle'});await page.selectOption('#language',language);}
     else await page.locator(`#${id}-nav`).click();
-    await page.locator(`#${id}-section`).waitFor({state:'visible'});await settle();
+    await page.locator(`#${id}-section`).waitFor({state:'visible'});
+    if(id==='formulas')await page.locator('.formula-article h1').waitFor();
+    await settle();
     assert.equal(new URL(page.url()).pathname,'/'+id,'Navigation did not preserve path');
     assert.equal(await page.locator('.beta').textContent(),version,'UI version mismatch');
     assert.equal(await page.locator('html').getAttribute('lang'),language==='zh'?'zh-CN':'en','Language mismatch');
@@ -67,7 +69,7 @@ export async function verifyBrowser(base,version,directory){
    assert.equal(await page.locator('#rows tr[data-enemy]').count(),game.monsters.length);
    results.combat.push({language,width,targets:game.monsters.length,status:'passed'});
   }
-  assert.equal(results.cases.length,28);assert.deepEqual(results.errors,[],'Browser warnings/errors');
+  assert.equal(results.cases.length,pages.length*4);assert.deepEqual(results.errors,[],'Browser warnings/errors');
   return {cases:results.cases.length,combatTargets:game.monsters.length,browser:results.browser,executablePath};
  }catch(error){results.failure=error.message;await page.screenshot({path:path.join(directory,'browser-failure.png'),fullPage:true}).catch(e=>results.errors.push({type:'screenshot',message:e.message}));throw error;}
  finally{await json(path.join(directory,'browser.json'),results);await browser.close();}

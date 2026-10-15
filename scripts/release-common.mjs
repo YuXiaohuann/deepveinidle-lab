@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import {spawn} from 'node:child_process';
 import assert from 'node:assert/strict';
 
-export const pages=['combat','gather','craft','enhance','mastery','forecast','debug'];
+export const pages=['combat','gather','craft','enhance','mastery','forecast','formulas','debug'];
 export const routes=['/',...pages.flatMap(p=>['/'+p,'/'+p+'/'])];
 export const sha256=data=>crypto.createHash('sha256').update(data).digest('hex');
 export async function json(file,value){await fs.writeFile(file,JSON.stringify(value,null,2)+'\n');}
@@ -30,7 +30,7 @@ export async function digestFiles(root,names){
 }
 export async function packageFiles(root){
  const names=['index.html','_redirects',...await filesIn(root,'src'),...await filesIn(root,'vendor')];
- for(const name of names)assert.ok(!name.split('/').some(p=>p.startsWith('.'))&&(['index.html','_redirects'].includes(name)||/\.(js|css|svg|json)$/.test(name)),`Not an application file: ${name}`);
+ for(const name of names)assert.ok(!name.split('/').some(p=>p.startsWith('.'))&&(['index.html','_redirects'].includes(name)||/\.(js|css|svg|json)$/.test(name)||/^src\/content\/formulas\/[a-z][a-z.-]*\.md$/.test(name)||['vendor/markdown-it/LICENSE.txt','vendor/markdown-it/markdown-it.esm.min.mjs','vendor/markdown-it/markdown-it.esm.min.mjs.map'].includes(name)),`Not an application file: ${name}`);
  return digestFiles(root,names);
 }
 export async function browserPath(){

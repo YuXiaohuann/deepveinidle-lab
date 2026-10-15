@@ -62,7 +62,7 @@ test('HTTP checks verify all routes, content and asset hashes and reject route/v
   res.writeHead(200,{'Content-Type':file==='index.html'?'text/html':'text/javascript'});res.end(body);
  });server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>new Promise(resolve=>server.close(resolve)));
  const base=`http://127.0.0.1:${server.address().port}`,manifest=await packageFiles(root);
- const result=await verifyHttp(base,root,manifest);assert.equal(result.routes,15);assert.equal(result.assets,2);
+ const result=await verifyHttp(base,root,manifest);assert.equal(result.routes,routes.length);assert.equal(result.assets,2);
  for(const [value,error]of [['redirect',/route path changed/],['corrupt',/byte length mismatch|SHA-256 mismatch/],['html',/unexpected HTML content/]]){mode=value;await assert.rejects(verifyHttp(base,root,manifest),error);}
 });
 test('only known analytics injection and inter-tag whitespace are normalized',()=>{

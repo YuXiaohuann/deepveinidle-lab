@@ -1,6 +1,6 @@
 # Deep Vein Idle · Lab
 
-玩家制作的非官方 Deep Vein Idle 实验室，提供战斗利润比较、采集与制造模拟、强化期望成本、精通点数规划及热门加成预报。支持简体中文和英文，计算在浏览器本地执行，无需登录游戏；可手动配置，也可通过角色 userscript 导入配置与市场报价。
+玩家制作的非官方 Deep Vein Idle 实验室，提供战斗利润比较、采集与制造模拟、强化期望成本、精通点数规划、热门加成预报及战斗公式查阅。支持简体中文和英文（公式页面仅中文），计算在浏览器本地执行，无需登录游戏；可手动配置，也可通过角色 userscript 导入配置与市场报价。
 
 [打开线上实验室](https://dvi-lab.pages.dev/) · [功能与设计](DESIGN.md) · [当前版本与待发布变更](docs/status.md)
 
@@ -13,6 +13,8 @@ node scripts/serve.mjs
 ```
 
 打开 [本机页面](http://127.0.0.1:4173)。安装依赖、测试、原始代码提取与本机服务边界见 [本地开发](docs/development.md)。
+
+“公式”页入口为 `/formulas`，支持章节目录和链接定位。正文维护于 [中文 Markdown](src/content/formulas/combat.zh.md)，浏览器使用随站点发布的 markdown-it 渲染；页面范围与验收见 [公式页面设计](docs/pages/formulas.md)。
 
 发布使用 `release:check`、`release:package`、`release:verify` 三个入口，完整日志落盘、终端只返回摘要；依赖安装、参数和部署步骤见 [发布流程](docs/release.md)。
 

@@ -38,6 +38,10 @@
 
 详见 [调试页面](docs/pages/debug.md)。
 
+## 公式页面
+
+详见 [公式页面](docs/pages/formulas.md)。
+
 ## 采集页面
 
 详见 [采集页面](docs/pages/gathering.md)。

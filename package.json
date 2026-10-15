@@ -1,11 +1,12 @@
 {
   "name": "deep-vein-idle-simulator",
-  "version": "1.2.6",
+  "version": "1.3.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node scripts/serve.mjs",
     "extract": "node scripts/extract.mjs",
+    "vendor:markdown": "node scripts/vendor-markdown.mjs",
     "test": "node --test tests/*.test.mjs",
     "release:check": "node scripts/release.mjs check",
     "release:package": "node scripts/release.mjs package",
@@ -14,6 +15,7 @@
   "devDependencies": {
     "acorn": "8.15.0",
     "eslint-scope": "8.4.0",
+    "markdown-it": "15.0.2",
     "playwright-core": "1.62.1"
   }
 }

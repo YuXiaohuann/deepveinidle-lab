@@ -8,7 +8,7 @@
 node scripts/serve.mjs
 ```
 
-打开 [本机页面](http://127.0.0.1:4173)。服务仅监听本机，可通过 `PORT` 环境变量修改端口；支持 `/combat`、`/gather`、`/craft`、`/enhance`、`/mastery`、`/forecast` 和隐藏调试页 `/debug`。调试页仅提供角色配置 JSON 导出、战斗／强化配置文件导入；完整角色快照捕获、导入、导出与模拟已在当前版本移除。
+打开 [本机页面](http://127.0.0.1:4173)。服务仅监听本机，可通过 `PORT` 环境变量修改端口；支持 `/combat`、`/gather`、`/craft`、`/enhance`、`/mastery`、`/forecast`、`/formulas` 和隐藏调试页 `/debug`。调试页仅提供角色配置 JSON 导出、战斗／强化配置文件导入；完整角色快照捕获、导入、导出与模拟已在当前版本移除。
 
 运行测试：
 
@@ -26,6 +26,14 @@ node scripts/extract.mjs
 当前完整公开资源位于 `vendor/game-original.js`，来源、摘要、语义导出及声明摘要记录于 `vendor/manifest.json`；当前生成模块完整来自已核验的 1.0.1187，无混合版本或局部替换；`vendor/game-combat-1187.js` 和局部映射文件仅保留为此前战斗阶段的证据，不再被当前提取器使用。`vendor/game-combat-update.js` 保留为历史局部更新的原始证据。禁止手工修改生成文件 `src/upstream.js`；更新原始资源须遵循 [上游更新流程](technical.md#64-上游更新流程)，完成映射审阅、重新提取及回归验证。
 
 本机服务有意不开放 `docs/`、`reports/` 与 `AGENTS.md`；文档通过仓库或本地编辑器阅读。README 与 DESIGN 仍可直接访问，但其拆分文档链接不属于网页预览服务范围。无需为文档整理扩大服务器访问范围。
+
+## 公式内容维护
+
+公式页面仅中文；修改 `src/content/formulas/combat.zh.md` 后刷新页面即可读取新内容。只使用标题、列表、表格和文本公式块，不嵌入原始 HTML。二、三级标题自动进入目录；章节链接按标题顺序生成，调整章节顺序时需同步检查旧链接。
+
+markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件记录包完整性及依赖。安装后执行 `pnpm vendor:markdown`，从安装包同步浏览器发行文件、源码映射、许可证和来源摘要到 `vendor/markdown-it/`；`pnpm vendor:markdown --check` 检查版本及字节一致性。升级时先更新固定版本与锁文件，再同步发行文件并运行公式专项。网页运行使用本地发行文件，无需访问 CDN 或在运行时安装依赖。
+
+专项单元与发布资源测试：`node --test tests/formulas.test.mjs tests/release-tools.test.mjs`。浏览器专项：`node tests/formulas-browser.mjs`，使用本机 Chrome 和临时回环服务，结果与截图保存在 `.test-artifacts/formulas/`；需要允许本机监听与浏览器进程。其验证公式页面、错误重试、目录、路由、布局和模拟状态保留，不替代完整发布验收。
 
 ## 角色捕获 Worker 专项
 

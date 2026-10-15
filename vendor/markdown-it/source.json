@@ -1,0 +1,12 @@
+{
+  "name": "markdown-it",
+  "version": "15.0.2",
+  "license": "MIT",
+  "url": "https://registry.npmjs.org/markdown-it/-/markdown-it-15.0.2.tgz",
+  "distribution": "dist/browser/markdown-it.esm.min.mjs",
+  "files": {
+    "markdown-it.esm.min.mjs": "85feb50fd6ce1b7c49acb02b0337eb622ecc4fc2ed4ae0dcbb8c084556d463b6",
+    "markdown-it.esm.min.mjs.map": "495aa010515523da428720070f1cc74c5515595cd8baa551484072a1d4200417",
+    "LICENSE.txt": "792c48c5a849a15fdf9e37e8bcf9e6d1dd13b32b46c642a748a0a46a9919d473"
+  }
+}
