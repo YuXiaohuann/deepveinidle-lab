@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {forecast,epoch,tickTime,hotSkills} from '../src/hot-forecast.js';
+import {hotKinds,normalizeSelection,toggleSelection,parseForecastFilters} from '../src/forecast-filters.js';
 const at=time=>Date.parse(`2026-10-06T${time}:00+08:00`);
 test('verified date examples and half-hour boundary use game epoch',()=>{
  for(const [time,skill] of [['11:00','smithing'],['11:30','farming'],['12:00','mining'],['12:30','fletching'],['13:00','combat'],['19:00','combat'],['23:00','combat']]){
@@ -41,4 +42,33 @@ test('invalid clock and unknown filters fail explicitly',()=>{
  assert.throws(()=>forecast(epoch-1),/invalidTime/);
  assert.throws(()=>forecast(NaN),/invalidTime/);
  assert.throws(()=>forecast(at('11:00'),'unknown'),/invalidFilter/);
+});
+test('multi-select returns the earliest union within each group and intersection across groups',()=>{
+ // Independently verified half-hour examples above: farming 11:30, mining 12:00.
+ const result=forecast(at('11:12'),['mining','farming'],['xp']);
+ assert.equal(result.entries.length,10);
+ assert.deepEqual(result.entries.slice(0,2).map(entry=>[entry.skill,tickTime(entry.from)]),[['farming',at('11:30')],['mining',at('12:00')]]);
+ assert.ok(result.entries.every(entry=>['mining','farming'].includes(entry.skill)&&entry.kind==='xp'));
+ for(let i=1;i<result.entries.length;i++)assert.ok(result.entries[i].from>result.entries[i-1].from);
+ assert.deepEqual(forecast(at('11:12'),['mining'],hotKinds),forecast(at('11:12'),'mining','all'));
+ assert.deepEqual(forecast(at('11:12'),hotSkills,hotKinds),forecast(at('11:12')));
+});
+test('mixed possible and impossible rarity selections retain valid results',()=>{
+ assert.equal(forecast(at('11:12'),['cooking','crafting'],['rarity']).impossible,true);
+ const result=forecast(at('11:12'),['cooking','mining'],['rarity']);
+ assert.equal(result.impossible,false);assert.equal(result.entries.length,10);
+ assert.ok(result.entries.every(entry=>entry.skill==='mining'&&entry.kind==='rarity'));
+ assert.throws(()=>forecast(at('11:12'),['mining','unknown']),/invalidFilter/);
+ assert.throws(()=>forecast(at('11:12'),[],['unknown']),/invalidFilter/);
+});
+test('filter toggles and persisted state normalize all, duplicates and invalid data',()=>{
+ assert.deepEqual(toggleSelection([],'mining',hotSkills),['mining']);
+ assert.deepEqual(toggleSelection(['mining'],'fishing',hotSkills),['mining','fishing']);
+ assert.deepEqual(toggleSelection(['mining'],'mining',hotSkills),[]);
+ assert.deepEqual(toggleSelection(['mining'],'all',hotSkills),[]);
+ assert.deepEqual(toggleSelection(['xp'],'rarity',hotKinds),[]);
+ assert.deepEqual(normalizeSelection(['fishing','mining','fishing'],hotSkills),['mining','fishing']);
+ const filters={version:1,skills:['fishing','mining'],kinds:['rarity']};
+ assert.deepEqual(parseForecastFilters(JSON.parse(JSON.stringify(filters))),{skills:['mining','fishing'],kinds:['rarity']});
+ for(const raw of [null,{}, {...filters,version:2},{...filters,skills:'mining'},{...filters,kinds:['bad']}])assert.throws(()=>parseForecastFilters(raw),/invalidFilter/);
 });

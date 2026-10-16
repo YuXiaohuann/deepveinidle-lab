@@ -60,7 +60,7 @@
 | `tests/crafting.test.mjs` | 172 个普通配方五品质原始离线对照、烧焦／升级／限次、材料预算、窗口速率与导入回归 |
 | `tests/gathering.test.mjs` | 全点平均人工算例、四技能全部任务／点位原始离线对照、配置与导入回归 |
 | `src/enhancement.js`、`src/enhancement-controls.js` | 强化专用校验、导入、解析期望与独立页面交互 |
-| `src/hot-forecast.js`、`src/forecast-controls.js` | 热门日程计算与预报页面交互 |
+| `src/hot-forecast.js`、`src/forecast-filters.js`、`src/forecast-controls.js` | 热门日程计算、多选筛选规范化与独立本地存储、预报页面交互 |
 | `src/appreciation-controls.js`、`src/assets/appreciation.jpg` | 共用赞赏弹窗及原始赞赏图片；复用物品价格弹窗样式与交互约定 |
 | `src/formulas-controls.js`、`src/formulas-markdown.js`、`src/content/formulas/` | 中文公式正文、按需加载、Markdown 渲染、章节目录与独立阅读布局 |
 | `scripts/vendor-markdown.mjs`、`vendor/markdown-it/` | 从固定开发依赖同步浏览器发行文件与许可证，校验版本、内容摘要和来源 |
