@@ -1,6 +1,6 @@
 # 采集丢弃配置实施与验证
 
-日期：2026-10-16。本地已实现，未打包、部署；生产仍为 1.3.6。设计见 [采集页面](../docs/pages/gathering.md)，原始依据见 [支持调研](gathering-discard-research-2026-10-16.md)。
+日期：2026-10-16。已随1.3.7发布，完整发布及生产验收见 [发布报告](v1.3.7-release-2026-10-16.md)。以下保留实施阶段的专项结果。设计见 [采集页面](../docs/pages/gathering.md)，原始依据见 [支持调研](gathering-discard-research-2026-10-16.md)。
 
 ## 实现
 
