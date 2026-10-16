@@ -17,16 +17,24 @@ export function createGatheringScenario(raw,job,site,{now=Date.now(),seed=0}={})
  const bank=s.homeBank?game.world.bankById.get(s.homeBank):game.homeBank(context,site);
  if(!bank)throw Error('unreachable');
  p.homeBank=bank.id;p.x=bank.x;p.y=bank.y;
- return {player:p,context,durationTicks,bank};
+ return {player:p,context,durationTicks,bank,discardGathered:s.discardGathered};
 }
 export function simulateGatheringSite(raw,job,site,options={}){
- const scenario=createGatheringScenario(raw,job,site,options),{context,durationTicks,bank}=scenario;
+ const scenario=createGatheringScenario(raw,job,site,options),{context,durationTicks,bank,discardGathered}=scenario;
  let p;game.predict(scenario.player,context,prepared=>{p=prepared;return false;});
  p.offlineCapTicks=durationTicks*2;
- if(!game.startWork(p,context,site.id,job.id,'bank',null))throw Error('invalidRoute');
+ if(!game.startWork(p,context,site.id,job.id,discardGathered?'drop':'bank',null))throw Error('invalidRoute');
  const initialXp=p.skills[job.skill];
  const result={siteId:site.id,x:site.x,y:site.y,homeBank:bank.id,durationTicks,normalItems:{},rareItems:{},sampleItems:{},startLevel:game.level(initialXp),endedEarly:false,...Object.fromEntries(metrics.map(k=>[k,0]))};
  result.seed=context.seed;
+ // Only the main product and recipe bonus are discarded. Keep their current
+ // pack segment separate from stored goods and non-discardable rewards.
+ let pendingNormal={},pendingBonus={};
+ const retainPending=()=>{
+  for(const [id,qty]of Object.entries(pendingNormal))addExpected(result.normalItems,id,qty);
+  for(const [id,qty]of Object.entries(pendingBonus))addExpected(result.rareItems,id,qty);
+  pendingNormal={};pendingBonus={};
+ };
  for(let tick=1;tick<=durationTicks;tick++){
   if(p.activity==='walking')result.movingTicks++;
   if(p.activity==='working'){if(START_TICK+tick<p.stunUntil)result.stunnedTicks++;else result.workingTicks++;}
@@ -34,19 +42,24 @@ export function simulateGatheringSite(raw,job,site,options={}){
   const produced=events.find(e=>e.kind==='produced');
   if(produced){
    if(produced.itemId===game.coinItemId)result.coins+=job.output.qty;
-   else workQualities(p,context,job,at).forEach((prob,tier)=>addExpected(result.normalItems,game.withRarity(job.output.itemId,tier),job.output.qty*prob));
-   expectedWorkRewards(result.rareItems,p,context,job,at,before,produced);
+   else workQualities(p,context,job,at).forEach((prob,tier)=>addExpected(discardGathered?pendingNormal:result.normalItems,game.withRarity(job.output.itemId,tier),job.output.qty*prob));
+   if(discardGathered){
+    const rewards={};expectedWorkRewards(rewards,p,context,job,at,before,produced);
+    for(const [id,qty]of Object.entries(rewards))addExpected(job.bonus&&game.baseItemId(Number(id))===game.baseItemId(job.bonus.itemId)?pendingBonus:result.rareItems,id,qty);
+   }else expectedWorkRewards(result.rareItems,p,context,job,at,before,produced);
   }
   for(const e of events){
    if(e.kind==='produced'){result.completed++;result.attempts++;add(result.sampleItems,e.itemId,e.qty??1);}
    if(e.kind==='caught'){result.caught++;result.attempts++;}
-   if(e.kind==='deposited')result.deposits++;
+   if(e.kind==='deposited'){result.deposits++;if(discardGathered)retainPending();}
+   if(e.kind==='dropped'&&discardGathered){pendingNormal={};pendingBonus={};}
    if(['bonus','pet','mount','voidshard','box'].includes(e.kind)){const id=e.kind==='box'?(e.itemId??game.lootBoxItemId):e.itemId;if(!Number.isSafeInteger(id))throw Error('invalidReward');add(result.sampleItems,id,e.qty??1);if(e.kind==='box')addExpected(result.rareItems,id,e.qty??1);}
    if(e.kind==='routeStopped'&&!['done'].includes(e.reason))throw Error(`routeStopped:${e.reason}`);
   }
   result.elapsedTicks=tick;
   if(tick%game.predictionChunkTicks===0&&p.route===null){result.endedEarly=true;break;}
  }
+ if(discardGathered)retainPending();
  result.normal=Object.values(result.normalItems).reduce((a,b)=>a+b,0);result.rare=Object.values(result.rareItems).reduce((a,b)=>a+b,0);
  result.xp=p.skills[job.skill]-initialXp;result.endLevel=game.level(p.skills[job.skill]);
  result.normalValue=dropValue(result.normalItems);result.rareValue=dropValue(result.rareItems);result.totalIncome=result.coins+result.normalValue+result.rareValue;

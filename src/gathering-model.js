@@ -22,7 +22,7 @@ export function gatheringDefaults(){return {
  gear:Object.fromEntries(gatheringSlots.map(k=>[k,{id:0,tier:0,plus:0}])),
  brews:Object.fromEntries(gatheringPotions.map(p=>[p.kind,-1])),
  house:Object.fromEntries(gatheringRooms.map(r=>[r.id,0])),masteries:Object.fromEntries(gatheringMasteries.map(m=>[m.id,0])),
- perks:Object.fromEntries(gatheringPerks.map(p=>[p.id,0])),guild:null,guildXp:0,weeklyXp:0,blessing:false,ironman:false,homeBank:0,
+ perks:Object.fromEntries(gatheringPerks.map(p=>[p.id,0])),guild:null,guildXp:0,weeklyXp:0,blessing:false,ironman:false,homeBank:0,discardGathered:false,
  jobSelection:'all',siteSelection:0,simulationHours:24,customSimulation:false,hotSetting:'game',vendorValues:true,valuationMode:'custom',
 };}
 export function normalizeGathering(raw){
@@ -36,6 +36,7 @@ export function normalizeGathering(raw){
  for(const p of gatheringPerks)s.perks[p.id]=integer(raw.perks?.[p.id]??0,0,p.ranks);
  const manual=normalizeManual(raw,{wholeHours:false});for(const k of ['guildXp','weeklyXp','blessing','ironman','simulationHours','customSimulation','hotSetting','vendorValues','valuationMode'])s[k]=manual[k];
  s.homeBank=game.world.banks.some(b=>b.id===Number(raw.homeBank))?Number(raw.homeBank):0;
+ s.discardGathered=raw.discardGathered===true;
  s.guild=readGuild(raw.guild);
  const job=gatheringJobs.find(j=>j.id===Number(raw.jobSelection)&&j.skill===s.skill);
  s.jobSelection=job?job.id:'all';s.siteSelection=raw.siteSelection==='nearest'?'nearest':job&&sitesForJob(job).some(p=>p.id===Number(raw.siteSelection))?Number(raw.siteSelection):0;
@@ -72,5 +73,5 @@ export function gatheringStats(raw){const {state:s,player:p}=gatheringPlayer(raw
 }
 export function gatheringJobStats(raw,job){const {player:p}=gatheringPlayer(raw),chance=game.workChance(job,p);return {chance,seconds:game.tickMs/1000/chance,caught:game.caughtChance(job,p)};}
 export function importGathering(current,snapshot){
- return importWorkConfig(current,snapshot,{skills:gatheringSkills,slots:gatheringSlots,potions:gatheringPotions,rooms:gatheringRooms,masteries:gatheringMasteries,perks:gatheringPerks,normalize:normalizeGathering,gear:gatheringGear,reset:{jobSelection:'all',siteSelection:0,simulationHours:24,customSimulation:false,hotSetting:'game',vendorValues:true,valuationMode:'custom'}});
+ return importWorkConfig(current,snapshot,{skills:gatheringSkills,slots:gatheringSlots,potions:gatheringPotions,rooms:gatheringRooms,masteries:gatheringMasteries,perks:gatheringPerks,normalize:normalizeGathering,gear:gatheringGear,reset:{jobSelection:'all',siteSelection:0,simulationHours:24,customSimulation:false,hotSetting:'game',vendorValues:true,valuationMode:'custom',discardGathered:false}});
 }

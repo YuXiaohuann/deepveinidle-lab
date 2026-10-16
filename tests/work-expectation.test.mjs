@@ -89,7 +89,7 @@ test('both pages describe the hybrid model in both languages and retain small ex
   const source=fs.readFileSync(new URL('../src/'+page+'-controls.js',import.meta.url),'utf8');
   const functions=source.slice(source.indexOf('function expectedQuantity('),source.indexOf('function ',source.indexOf('function methodNote(')+1));
   for(const language of ['zh','en']){
-   const context=vm.createContext({language,text:(zh,en)=>language==='zh'?zh:en,format:(v,digits=page==='gathering'?1:0)=>v.toLocaleString('en',{minimumFractionDigits:digits,maximumFractionDigits:digits})});
+   const context=vm.createContext({language,state:{discardGathered:false},text:(zh,en)=>language==='zh'?zh:en,format:(v,digits=page==='gathering'?1:0)=>v.toLocaleString('en',{minimumFractionDigits:digits,maximumFractionDigits:digits})});
    vm.runInContext(functions,context);
    assert.equal(vm.runInContext('expectedQuantity(0)',context),'0');
    assert.equal(vm.runInContext('expectedQuantity(.025)',context),'1/40');
@@ -100,6 +100,10 @@ test('both pages describe the hybrid model in both languages and retain small ex
    assert.match(note,language==='zh'?/数学期望/:/mathematical expectations/);
    assert.match(note,language==='zh'?/活动礼盒仍按原始模拟/:/Event boxes still use simulated/);
    assert.equal((note.match(/class="simulation-caveat"/g)||[]).length,2);
+   if(page==='gathering'){
+    vm.runInContext('state.discardGathered=true',context);
+    assert.match(vm.runInContext('methodNote()',context),language==='zh'?/已丢弃部分不估值/:/Discarded items have no value/);
+   }
   }
  }
 });
