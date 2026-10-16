@@ -16,6 +16,10 @@ const selected=page=>page.locator('[data-forecast-filter][aria-pressed="true"]')
  kinds:els.filter(el=>el.dataset.forecastFilter==='kind').map(el=>el.dataset.value)
 }));
 const rows=page=>page.locator('.forecast-schedule tbody tr');
+const checkPanel=async page=>{
+ assert.equal(await page.locator('#forecast-content .panel').count(),1);
+ assert.ok(await page.locator('#forecast-content').evaluate(el=>el.firstElementChild.matches('.forecast-heading')&&!el.querySelector('.forecast-panel .forecast-heading')&&[...el.querySelectorAll('.hot-current,.forecast-filters,.table-scroll,.forecast-empty')].every(item=>item.closest('.forecast-panel')===el.querySelector('.forecast-panel'))));
+};
 try{
  for(const width of [1280,390])for(const language of ['zh','en']){
   const context=await browser.newContext({viewport:{width,height:1000}});
@@ -24,11 +28,17 @@ try{
   },language);
   const page=await context.newPage();page.on('pageerror',error=>results.errors.push(error.message));
   await page.goto(base+'/forecast');
+  await checkPanel(page);
+  if(width===1280&&language==='zh'){
+   const before=await page.locator('#forecast-countdown').textContent();
+   await page.waitForFunction(before=>document.querySelector('#forecast-countdown').textContent!==before,before);
+  }
   assert.deepEqual(await selected(page),{skills:['all'],kinds:['all']});
   assert.equal(await rows(page).count(),48);
   await button(page,'skill','mining').click();await button(page,'skill','fishing').click();
   await button(page,'kind','rarity').focus();await page.keyboard.press('Enter');
   const expected={skills:['mining','fishing'],kinds:['rarity']};
+  await checkPanel(page);
   assert.deepEqual(await selected(page),expected);
   assert.equal(await rows(page).count(),10);
   assert.ok(await rows(page).evaluateAll(els=>els.every(el=>['mining','fishing'].includes(el.dataset.skill)&&el.cells[2].textContent.includes('+25%'))));
@@ -49,6 +59,7 @@ try{
   assert.deepEqual((await selected(page)).skills,['all']);assert.equal(await rows(page).count(),48);
   await button(page,'skill','cooking').click();await button(page,'skill','crafting').click();await button(page,'kind','rarity').click();
   assert.equal(await rows(page).count(),0);assert.ok(await page.locator('.forecast-empty').isVisible());
+  await checkPanel(page);
   await button(page,'skill','mining').click();assert.equal(await rows(page).count(),10);
   assert.ok(await rows(page).evaluateAll(els=>els.every(el=>el.dataset.skill==='mining')));
   await button(page,'skill','all').click();await button(page,'kind','all').click();await page.reload();
@@ -67,6 +78,7 @@ try{
    Storage.prototype.setItem=function(name,value){if(name===key&&mode==='writeFailure'&&globalThis.forecastStorageBlocked)throw Error('Write blocked');return set.call(this,name,value);};
   },{key:forecastStorageKey,mode});
   const page=await context.newPage();page.on('pageerror',error=>results.errors.push(error.message));await page.goto(base+'/forecast');
+  await checkPanel(page);
   if(mode!=='writeFailure'){
    assert.deepEqual(await selected(page),{skills:['all'],kinds:['all']});
    assert.ok((await page.locator('.forecast-storage').textContent()).includes('无法读取'));
@@ -82,6 +94,13 @@ try{
   assert.equal((await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),forecastStorageKey)).version,1);
   results.cases.push({mode,status:'passed'});await context.close();
  }
+ const context=await browser.newContext();
+ const page=await context.newPage();
+ await page.clock.install({time:new Date('2025-01-01T00:00:00Z')});
+ await page.goto(base+'/forecast');await checkPanel(page);
+ assert.ok(await page.locator('.forecast-panel [role="alert"]').isVisible());
+ assert.equal(await page.locator('.forecast-panel .forecast-filters').count(),1);
+ results.cases.push({mode:'predictionErrorPanel',status:'passed'});await context.close();
  assert.deepEqual(results.errors,[]);results.status='passed';
 }catch(error){results.status='failed';results.failure=error.stack;throw error;}
 finally{await fs.writeFile(path.join(directory,'results.json'),JSON.stringify(results,null,2)+'\n');await browser.close();console.log(JSON.stringify(results));}
