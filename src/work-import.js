@@ -1,7 +1,8 @@
 import * as game from './upstream.js';
 import {readGuild} from './guild.js';
+import {readWorldBuffs} from './world-buffs.js';
 
-export function importWorkConfig(current,snapshot,{skills,slots,potions,rooms,masteries,perks,normalize,gear,reset,ironman=true}){
+export function importWorkConfig(current,snapshot,{skills,slots,potions,rooms,masteries,perks,normalize,gear,reset,ironman=true,completeWorldBuffs=false}){
  const record=v=>v!==null&&typeof v==='object'&&!Array.isArray(v),valid=(v,min=0,max=Number.MAX_SAFE_INTEGER)=>typeof v==='number'&&Number.isFinite(v)&&v>=min&&v<=max,int=(v,min=0,max=Number.MAX_SAFE_INTEGER)=>valid(v,min,max)&&Number.isInteger(v);
  if(!record(snapshot)||snapshot.version!==2||!int(snapshot.capturedAt,1)||snapshot.capturedAt>Date.now()+60000||!record(snapshot.player)||!int(snapshot.player.lastTick))throw Error('invalidSnapshot');
  const s=normalize(current),p=snapshot.player,warnings=[];
@@ -24,7 +25,10 @@ export function importWorkConfig(current,snapshot,{skills,slots,potions,rooms,ma
  if(record(p.brews)&&int(p.brews.blessing??0))s.blessing=(p.brews.blessing??0)>p.lastTick;else warnings.push('blessing');
  put('homeBank',p.homeBank,v=>v===null||game.world.banks.some(b=>b.id===v),v=>s.homeBank=v??0);
  if(ironman)put('ironman',p.ironman,v=>typeof v==='boolean',v=>s.ironman=v);
- if(int(snapshot.worldTick)&&Array.isArray(snapshot.worldBuffs)&&snapshot.worldBuffs.every(w=>record(w)&&int(w.fromTick)&&int(w.toTick,w.fromTick)&&valid(w.xpMult??1,1,1e5)))s.weeklyXp=Math.round(snapshot.worldBuffs.filter(w=>['Weekly goal: gathered','Weekly goal: felled'].includes(w.label)&&w.fromTick<=snapshot.worldTick&&snapshot.worldTick<=w.toTick).reduce((sum,w)=>sum+(w.xpMult-1)*100,0));else warnings.push('weeklyXp');
+ if(completeWorldBuffs){
+  const world=readWorldBuffs(snapshot);s.weeklyXp=world.weeklyXp;s.worldRarity=world.worldRarity;
+  if(world.warning)warnings.push(world.warning);
+ }else if(int(snapshot.worldTick)&&Array.isArray(snapshot.worldBuffs)&&snapshot.worldBuffs.every(w=>record(w)&&int(w.fromTick)&&int(w.toTick,w.fromTick)&&valid(w.xpMult??1,1,1e5)))s.weeklyXp=Math.round(snapshot.worldBuffs.filter(w=>['Weekly goal: gathered','Weekly goal: felled'].includes(w.label)&&w.fromTick<=snapshot.worldTick&&snapshot.worldTick<=w.toTick).reduce((sum,w)=>sum+(w.xpMult-1)*100,0));else warnings.push('weeklyXp');
  try{s.guild=readGuild(snapshot.guild);}catch{warnings.push('guild');}
  Object.assign(s,reset);
  return {state:normalize(s),capturedAt:snapshot.capturedAt,warnings};

@@ -39,6 +39,7 @@
 
 ## 功能实施与专项验证
 
+- [采集两项世界增益实施与验证](gathering-world-buffs-implementation-2026-10-16.md)（2026-10-16，本地未发布）
 - [采集丢弃配置实施与验证](gathering-discard-implementation-2026-10-16.md)（2026-10-16，已随1.3.7发布）
 - [战斗世界增益导入与文案实施验证](combat-world-buffs-implementation-2026-10-16.md)（2026-10-16）
 - [制造首版实施与发布验证](crafting-implementation-2026-10-12.md)（2026-10-12）

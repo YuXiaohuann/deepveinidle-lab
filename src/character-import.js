@@ -1,4 +1,5 @@
 import {readGuild} from './guild.js';
+import {readWorldBuffs,worldBuffWarningText} from './world-buffs.js';
 import {game,defaults,normalize,slots,skills,foods,gearDetails} from './model.js';
 import {combatRooms,combatMasteries,combatPerks,combatPotions} from './combat-options.js';
 export const importTypes=[['skills','技能','Skills'],['equipment','装备','Equipment'],['food','食物','Food'],['potions','药水','Potions'],['home','家园','Home'],['masteries','精通','Masteries'],['guild','公会与祝福','Guild & blessing'],['supplies','补给','Supplies'],['perks','特权','Perks']];
@@ -9,7 +10,7 @@ export function importWarningText(language,warnings=[]){
   const details=reasons.filter(([key])=>warnings.includes(`food: ${key}`)).map(r=>r[zh?1:2]);
   lines.push((zh?'【食物】部分配置未导入，已保留原值，请手动检查':'[Food] Some settings were not imported; previous values were kept. Please check manually.')+(details.length?(zh?'：': ' ')+details.join(zh?'；':'; '):''));
  }
- if(warnings.includes('guild: worldBuffs.upgrade'))lines.push(zh?'【世界增益】请更新 userscript 至 2.8.0 或更新版本，刷新游戏后重新捕获并导入；世界增益经验与稀有度已重置为 0%。':'[World buffs] Update userscript to 2.8.0 or later, refresh the game, recapture and import again. World buff XP and rarity were reset to 0%.');
+ if(warnings.includes('guild: worldBuffs.upgrade'))lines.push(worldBuffWarningText(language,'worldBuffs.upgrade'));
  const others=importTypes.filter(([id])=>id!=='food'&&categories.has(id)).map(type=>type[zh?1:2]);
  if(others.length)lines.push(zh?`【${others.join('、')}】导入失败，请手动配置`:`[${others.join(', ')}] import failed. Please configure manually.`);
  return lines.join('\n');
@@ -104,16 +105,9 @@ export function importCharacter(current,snapshot){
   if(category==='guild'){
    put('guildBonus',p.guildBonus,v=>valid(v,0,1e5),v=>state.manual.guildXp=v*100);
    if(record(p.brews)&&int(p.brews.blessing??0)){state.manual.blessing=active('blessing');applied.add(category);}else warn('blessing');
-   const windows=snapshot.worldBuffs,tick=snapshot.worldTick;
-   if(snapshot.worldBuffsVersion!==1)warn('worldBuffs.upgrade');
-   else if(int(tick)&&Array.isArray(windows)&&windows.every(w=>record(w)&&int(w.fromTick)&&int(w.toTick,w.fromTick)&&valid(w.xpMult??1,1,100001)&&valid(w.rarityMult??1,1,100001))){
-    const active=windows.filter(w=>w.fromTick<=tick&&tick<=w.toTick);
-    const xp=Math.round(active.reduce((sum,w)=>sum+((w.xpMult??1)-1)*100,0)*1e8)/1e8;
-    const rare=Math.round(active.reduce((sum,w)=>sum+((w.rarityMult??1)-1)*100,0)*1e8)/1e8;
-    if(valid(xp,0,1e7)&&valid(rare,0,1e7)){
-     state.manual.weeklyXp=xp;state.manual.worldRarity=rare;applied.add(category);
-    }else warn('weeklyXp.reset');
-   }else warn('weeklyXp.reset');
+   const world=readWorldBuffs(snapshot);
+   state.manual.weeklyXp=world.weeklyXp;state.manual.worldRarity=world.worldRarity;
+   if(world.warning)warn(world.warning);else applied.add(category);
   }
   if(category==='supplies'){
    put('homeBank',p.homeBank,v=>v===null||game.world.banks.some(b=>b.id===v),v=>state.homeBank=v??0);

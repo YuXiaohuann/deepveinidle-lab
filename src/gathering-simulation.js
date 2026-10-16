@@ -12,7 +12,7 @@ export function createGatheringScenario(raw,job,site,{now=Date.now(),seed=0}={})
  if(!site||!site.jobIds.includes(job.id)||job.skill!==s.skill)throw Error('invalidSite');
  if(s.levels[job.skill]<job.levelReq)throw Error('levelTooLow');
  const durationTicks=simulationTicks(s.simulationHours);
- const context={...game.createContext(game.world,validateSimulationSeed(seed)),hypothetical:true,windows:manualWindows(START_TICK,START_TICK+durationTicks,s.weeklyXp,s.hotSetting!=='game',job.skill)};
+ const context={...game.createContext(game.world,validateSimulationSeed(seed)),hypothetical:true,windows:manualWindows(START_TICK,START_TICK+durationTicks,s.weeklyXp,s.hotSetting!=='game',job.skill,s.worldRarity)};
  if(s.hotSetting==='current')context.windows.push(...combatHotWindows(combatHot(now,s.simulationHours,job.skill)));
  const bank=s.homeBank?game.world.bankById.get(s.homeBank):game.homeBank(context,site);
  if(!bank)throw Error('unreachable');
