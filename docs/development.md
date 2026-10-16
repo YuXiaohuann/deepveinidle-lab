@@ -43,7 +43,7 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 运行 `node --test tests/capture-worker.test.mjs tests/character-import.test.mjs tests/market-import.test.mjs` 验证角色捕获、保存协调、市场捕获移除、角色桥接及官方行情适配。运行 `node scripts/check-capture-browser.mjs` 后，在 Chrome 打开 `http://127.0.0.1:4186/`，页面自动验证真实 Blob Worker、字段裁剪、慢存储合并、跨连接隔离和失败提示，完成后显示 PASS。此服务只暴露测试页与当前候选脚本，不连接游戏，GM 存储和 WebSocket 使用合成替身；`PORT` 可修改端口。源码变化后刷新重测，结束后停止服务。
 
-本地真实 Worker 验证不代表脚本管理器沙箱兼容或真实账号卡顿改善；安装／更新 2.7.0 后仍须刷新游戏和实验室，并单独记录该环境的验收。Worker 不可用时明确提示失败并要求刷新，不会回退到主线程捕获。
+本地真实 Worker 验证不代表脚本管理器沙箱兼容或真实账号卡顿改善；安装／更新角色脚本后仍须刷新游戏和实验室（当前版本见 [当前状态](status.md#已发布基线)），并单独记录该环境的验收。Worker 不可用时明确提示失败并要求刷新，不会回退到主线程捕获。
 
 ## 发布工具开发
 
