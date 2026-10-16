@@ -1,3 +1,4 @@
+import {questlessTick} from '../scripts/native-questless.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {game,preset,defaults} from '../src/model.js';
@@ -75,7 +76,7 @@ test('simulation retains the original trajectory, counts misses, and values expe
   const initial={...p.skills},counts={kills:0,attacks:0,misses:0,moving:0,food:0},foods={};
   for(let tick=1;tick<=durationTicks;tick++){
    if(p.activity==='walking')counts.moving++;
-   const events=[];game.tick(p,context,START_TICK+tick,events);
+   const events=[];questlessTick(game,p,context,START_TICK+tick,events);
    for(const e of events){
     if(e.kind==='killed')counts.kills++;
     if(e.kind==='hit'&&e.by==='player'){counts.attacks++;if(e.damage===0)counts.misses++;}

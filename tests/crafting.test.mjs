@@ -1,3 +1,4 @@
+import {questlessOffline,questlessTick} from '../scripts/native-questless.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
@@ -10,7 +11,7 @@ import {setItemPrice,priceDefaults} from '../src/item-prices.js';
 const first=skill=>craftingJobs.find(j=>j.skill===skill);
 function nativeResult(s,job,tier,count){
  const {player,context}=createCraftingScenario(s,job,tier,count),xp=player.skills[job.skill];
- const report=game.offline(player,context,START_TICK+60000);
+ const report=questlessOffline(game,player,context,START_TICK+60000);
  return {player,report,xp:player.skills[job.skill]-xp};
 }
 test('five crafting skills, default tiers, normalization and independent tools',()=>{
@@ -94,7 +95,7 @@ test('24-hour rates include native XP, products and consumption independently of
  const result=simulateCraftingWindow(s,job,0);
  const {player,context}=createCraftingScenario(s,job,0,ticks,{maxTicks:ticks});
  const xp=player.skills[job.skill],events=[];
- for(let i=1;i<=ticks;i++)game.tick(player,context,START_TICK+i,events);
+ for(let i=1;i<=ticks;i++)questlessTick(game,player,context,START_TICK+i,events);
  assert.equal(result.complete,true);assert.equal(result.error,null);assert.equal(result.elapsedTicks,ticks);
  assert.equal(result.xp,player.skills[job.skill]-xp);
  assert.equal(result.completed,events.filter(e=>['produced','burnt'].includes(e.kind)).length);

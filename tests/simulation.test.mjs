@@ -1,3 +1,4 @@
+import {questlessOffline} from '../scripts/native-questless.mjs';
 import {nativeDay} from './native-day.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -46,7 +47,7 @@ test('full tick event counts agree with original offline report and food invento
  assert.equal(p.lastTick,START_TICK);assert.equal(p.pack.length,0);
  game.startFight(p,scenario.context,game.world.zones.find(z=>z.monsterId===monster.id).id);
  p.offlineCapTicks=DAY_TICKS*2;
- const report=game.offline(p,scenario.context,START_TICK+DAY_TICKS),actual=simulateMonster(state,monster);
+ const report=questlessOffline(game,p,scenario.context,START_TICK+DAY_TICKS),actual=simulateMonster(state,monster);
  assert.equal(actual.kills,report.kills);
  const food=game.withRarity(state.food.id,state.food.tier),left=(p.bank[food]??0)+p.pack.filter(x=>x.itemId===food).reduce((n,x)=>n+x.qty,0);
  assert.equal(actual.foodItems[food],actual.food);assert.equal(actual.food,1e9-left);assert.ok(actual.food>0);assert.ok(actual.restocks>1);assert.ok(actual.movingTicks>0);

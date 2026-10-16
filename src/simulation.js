@@ -10,6 +10,12 @@ export const TRIALS=1;
 export const START_TICK=game.predictionStartTick;
 const add=(obj,key,amount=1)=>{obj[key]=(obj[key]??0)+amount;};
 
+// Synthetic builds have no account quests, including after a daily reset.
+export function simulationTick(player,context,tick,events){
+ player.quests.day=game.questDay(tick);player.quests.week=game.questWeek(tick);
+ game.tick(player,context,tick,events);
+}
+
 export function createScenario(raw,monster=null,{now=Date.now(),seed=0}={}){
  if(raw?.format)throw Error('Unsupported simulation format');
  const {state,player:p}=makePlayer(raw),zone=monster&&game.world.zones.find(z=>z.monsterId===monster.id);
@@ -21,7 +27,7 @@ export function createScenario(raw,monster=null,{now=Date.now(),seed=0}={}){
  const foodId=game.withRarity(state.food.id,state.food.tier);
  Object.assign(p,{
   id:state.manual.playerId,x:bank.x,y:bank.y,homeBank:bank.id,skills:{...Object.fromEntries(game.allSkills.map(k=>[k,0])),...p.skills},
-  pack:[],bank:{[foodId]:1e9},overflow:{},bankOrder:[],bankLocked:[],route:null,enhance:null,plots:{},queue:[],tunics:[],guide:{},
+  pack:[],bank:{[foodId]:1e9},overflow:{},bankOrder:[],bankLocked:[],route:null,enhance:null,order:null,plots:{},queue:[],tunics:[],guide:{},
   perks:{quick:0,rest:0,pockets:0,hands:0,...p.perks},housePoints:{},houseCells:[],houseBuild:null,houseUpgrades:{},
   quests:{day:0,week:0,daily:[],weekly:[]},path:null,streak:{},tally:{items:{},monsters:{},coinsEarned:0},collection:{},collections:{},forgeLog:{},achievements:{},titles:[],
   coins:state.manual.coins,hp:game.maxHp(p),unlimitedBank:state.manual.unlimitedBank,bankSlotsBought:state.manual.bankSlotsBought,offlineCapTicks:durationTicks*2,foodMaxTier:state.manual.foodMaxTier,foodItemId:state.manual.foodRule===0?foodId:state.manual.foodRule===2?-2:null,foodPerTrip:state.manual.foodPerTrip,eatAt:state.eatAt/100,
@@ -54,7 +60,7 @@ export function simulateMonster(raw,monster,options={}){
  for(let tick=1;tick<=durationTicks;tick++){
   if(p.activity==='walking')result.movingTicks++;
   const events=[];
-  game.tick(p,context,START_TICK+tick,events);
+  simulationTick(p,context,START_TICK+tick,events);
   for(const e of events){
    if(e.kind==='killed'){result.kills++;expectation.kill(result,p,context,START_TICK+tick);}
    if(e.kind==='hit'&&e.by==='player'){result.attacks++;expectation.attack(result,p);}

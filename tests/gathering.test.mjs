@@ -1,3 +1,4 @@
+import {questlessOffline} from '../scripts/native-questless.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
@@ -69,7 +70,7 @@ for(const skill of gatheringSkills)test(`${skill}: every task and point matches 
  for(const job of gatheringJobs.filter(j=>j.skill===skill))for(const site of selectedGatheringSites(s,job)){
   const scenario=createGatheringScenario(s,job,site);let p;game.predict(scenario.player,scenario.context,prepared=>{p=prepared;return false;});p.offlineCapTicks=scenario.durationTicks*2;
   assert.ok(game.startWork(p,scenario.context,site.id,job.id,'bank',null));
-  const initialXp=p.skills[skill];for(let tick=game.predictionChunkTicks;tick<=scenario.durationTicks;tick+=game.predictionChunkTicks)game.offline(p,scenario.context,game.predictionStartTick+tick);
+  const initialXp=p.skills[skill];for(let tick=game.predictionChunkTicks;tick<=scenario.durationTicks;tick+=game.predictionChunkTicks)questlessOffline(game,p,scenario.context,game.predictionStartTick+tick);
   const actual=simulateGatheringSite(s,job,site),inventory={...p.bank};for(const item of p.pack)inventory[item.itemId]=(inventory[item.itemId]??0)+item.qty;for(const [id,qty]of Object.entries(p.overflow))inventory[id]=(inventory[id]??0)+qty;
   const expected={...actual.sampleItems};delete expected[game.coinItemId];
   assert.deepEqual(expected,inventory,`${skill} job ${job.id} site ${site.id}`);assert.equal(actual.coins,p.coins);assert.equal(actual.xp,p.skills[skill]-initialXp);

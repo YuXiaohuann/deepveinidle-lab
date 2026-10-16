@@ -20,10 +20,10 @@ test('old plans migrate quality and counts to +0 upgrades, preserve ordinary pla
 });
 test('legendary upgrade materials include same-quality +0 base and exact extra quantities',()=>{
  const blade=upgrades.find(j=>j.id==='upgrade-271'),bow=upgrades.find(j=>j.id==='upgrade-264');
- assert.deepEqual(craftingMaterials(blade,4,2),{4114:2,4044:6,4252:4});
+ assert.deepEqual(craftingMaterials(blade,4,2),{4114:2,4252:4});
  assert.deepEqual(craftingMaterials(bow,4,3),{4145:3,4251:3});
  const s=craftingDefaults();s.plans={'upgrade-271:4':2,'upgrade-264:4':3};s.owned={4114:1};
- assert.deepEqual(materialRequirements(s),{4114:2,4044:6,4252:4,4145:3,4251:3});
+ assert.deepEqual(materialRequirements(s),{4114:2,4252:4,4145:3,4251:3});
  const row=materialBudget(s,{}).rows.find(r=>r.id===4114);assert.equal(row.required,2);assert.equal(row.purchase,1);
 });
 test('every upgrade quality is instant, deterministic, +0 and grants unmodified fixed XP',()=>{

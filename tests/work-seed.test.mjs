@@ -1,3 +1,4 @@
+import {questlessOffline} from '../scripts/native-questless.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -44,7 +45,7 @@ test('crafting seeds reproduce all five skills and match original finite-route r
   const job=crafting.craftingJobs.find(j=>j.skill===skill),outcomes=[];
   for(const seed of [123456789,0xffffffff]){
    const scenario=createCraftingScenario(state,job,0,100,{seed}),xp=scenario.player.skills[skill];assert.equal(scenario.context.seed,seed);
-   const report=game.offline(scenario.player,scenario.context,START_TICK+60000),r=simulateCrafting(state,job,0,100,{seed});
+   const report=questlessOffline(game,scenario.player,scenario.context,START_TICK+60000),r=simulateCrafting(state,job,0,100,{seed});
    assert.equal(r.seed,seed);assert.equal(r.complete,true);assert.equal(r.xp,scenario.player.skills[skill]-xp);
    assert.deepEqual(r.sampleItems,report.itemsGained);assert.equal(r.burnt,report.burnt);assert.equal(r.deposits,report.deposits);
    assert.deepEqual(r,simulateCrafting(state,job,0,100,{seed,now:Date.UTC(2026,9,19)}));

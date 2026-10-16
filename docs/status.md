@@ -15,7 +15,7 @@
 
 ## 本地待发布变更与已知限制
 
-本轮上述功能已随 1.3.3 发布，暂无已记录的待发布功能变更。此前阶段性验证保留于 [重置范围验证](../reports/panel-reset-2026-10-15.md)、[官方行情改造](../reports/official-market-api-2026-10-16.md)、[显式导入](../reports/price-explicit-import-2026-10-16.md)、[价格操作栏](../reports/price-toolbar-2026-10-16.md)、[筛选前置验证](../reports/price-filter-gate-2026-10-16.md) 和 [性能调查](../reports/price-dialog-performance-2026-10-16.md)，均为各自阶段历史证据。
+本地候选版本 1.3.4：完整同步游戏 1.0.1190（715 个原始声明），更新地图／冰尸经验／巨像材料与补给签名；合成角色保持空日常／周常任务，排除新版自动领奖对经验与利润的影响。现有配置、价格、计划与库存保留，角色 userscript 仍为 2.7.0。相关 231 项回归及完整原始计算对照已通过；最终候选完整发布检查和生产验收尚待执行，不能以专项结果代替。见 [本轮发布报告](../reports/v1.3.4-release-2026-10-16.md)。此前阶段性验证保留于 [重置范围验证](../reports/panel-reset-2026-10-15.md)、[官方行情改造](../reports/official-market-api-2026-10-16.md)、[显式导入](../reports/price-explicit-import-2026-10-16.md)、[价格操作栏](../reports/price-toolbar-2026-10-16.md)、[筛选前置验证](../reports/price-filter-gate-2026-10-16.md) 和 [性能调查](../reports/price-dialog-performance-2026-10-16.md)，均为各自阶段历史证据。
 
 实际脚本管理器安装升级、真实账号操作、长时性能及打赏弹窗微信扫码支付仍未验证；宽泛搜索或大量已定价／已锁定结果仍可能较慢。本轮性能数值未重测，不将历史专项性能结果当作本轮测量。
 

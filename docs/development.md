@@ -23,7 +23,7 @@ pnpm install --frozen-lockfile
 node scripts/extract.mjs
 ```
 
-当前完整公开资源位于 `vendor/game-original.js`，来源、摘要、语义导出及声明摘要记录于 `vendor/manifest.json`；当前生成模块完整来自已核验的 1.0.1187，无混合版本或局部替换；`vendor/game-combat-1187.js` 和局部映射文件仅保留为此前战斗阶段的证据，不再被当前提取器使用。`vendor/game-combat-update.js` 保留为历史局部更新的原始证据。禁止手工修改生成文件 `src/upstream.js`；更新原始资源须遵循 [上游更新流程](technical.md#64-上游更新流程)，完成映射审阅、重新提取及回归验证。
+当前完整公开资源位于 `vendor/game-original.js`，来源、摘要、语义导出及声明摘要记录于 `vendor/manifest.json`；当前生成模块完整来自已核验的 1.0.1190，无混合版本或局部替换；`vendor/game-combat-1187.js` 和局部映射文件仅保留为此前战斗阶段的证据，不再被当前提取器使用。`vendor/game-combat-update.js` 保留为历史局部更新的原始证据。禁止手工修改生成文件 `src/upstream.js`；更新原始资源须遵循 [上游更新流程](technical.md#64-上游更新流程)，完成映射审阅、重新提取及回归验证。
 
 本机服务有意不开放 `docs/`、`reports/` 与 `AGENTS.md`；文档通过仓库或本地编辑器阅读。README 与 DESIGN 仍可直接访问，但其拆分文档链接不属于网页预览服务范围。无需为文档整理扩大服务器访问范围。
 
@@ -56,3 +56,9 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 运行 `node --test tests/market-import.test.mjs tests/item-prices.test.mjs tests/item-price-store.test.mjs tests/item-price-status.test.mjs`。运行 `node tests/market-prices-browser.mjs` 验证官方 API 真实跨域、双语桌面／390px 弹窗、导入与锁定、错误保留及真实 Blob Worker；需要网络、本机监听和 Chrome。结果和截图保存在 `.test-artifacts/market-prices/`；接口异常明确失败，不以请求替身通过代替真实跨域验证。功能场景使用可控响应替身，不连接游戏账号。
 
 仅修改价格筛选、操作栏布局、提示或导入请求时机时，运行 `node --test tests/item-price-status.test.mjs tests/item-prices.test.mjs tests/item-price-store.test.mjs` 及 `node tests/market-prices-browser.mjs --toolbar-only`，后者仅执行双语桌面／390px 操作栏和弹窗四组验证，包含无筛选空状态、保留的状态选项、五类独立筛选与清空勾选、空列表全局导入／清空、打开／重开零请求、错误持续与显式重试；同时保存初始与已筛选截图。结果保存至 `.test-artifacts/price-toolbar/`，不重跑无关的真实 API 或角色 Worker 专项。此模式仍需要本机监听及 Chrome，行情使用请求替身。
+
+## 上游版本适配专项
+
+`node --test tests/upstream-1190.test.mjs` 覆盖迁移战斗区域、自动及两个指定仓库、巨像六件五品质材料、保存兼容与任务自动领奖隔离。独立离线对照使用 `scripts/native-questless.mjs` 按日边界分段保持空任务，以数学日／周编号独立于应用适配函数核验。
+
+`node tests/upstream-browser.mjs --out .test-artifacts/upstream-1190` 检查双语桌面／390px 战斗完成、来源版本、巨像材料／经验与库存计划刷新保存，以及合成消息下的真实 Blob Worker；需要本机监听和 Chrome。指定 `--url https://dvi-lab.pages.dev --out <证据目录>` 时检查该实际目标四组页面，不把本地 Worker 当作生产测试。截图和机器结果落盘，仍需人工审阅。

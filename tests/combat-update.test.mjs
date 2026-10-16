@@ -69,7 +69,7 @@ test('updated attributes use native integers and preserve rarity then enhancemen
 
 test('warehouse meals leave the full selected trip load and all consumed food is charged',()=>{
  const s=preset('ranged'),{player:p}=createScenario(s);Object.assign(p,{hp:12,brews:{},bank:{64:100},pack:[],foodItemId:64,foodPerTrip:5,eatAt:.5,route:{zoneId:1}});p.perks.meals=0;
- const events=[];game.restock(p,events);
+ const events=[];game.restock(p,game.world,events);
  assert.equal(p.hp,84);assert.equal(p.bank[64],89);assert.equal(p.pack.reduce((n,i)=>n+i.qty,0),5);
  assert.equal(events.filter(e=>e.kind==='ate').length,6);
  s.manual.simulationHours=1;s.manual.hotSetting='off';s.manual.foodPerTrip=5;

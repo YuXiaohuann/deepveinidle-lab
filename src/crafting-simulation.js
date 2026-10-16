@@ -2,7 +2,7 @@ import * as game from './upstream.js';
 import {craftingPlayer,craftingMaterials,planKey,validQuantity,safeAdd,calculateUpgrade} from './crafting-model.js';
 import {manualWindows} from './manual-settings.js';
 import {combatHot,combatHotWindows} from './combat-hot.js';
-import {START_TICK} from './simulation.js';
+import {START_TICK,simulationTick} from './simulation.js';
 import {validateSimulationSeed} from './simulation-seed.js';
 
 import {beforeWork,expectedWorkRewards,expectedCraftProduct,addExpected} from './work-expectation.js';
@@ -40,7 +40,7 @@ export function simulateCrafting(raw,job,tier,count,{onProgress=()=>{},...option
  for(let tick=1;tick<=maxTicks;tick++){
   if(p.activity==='walking')r.movingTicks++;
   if(p.activity==='working')r.workingTicks++;
-  const at=START_TICK+tick,before=beforeWork(p,job,at),events=[];game.tick(p,context,at,events);
+  const at=START_TICK+tick,before=beforeWork(p,job,at),events=[];simulationTick(p,context,at,events);
   const produced=events.find(e=>e.kind==='produced'),executed=produced||events.some(e=>e.kind==='burnt');
   if(executed){if(!before)throw Error('missingWorkState');expectedCraftProduct(r.items,job,tier,before.burn);expectedWorkRewards(r.items,p,context,job,at,before,produced);}
   for(const e of events){

@@ -2,7 +2,7 @@ import * as game from './upstream.js';
 import {gatheringPlayer,selectedGatheringSites} from './gathering-model.js';
 import {simulationTicks,combatHot,combatHotWindows} from './combat-hot.js';
 import {manualWindows} from './manual-settings.js';
-import {dropValue,START_TICK} from './simulation.js';
+import {dropValue,START_TICK,simulationTick} from './simulation.js';
 import {validateSimulationSeed} from './simulation-seed.js';
 import {beforeWork,workQualities,expectedWorkRewards,addExpected} from './work-expectation.js';
 const add=(items,id,qty)=>{items[id]=(items[id]??0)+qty;};
@@ -30,7 +30,7 @@ export function simulateGatheringSite(raw,job,site,options={}){
  for(let tick=1;tick<=durationTicks;tick++){
   if(p.activity==='walking')result.movingTicks++;
   if(p.activity==='working'){if(START_TICK+tick<p.stunUntil)result.stunnedTicks++;else result.workingTicks++;}
-  const at=START_TICK+tick,before=beforeWork(p,job,at),events=[];game.tick(p,context,at,events);
+  const at=START_TICK+tick,before=beforeWork(p,job,at),events=[];simulationTick(p,context,at,events);
   const produced=events.find(e=>e.kind==='produced');
   if(produced){
    if(produced.itemId===game.coinItemId)result.coins+=job.output.qty;

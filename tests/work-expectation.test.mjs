@@ -1,3 +1,4 @@
+import {questlessTick} from '../scripts/native-questless.mjs';
 import test from 'node:test';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -32,7 +33,7 @@ test('burn product expectation uses pre-action level while XP and timing retain 
  let expectedBurn=0,completed=0,initialXp=scenario.player.skills.cooking,tick=0;
  while(completed<100){
   tick++;const b=game.burnChance(job,scenario.player),events=[];
-  game.tick(scenario.player,scenario.context,START_TICK+tick,events);
+  questlessTick(game,scenario.player,scenario.context,START_TICK+tick,events);
   if(events.some(e=>e.kind==='produced'||e.kind==='burnt')){expectedBurn+=b;completed++;}
  }
  const r=simulateCrafting(state,job,2,100,{seed:77});

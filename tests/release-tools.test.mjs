@@ -12,7 +12,7 @@ import {verifyHttp,normalizeHostedHtml} from '../scripts/release-http.mjs';
 async function fixture(t){
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'dvi-release-test-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
  for(const dir of ['src','vendor','tests','scripts','docs','reports','.test-artifacts/evidence'])await fs.mkdir(path.join(root,dir),{recursive:true});
- for(const [name,text]of Object.entries({'index.html':'<!doctype html><html><body><div id="app">Loading</div><script type="module" src="/src/app.js"></script></body></html>','_redirects':routes.slice(1).map(r=>`${r} / 200`).join('\n'),'src/app.js':'console.log("app");','vendor/game-original.js':'// source','package.json':JSON.stringify({version:'9.0.0',devDependencies:{}}),'pnpm-lock.yaml':'lock','.gitignore':'.test-artifacts/','README.md':'# Readme\n\n[Docs](docs/topic.md#内容)','DESIGN.md':'# Design','AGENTS.md':'# Agents','docs/topic.md':'# 内容'}))await fs.writeFile(path.join(root,name),text);
+ for(const [name,text]of Object.entries({'index.html':'<!doctype html><html><body><div id="app">Loading</div><script type="module" src="/src/app.js"></script></body></html>','_redirects':routes.slice(1).map(r=>`${r} / 200`).join('\n'),'src/app.js':'console.log("app");','vendor/game-original.js':'// source','package.json':JSON.stringify({version:'9.0.0',devDependencies:{}}),'pnpm-lock.yaml':'lock','.gitattributes':'vendor/game-original.js whitespace=-blank-at-eol','.gitignore':'.test-artifacts/','README.md':'# Readme\n\n[Docs](docs/topic.md#内容)','DESIGN.md':'# Design','AGENTS.md':'# Agents','docs/topic.md':'# 内容'}))await fs.writeFile(path.join(root,name),text);
  const evidence=path.join(root,'.test-artifacts/evidence'),receipt={status:'passed',version:'9.0.0',inputs:await inputs(root),steps:['static','tests','native','extraction','local'].map(name=>({name,status:'passed'}))};await json(path.join(evidence,'check.json'),receipt);
  return {root,evidence,receipt};
 }
@@ -41,7 +41,7 @@ test('package contains only application files, keeps manifest outside and refuse
 });
 test('package evidence is invalidated by app/test/docs/lock changes and rejects incomplete receipts',async t=>{
  const {root,evidence,receipt}=await fixture(t);
- for(const file of ['src/app.js','tests/changed.test.mjs','docs/topic.md','pnpm-lock.yaml']){
+ for(const file of ['src/app.js','tests/changed.test.mjs','docs/topic.md','pnpm-lock.yaml','.gitattributes']){
   const original=await fs.readFile(path.join(root,file)).catch(e=>{if(e.code==='ENOENT')return null;throw e;});await fs.writeFile(path.join(root,file),'changed');
   await assert.rejects(buildPackage(root,evidence,path.join(root,'.test-artifacts/output')),/inputs\/environment changed/);
   if(original===null)await fs.unlink(path.join(root,file));else await fs.writeFile(path.join(root,file),original);
