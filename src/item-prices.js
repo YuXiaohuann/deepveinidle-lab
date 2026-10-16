@@ -10,22 +10,24 @@ export function validItemId(id){
  try{const base=game.baseItemId(id),tier=game.itemTier(id),plus=Math.floor(id/game.encode(0,1));return tier>=0&&tier<=4&&plus<=game.maxEnhancement&&game.encode(game.withRarity(base,tier),plus)===id&&game.item(id).id===id&&(!plus||game.canEnhance(id));}catch{return false;}
 }
 export function itemFamily(id){try{return game.marketFamily(game.baseItemId(id));}catch{return null;}}
-export function priceDefaults(){return {version:2,prices:{},quotes:{},preferences:{categories:Object.fromEntries(marketFamilies.map(f=>[f.key,['weapons','armour','jewellery','tools','mounts'].includes(f.key)?'off':'bidVendor']))}};}
+export function priceDefaults(){return {version:3,prices:{},quotes:{},preferences:{categories:Object.fromEntries(marketFamilies.map(f=>[f.key,['weapons','armour','jewellery','tools','mounts'].includes(f.key)?'off':'bidVendor']))}};}
 export function normalizePriceState(raw){
- if(!record(raw)||raw.version!==2||!record(raw.prices)||!record(raw.quotes)||!record(raw.preferences)||!record(raw.preferences.categories))throw Error('invalidPriceStorage');
+ if(!record(raw)||![2,3].includes(raw.version)||!record(raw.prices)||!record(raw.quotes)||!record(raw.preferences)||!record(raw.preferences.categories))throw Error('invalidPriceStorage');
+ // Game capture times and official generation times use different baselines.
  const next=priceDefaults();
  for(const [key,p] of Object.entries(raw.prices)){
   if(String(Number(key))!==key||!validItemId(Number(key))||!record(p)||p.price!==null&&!validPrice(p.price)||typeof p.locked!=='boolean'||!['manual','ask','bid','vendor'].includes(p.source)||!time(p.updatedAt)||p.quoteCapturedAt!==null&&!time(p.quoteCapturedAt))throw Error('invalidPriceStorage');
-  next.prices[key]={price:p.price,locked:p.locked,source:p.source,updatedAt:p.updatedAt,quoteCapturedAt:p.quoteCapturedAt};
+  next.prices[key]={price:p.price,locked:p.locked,source:p.source,updatedAt:p.updatedAt,quoteCapturedAt:raw.version===2?null:p.quoteCapturedAt};
  }
- const parsed=validateMarketSnapshot({version:1,quotes:raw.quotes,invalid:0});
- if(parsed.invalid)throw Error('invalidPriceStorage');next.quotes=parsed.quotes;
+ if(raw.version===3){
+  const parsed=validateMarketSnapshot({version:1,quotes:raw.quotes,invalid:0});
+  if(parsed.invalid)throw Error('invalidPriceStorage');next.quotes=parsed.quotes;
+ }
  for(const f of marketFamilies){const mode=raw.preferences.categories[f.key];if(!['off','ask','bid','bidVendor','vendor'].includes(mode))throw Error('invalidPriceStorage');next.preferences.categories[f.key]=mode;}
  return next;
 }
 export function validateMarketSnapshot(raw){
  if(!record(raw)||raw.version!==1||!record(raw.quotes)||!Number.isSafeInteger(raw.invalid)||raw.invalid<0)throw Error('invalidMarketData');
- if(raw.error)throw Error(raw.error==='marketSaveFailed'?'marketSaveFailed':'marketCaptureFailed');
  const quotes={};let invalid=raw.invalid;
  for(const [key,q]of Object.entries(raw.quotes)){
   const id=Number(key);if(String(id)!==key||!validItemId(id)||!itemFamily(id)||!record(q)){invalid++;continue;}
@@ -67,7 +69,7 @@ export function clearUnlockedPrices(state){
 export function importItemPrices(state,snapshot,preferences=state.preferences,now=Date.now()){
  const parsed=validateMarketSnapshot(snapshot),quotes=mergeQuotes(state.quotes,parsed.quotes),prices={...state.prices};
  const stats={updated:0,vendor:0,locked:0,missing:0,unavailable:0,stale:0,invalid:parsed.invalid};
- // Include configured items with no captured quote so missing coverage is visible.
+ // Include configured items with no quote so missing coverage is visible.
  const ids=new Set([...game.items.filter(i=>i.id===game.baseItemId(i.id)&&itemFamily(i.id)&&game.canSell(i.id)).map(i=>i.id),...Object.keys(prices).map(Number),...Object.keys(quotes).map(Number)]);
  for(const id of ids){
   const mode=preferences.categories[itemFamily(id)];if(!['ask','bid','bidVendor','vendor'].includes(mode))continue;const side=mode==='bidVendor'?'bid':mode;

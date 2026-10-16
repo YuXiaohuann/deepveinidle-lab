@@ -32,15 +32,14 @@ test('one frame aggregates player, guild and world windows into one saved result
  assert.equal(h.writes.filter(w=>w.key===key).length,1);assert.equal(h.storage.get(key).guild.name,'Latest');assert.deepEqual(h.storage.get(key).worldBuffs,[]);
 });
 
-test('slow storage requests only latest merged state, preserving independent market sides',async()=>{
- let release,hold=false;const h=captureHarness(async(k)=>{if(k===marketKey&&hold){hold=false;await new Promise(r=>release=r);}});
- const s=new h.page.WebSocket('wss://deepveinidle.com/ws');await flush();hold=true;
- h.context.Date={now:()=>1000};s.receive([{t:'marketBook',top:{itemId:1,ask:10}}]);await flush();
+test('slow role storage requests only the latest state after an ongoing save',async()=>{
+ let release,hold=true;const h=captureHarness(async k=>{if(k===key&&hold){hold=false;await new Promise(r=>release=r);}});
+ const s=new h.page.WebSocket('wss://deepveinidle.com/ws');s.receive([{t:'welcome',you:player()}]);await flush();
  const pulls=h.workers[0].sent.filter(m=>m.type==='pull').length;
- for(let i=0;i<100;i++){h.context.Date={now:()=>2000+i};s.receive([{t:'marketBook',top:{itemId:i+2,bid:i+1}}]);}
+ for(let i=0;i<100;i++){const you=player();you.lastTick=200+i;s.receive([{t:'snapshot',you}]);}
  await flush();assert.equal(h.workers[0].sent.filter(m=>m.type==='pull').length,pulls);
- release();await flush();assert.equal(h.writes.filter(w=>w.key===marketKey).length,3);
- const q=h.storage.get(marketKey).quotes;assert.equal(q[1].ask.capturedAt,1000);assert.equal(q[101].bid.capturedAt,2099);assert.equal(Object.keys(q).length,101);
+ release();await flush();assert.equal(h.writes.filter(w=>w.key===key).length,2);
+ assert.equal(h.storage.get(key).player.lastTick,299);
 });
 
 test('capture deadline is fixed while updates continue, then saves latest role',async()=>{
@@ -96,8 +95,23 @@ test('previous connection storage rejection cannot replace current waiting or su
  assert.equal(h.storage.get(key).player.lastTick,500);assert.match(h.badge().textContent,/Character captured/);
 });
 
-test('coalescing valid then invalid quotes does not announce an invalid-only saved cache',async()=>{
- const h=captureHarness(undefined,{autoSave:false}),s=new h.page.WebSocket('wss://deepveinidle.com/ws');
- s.receive([{t:'marketBook',top:{itemId:1,bid:10}}]);s.receive([{t:'marketBook',top:{itemId:1,bid:-1}}]);await flush();h.fire(100);await flush();
- assert.equal(h.storage.get(marketKey).quotes[1].bid.invalid,true);assert.match(h.badge().textContent,/Waiting/);
+test('all market message types are ignored without storage writes or success notices',async()=>{
+ const h=captureHarness(),s=new h.page.WebSocket('wss://deepveinidle.com/ws');await flush();
+ const market=[{t:'marketBook',top:{itemId:1,bid:10}},{t:'marketBooks',tops:[{itemId:2,ask:20}]},{t:'marketDepth',itemId:3,asks:[{price:30}],bids:[]}];
+ s.receive(market);await flush();assert.equal(h.writes.length,0);assert.equal(h.storage.has(marketKey),false);assert.match(h.badge().textContent,/Waiting/);
+ s.receive([{t:'welcome',you:player()},...market]);await flush();assert.deepEqual([...h.storage.keys()],[key]);assert.match(h.badge().textContent,/Character captured/);
+ const writes=h.writes.length,timer=[...h.timers.keys()];h.hideBadge();s.receive(market);await flush();assert.equal(h.writes.length,writes);assert.equal(h.badge(),null);assert.equal(timer.length,1);
+});
+
+test('role success waits for storage and later snapshots do not repeat or extend it',async()=>{
+ let release;const h=captureHarness(async()=>{await new Promise(r=>release=r);}),s=new h.page.WebSocket('wss://deepveinidle.com/ws');
+ s.receive([{t:'welcome',you:player()}]);await flush();assert.match(h.badge().textContent,/Waiting/);
+ release();await flush();assert.match(h.badge().textContent,/Character captured/);const timers=[...h.timers.keys()];
+ s.receive([{t:'snapshot',you:player()}]);await flush();release();await flush();assert.deepEqual([...h.timers.keys()],timers);
+ h.hideBadge();s.receive([{t:'snapshot',you:player()}]);await flush();release();await flush();assert.equal(h.badge(),null);
+});
+
+test('role storage rejection is explicit',async()=>{
+ const h=captureHarness(async()=>{throw Error('quota');}),s=new h.page.WebSocket('wss://deepveinidle.com/ws');
+ s.receive([{t:'welcome',you:player()}]);await flush();assert.match(h.badge().textContent,/Character could not be saved/);
 });

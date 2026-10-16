@@ -41,12 +41,18 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 ## 角色捕获 Worker 专项
 
-运行 `node --test tests/capture-worker.test.mjs tests/character-import.test.mjs tests/market-import.test.mjs` 验证捕获、保存协调及桥接。运行 `node scripts/check-capture-browser.mjs` 后，在 Chrome 打开 `http://127.0.0.1:4186/`，页面自动验证真实 Blob Worker、字段裁剪、慢存储合并、跨连接隔离和失败提示，完成后显示 PASS。此服务只暴露测试页与当前候选脚本，不连接游戏，GM 存储和 WebSocket 使用合成替身；`PORT` 可修改端口。源码变化后刷新重测，结束后停止服务。
+运行 `node --test tests/capture-worker.test.mjs tests/character-import.test.mjs tests/market-import.test.mjs` 验证角色捕获、保存协调、市场捕获移除、角色桥接及官方行情适配。运行 `node scripts/check-capture-browser.mjs` 后，在 Chrome 打开 `http://127.0.0.1:4186/`，页面自动验证真实 Blob Worker、字段裁剪、慢存储合并、跨连接隔离和失败提示，完成后显示 PASS。此服务只暴露测试页与当前候选脚本，不连接游戏，GM 存储和 WebSocket 使用合成替身；`PORT` 可修改端口。源码变化后刷新重测，结束后停止服务。
 
-本地真实 Worker 验证不代表脚本管理器沙箱兼容或真实账号卡顿改善；安装／更新 2.6.0 后仍须刷新游戏和实验室，并单独记录该环境的验收。Worker 不可用时明确提示失败并要求刷新，不会回退到主线程捕获。
+本地真实 Worker 验证不代表脚本管理器沙箱兼容或真实账号卡顿改善；安装／更新 2.7.0 后仍须刷新游戏和实验室，并单独记录该环境的验收。Worker 不可用时明确提示失败并要求刷新，不会回退到主线程捕获。
 
 ## 发布工具开发
 
 发布前检查、打包及目标验收使用 `pnpm release:check`、`pnpm release:package`、`pnpm release:verify`，参数及证据规则见 [发布流程](release.md)。三个入口不自动提交、登录或部署。开发发布工具时先运行 `node --test --test-reporter=tap tests/release-tools.test.mjs`；其中 HTTP 测试只使用临时回环服务器。完整应用测试仍在正式发布前执行。
 
 完整独立原始计算对照的常规入口为 `node scripts/native-audit.mjs`，复用已核验全部页面审计；日期型报告脚本仅保留历史证据。浏览器依赖为固定版本 playwright-core，需本机 Chrome／Chromium，或通过 RELEASE_BROWSER 指定可执行文件；不下载浏览器，也不使用用户已有会话和游戏账号。
+
+## 官方行情与价格弹窗专项
+
+运行 `node --test tests/market-import.test.mjs tests/item-prices.test.mjs tests/item-price-store.test.mjs tests/item-price-status.test.mjs`。运行 `node tests/market-prices-browser.mjs` 验证官方 API 真实跨域、双语桌面／390px 弹窗、导入与锁定、错误保留及真实 Blob Worker；需要网络、本机监听和 Chrome。结果和截图保存在 `.test-artifacts/market-prices/`；接口异常明确失败，不以请求替身通过代替真实跨域验证。功能场景使用可控响应替身，不连接游戏账号。
+
+仅修改价格操作栏布局、提示或导入请求时机时，运行 `node --test tests/item-price-status.test.mjs tests/item-prices.test.mjs tests/item-price-store.test.mjs` 及 `node tests/market-prices-browser.mjs --toolbar-only`，后者仅执行双语桌面／390px 操作栏和弹窗四组验证，包含打开／重开零请求、仅点击导入才请求、错误持续与显式重试，结果保存至 `.test-artifacts/price-toolbar/`，不重跑无关的真实 API 或角色 Worker 专项。此模式仍需要本机监听及 Chrome，行情使用请求替身。
