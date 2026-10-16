@@ -6,14 +6,14 @@ const int=(v,min,max,fallback)=>Math.floor(limit(v,min,max,fallback));
 export function manualDefaults(){return {
  progress:Object.fromEntries(game.allSkills.map(k=>[k,0])),xp:Object.fromEntries(game.allSkills.map(k=>[k,-1])),
  perks:Object.fromEntries(game.perks.filter(p=>p.id!=='meals').map(p=>[p.id,0])),
- enemySelection:'all',guildXp:0,weeklyXp:0,simulationHours:24,vendorValues:true,valuationMode:'custom',customSimulation:false,hotSetting:'game',blessing:false,blessingMinutes:-1,
+ enemySelection:'all',guildXp:0,weeklyXp:0,worldRarity:0,simulationHours:24,vendorValues:true,valuationMode:'custom',customSimulation:false,hotSetting:'game',blessing:false,blessingMinutes:-1,
  brewMinutes:Object.fromEntries(game.potions.map(p=>[p.kind,-1])),fedMinutes:-1,rootedMinutes:-1,
  foodRule:0,foodMaxTier:4,foodPerTrip:-1,actualInventory:false,bank:[],pack:[],overflow:[],
  bankSlotsBought:0,unlimitedBank:true,ironman:false,coins:0,
  placed:Object.fromEntries(game.rooms.map(r=>[r.id,true])),upgradeMinutes:Object.fromEntries(game.rooms.map(r=>[r.id,-1])),
  windows:[],hotMode:1,hotMinutes:-1,allGear:false,playerId:1,seed:0,currentTick:game.predictionStartTick,
 };}
-export function normalizeManual(raw={}, {wholeHours=true}={}){
+export function normalizeManual(raw={}, {wholeHours=true,fractionalWorldXp=false}={}){
  const s=manualDefaults();raw=raw??{};
  for(const p of game.perks)if(p.id!=='meals')s.perks[p.id]=int(raw.perks?.[p.id]??0,0,p.ranks,0);
  for(const key of ['blessing','ironman','allGear','customSimulation','vendorValues'])s[key]=raw[key]===undefined?s[key]:raw[key]===true;
@@ -25,7 +25,8 @@ export function normalizeManual(raw={}, {wholeHours=true}={}){
  s.valuationMode='custom';
  s.vendorValues=s.valuationMode!=='quantity';
  s.enemySelection=normalizeEnemySelection(raw.enemySelection);
- s.weeklyXp=int(raw.weeklyXp??0,0,1e7,0);
+ s.weeklyXp=(fractionalWorldXp?limit:int)(raw.weeklyXp??0,0,1e7,0);
+ s.worldRarity=limit(raw.worldRarity??0,0,1e7,0);
  s.simulationHours=wholeHours
   ?Math.round(limit(raw.simulationHours??s.simulationHours,1,Math.floor(MAX_SIMULATION_MINUTES/60),s.simulationHours))
   :Math.round(limit(Number(raw.simulationHours??s.simulationHours)*60,1,MAX_SIMULATION_MINUTES,s.simulationHours*60))/60;
@@ -44,8 +45,8 @@ export function applyManualPlayer(p,s){
 }
 // The upstream engine adds hot bonuses to context windows. Cancel them for the
 // complete prediction clock, including initialization and the final tick.
-export function manualWindows(start=game.predictionStartTick,end=start+6000,weeklyXp=0,cancelHot=true,skill='combat'){
- const windows=weeklyXp?[{fromTick:start,toTick:end,xpMult:1+weeklyXp/100,rarityMult:1}]:[];
+export function manualWindows(start=game.predictionStartTick,end=start+6000,weeklyXp=0,cancelHot=true,skill='combat',worldRarity=0){
+ const windows=weeklyXp||worldRarity?[{fromTick:start,toTick:end,xpMult:1+weeklyXp/100,rarityMult:1+worldRarity/100}]:[];
  if(!cancelHot)return windows;
  for(let tick=start;tick<=end;){
   const hot=game.hotSkill(tick),until=Math.min(end,hot.until-1);

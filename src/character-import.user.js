@@ -3,7 +3,7 @@
 // @name:en      Deep Vein Idle · Character import
 // @name:zh-cn   Deep Vein Idle · 角色配置导入
 // @namespace    https://dvi-lab.pages.dev/
-// @version      2.7.0
+// @version      2.8.0
 // @description  读取角色配置供实验室导入；不发送游戏指令。
 // @match        https://deepveinidle.com/*
 // @match        https://dvi-lab.pages.dev/*
@@ -42,7 +42,7 @@
      own=you;
     }else if(m?.t!=='windows'&&m?.t!=='guild')continue;
     worldTick=f.tick;
-    if(Object.hasOwn(m,'windows'))worldBuffs=Array.isArray(m.windows)?m.windows.map(w=>object(w)?Object.fromEntries(['label','fromTick','toTick','xpMult'].filter(k=>Object.hasOwn(w,k)).map(k=>[k,w[k]])):w):undefined;
+    if(Object.hasOwn(m,'windows'))worldBuffs=Array.isArray(m.windows)?m.windows.map(w=>object(w)?Object.fromEntries(['label','fromTick','toTick','xpMult','rarityMult'].filter(k=>Object.hasOwn(w,k)).map(k=>[k,w[k]])):w):undefined;
     if(player||own)changed=true;
    }
    if(changed){if(own)player=clean(Object.fromEntries(fields.filter(k=>Object.hasOwn(own,k)).map(k=>[k,own[k]])));capturedAt=at;revisions.character++;}
@@ -55,7 +55,7 @@
      frame(d.raw,d.at);
      self.postMessage({type:'ack',epoch,sequence:d.sequence,chars:d.raw.length,revisions});
     }else if(d.type==='pull'){
-     const snapshot={version:2,capturedAt,player,guild,worldBuffs,worldTick};
+     const snapshot={version:2,capturedAt,player,guild,worldBuffs,worldTick,worldBuffsVersion:1};
      self.postMessage({type:'snapshot',epoch,kind:d.kind,revision:revisions[d.kind],notify:true,snapshot});
     }
    }catch(error){

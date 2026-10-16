@@ -1,0 +1,47 @@
+✔ nine categories import into existing manual rules, including sparse maps and inactive buffs (2.636541ms)
+✔ configuration import always covers all categories and rejects incompatible data atomically (0.641375ms)
+✔ encoded gear retains quality and enhancement; mixed armour is exposed and unsupported slots keep original (0.452209ms)
+✔ brew buckets choose current tier rather than highest stored tier; malformed buckets reset config (0.467375ms)
+✔ food priority, fountain-only and missing fields preserve unsupported choices explicitly (0.953417ms)
+✔ malformed sparse ranks reset to defaults with explicit warnings (0.239292ms)
+✔ userscript captures required own-role fields without unrelated data or credentials (7.29025ms)
+✔ new connections and characters replace snapshots rather than merging previous data (1.623542ms)
+✔ shared DOM bridge works across different windows and awaits asynchronous script storage (1.316375ms)
+✔ bridge ignores malformed requests and reports asynchronous storage rejection (0.940334ms)
+✔ a script starting after the first probe is detected on retry, with timers stopped after success (0.678792ms)
+✔ unanswered requests fail after the bounded deadline and stop retries (0.359458ms)
+✔ capture badge survives DOM removal and displays success only after storage is complete (1.8865ms)
+✔ script metadata provides English and simplified Chinese names (0.296291ms)
+✔ success badge hides after five seconds without reappearing on redraws or later snapshots (1.566666ms)
+✔ weekly goals use inclusive server tick boundaries and additive combat XP (0.5875ms)
+✔ missing or invalid world data resets weekly XP with an explicit warning (0.543667ms)
+✔ userscript captures complete world windows and refreshes standalone windows (1.994417ms)
+✔ waiting badge persists before game data and storage, including page redraws (1.108917ms)
+✔ an old connection completing storage cannot dismiss the new connection waiting badge (1.780416ms)
+✔ capture storage is serialized so a late old connection cannot overwrite a new character (1.101625ms)
+✔ old bridge replies do not win over the current script and are reported if no update answers (0.7865ms)
+✔ both panels share one probe and common bilingual status messages (4.582875ms)
+✔ combat import controls omit snapshot action and explanation in both languages (0.641834ms)
+✔ ordinary character requests ignore former debug responses and keep waiting for the role bridge (0.486708ms)
+✔ hidden guild identity survives save/load, clears old imports and resets malformed identities (0.859583ms)
+✔ userscript captures guild welcome/updates/leave and isolates connections without private guild data (2.202709ms)
+✔ partial imports retain simulation settings and unavailable food fields while resetting other settings (0.712667ms)
+✔ invalid food fields preserve existing food settings while valid food fields still import (0.265917ms)
+✔ imports recalculate mixed gear toggle and whole-import failures never clear current settings (0.261166ms)
+✔ food buffs import independently when only one value is invalid (0.124542ms)
+✔ import warning text separates food and groups other failed categories without internal field names (0.157042ms)
+✔ automatic food import follows native warehouse selection and keeps simulation strategy (0.8095ms)
+✔ automatic food failures retain selection and still import independent fields (0.857541ms)
+✔ fountain-only import needs no food selection or warehouse; specified food needs no stock (0.679333ms)
+✔ automatic food ties use item id order and ignore nonfood stock (0.312583ms)
+✔ userscripts match project preview channels and bridge on preview routes (2.089292ms)
+✔ crafting import button reads through the userscript DOM bridge (1.154166ms)
+✔ debug configuration download round-trips both imports; failures preserve state and file survives redraw (38.390584ms)
+ℹ tests 39
+ℹ suites 0
+ℹ pass 39
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1215.058666

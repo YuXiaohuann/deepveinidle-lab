@@ -19,7 +19,7 @@ const integer=(v,min,max,fallback=min)=>Number.isFinite(Number(v))?Math.min(max,
 export function normalize(raw){
  const s=defaults(); if(!raw||typeof raw!=='object')return s;
  s.guild=readGuild(raw.guild);
- s.manual=normalizeManual(raw.manual);
+ s.manual=normalizeManual(raw.manual,{fractionalWorldXp:true});
  for(const k of skills)s.levels[k]=integer(raw.levels?.[k]??s.levels[k],1,game.maxLevel,s.levels[k]);
  for(const slot of slots){const v=raw.gear?.[slot];if(!v)continue;const id=integer(v.id,0,999);if(baseGear.some(x=>x.itemId===id&&x.slot===slot))s.gear[slot]={id,tier:integer(v.tier??0,0,4),plus:integer(v.plus??0,0,game.maxEnhancement)};}
  if(foods.some(x=>x.id===Number(raw.food?.id)))s.food={id:Number(raw.food.id),tier:integer(raw.food.tier??0,0,4)};

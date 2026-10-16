@@ -35,7 +35,7 @@ export function createScenario(raw,monster=null,{now=Date.now(),seed=0}={}){
  });
  const m=state.manual;
  if(m.foodRule===3)p.eatAt=0;
- const context={...game.createContext(game.world,validateSimulationSeed(seed)),windows:manualWindows(START_TICK,START_TICK+durationTicks,m.weeklyXp,m.hotSetting!=='game'),hypothetical:true};
+ const context={...game.createContext(game.world,validateSimulationSeed(seed)),windows:manualWindows(START_TICK,START_TICK+durationTicks,m.weeklyXp,m.hotSetting!=='game','combat',m.worldRarity),hypothetical:true};
  if(m.hotSetting==='current')context.windows.push(...combatHotWindows(combatHot(now,m.simulationHours)));
  return {player:p,context,durationTicks};
 }

@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import {captureHarness} from './helpers/capture-harness.mjs';
 import {importCharacter,importWarningText} from '../src/character-import.js';
 import {game,defaults,preset,slots,normalize} from '../src/model.js';
-const fixture=()=>({version:2,capturedAt:Date.now(),player:{lastTick:100,skills:{melee:game.levelXp(37)+20,ranged:game.levelXp(82),magic:0,defence:game.levelXp(42),hitpoints:game.levelXp(51)},equipment:Object.fromEntries(slots.map(k=>[k,null])),foodItemId:game.withRarity(64,2),eatAt:.75,foodMaxTier:3,foodPerTrip:-2,brews:{warrior:200,haste:100,fed:200,rooted:99,blessing:200},brewTier:{warrior:2},house:{post:90,storeroom:4,target:50},houseFurniture:{post:{placed:true}},masteries:{xp:9,move:7},perks:{pockets:3,meals:4,rest:2},guildBonus:.12,homeBank:null,ironman:true}});
+const fixture=()=>({version:2,worldBuffsVersion:1,capturedAt:Date.now(),player:{lastTick:100,skills:{melee:game.levelXp(37)+20,ranged:game.levelXp(82),magic:0,defence:game.levelXp(42),hitpoints:game.levelXp(51)},equipment:Object.fromEntries(slots.map(k=>[k,null])),foodItemId:game.withRarity(64,2),eatAt:.75,foodMaxTier:3,foodPerTrip:-2,brews:{warrior:200,haste:100,fed:200,rooted:99,blessing:200},brewTier:{warrior:2},house:{post:90,storeroom:4,target:50},houseFurniture:{post:{placed:true}},masteries:{xp:9,move:7},perks:{pockets:3,meals:4,rest:2},guildBonus:.12,homeBank:null,ironman:true}});
 test('nine categories import into existing manual rules, including sparse maps and inactive buffs',()=>{
  const old=preset('ranged');old.manual.weeklyXp=17;old.manual.simulationHours=6;old.manual.customSimulation=true;old.manual.hotSetting='off';old.manual.enemySelection=`monster-${game.monsters[0].id}`;old.manual.vendorValues=true;old.manual.valuationMode='vendor';
  const result=importCharacter(old,fixture()),s=result.state;
@@ -130,7 +130,7 @@ test('success badge hides after five seconds without reappearing on redraws or l
  g.frame(socket,fixture().player);await new Promise(resolve=>setImmediate(resolve));
  assert.equal(g.stored.length,2);assert.equal(g.badge(),null);
  new g.page.WebSocket('wss://deepveinidle.com/ws');assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');
- assert.match(script,/^\/\/ @version\s+2\.7\.0$/m);
+ assert.match(script,/^\/\/ @version\s+2\.8\.0$/m);
 });
 
 const weeklyWindow=(label='Weekly goal: gathered',fromTick=100,toTick=200,xpMult=1.1)=>({label,fromTick,toTick,xpMult});
@@ -154,7 +154,7 @@ test('userscript captures complete world windows and refreshes standalone window
  g.frame(socket,fixture().player,'welcome',{seed:42,windows:[weeklyWindow(),weeklyWindow('Event',0,200,2)]});
  await new Promise(resolve=>setImmediate(resolve));
  let snap=structuredClone(g.stored.at(-1));assert.equal(snap.worldBuffs.length,2);assert.equal(snap.worldTick,100);
- assert.equal(importCharacter(preset('ranged'),snap).state.manual.weeklyXp,10);
+ assert.equal(importCharacter(preset('ranged'),snap).state.manual.weeklyXp,110);
  g.frame(socket,undefined,'windows',{windows:[weeklyWindow(),weeklyWindow('Weekly goal: felled')]},200);
  await new Promise(resolve=>setImmediate(resolve));snap=structuredClone(g.stored.at(-1));assert.equal(importCharacter(preset('ranged'),snap).state.manual.weeklyXp,20);
  g.frame(socket,fixture().player,'welcome');await new Promise(resolve=>setImmediate(resolve));assert.equal(g.stored.at(-1).worldBuffs,undefined);

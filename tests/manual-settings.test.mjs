@@ -80,9 +80,9 @@ test('food threshold and carry choices normalize valid values and migrate old cu
  for(const foodPerTrip of [5,10,20,-2,-1]){const s=preset('ranged');s.manual.foodPerTrip=foodPerTrip;assert.equal(normalize(s).manual.foodPerTrip,foodPerTrip);assert.equal(createScenario(s).player.foodPerTrip,foodPerTrip);}
  for(const foodPerTrip of [0,1,7,33,-3,null,'invalid']){const s=preset('ranged');s.manual.foodPerTrip=foodPerTrip;assert.equal(normalize(s).manual.foodPerTrip,-1);}
 });
-test('weekly goal XP persists in whole percentage steps and adds to guild and blessing',()=>{
+test('world buff XP preserves fractional percentages and adds to guild and blessing',()=>{
  const s=preset('ranged');s.manual.weeklyXp=30;s.manual.guildXp=11;s.manual.blessing=true;
- assert.equal(normalize(s).manual.weeklyXp,30);s.manual.weeklyXp=30.8;assert.equal(normalize(s).manual.weeklyXp,30);s.manual.weeklyXp=30;
+ assert.equal(normalize(s).manual.weeklyXp,30);s.manual.weeklyXp=30.8;assert.equal(normalize(s).manual.weeklyXp,30.8);s.manual.weeklyXp=30;
  const result=simulateMonster(s,game.monsters[0]);
  // Independent Gnawer XP: 8*1.46 rounds to 12; defence and HP 2*1.46 round to 3 each.
  assert.ok(result.xp>=result.kills*18&&result.xp<(result.kills+1)*18);

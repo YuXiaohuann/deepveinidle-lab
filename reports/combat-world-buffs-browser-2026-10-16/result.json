@@ -1,0 +1,11 @@
+{
+  "base": "http://127.0.0.1:4173",
+  "cases": [
+    "native Blob Worker captures both effects and capability marker",
+    "zh/1440: import, decimals, persistence, old capture warning, reset, layout",
+    "zh/390: import, decimals, persistence, old capture warning, reset, layout",
+    "en/1440: import, decimals, persistence, old capture warning, reset, layout",
+    "en/390: import, decimals, persistence, old capture warning, reset, layout"
+  ],
+  "errors": []
+}

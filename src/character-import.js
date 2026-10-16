@@ -3,12 +3,13 @@ import {game,defaults,normalize,slots,skills,foods,gearDetails} from './model.js
 import {combatRooms,combatMasteries,combatPerks,combatPotions} from './combat-options.js';
 export const importTypes=[['skills','技能','Skills'],['equipment','装备','Equipment'],['food','食物','Food'],['potions','药水','Potions'],['home','家园','Home'],['masteries','精通','Masteries'],['guild','公会与祝福','Guild & blessing'],['supplies','补给','Supplies'],['perks','特权','Perks']];
 export function importWarningText(language,warnings=[]){
- const zh=language==='zh',categories=new Set(warnings.map(item=>item.split(': ')[0])),lines=[];
+ const zh=language==='zh',categories=new Set(warnings.filter(item=>item!=='guild: worldBuffs.upgrade').map(item=>item.split(': ')[0])),lines=[];
  if(categories.has('food')){
   const reasons=[['food.bankMissing','仓库数据缺失','Warehouse data is missing'],['food.bankInvalid','仓库数据异常','Warehouse data is invalid'],['food.noCandidate','仓库没有符合策略及稀有度上限的食物','No warehouse food matches the strategy and rarity cap'],['foodMaxTier','自动进食稀有度上限无效','The automatic food rarity cap is invalid']];
   const details=reasons.filter(([key])=>warnings.includes(`food: ${key}`)).map(r=>r[zh?1:2]);
   lines.push((zh?'【食物】部分配置未导入，已保留原值，请手动检查':'[Food] Some settings were not imported; previous values were kept. Please check manually.')+(details.length?(zh?'：': ' ')+details.join(zh?'；':'; '):''));
  }
+ if(warnings.includes('guild: worldBuffs.upgrade'))lines.push(zh?'【世界增益】请更新 userscript 至 2.8.0 或更新版本，刷新游戏后重新捕获并导入；世界增益经验与稀有度已重置为 0%。':'[World buffs] Update userscript to 2.8.0 or later, refresh the game, recapture and import again. World buff XP and rarity were reset to 0%.');
  const others=importTypes.filter(([id])=>id!=='food'&&categories.has(id)).map(type=>type[zh?1:2]);
  if(others.length)lines.push(zh?`【${others.join('、')}】导入失败，请手动配置`:`[${others.join(', ')}] import failed. Please configure manually.`);
  return lines.join('\n');
@@ -104,9 +105,14 @@ export function importCharacter(current,snapshot){
    put('guildBonus',p.guildBonus,v=>valid(v,0,1e5),v=>state.manual.guildXp=v*100);
    if(record(p.brews)&&int(p.brews.blessing??0)){state.manual.blessing=active('blessing');applied.add(category);}else warn('blessing');
    const windows=snapshot.worldBuffs,tick=snapshot.worldTick;
-   if(int(tick)&&Array.isArray(windows)&&windows.every(w=>record(w)&&int(w.fromTick)&&int(w.toTick,w.fromTick)&&valid(w.xpMult??1,1,1e5))){
-    state.manual.weeklyXp=Math.round(windows.filter(w=>['Weekly goal: gathered','Weekly goal: felled'].includes(w.label)&&w.fromTick<=tick&&tick<=w.toTick).reduce((sum,w)=>sum+(w.xpMult-1)*100,0)*1e8)/1e8;
-    applied.add(category);
+   if(snapshot.worldBuffsVersion!==1)warn('worldBuffs.upgrade');
+   else if(int(tick)&&Array.isArray(windows)&&windows.every(w=>record(w)&&int(w.fromTick)&&int(w.toTick,w.fromTick)&&valid(w.xpMult??1,1,100001)&&valid(w.rarityMult??1,1,100001))){
+    const active=windows.filter(w=>w.fromTick<=tick&&tick<=w.toTick);
+    const xp=Math.round(active.reduce((sum,w)=>sum+((w.xpMult??1)-1)*100,0)*1e8)/1e8;
+    const rare=Math.round(active.reduce((sum,w)=>sum+((w.rarityMult??1)-1)*100,0)*1e8)/1e8;
+    if(valid(xp,0,1e7)&&valid(rare,0,1e7)){
+     state.manual.weeklyXp=xp;state.manual.worldRarity=rare;applied.add(category);
+    }else warn('weeklyXp.reset');
    }else warn('weeklyXp.reset');
   }
   if(category==='supplies'){

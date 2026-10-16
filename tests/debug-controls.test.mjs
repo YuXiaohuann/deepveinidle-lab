@@ -15,7 +15,7 @@ test('debug configuration download round-trips both imports; failures preserve s
  globalThis.document=new Document();globalThis.CustomEvent=class extends Event{constructor(type,args){super(type);this.detail=args.detail;}};
  URL.createObjectURL=value=>{blob=value;return 'blob:test';};URL.revokeObjectURL=()=>{};
  const player=createScenario(preset('ranged')).player,capturedAt=Date.now();
- let source={version:2,capturedAt,player};
+ let source={version:2,capturedAt,player,worldBuffsVersion:1,worldTick:100,worldBuffs:[{fromTick:0,toTick:200,xpMult:1.3525,rarityMult:1.7075}]};
  document.addEventListener('dvi-character-request',event=>{const request=JSON.parse(event.detail);document.dispatchEvent(new CustomEvent('dvi-character-response',{detail:JSON.stringify({source:'dvi-character-script',id:request.id,version:'2.4',snapshot:source})}));});
  try{
   const {renderDebug}=await import('../src/debug-controls.js');
@@ -31,6 +31,7 @@ test('debug configuration download round-trips both imports; failures preserve s
   combat.manual.vendorValues=true;combat.manual.valuationMode='vendor';combat.manual.hotSetting='off';combat.manual.simulationHours=6.5;combat.manual.customSimulation=true;
   const beforeConfigImport=structuredClone(combat);
   await buttons[0].onclick();assert.deepEqual(combat,importCharacter(beforeConfigImport,source).state);
+  assert.equal(combat.manual.weeklyXp,35.25);assert.equal(combat.manual.worldRarity,70.75);
   assert.equal(combat.manual.vendorValues,true);assert.equal(combat.manual.hotSetting,'off');assert.equal(combat.manual.simulationHours,7);assert.equal(combat.manual.customSimulation,true);
   await buttons[1].onclick();assert.deepEqual(enhancement,importEnhancement(enhancementDefaults(),source).state);
   language='en';callbacks.refresh();assert.equal(host.querySelector('#debug-filename').textContent,'configuration.json');
