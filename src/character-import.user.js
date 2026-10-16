@@ -3,9 +3,10 @@
 // @name:en      Deep Vein Idle · Character import
 // @name:zh-cn   Deep Vein Idle · 角色配置导入
 // @namespace    https://dvi-lab.pages.dev/
-// @version      2.8.0
+// @version      2.8.1
 // @description  读取角色配置供实验室导入；不发送游戏指令。
 // @match        https://deepveinidle.com/*
+// @match        https://cn.deepveinidle.com/*
 // @match        https://dvi-lab.pages.dev/*
 // @match        https://*.dvi-lab.pages.dev/*
 // @match        http://localhost/*
@@ -65,7 +66,7 @@
   };
   self.postMessage({type:'ready'});
  }
- if(location.origin==='https://deepveinidle.com'){
+ if(['https://deepveinidle.com','https://cn.deepveinidle.com'].includes(location.origin)){
   const page=unsafeWindow,NativeSocket=page.WebSocket;
   const slots={character:{key}};
   let latestSocket,epoch=0,sequence=0,worker,workerURL,ready=false,stopped=false,readyTimer,ackTimer;

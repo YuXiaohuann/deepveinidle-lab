@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 export const captureScript=fs.readFileSync(new URL('../../src/character-import.user.js',import.meta.url),'utf8');
-export function captureHarness(write,{autoSave=true,workerFailure=false}={}){
+export function captureHarness(write,{autoSave=true,workerFailure=false,origin='https://deepveinidle.com'}={}){
  const storage=new Map(),writes=[],timers=new Map(),workers=[],urls=new Map();
  let badge=null,timerId=0,observing=false,observer,hidden;
  const page={addEventListener(type,fn){if(type==='pagehide')hidden=fn;},WebSocket:class{
@@ -33,7 +33,7 @@ export function captureHarness(write,{autoSave=true,workerFailure=false}={}){
   resume(){this.paused=false;for(const run of this.inbox.splice(0))queueMicrotask(run);}
   terminate(){this.terminated=true;this.inbox=[];}
  }
- const context={unsafeWindow:page,document,location:{origin:'https://deepveinidle.com',host:'deepveinidle.com',href:'https://deepveinidle.com/'},URL:WorkerURL,Blob,Worker,Date,console:{error(){}},
+ const context={unsafeWindow:page,document,location:{origin,host:new URL(origin).host,href:origin+'/'},URL:WorkerURL,Blob,Worker,Date,console:{error(){}},
   setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});if(ms===100&&autoSave)queueMicrotask(()=>{if(timers.delete(id))fn();});return id;},
   clearTimeout:id=>timers.delete(id),MutationObserver:class{constructor(fn){observer=fn;}observe(){observing=true;}disconnect(){observing=false;}},
   GM_setValue:async(key,value)=>{const copy=structuredClone(value);writes.push({key,value:copy});await write?.(key,copy);storage.set(key,copy);}

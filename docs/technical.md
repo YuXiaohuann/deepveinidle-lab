@@ -8,7 +8,7 @@
 
 战斗和强化导入区域均不展示刷新读取提示；战斗页不展示配置导入说明段落，对应英文同步移除。安装／更新角色 userscript 链接与导入按钮使用一致的字号、颜色、边框、背景、宽度、高度及交互样式，保持独立一行和新标签打开行为。验收检查两页双语文案移除及链接、导入按钮样式一致。配置导入及导出无需打开游戏战斗预测列表。
 
-- 角色 userscript 2.8.0 保留安装入口、双语名称、document-start、现有游戏／线上／本机地址及共享 document 的 JSON CustomEvent 桥接；`https://*.dvi-lab.pages.dev/*` 匹配该项目的预览分支与部署地址，不扩大到其他 Pages 项目。角色桥接版本仍为 2.4，角色数据协议仍为 2，存储键 `dvi-character-snapshot-v2` 保持兼容；不再提供市场桥接或存储。
+- 角色 userscript 2.8.1 保留安装入口、双语名称、document-start、现有游戏／线上／本机地址及共享 document 的 JSON CustomEvent 桥接；游戏捕获仅在 `https://deepveinidle.com/*` 与 `https://cn.deepveinidle.com/*` 启用，两站均只旁听各自同源 `/ws`。`https://*.dvi-lab.pages.dev/*` 匹配该项目的预览分支与部署地址，不扩大到其他 Pages 项目。角色桥接版本仍为 2.4，角色数据协议仍为 2，存储键 `dvi-character-snapshot-v2` 保持兼容；不再提供市场桥接或存储。验收覆盖两游戏域名的脚本匹配、角色捕获保存及非同源连接不捕获。
 - 角色脚本旁听 own-role welcome/snapshot、公会与世界窗口，仅保存支持配置映射的字段；不安装 JSON 解析或预测字段读取钩子，不捕获预测输入。不发送游戏命令、不开额外游戏连接、不读取认证或聊天消息。
 - 安装／更新脚本后刷新游戏和实验室。配置导入使用最近角色数据，显示其读取时间；跨连接／角色清空本连接状态，串行存储避免旧异步写入覆盖新数据。捕获失败、存储失败、旧协议及缺数据明确提示。
 - 不维护调试专用 userscript、`dvi-debug-request/response` 桥接或 `dvi-debug-snapshot-v2` 存储读写。旧脚本管理器数据不自动读取或迁移；原有安装脚本由用户在脚本管理器自行移除。

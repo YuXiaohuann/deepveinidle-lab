@@ -130,7 +130,7 @@ test('success badge hides after five seconds without reappearing on redraws or l
  g.frame(socket,fixture().player);await new Promise(resolve=>setImmediate(resolve));
  assert.equal(g.stored.length,2);assert.equal(g.badge(),null);
  new g.page.WebSocket('wss://deepveinidle.com/ws');assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');
- assert.match(script,/^\/\/ @version\s+2\.8\.0$/m);
+ assert.match(script,/^\/\/ @version\s+2\.8\.1$/m);
 });
 
 const weeklyWindow=(label='Weekly goal: gathered',fromTick=100,toTick=200,xpMult=1.1)=>({label,fromTick,toTick,xpMult});
@@ -364,6 +364,8 @@ test('automatic food ties use item id order and ignore nonfood stock',()=>{
 test('userscripts match project preview channels and bridge on preview routes',async()=>{
  for(const [source,version]of [[script,'2.4']]){
   const matches=[...source.matchAll(/^\/\/ @match\s+(\S+)$/gm)].map(m=>new RegExp('^'+m[1].replace(/[.+?^${}()|[\]\\]/g,'\\$&').replaceAll('*','.*')+'$'));
+  for(const host of ['deepveinidle.com','cn.deepveinidle.com'])assert.ok(matches.some(m=>m.test(`https://${host}/`)));
+  assert.ok(!matches.some(m=>m.test('https://other.deepveinidle.com/')));
   for(const host of ['dvi-lab.pages.dev','preview.dvi-lab.pages.dev','feature-x.dvi-lab.pages.dev','b32d355e.dvi-lab.pages.dev'])assert.ok(matches.some(m=>m.test(`https://${host}/gather`)));
   assert.ok(!matches.some(m=>m.test('https://another-project.pages.dev/gather')));
   for(const pathname of ['/gather','/debug','/debug/']){

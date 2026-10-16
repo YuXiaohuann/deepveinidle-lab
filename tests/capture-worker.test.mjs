@@ -11,6 +11,15 @@ import {craftingDefaults,importCrafting} from '../src/crafting-model.js';
 const key='dvi-character-snapshot-v2',marketKey='dvi-market-quotes-v1';
 const player=()=>({lastTick:100,skills:Object.fromEntries(['melee','ranged','magic','defence','hitpoints','enhancing','mining','fishing','woodcutting','thieving','cooking','smithing','fletching','herblore','crafting'].map(k=>[k,game.levelXp(30)])),equipment:{weapon:null,mount:null},foodItemId:null,eatAt:.75,foodMaxTier:0,foodPerTrip:-1,brews:{},brewTier:{},brewBuckets:{},house:{lectern:2},houseFurniture:{lectern:{cell:1}},masteries:{},perks:{},guildBonus:0,homeBank:null,ironman:false,bank:{64:100,110:1},pack:[{itemId:80,qty:1}],overflow:{81:1},collections:{64:25},forgeLog:{0:1},name:'not needed',history:Array(100).fill('not needed'),token:'secret'});
 
+for(const host of ['deepveinidle.com','cn.deepveinidle.com'])test(`${host} captures only same-origin game sockets`,async()=>{
+ const h=captureHarness(undefined,{origin:`https://${host}`});
+ const other=host==='deepveinidle.com'?'cn.deepveinidle.com':'deepveinidle.com';
+ new h.page.WebSocket(`wss://${other}/ws`).receive([{t:'welcome',you:player()}]);
+ await flush();assert.equal(h.storage.has(key),false);
+ new h.page.WebSocket(`wss://${host}/ws`).receive([{t:'welcome',you:player()}]);
+ await flush();assert.deepEqual(h.storage.get(key).player.skills,player().skills);
+});
+
 test('Worker selection preserves all five import consumers and removes unrelated data',async()=>{
  const h=captureHarness(),s=new h.page.WebSocket('wss://deepveinidle.com/ws');
  const you=player(),windows=[{label:'Weekly goal: gathered',fromTick:0,toTick:200,xpMult:1.1,token:'secret'}],guild={name:'Guild',tag:'G',members:['private']};
