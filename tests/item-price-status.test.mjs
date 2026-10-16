@@ -15,8 +15,10 @@ function harness(requestMarket,priceInputs=[]){
  const ctx=vm.createContext({game,marketFamilies:game.marketFamilies,translatedName:s=>s,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes,document,Date,Set,Number,Object,String,structuredClone,marketPricesUrl:"https://deepveinidle.com/api/market/prices.json",requestAnimationFrame:fn=>frames.push(fn),requestMarket,priceState:()=>current,priceSaveError:()=>null,updatePrices:next=>{current=next;subscriber?.();},subscribePrices:fn=>subscriber=fn});
  vm.runInContext(source,ctx);ctx.mountItemPrices('zh');return {dialog,button,controls,ctx,nextFrame(){for(const fn of frames.splice(0))fn();},runFrames(){while(frames.length)this.nextFrame();}};
 }
+function changeFilter(h,key,value){const el=h.controls.get('#price-'+key);el.value=value;el.onchange();}
 test('price list includes all legal rarities without quotes and generates enhancements only on selection',()=>{
  const h=harness(async()=>{throw Error('noMarketData');});h.ctx.updatePrices(priceDefaults());h.button.onclick();
+ changeFilter(h,'family','weapons');
  const ids=()=>[...h.dialog.innerHTML.matchAll(/data-price-value="(\d+)"/g)].map(match=>Number(match[1]));
  for(const id of [110,1110,2110,3110,4110])assert.ok(ids().includes(id),`missing rarity ${id}`);
  assert.equal(ids().includes(5110),false);assert.ok(ids().every(id=>id<game.encode(0,1)));
@@ -81,6 +83,7 @@ test('category radios place vendor price immediately before skip in both languag
 test('manual edits lock immediately, including zero and blank; invalid edits preserve state and users can unlock',()=>{
  const input={dataset:{priceValue:'1'},value:'42',valueAsNumber:42,validity:{badInput:false},nextElementSibling:{textContent:''},setAttribute(){},removeAttribute(){}};
  const h=harness(async()=>{throw Error('noMarketData');},[input]);h.button.onclick();
+ changeFilter(h,'family','ore');
  for(const [value,number,expected]of [['42',42,42],['0',0,0],['',NaN,null]]){
   input.value=value;input.valueAsNumber=number;input.oninput();
   assert.equal(h.ctx.priceState().prices[1].price,expected);assert.equal(h.ctx.priceState().prices[1].locked,true);
@@ -136,8 +139,43 @@ test('import summary keeps four main counts and appends only nonzero exceptional
 test('quote errors survive clear and valid manual edits; invalid input updates the same accessible status',async()=>{
  const input={dataset:{priceValue:'1'},value:'42',valueAsNumber:42,validity:{badInput:false},nextElementSibling:{textContent:''},setAttribute(){},removeAttribute(){}};
  const h=harness(async()=>{throw Error('marketTimeout');},[input]);h.button.onclick();await h.controls.get('#price-import').onclick();
+ changeFilter(h,'family','ore');
  input.oninput();assert.match(h.controls.get('#price-status').textContent,/官方行情请求超时/);assert.equal(h.controls.get('#price-status').role,'alert');
  h.ctx.confirm=()=>true;h.controls.get('#price-clear').onclick();assert.match(h.ctx.message(),/官方行情请求超时/);
  vm.runInContext('marketError=null',h.ctx);input.value='-1';input.valueAsNumber=-1;input.oninput();assert.match(h.controls.get('#price-status').textContent,/单价必须为空/);assert.equal(h.controls.get('#price-status').role,'alert');
  input.value='0';input.valueAsNumber=0;input.oninput();assert.match(h.controls.get('#price-status').textContent,/已读取/);assert.equal(h.controls.get('#price-status').role,'status');
+});
+
+test('unfiltered dialog hides saved prices and quotes and disables selection in both languages',()=>{
+ let requests=0;const h=harness(async()=>{requests++;});h.ctx.updatePrices(lockItemPrices(setItemPrice(h.ctx.priceState(),1,0),[1],true).state);h.button.onclick();
+ const before=h.ctx.priceState();
+ for(const [language,prompt]of [['zh','物品数量较多，请先设置筛选条件'],['en','Many items to display; set a filter first']]){
+  h.ctx.mountItemPrices(language);assert.ok(h.dialog.innerHTML.includes(prompt));assert.equal(h.ctx.candidates().length,0);assert.doesNotMatch(h.dialog.innerHTML,/data-price-value=/);
+  assert.match(h.dialog.innerHTML,/id="price-select-all"[^>]*disabled/);assert.match(h.dialog.innerHTML,/id="price-bulk-lock"[^>]*disabled/);assert.match(h.dialog.innerHTML,/id="price-bulk-unlock"[^>]*disabled/);
+  const options=[...h.dialog.innerHTML.match(/<select id="price-filter">(.*?)<\/select>/s)[1].matchAll(/value="([^"]+)"/g)].map(m=>m[1]);assert.deepEqual(options,['all','priced','locked']);
+ }
+ assert.equal(h.ctx.priceState(),before);assert.equal(requests,0);
+ const preferences=structuredClone(before.preferences);preferences.categories.ore='ask';h.ctx.updatePrices({...before,preferences});assert.equal(h.ctx.candidates().length,0);
+});
+
+test('each retained filter independently activates rows, including zero rarity and zero price; clearing hides and deselects',()=>{
+ const h=harness(async()=>{});h.ctx.updatePrices(lockItemPrices(setItemPrice(priceDefaults(),1,0),[1],true).state);h.button.onclick();
+ for(const [key,value,reset]of [['family','ore','all'],['search','Copper',''],['tier','0','all'],['plus','1','0'],['filter','priced','all'],['filter','locked','all']]){
+  changeFilter(h,key,value);assert.ok(h.ctx.candidates().length>0,key);assert.equal(h.dialog.innerHTML.includes('物品数量较多，请先设置筛选条件'),false);
+  if(key==='filter')assert.deepEqual([...h.ctx.candidates()],[1]);
+  h.controls.get('#price-select-all').onchange({target:{checked:true}});assert.ok(vm.runInContext('selected.size',h.ctx)>0);
+  changeFilter(h,key,reset);assert.equal(h.ctx.candidates().length,0);assert.equal(vm.runInContext('selected.size',h.ctx),0);assert.ok(h.dialog.innerHTML.includes('物品数量较多，请先设置筛选条件'));
+ }
+});
+
+test('whitespace search is inactive, unmatched search has a distinct message, and reopening retains active filters',()=>{
+ const h=harness(async()=>{});h.button.onclick();changeFilter(h,'search','   ');assert.equal(h.ctx.candidates().length,0);assert.ok(h.dialog.innerHTML.includes('物品数量较多，请先设置筛选条件'));
+ changeFilter(h,'search','no-such-dvi-item-xyz');assert.equal(h.ctx.candidates().length,0);assert.ok(h.dialog.innerHTML.includes('没有匹配物品'));assert.equal(h.dialog.innerHTML.includes('物品数量较多，请先设置筛选条件'),false);
+ changeFilter(h,'search','Copper');const ids=[...h.ctx.candidates()];assert.ok(ids.length>0);h.dialog.open=false;h.button.onclick();h.ctx.mountItemPrices('en');assert.deepEqual([...h.ctx.candidates()],ids);
+});
+
+test('global import and clear work without activating the item list or discarding locked prices and quotes',async()=>{
+ const h=harness(async()=>({snapshot:{version:1,invalid:0,quotes:{1:{bid:{value:50,capturedAt:Date.now()}},2:{bid:{value:80,capturedAt:Date.now()}}}}}));
+ h.ctx.updatePrices(lockItemPrices(setItemPrice(priceDefaults(),1,123),[1],true).state);h.button.onclick();await h.controls.get('#price-import').onclick();assert.equal(h.ctx.priceState().prices[1].price,123);assert.equal(h.ctx.priceState().prices[2].price,80);assert.equal(h.ctx.candidates().length,0);
+ h.ctx.confirm=()=>true;h.controls.get('#price-clear').onclick();assert.equal(h.ctx.priceState().prices[2],undefined);assert.equal(h.ctx.priceState().prices[1].price,123);assert.equal(h.ctx.priceState().quotes[2].bid.value,80);assert.equal(h.ctx.candidates().length,0);assert.ok(h.dialog.innerHTML.includes('物品数量较多，请先设置筛选条件'));
 });

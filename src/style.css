@@ -140,7 +140,7 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
 
 .item-prices-dialog .secondary,#item-prices-open,#appreciation-open{width:auto;margin:0}.price-heading .secondary{flex-shrink:0}.price-actions{font-size:12px}.price-actions a.secondary{text-decoration:none;display:inline-flex;align-items:center;border:1px solid #3a4c53;border-radius:6px;background:#18272d}.price-actions a.secondary:hover{border-color:var(--gold);color:#fff}.price-actions a.secondary:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
 
-.item-prices-dialog .price-market-warning{color:var(--gold);font-weight:650}
+.item-prices-dialog .price-market-warning,.item-prices-dialog .price-filter-prompt{color:var(--gold);font-weight:650}
 
 #item-prices-open .price-settings-icon{font-size:15px;line-height:1;vertical-align:middle;margin-right:3px}
 

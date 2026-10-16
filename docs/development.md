@@ -55,4 +55,4 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 运行 `node --test tests/market-import.test.mjs tests/item-prices.test.mjs tests/item-price-store.test.mjs tests/item-price-status.test.mjs`。运行 `node tests/market-prices-browser.mjs` 验证官方 API 真实跨域、双语桌面／390px 弹窗、导入与锁定、错误保留及真实 Blob Worker；需要网络、本机监听和 Chrome。结果和截图保存在 `.test-artifacts/market-prices/`；接口异常明确失败，不以请求替身通过代替真实跨域验证。功能场景使用可控响应替身，不连接游戏账号。
 
-仅修改价格操作栏布局、提示或导入请求时机时，运行 `node --test tests/item-price-status.test.mjs tests/item-prices.test.mjs tests/item-price-store.test.mjs` 及 `node tests/market-prices-browser.mjs --toolbar-only`，后者仅执行双语桌面／390px 操作栏和弹窗四组验证，包含打开／重开零请求、仅点击导入才请求、错误持续与显式重试，结果保存至 `.test-artifacts/price-toolbar/`，不重跑无关的真实 API 或角色 Worker 专项。此模式仍需要本机监听及 Chrome，行情使用请求替身。
+仅修改价格筛选、操作栏布局、提示或导入请求时机时，运行 `node --test tests/item-price-status.test.mjs tests/item-prices.test.mjs tests/item-price-store.test.mjs` 及 `node tests/market-prices-browser.mjs --toolbar-only`，后者仅执行双语桌面／390px 操作栏和弹窗四组验证，包含无筛选空状态、保留的状态选项、五类独立筛选与清空勾选、空列表全局导入／清空、打开／重开零请求、错误持续与显式重试；同时保存初始与已筛选截图。结果保存至 `.test-artifacts/price-toolbar/`，不重跑无关的真实 API 或角色 Worker 专项。此模式仍需要本机监听及 Chrome，行情使用请求替身。

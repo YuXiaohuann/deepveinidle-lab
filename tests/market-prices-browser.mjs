@@ -48,7 +48,10 @@ try{
   await page.locator('#price-close').click();await page.locator('#item-prices-open').click();
   await page.waitForTimeout(100);assert.equal(requests,0);
   await page.selectOption('#language',language==='zh'?'en':'zh');await page.selectOption('#language',language);assert.equal(requests,0);
-  assert.equal(requests,0);assert.equal(await page.locator('[data-price-value="1"]').inputValue(),'123');assert.equal(await page.locator('[data-price-value="2"]').inputValue(),'99');
+  assert.equal(requests,0);assert.equal(await page.locator('[data-price-value]').count(),0);
+  const emptyPrompt=language==='zh'?'物品数量较多，请先设置筛选条件':'Many items to display; set a filter first';
+  assert.ok((await page.locator('.price-list').innerText()).includes(emptyPrompt));assert.equal(await page.locator('#price-select-all').isDisabled(),true);
+  assert.deepEqual(await page.locator('#price-filter option').evaluateAll(els=>els.map(el=>el.value)),['all','priced','locked']);
   assert.equal(await page.locator('#price-import-settings a').count(),0);
   assert.equal(await page.locator('#price-import-settings #price-import').count(),0);
   assert.equal(await page.locator('#price-status').count(),1);
@@ -58,6 +61,8 @@ try{
   assert.doesNotMatch(await page.locator('#price-import-settings').innerText(),/userscript|捕获|Captured/);
   assert.deepEqual(await page.locator('[data-price-category="ore"]').evaluateAll(els=>els.map(el=>el.value)),['ask','bid','bidVendor','vendor','off']);
   const stored=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-item-prices-v1')));
+  const changeFilter=async(key,value)=>{const el=page.locator('#price-'+key);if(key==='search'||key==='plus'){await el.fill(value);await el.blur();}else await el.selectOption(value);};
+  const expectEmpty=async()=>{assert.equal(await page.locator('[data-price-value]').count(),0);assert.ok((await page.locator('.price-list').innerText()).includes(emptyPrompt));assert.equal(await page.locator('#price-select-all').isDisabled(),true);assert.equal(await page.locator('#price-bulk-lock').isDisabled(),true);assert.equal(await page.locator('#price-bulk-unlock').isDisabled(),true);};
   assert.deepEqual(await stored(),saved);
   const memory=await page.evaluate(async()=>{const {priceState}=await import('/src/item-price-store.js');return priceState();});assert.equal(memory.version,3);assert.deepEqual(memory.quotes,{});
   await page.locator('#price-import').scrollIntoViewIfNeeded();
@@ -68,6 +73,16 @@ try{
   assert.equal(requests,0);await page.locator('#price-import').click();await page.waitForFunction(()=>document.querySelector('#price-status')?.textContent.startsWith('已更新 ')||document.querySelector('#price-status')?.textContent.startsWith('Updated '));
   assert.equal(requests,1);assert.equal((await stored()).version,3);assert.equal((await stored()).quotes[3],undefined);assert.equal((await stored()).prices[1].price,123);assert.equal((await stored()).prices[2].price,80);
   assert.equal((await stored()).prices[2].quoteCapturedAt,at);
+  await expectEmpty();
+  for(const [key,value,reset]of [['family','ore','all'],['search','Tin',''],['tier','0','all'],['plus','1','0'],['filter','priced','all'],['filter','locked','all']]){
+   await changeFilter(key,value);assert.ok(await page.locator('[data-price-value]').count()>0,key);
+   await page.locator('#price-select-all').check();assert.equal(await page.locator('#price-bulk-lock').isDisabled(),false);
+   await changeFilter(key,reset);await expectEmpty();assert.equal(requests,1);
+  }
+  await changeFilter('search','no-such-dvi-item-xyz');assert.equal(await page.locator('[data-price-value]').count(),0);assert.ok((await page.locator('.price-list').innerText()).includes(language==='zh'?'没有匹配物品':'No matching items'));
+  await changeFilter('search','   ');await expectEmpty();await changeFilter('search','');
+  await changeFilter('family','ore');assert.equal(await page.locator('[data-price-value="1"]').inputValue(),'123');assert.equal(await page.locator('[data-price-value="2"]').inputValue(),'80');
+  await page.locator('#price-import').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(directory,`prices-filtered-${language}-${width}.png`)});
   await page.locator('[data-price-value="2"]').fill('0');assert.equal((await stored()).prices[2].price,0);assert.equal((await stored()).prices[2].locked,true);
   await page.locator('[data-price-value="2"]').fill('');assert.equal((await stored()).prices[2].price,null);assert.equal((await stored()).prices[2].locked,true);
   await page.locator('[data-price-value="2"]').fill('42');await page.locator('[data-price-value="2"]').blur();
@@ -75,9 +90,11 @@ try{
   const failureText=await page.locator('#price-status').textContent();await page.locator('#price-close').click();await page.locator('#item-prices-open').click();await page.waitForTimeout(100);assert.equal(requests,2);assert.equal(await page.locator('#price-status').textContent(),failureText);
   await page.locator('[data-price-lock="2"]').uncheck();assert.equal(await page.locator('#price-status').getAttribute('role'),'alert');
   fail=false;await page.locator('#price-import').click();await page.waitForFunction(()=>document.querySelector('#price-status')?.textContent.startsWith('已更新 ')||document.querySelector('#price-status')?.textContent.startsWith('Updated '));assert.equal((await stored()).prices[2].price,80);assert.equal(requests,3);
+  await changeFilter('family','all');await expectEmpty();
+  page.once('dialog',dialog=>dialog.accept());await page.locator('#price-clear').click();assert.equal((await stored()).prices[2],undefined);assert.equal((await stored()).prices[1].price,123);assert.equal((await stored()).quotes[2].bid.value,80);await expectEmpty();assert.equal(requests,3);
   await page.locator('#price-close').click();assert.equal(await page.locator('#item-prices-open').evaluate(el=>el===document.activeElement),true);
   await page.locator('#item-prices-open').click();await page.waitForTimeout(100);assert.equal(requests,3);await page.keyboard.press('Escape');assert.equal(await page.locator('#item-prices-dialog').evaluate(el=>el.open),false);
-  result.cases.push(`${language} ${width}px: zero requests on open/reopen/language/fold, one request per explicit import, single toolbar status, button order, v2 migration, manual zero/blank locks, persistent error and retry, close and focus`);
+  result.cases.push(`${language} ${width}px: empty unfiltered list, retained status options, each independent filter and whitespace/no-match states, clearing deselects, global import and clear while empty, zero automatic requests, manual prices/locks, persistent filter/error and explicit retry, close and focus`);
   await context.close();
  }
  if(!toolbarOnly){
