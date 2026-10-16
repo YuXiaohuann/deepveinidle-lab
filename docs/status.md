@@ -16,7 +16,9 @@
 
 ## 本地待发布变更与已知限制
 
-本轮适配已随 1.3.4 发布，暂无已记录的待发布功能变更。此前阶段性验证保留于 [重置范围验证](../reports/panel-reset-2026-10-15.md)、[官方行情改造](../reports/official-market-api-2026-10-16.md)、[显式导入](../reports/price-explicit-import-2026-10-16.md)、[价格操作栏](../reports/price-toolbar-2026-10-16.md)、[筛选前置验证](../reports/price-filter-gate-2026-10-16.md) 和 [性能调查](../reports/price-dialog-performance-2026-10-16.md)，均为各自阶段历史证据。
+预报日程与上方技能筛选按钮共用十二种技能固定背景色及悬停提亮，按钮选中时保留底色并显示青绿色边框与内描边；当前热门及日程技能名改为普通文字色，取消单独高亮与额外加粗，尚未发布。行配色实施时预报 4 项测试通过；技能按钮应用配色后重跑双语桌面／390px 四组浏览器专项通过（含按钮与行色一致、选中、悬停及键盘），截图已审阅，正常及悬停日程文字对比度最低约 6.38:1。实施范围与验证边界见 [预报行配色验证](../reports/forecast-skill-row-colors-2026-10-16.md)。尚未执行完整发布检查或生产验收。
+
+此前阶段性验证保留于 [重置范围验证](../reports/panel-reset-2026-10-15.md)、[官方行情改造](../reports/official-market-api-2026-10-16.md)、[显式导入](../reports/price-explicit-import-2026-10-16.md)、[价格操作栏](../reports/price-toolbar-2026-10-16.md)、[筛选前置验证](../reports/price-filter-gate-2026-10-16.md) 和 [性能调查](../reports/price-dialog-performance-2026-10-16.md)，均为各自阶段历史证据。
 
 实际脚本管理器安装升级、真实账号操作、长时性能及打赏弹窗微信扫码支付仍未验证；宽泛搜索或大量已定价／已锁定结果仍可能较慢。本轮性能数值未重测，不将历史专项性能结果当作本轮测量。
 
