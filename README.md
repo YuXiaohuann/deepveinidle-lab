@@ -28,7 +28,7 @@ node scripts/serve.mjs
 | 发布包、Cloudflare 部署与发布验收 | [部署与发布](docs/release.md) |
 | 生产基线、本地待发布变更与验证入口 | [当前状态](docs/status.md) |
 | 尚未实现的功能方向 | [后续范围](docs/roadmap.md) |
-| 历史调研、实施和发布证据 | [历史验证归档](reports/validation-history.md)及 `reports/` 专项报告 |
+| 历史调研、实施和发布证据 | [报告索引](reports/README.md)，含验证归档、专题与逐版发布报告 |
 | 协作流程及文档维护 | [AGENTS.md](AGENTS.md) |
 
 项目作者（游戏昵称）：Alice；交流 QQ 群：897891232。原游戏代码、素材及相关资源归原作者或相应权利人所有，本项目独立维护，不代表官方授权或认可。

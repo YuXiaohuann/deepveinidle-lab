@@ -6,7 +6,7 @@
 - [README.md](README.md)：项目简介、快速启动及文档入口。
 - [本地开发](docs/development.md)、[技术方案](docs/technical.md)、[发布流程](docs/release.md)：开发操作、模块／协议／上游更新与部署验收。
 - [当前状态](docs/status.md)：生产基线、本地待发布变更及验证入口；[后续范围](docs/roadmap.md)：尚未实现的方向。
-- `reports/`：调研、实施及发布证据；[历史验证归档](reports/validation-history.md)保留迁出的旧记录，不作为当前规则或本次重跑结果。
+- [报告索引](reports/README.md)：调研、实施及发布证据入口；[历史验证归档](reports/validation-history.md)保留迁出的旧记录，不作为当前规则或本次重跑结果。
 - `AGENTS.md`：协作流程，不重复产品需求。
 
 ## 工作流程

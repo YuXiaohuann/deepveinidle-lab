@@ -29,7 +29,7 @@
 | 生产基线、本地变更、限制与证据入口 | [当前状态](docs/status.md) |
 | 尚未实现的方向 | [后续范围](docs/roadmap.md) |
 
-历史证据见 [验证归档](reports/validation-history.md)及 `reports/` 专项报告；历史结论不作为当前规则或本次重跑结果。以下兼容入口保留旧章节链接。
+历史证据从 [报告索引](reports/README.md) 查阅，[验证归档](reports/validation-history.md)保留迁出的旧记录；历史结论不作为当前规则或本次重跑结果。以下兼容入口保留旧章节链接。
 
 <details>
 <summary>旧章节链接兼容入口</summary>
