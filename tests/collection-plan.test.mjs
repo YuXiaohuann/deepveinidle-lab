@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
 import {collectionDefaults,collectionRoutes,estimateCollection} from '../src/collection-model.js';
-import {collectionPlanDefaults,validateCollectionPlan,addCollectionPlan,setCollectionPlanTarget,removeCollectionPlan,calculateCollectionPlan} from '../src/collection-plan.js';
+import {collectionPlanDefaults,validateCollectionPlan,addCollectionPlan,removeCollectionPlan,calculateCollectionPlan} from '../src/collection-plan.js';
 import {priceDefaults} from '../src/item-prices.js';
 const state=()=>({...collectionDefaults(),initialized:true});
 const pick=(itemId,target)=>({itemId,jobId:collectionRoutes(itemId)[0].id,target});
@@ -14,7 +14,7 @@ test('milestones normalize to the highest per complete item and never double cou
  assert.deepEqual(plan.selections,[pick(40,1000)]);
  const r=calculateCollectionPlan(s,plan,priced());assert.equal(r.points,14);assert.equal(r.cost,3964);assert.deepEqual(r.materials.map(m=>[m.itemId,m.quantity]),[[1,991],[2,991]]);
  assert.deepEqual(addCollectionPlan(plan,pick(40,10)),plan);assert.deepEqual(addCollectionPlan(plan,pick(40,1000)),plan);
- const lower=setCollectionPlanTarget(plan,40,100);assert.equal(calculateCollectionPlan(s,lower,priced()).materials[0].quantity,91);
+ const lower=addCollectionPlan(removeCollectionPlan(plan,40),pick(40,100));assert.equal(calculateCollectionPlan(s,lower,priced()).materials[0].quantity,91);
  assert.deepEqual(removeCollectionPlan(lower,40),collectionPlanDefaults());assert.equal(plan.selections[0].target,1000);
 });
 test('quality IDs remain independent and common materials sum across different recipes',()=>{

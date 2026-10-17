@@ -6,7 +6,7 @@ import {characterImportPanel,requestCharacter,importStatusText} from './import-c
 import {priceState,subscribePrices,priceSaveError} from './item-price-store.js';
 import {translatedName,translatedItemName} from './i18n.js';
 import {worldBuffWarningText} from './world-buffs.js';
-import {collectionPlanStorageKey,collectionPlanDefaults,validateCollectionPlan,addCollectionPlan,setCollectionPlanTarget,removeCollectionPlan} from './collection-plan.js';
+import {collectionPlanStorageKey,collectionPlanDefaults,validateCollectionPlan,addCollectionPlan,removeCollectionPlan} from './collection-plan.js';
 import {renderCollectionPlan} from './collection-plan-controls.js';
 import {collectionAutoImportStorageKey,validateCollectionAutoImport,createCollectionAutoImporter} from './collection-auto-import.js';
 
@@ -158,6 +158,5 @@ function planButton(row){
 function updatePlan(){
  const link=document.getElementById('collection-plan-link');if(link)link.textContent=text('已选方案：','Selected routes: ')+plan.selections.length;
  renderCollectionPlan(document.getElementById('collection-plan'),{state,plan,prices:priceState(),language,now:calculationNow,loadError:planLoadError,saveError:planSaveError,statusText:message,
-  onClear:()=>{planLoadError=false;plan=collectionPlanDefaults();savePlan();updateResults();},
-  onRemove:itemId=>changePlan(()=>removeCollectionPlan(plan,itemId)),onTarget:(itemId,target)=>changePlan(()=>setCollectionPlanTarget(plan,itemId,target)),onError:e=>{error=e.message;updateStatus();}});
+  onClear:()=>{planLoadError=false;plan=collectionPlanDefaults();savePlan();updateResults();}});
 }

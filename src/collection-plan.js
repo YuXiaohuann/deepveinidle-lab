@@ -22,11 +22,6 @@ export function addCollectionPlan(plan,value){
  const entry=selection(value),current=validateCollectionPlan(plan),previous=current.selections.find(s=>s.itemId===entry.itemId);
  return validateCollectionPlan({version:1,selections:[...current.selections.filter(s=>s.itemId!==entry.itemId),{...entry,target:previous?.jobId===entry.jobId?Math.max(entry.target,previous.target):entry.target}]});
 }
-export function setCollectionPlanTarget(plan,itemId,target){
- const current=validateCollectionPlan(plan),previous=current.selections.find(s=>s.itemId===itemId);
- if(!previous)throw Error('invalidPlan');
- return validateCollectionPlan({version:1,selections:current.selections.map(s=>s.itemId===itemId?{...s,target}:s)});
-}
 export function removeCollectionPlan(plan,itemId){return validateCollectionPlan({version:1,selections:plan.selections.filter(s=>s.itemId!==itemId)});}
 export function calculateCollectionPlan(state,raw,prices,{now=Date.now()}={}){
  const plan=validateCollectionPlan(raw),players=collectionPlayers(state,now),materials=new Map();
