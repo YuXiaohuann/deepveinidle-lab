@@ -15,6 +15,7 @@
 - `node tests/collection-browser.mjs --out .test-artifacts/collection/plan-auto-existing-2026-10-17`：7组通过，展开区、价格／排序／筛选、导入、双语与窄屏；结果在该目录 `result.json`。
 - `node tests/collection-plan-browser.mjs --out .test-artifacts/collection/plan-auto-browser-2026-10-17`：6组通过，计划去重／保存／导入重算、真实定时调度的浏览器时钟验证、焦点合并／板块暂停、过期响应／输入草稿／失败重试／坏存档；无页面错误。已审阅双语桌面及390px截图。
 - 布局调整后重跑计划浏览器专项：6组通过，增加按钮独立左列与正常状态文字移除断言；证据 `.test-artifacts/collection/plan-column-2026-10-17/result.json`，390px截图已审阅。
+- 导入面板空白核查：自动导入错误区复用 `import-status:empty`，空内容不占位，实际错误仍显示。重跑6组浏览器专项通过，增加正常隐藏／错误可见断言；证据 `.test-artifacts/collection/import-spacing-2026-10-17/result.json`。
 - 文档本地链接与章节锚点、`git diff --check`通过。
 
 浏览器使用临时本机服务、Chrome、受控角色桥接与行情，不连接真实游戏账号。后台浏览器可能节流定时器；未验证真实账号长时导入，未执行完整发布回归或部署。既有历史发布结果不计入本轮。

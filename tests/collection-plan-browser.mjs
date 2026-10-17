@@ -48,7 +48,7 @@ try{
  const readState=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-collection-v1')));
  const button=target=>page.locator(`[data-collection-plan="40:41:${target}"]`);
  const quantity=()=>page.locator('[data-plan-material="1"] [data-plan-quantity]').innerText();
- assert.equal(await page.locator('#collection-auto-import').isChecked(),false);assert.equal(await page.evaluate(()=>window.planReads),0);
+ assert.equal(await page.locator('#collection-auto-import').isChecked(),false);assert.equal(await page.locator('#collection-auto-status').isVisible(),false);assert.equal(await page.evaluate(()=>window.planReads),0);
  await page.locator('#collection-import').click();await until(()=>JSON.parse(localStorage.getItem('dvi-collection-v1'))?.counts[40]===9);
  await page.locator('#collection-search').fill('青铜锭');await page.locator('#collection-tier').selectOption('0');
  await button(10).click();assert.equal(await quantity(),'1');await button(100).click();assert.equal(await quantity(),'91');await button(1000).click();assert.equal(await quantity(),'991');
@@ -90,7 +90,7 @@ try{
  results.cases.push('failed captures preserve role/plan, keep auto enabled and retry; persisted opt-in resumes one immediate import after refresh');
  await page.locator('[data-plan-clear]').click();assert.equal(await page.locator('[data-plan-item]').count(),0);assert.equal((await readState()).counts[40],9);
  await context.close();
- const broken=await browser.newContext();await broken.addInitScript(()=>{localStorage.setItem('dvi-collection-plan-v1','bad-json');localStorage.setItem('dvi-collection-auto-import-v1','bad-json');});const badPage=await broken.newPage();await badPage.goto(new URL('/collection',base).href);assert.match(await badPage.locator('#collection-plan').innerText(),/could not be read|无法读取/);assert.match(await badPage.locator('#collection-auto-status').innerText(),/could not be read|无法读取/);assert.equal(await badPage.locator('#collection-auto-import').isChecked(),false);assert.equal(await badPage.evaluate(()=>localStorage.getItem('dvi-collection-plan-v1')),'bad-json');await badPage.locator('[data-plan-clear]').click();assert.equal(await badPage.locator('#collection-plan [role="alert"]').count(),0);await broken.close();
+ const broken=await browser.newContext();await broken.addInitScript(()=>{localStorage.setItem('dvi-collection-plan-v1','bad-json');localStorage.setItem('dvi-collection-auto-import-v1','bad-json');});const badPage=await broken.newPage();await badPage.goto(new URL('/collection',base).href);assert.match(await badPage.locator('#collection-plan').innerText(),/could not be read|无法读取/);assert.equal(await badPage.locator('#collection-auto-status').isVisible(),true);assert.match(await badPage.locator('#collection-auto-status').innerText(),/could not be read|无法读取/);assert.equal(await badPage.locator('#collection-auto-import').isChecked(),false);assert.equal(await badPage.evaluate(()=>localStorage.getItem('dvi-collection-plan-v1')),'bad-json');await badPage.locator('[data-plan-clear]').click();assert.equal(await badPage.locator('#collection-plan [role="alert"]').count(),0);await broken.close();
  results.cases.push('clear plan preserves character; invalid plan/auto settings are visible and kept until explicit repair');
  assert.deepEqual(results.errors,[]);
 }catch(error){results.failure=String(error.stack??error);throw error;}
