@@ -49,7 +49,7 @@ export function calculateCollectionPlan(state,raw,prices,{now=Date.now()}={}){
  });
  let knownCost=0,missingPrices=0,amountOverflow=false;
  const priced=[...materials.values()].sort((a,b)=>a.itemId-b.itemId).map(material=>{
-  const quote=collectionPrice(material.itemId,prices,'buy',state.sellMode,state.buyMode);
+  const quote=collectionPrice(material.itemId,prices,state.buyMode);
   if(quote.price===null)missingPrices++;
   let cost=material.quantity===null||quote.price===null?null:material.quantity*quote.price;
   const overflow=cost!==null&&(!Number.isFinite(cost)||cost>Number.MAX_SAFE_INTEGER);

@@ -37,3 +37,40 @@ test('published v2 migrates prices, locks and preferences, discarding game quote
   store.updatePrices(current);assert.equal(writes,1);assert.equal(latest.version,3);
  });
 });
+
+test('market refresh shares requests and applies quotes to the latest locked price state',async()=>{
+ const oldFetch=globalThis.fetch;let respond,requests=0;
+ globalThis.fetch=()=>{requests++;return new Promise(resolve=>respond=resolve);};
+ try{await withStore({getItem:()=>null,setItem:()=>{}},async store=>{
+  const first=store.refreshMarketPrices(),second=store.refreshMarketPrices();assert.equal(requests,1);
+  const current=setItemPrice(store.priceState(),1,77);current.prices[1].locked=true;store.updatePrices(current);
+  respond({ok:true,json:async()=>({game:'Deep Vein Idle',generatedAt:new Date().toISOString(),refreshSeconds:60,items:{1:{lowestSell:3,highestBuy:2}}})});
+  await Promise.all([first,second]);assert.equal(store.priceState().prices[1].price,77);assert.equal(store.priceState().quotes[1].ask.value,3);
+ });}finally{globalThis.fetch=oldFetch;}
+});
+test('market refresh fails atomically and allows the next request to retry',async()=>{
+ const oldFetch=globalThis.fetch;let requests=0;
+ globalThis.fetch=async()=>{requests++;return requests===1?{ok:false}:{ok:true,json:async()=>({game:'Deep Vein Idle',generatedAt:new Date().toISOString(),refreshSeconds:60,items:{1:{lowestSell:3,highestBuy:2}}})};};
+ try{await withStore({getItem:()=>null,setItem:()=>{}},async store=>{
+  const original=store.priceState();await assert.rejects(store.refreshMarketPrices(),/marketHttpFailed/);assert.equal(store.priceState(),original);
+  await store.refreshMarketPrices();assert.equal(requests,2);assert.equal(store.priceState().quotes[1].ask.value,3);
+ });}finally{globalThis.fetch=oldFetch;}
+});
+
+test('market refresh rejects a full snapshot older than current quotes without writing',async()=>{
+ const oldFetch=globalThis.fetch,now=Date.now();
+ globalThis.fetch=async()=>({ok:true,json:async()=>({game:'Deep Vein Idle',generatedAt:new Date(now-1000).toISOString(),refreshSeconds:60,items:{1:{lowestSell:3,highestBuy:2}}})});
+ try{await withStore({getItem:()=>null,setItem:()=>{}},async store=>{
+  const current=priceDefaults();current.quotes={1:{ask:{value:9,capturedAt:now},bid:{value:8,capturedAt:now}}};store.updatePrices(current);
+  await assert.rejects(store.refreshMarketPrices(),/marketStale/);assert.equal(store.priceState(),current);
+ });}finally{globalThis.fetch=oldFetch;}
+});
+
+test('quote-only refresh ignores preferences and leaves effective prices and locks unchanged',async()=>{
+ const oldFetch=globalThis.fetch;
+ globalThis.fetch=async()=>({ok:true,json:async()=>({game:'Deep Vein Idle',generatedAt:new Date().toISOString(),refreshSeconds:60,items:{1:{lowestSell:3,highestBuy:2}}})});
+ try{await withStore({getItem:()=>null,setItem:()=>{}},async store=>{
+  const current=setItemPrice(priceDefaults(),1,77);current.preferences.categories.ore='vendor';store.updatePrices(current);
+  await store.refreshMarketPrices(undefined,{quotesOnly:true});assert.deepEqual(store.priceState().prices,current.prices);assert.deepEqual(store.priceState().preferences,current.preferences);assert.equal(store.priceState().quotes[1].ask.value,3);
+ });}finally{globalThis.fetch=oldFetch;}
+});

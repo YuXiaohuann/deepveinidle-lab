@@ -26,7 +26,7 @@ function mergeConfig(gather,craft){
  for(const key of ['guild','guildXp','weeklyXp','worldRarity','blessing','ironman','homeBank','hotSetting'])config[key]=gather[key];
  return config;
 }
-export function collectionDefaults(){return {version:1,initialized:false,capturedAt:null,edited:false,importWarnings:[],counts:{},buyMode:'ask',sellMode:'bid',config:mergeConfig(gatheringDefaults(),craftingDefaults())};}
+export function collectionDefaults(){return {version:1,initialized:false,capturedAt:null,edited:false,importWarnings:[],counts:{},buyMode:'ask',config:mergeConfig(gatheringDefaults(),craftingDefaults())};}
 export function collectionWorkConfig(state,kind){
  const config=(kind==='gather'?normalizeGathering:normalizeCrafting)(state.config);
  config.weeklyXp=state.config.weeklyXp;
@@ -42,13 +42,13 @@ function validateCounts(raw){
  }return counts;
 }
 export function validateCollection(raw){
- if(!record(raw)||raw.version!==1||typeof raw.initialized!=='boolean'||typeof raw.edited!=='boolean'||!['bid','vendor'].includes(raw.sellMode))throw Error('invalidConfiguration');
+ if(!record(raw)||raw.version!==1||typeof raw.initialized!=='boolean'||typeof raw.edited!=='boolean')throw Error('invalidConfiguration');
  if(raw.capturedAt!==null&&(!Number.isSafeInteger(raw.capturedAt)||raw.capturedAt<=0||raw.capturedAt>Date.now()+60000))throw Error('invalidConfiguration');
  const buyMode=raw.buyMode;
  if(!['ask','bid','vendor'].includes(buyMode))throw Error('invalidConfiguration');
  const importWarnings=raw.importWarnings;
  if(!Array.isArray(importWarnings)||importWarnings.some(w=>!['worldBuffs.upgrade','weeklyXp.reset'].includes(w)))throw Error('invalidConfiguration');
- const state={version:1,initialized:raw.initialized,edited:raw.edited,capturedAt:raw.capturedAt,sellMode:raw.sellMode,buyMode,importWarnings:[...importWarnings],counts:validateCounts(raw.counts),config:null};
+ const state={version:1,initialized:raw.initialized,edited:raw.edited,capturedAt:raw.capturedAt,buyMode,importWarnings:[...importWarnings],counts:validateCounts(raw.counts),config:null};
  if(!record(raw.config))throw Error('invalidConfiguration');
  const gather=normalizeGathering(raw.config),craft=normalizeCrafting(raw.config);
  state.config=mergeConfig(gather,craft);
@@ -82,37 +82,21 @@ export function collectionRoutes(id){
  const base=game.baseItemId(id);
  return game.recipes.filter(j=>j.output.itemId===base&&!j.retired&&collectionSkills.includes(j.skill));
 }
-export function collectionPrice(id,prices,side,sellMode='bid',buyMode='ask'){
- if(!game.canSell(id)&&side==='sell')return {price:0,source:'untradeable',time:null};
- const manual=prices.prices[id];if(manual?.source==='manual'&&manual.price!==null)return {price:manual.price,source:'manual',time:manual.updatedAt};
- if(side==='sell'&&sellMode==='vendor')return {price:game.vendorPrice(id),source:'vendor',time:null};
- if(side==='buy'&&buyMode==='vendor')return {price:game.canSell(id)?game.vendorPrice(id):null,source:'vendor',time:null};
- const source=side==='buy'?buyMode:'bid',quote=prices.quotes[id]?.[source];
- return {price:quote&&!quote.invalid&&quote.value!==null?quote.value:null,source,time:quote?.capturedAt??null};
+export function collectionPrice(id,prices,buyMode='ask'){
+ if(buyMode==='vendor')return {price:game.canSell(id)?game.vendorPrice(id):null,source:'vendor',time:null};
+ const quote=prices.quotes[id]?.[buyMode];
+ return {price:quote&&!quote.invalid&&quote.value!==null?quote.value:null,source:buyMode,time:quote?.capturedAt??null};
 }
-export function priceCollection(result,prices,sellMode='bid',buyMode='ask'){
- const priceList=(items,side)=>Object.entries(items).map(([id,qty])=>({id:Number(id),qty,...collectionPrice(Number(id),prices,side,sellMode,buyMode)}));
- const materials=priceList(result.materials??{},'buy'),outputs=priceList(result.outputs??{},'sell'),potions=priceList(result.potionItems??{},'buy');
- const overflowFields=[];
- const total=(rows,field)=>{
-  let sum=0,missing=false;
-  for(const row of rows){
-   if(!Number.isFinite(row.qty)||row.qty<0)throw Error('quantityOverflow');
-   if(row.qty>0&&row.price===null)missing=true;
-   sum+=row.qty*(row.price??0);
-  }
-  if(!Number.isFinite(sum)||sum>Number.MAX_SAFE_INTEGER){overflowFields.push(field);return null;}
-  return missing?null:sum;
- };
- const cost=total(materials,'cost'),value=total(outputs,'value'),potionCost=total(potions,'potions');
- let investment=cost===null||potionCost===null?null:cost+potionCost;
- if(investment!==null&&investment>Number.MAX_SAFE_INTEGER){overflowFields.push('investment');investment=null;}
- const net=investment===null||value===null?null:investment-value;
- return {...result,materialsPriced:materials,outputsPriced:outputs,potionsPriced:potions,overflowFields,cost,value,potionCost,investment,net,costPerPoint:result.points>0&&cost!==null?cost/result.points:null,profitPerPoint:result.points>0&&net!==null?(net===0?0:-net/result.points):null};
-}
-export function collectionPotionItems(config,seconds){
- if(!Number.isFinite(seconds)||seconds<0)throw Error('invalidDuration');
- return Object.fromEntries(game.potions.filter(p=>(config.brews[p.kind]??-1)>=0).map(p=>[game.withRarity(p.itemId,config.brews[p.kind]),seconds/(game.potionDurationTicks*game.tickMs/1000)]));
+export function priceCollection(result,prices,buyMode='ask'){
+ const materials=Object.entries(result.materials??{}).map(([id,qty])=>({id:Number(id),qty,...collectionPrice(Number(id),prices,buyMode)}));
+ let sum=0,missing=false;
+ for(const row of materials){
+  if(!Number.isFinite(row.qty)||row.qty<0)throw Error('quantityOverflow');
+  if(row.qty>0&&row.price===null)missing=true;
+  sum+=row.qty*(row.price??0);
+ }
+ const overflow=!Number.isFinite(sum)||sum>Number.MAX_SAFE_INTEGER,cost=missing||overflow?null:sum;
+ return {...result,materialsPriced:materials,overflowFields:overflow?['cost']:[],cost,costPerPoint:result.points>0&&cost!==null?cost/result.points:null};
 }
 export function collectionWindows(config,skill,ticks,now){
  const start=game.predictionStartTick,windows=manualWindows(start,start+ticks,config.weeklyXp,config.hotSetting!=='game',skill,config.worldRarity??0);
@@ -125,7 +109,7 @@ export function collectionPlayers(state,now=Date.now()){
 }
 export function estimateCollection(state,id,job,players=collectionPlayers(state),goal){
  if(!job)throw Error('invalidRoute');
- const target=collectionTarget(state,id,goal),base={id,jobId:job.id,skill:job.skill,...target,seconds:null,secondsPerPoint:null,materials:{},outputs:{},attempts:null,status:'uninitialized'};
+ const target=collectionTarget(state,id,goal),base={id,jobId:job.id,skill:job.skill,...target,seconds:null,secondsPerPoint:null,materials:{},attempts:null,status:'uninitialized'};
  if(!state.initialized)return {...base,status:'uninitialized'};
  if(target.complete)return {...base,status:'complete'};
  const gathering=gatheringSkills.includes(job.skill),kind=gathering?'gather':'craft',p=players[kind],config=players.configs[kind];
@@ -141,10 +125,8 @@ export function estimateCollection(state,id,job,players=collectionPlayers(state)
  const successes=Math.ceil(target.missing/job.output.qty),attempts=successes/success,quantity=successes*job.output.qty;
  const seconds=attempts*(game.tickMs/1000/chance+caught*Math.max(0,(job.caught?.stunTicks??0)-1)*game.tickMs/1000);
  const points=pointsForProduction(id,target.current,quantity),materials=Object.fromEntries(game.recipeInputs(job,tier).map(i=>[i.itemId,i.qty*attempts]));
- const outputs=gathering?Object.fromEntries(qualities.map((q,t)=>[game.withRarity(job.output.itemId,t),attempts*(1-caught)*job.output.qty*q]).filter(([,n])=>n>0)):{[id]:quantity};
- if(!gathering&&job.burn&&burn>0)outputs[job.burn.itemId]=(outputs[job.burn.itemId]??0)+attempts*burn;
  if(!Number.isFinite(seconds)||!Number.isFinite(attempts)||Object.values(materials).some(n=>!Number.isFinite(n)||n>Number.MAX_SAFE_INTEGER))throw Error('quantityOverflow');
- return {...base,status:'ok',seconds,secondsPerPoint:seconds/points,points,quantity,attempts,materials,outputs,potionItems:collectionPotionItems(config,seconds),blessing:config.blessing,burn,caught,quality,actionSeconds:game.tickMs/1000/chance};
+ return {...base,status:'ok',seconds,secondsPerPoint:seconds/points,points,quantity,attempts,materials,burn,caught,quality,actionSeconds:game.tickMs/1000/chance};
 }
 export function collectionRows(state,{now=Date.now()}={}){
  const players=collectionPlayers(state,now);

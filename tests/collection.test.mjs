@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
-import {collectionWorkConfig,collectionDefaults,validateCollection,collectionTarget,pointsForProduction,collectionRoutes,estimateCollection,collectionRows,priceCollection,collectionPrice,importCollection,collectionInteger,collectionNumber,collectionPlayers,collectionWindows,collectionPotionItems} from '../src/collection-model.js';
+import {collectionWorkConfig,collectionDefaults,validateCollection,collectionTarget,pointsForProduction,collectionRoutes,estimateCollection,collectionRows,priceCollection,collectionPrice,importCollection,collectionInteger,collectionNumber,collectionPlayers,collectionWindows} from '../src/collection-model.js';
 import {priceDefaults} from '../src/item-prices.js';
 import {createScenario,simulationTick,START_TICK} from '../src/simulation.js';
 import {createCraftingScenario} from '../src/crafting-simulation.js';
-import {simulateCollection} from '../src/collection-simulation.js';
+import {simulateCollection,collectionPotionItems} from '../src/collection-simulation.js';
 import {craftingSlots,craftingSkills} from '../src/crafting-model.js';
 import {gatheringSlots,gatheringSkills,gatheringPlayer} from '../src/gathering-model.js';
 const setup=()=>({...collectionDefaults(),initialized:true});
@@ -38,7 +38,7 @@ test('fixed action time uses original chance; batch rounding credits all crossed
 });
 test('burns use successful target actions and expected consumed materials',()=>{
  const s=setup(),j=game.recipes.find(j=>j.skill==='cooking'&&j.burn&&!j.retired);s.config.levels.cooking=j.levelReq;
- const id=j.output.itemId,r=estimateCollection(s,id,j);assert.equal(r.status,'ok');assert.ok(r.burn>0);assert.equal(r.attempts,Math.ceil(r.missing/j.output.qty)/(1-r.burn));assert.ok(r.outputs[j.burn.itemId]>0);
+ const id=j.output.itemId,r=estimateCollection(s,id,j);assert.equal(r.status,'ok');assert.ok(r.burn>0);assert.equal(r.attempts,Math.ceil(r.missing/j.output.qty)/(1-r.burn));assert.ok(Object.values(r.materials).every(qty=>qty>0));assert.equal('outputs' in r,false);
 });
 test('gathering qualities, batches and catches use target-quality stopping probabilities',()=>{
  const s=setup(),j=job(1),normal=estimateCollection(s,1,j),rare=estimateCollection(s,game.withRarity(1,4),j);
@@ -55,18 +55,19 @@ test('unsupported upgrades, locked levels and pre-import states remain explicit'
  assert.ok(collectionRows(setup()).every(r=>r.jobId!==null&&collectionRoutes(r.id).some(j=>j.id===r.jobId)));
  assert.throws(()=>estimateCollection(setup(),40,null),/invalidRoute/);
 });
-test('buy/sell quotes stay distinct; only explicit manual prices override procurement',()=>{
+test('API buy/sell quotes ignore global effective prices and manual locks',()=>{
  const p=priceDefaults();p.quotes[1]={ask:{value:9,capturedAt:100},bid:{value:4,capturedAt:100}};
- p.prices[1]={price:1,source:'vendor'};assert.equal(collectionPrice(1,p,'buy').price,9);assert.equal(collectionPrice(1,p,'sell').price,4);
- p.prices[1]={price:0,source:'manual',updatedAt:200};assert.equal(collectionPrice(1,p,'buy').price,0);
- p.prices[1]={price:null,source:'manual'};p.quotes[1].ask.value=null;assert.equal(collectionPrice(1,p,'buy').price,null);
- p.quotes[1].ask={invalid:true,capturedAt:100};assert.equal(collectionPrice(1,p,'buy').price,null);
+ p.prices[1]={price:1,source:'vendor'};assert.equal(collectionPrice(1,p).price,9);assert.equal(collectionPrice(1,p,'bid').price,4);
+ p.prices[1]={price:0,source:'manual',locked:true,updatedAt:200};assert.equal(collectionPrice(1,p).price,9);
+ p.prices[1]={price:null,source:'manual'};p.quotes[1].ask.value=null;assert.equal(collectionPrice(1,p).price,null);
+ p.quotes[1].ask={invalid:true,capturedAt:100};assert.equal(collectionPrice(1,p).price,null);
 });
-test('material and net investment separate missing inputs, missing sales, zero and negative totals',()=>{
- const p=priceDefaults(),r=estimateCollection(setup(),40,job(40));assert.equal(priceCollection(r,p).cost,null);assert.equal(priceCollection(r,p).profitPerPoint,null);
- p.prices[1]={source:'manual',price:0};p.prices[2]={source:'manual',price:2};let v=priceCollection(r,p);assert.equal(v.cost,2);assert.equal(v.net,null);
- p.quotes[40]={bid:{value:10,capturedAt:100}};v=priceCollection(r,p);assert.equal(v.net,-8);assert.equal(v.profitPerPoint,8);p.quotes[40].bid.value=1;assert.equal(priceCollection(r,p).profitPerPoint,-1);p.quotes[40].bid.value=2;assert.equal(Object.is(priceCollection(r,p).profitPerPoint,0),true);
- const gathering=estimateCollection(setup(),1,job(1));assert.equal(priceCollection(gathering,p).cost,0);
+test('material costs handle missing inputs and zero without calculating recovery or profit',()=>{
+ const p=priceDefaults(),r=estimateCollection(setup(),40,job(40));assert.equal(priceCollection(r,p).cost,null);
+ p.quotes[1]={ask:{value:0,capturedAt:100}};p.quotes[2]={ask:{value:2,capturedAt:100}};
+ const valued=priceCollection(r,p);assert.equal(valued.cost,2);assert.equal(valued.costPerPoint,2);
+ for(const field of ['value','potionCost','investment','net','profitPerPoint','outputsPriced','potionsPriced'])assert.equal(field in valued,false);
+ assert.equal(priceCollection(estimateCollection(setup(),1,job(1)),p).cost,0);
 });
 test('minimal import accepts sparse collection and no forgeLog; failed import is atomic',()=>{
  const s=setup(),snap=snapshot();delete snap.player.forgeLog;const imported=importCollection(s,snap);assert.equal(imported.counts[40],9);assert.equal(imported.initialized,true);assert.equal(imported.config.blessing,false);assert.ok(Object.values(imported.config.brews).every(v=>v===-1));
@@ -102,34 +103,28 @@ test('every supported route includes all future targets from current progress',(
  assert.equal(completed.length,1);assert.equal(completed[0].status,'complete');assert.equal(completed[0].target,null);
 });
 
-test('overflow is isolated to each amount, preserving valid costs and time across unlimited targets',()=>{
+test('material overflow preserves time and clears when API quotes are corrected',()=>{
  const state=setup(),prices=priceDefaults();
- for(const item of game.items)prices.prices[item.id]={price:1e6,source:'manual'};
- const rows=collectionRows(state),valued=rows.map(r=>priceCollection(r,prices));
- const large=valued.find(r=>r.id===3001&&r.target===10000000);
- assert.deepEqual(large.overflowFields,['value']);assert.equal(large.cost,0);assert.equal(large.costPerPoint,0);assert.equal(large.value,null);assert.equal(large.profitPerPoint,null);assert.ok(large.secondsPerPoint>0);
- const small=valued.find(r=>r.id===3001&&r.target===1);assert.deepEqual(small.overflowFields,[]);assert.ok(small.value>0);
- const materialOverflow=priceCollection({...large,materials:{1:1e10},outputs:{40:1}},prices);
- assert.deepEqual(materialOverflow.overflowFields,['cost']);assert.equal(materialOverflow.cost,null);assert.equal(materialOverflow.value,1e6);assert.equal(materialOverflow.net,null);
- prices.prices[1]={price:0,source:'manual'};assert.equal(priceCollection({...large,materials:{1:1e10},outputs:{}},prices).cost,0);
- for(const item of game.items)prices.prices[item.id]={price:1,source:'manual'};
- const recovered=priceCollection(large,prices);assert.deepEqual(recovered.overflowFields,[]);assert.ok(recovered.value>0);assert.ok(Number.isFinite(recovered.profitPerPoint));
+ for(const item of game.items)prices.quotes[item.id]={ask:{value:1e9,capturedAt:100}};
+ const large=collectionRows(state).find(r=>r.id===40&&r.target===10000000),overflow=priceCollection(large,prices);
+ assert.deepEqual(overflow.overflowFields,['cost']);assert.equal(overflow.cost,null);assert.equal(overflow.costPerPoint,null);assert.ok(overflow.secondsPerPoint>0);
+ prices.quotes[1].ask.value=0;prices.quotes[2].ask.value=0;assert.equal(priceCollection(large,prices).cost,0);
+ prices.quotes[1].ask.value=1;assert.deepEqual(priceCollection(large,prices).overflowFields,[]);
  assert.throws(()=>priceCollection({...large,materials:{1:Infinity}},prices),/quantityOverflow/);
 });
 
-test('material cost sources stay independent of recovery and retain explicit manual overrides',()=>{
+test('material quote sides ignore global preferences with no vendor fallback',()=>{
  const prices=priceDefaults(),r=estimateCollection(setup(),40,job(40));
  for(const [id,ask,bid]of [[1,9,4],[2,7,2],[40,30,20]])prices.quotes[id]={ask:{value:ask,capturedAt:100},bid:{value:bid,capturedAt:101}};
- assert.equal(priceCollection(r,prices,'bid','ask').cost,16);assert.equal(priceCollection(r,prices,'bid','bid').cost,6);
- const vendor=priceCollection(r,prices,'bid','vendor');assert.equal(vendor.cost,game.vendorPrice(1)+game.vendorPrice(2));assert.equal(vendor.value,20);assert.equal(vendor.materialsPriced[0].source,'vendor');
- assert.equal(priceCollection(r,prices,'vendor','ask').cost,16);
- for(const mode of ['ask','bid','vendor']){prices.prices[1]={price:0,source:'manual'};assert.equal(priceCollection(r,prices,'bid',mode).materialsPriced[0].price,0);delete prices.prices[1];}
- prices.quotes[1].bid.value=null;assert.equal(priceCollection(r,prices,'bid','bid').cost,null);assert.equal(priceCollection(r,prices,'bid','ask').cost,16);
- const untradeable=game.items.find(i=>!game.canSell(i.id));assert.equal(collectionPrice(untradeable.id,prices,'buy','bid','vendor').price,null);
+ prices.prices[1]={price:0,source:'manual',locked:true};prices.preferences.categories.ore='vendor';
+ assert.equal(priceCollection(r,prices,'ask').cost,16);assert.equal(priceCollection(r,prices,'bid').cost,6);
+ prices.quotes[1].bid.value=null;assert.equal(priceCollection(r,prices,'bid').cost,null);assert.equal(priceCollection(r,prices,'ask').cost,16);
+ const vendor=priceCollection(r,prices,'vendor');assert.equal(vendor.cost,game.vendorPrice(1)+game.vendorPrice(2));assert.equal(vendor.materialsPriced[0].source,'vendor');assert.equal(vendor.materialsPriced[0].time,null);
+ const untradeable=game.items.find(i=>!game.canSell(i.id));assert.equal(collectionPrice(untradeable.id,prices,'vendor').price,null);
 });
-test('material source options round-trip with collection and recovery settings',()=>{
- const state=setup();state.counts[40]=99;state.sellMode='vendor';
- const saved=validateCollection(state);assert.equal(saved.buyMode,'ask');assert.deepEqual(saved.counts,{40:99});assert.equal(saved.sellMode,'vendor');
+test('material modes including vendor round-trip without restoring recovery settings',()=>{
+ const state=setup();state.counts[40]=99;state.sellMode='vendor';state.buyMode='vendor';
+ const saved=validateCollection(state);assert.equal(saved.buyMode,'vendor');assert.deepEqual(saved.counts,{40:99});assert.equal('sellMode' in saved,false);
  for(const mode of ['ask','bid','vendor']){saved.buyMode=mode;assert.equal(validateCollection(JSON.parse(JSON.stringify(saved))).buyMode,mode);}
  for(const invalid of [null,'other',0]){saved.buyMode=invalid;assert.throws(()=>validateCollection(saved),/invalidConfiguration/);}
 });
@@ -167,12 +162,11 @@ test('hot modes and complete world modifiers use matching clocks for estimates a
  }
  const craft={...s.config,weeklyXp:2.75,hotSetting:'off'};const mods=game.windowModifiers(collectionWindows(craft,'smithing',6000,now),game.predictionStartTick);assert.equal(mods.xpMult,1.0275);
 });
-test('potion upkeep uses original one-hour duration and affects net investment independently of materials',()=>{
- const s=setup();s.config.brews.hunter=3;s.config.brews.elixir=1;const items=collectionPotionItems(s.config,1800);assert.deepEqual(items,{[game.withRarity(221,3)]:.5,[game.withRarity(223,1)]:.5});assert.equal(game.potionDurationTicks*game.tickMs/1000,3600);
- const r=estimateCollection(s,4001,job(4001)),prices=priceDefaults();const missing=priceCollection(r,prices);assert.equal(missing.cost,0);assert.equal(missing.potionCost,null);assert.equal(missing.net,null);
- for(const id in r.outputs)prices.prices[id]={price:0,source:'manual'};for(const id in r.potionItems)prices.prices[id]={price:2,source:'manual'};
- const priced=priceCollection(r,prices);assert.ok(priced.potionCost>0);assert.equal(priced.costPerPoint,0);assert.equal(priced.net,priced.potionCost);
- const overflow=priceCollection({...r,potionItems:{[3221]:1e20}},prices);assert.equal(overflow.cost,0);assert.equal(overflow.potionCost,null);assert.ok(overflow.overflowFields.includes('potions'));
+test('page estimates keep potion and blessing effects without calculating upkeep',()=>{
+ const s=setup();s.config.brews.hunter=3;s.config.brews.elixir=1;s.config.blessing=true;
+ const r=estimateCollection(s,4001,job(4001));assert.equal(r.status,'ok');assert.equal('potionItems' in r,false);assert.equal('outputs' in r,false);
+ const valued=priceCollection(r,priceDefaults());assert.equal(valued.cost,0);assert.equal(valued.costPerPoint,0);
+ const offline=collectionPotionItems(s.config,1800);assert.deepEqual(offline,{[game.withRarity(221,3)]:.5,[game.withRarity(223,1)]:.5});
 });
 test('travel simulation applies XP and movement boosts and charges actual elapsed potion usage',()=>{
  const s=setup();s.config.hotSetting='off';const baseline=simulateCollection(s,40,job(40).id,{maxTicks:6000});
@@ -189,7 +183,7 @@ test('one configuration feeds both engines and excludes gathering-only upkeep fr
  const players=collectionPlayers(s);
  for(const p of [players.gather,players.craft]){assert.equal(p.masteries.xp,7);assert.equal(p.masteries.move,9);}
  const craft=collectionWorkConfig(s,'craft');assert.equal(craft.weeklyXp,2.75);assert.deepEqual(craft.brews,{elixir:2,swift:1});
- const estimate=estimateCollection(s,40,job(40));assert.deepEqual(estimate.potionItems,collectionPotionItems(craft,estimate.seconds));
+ const estimate=estimateCollection(s,40,job(40));assert.equal('potionItems' in estimate,false);
  const sample=simulateCollection(s,40,job(40).id,{maxTicks:6000});assert.deepEqual(sample.potionItems,collectionPotionItems(craft,sample.seconds));
  assert.deepEqual(validateCollection(JSON.parse(JSON.stringify(s))),s);
  assert.throws(()=>validateCollection({...s,version:0}),/invalidConfiguration/);

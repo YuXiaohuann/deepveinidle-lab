@@ -21,7 +21,7 @@
 
 #### 官方市场价格
 
-实验室 `src/market-import.js` 直接 GET 官方公开 API，将完整物品 ID、最低卖价、最高买价和生成时间适配为现有行情模型；不发送凭据，不使用代理或 userscript 桥接。接口校验、缓存兼容、分类导入和失败规则见 [全局物品价格](shared.md#24-全局物品价格)。2.7.0 删除 `marketBook`／`marketBooks`／`marketDepth` 专用解析、`dvi-market-request/response` 桥接、`dvi-market-quotes-v1` GM 存储读写及市场提示。旧角色脚本的角色桥接仍兼容，但移除游戏侧市场捕获须更新脚本并刷新游戏。
+实验室 `src/market-import.js` 直接 GET 官方公开 API，将完整物品 ID、最低卖价、最高买价和生成时间适配为现有行情模型；不发送凭据，不使用代理或 userscript 桥接。`src/item-price-store.js`统一执行行情验证与防倒退，收藏角色导入仅更新官方报价缓存，价格面板按最新锁定状态应用有效价格；两者共用入口并共享并发网络请求；双语市场错误文案由市场适配模块共用。接口校验、缓存兼容、分类导入和失败规则见 [全局物品价格](shared.md#24-全局物品价格)。2.7.0 删除 `marketBook`／`marketBooks`／`marketDepth` 专用解析、`dvi-market-request/response` 桥接、`dvi-market-quotes-v1` GM 存储读写及市场提示。旧角色脚本的角色桥接仍兼容，但移除游戏侧市场捕获须更新脚本并刷新游戏。
 
 #### 捕获 Worker
 
@@ -72,9 +72,9 @@
 | `src/character-import.js`、`src/import-controls.js` | 全部支持字段校验与转换、配置导入及跨页面请求 |
 | `tests/character-import.test.mjs` | 全部字段映射、角色脚本旁听与存储桥接回归 |
 | `src/debug-controls.js`、`tests/debug-controls.test.mjs` | 隐藏调试页、角色配置 JSON 文件下载与战斗／强化两个共用导入入口、文件往返及失败状态验证 |
-| `src/collection-model.js`、`src/collection-controls.js`、`src/collection-simulation.js` | 隐藏收藏页、独立最小进度与角色导入、原始里程碑／奖励、动作期望和双侧采购／回收估值、纯动作计算、材料／产物明细及离线目标事件回归 |
+| `src/collection-model.js`、`src/collection-controls.js`、`src/collection-simulation.js` | 隐藏收藏页、独立最小进度与角色导入、原始里程碑／奖励、动作期望与API／商人材料采购估值、材料明细及离线目标事件回归（产出和药剂数量只在离线事件验证中保留） |
 | `src/collection-plan.js`、`src/collection-plan-controls.js`、`src/collection-auto-import.js` | 独立计划存储、最高目标去重、材料归并与展示，以及焦点／定时自动导入调度与过期响应隔离 |
-| `tests/collection.test.mjs`、`tests/collection-browser.mjs` | 收藏边界、品质／烧焦／被捕、价格缺失与零价、独立目标事件对照、DOM 桥接、材料／产物展开区与窄屏专项 |
+| `tests/collection.test.mjs`、`tests/collection-browser.mjs` | 收藏边界、品质／烧焦／被捕、价格缺失与零价、独立目标事件对照、DOM 桥接、材料采购展开区与窄屏专项 |
 | `tests/collection-plan.test.mjs`、`tests/collection-auto-import.test.mjs`、`tests/collection-plan-browser.mjs` | 计划去重、数量和金额边界、定时／焦点调度、导入并发与存档保留、双语窄屏交互 |
 | `src/mastery.js`、`src/mastery-controls.js` | 独立精通预算、升级成本、配置校验与双语交互 |
 | `src/app.js`、`src/style.css` | 双语交互、呈现、本地保存和响应式布局 |

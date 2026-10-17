@@ -1,5 +1,5 @@
 import * as game from './upstream.js';
-import {collectionWorkConfig,collectionTarget,collectionRoutes,pointsForProduction,collectionPotionItems,collectionWindows} from './collection-model.js';
+import {collectionWorkConfig,collectionTarget,collectionRoutes,pointsForProduction,collectionWindows} from './collection-model.js';
 import {gatheringSkills} from './gathering-model.js';
 import {createCraftingScenario,MAX_CRAFT_TICKS} from './crafting-simulation.js';
 import {createGatheringScenario} from './gathering-simulation.js';
@@ -49,4 +49,10 @@ export function simulateCollection(state,id,jobId,{target:goal,seed=0,maxTicks=M
  result.points=pointsForProduction(id,target.current,result.quantity);
  if(result.complete)result.secondsPerPoint=result.seconds/result.points;else result.error??='timeLimit';
  return result;
+}
+
+// Offline event regression only; the collection page does not estimate potion costs.
+export function collectionPotionItems(config,seconds){
+ if(!Number.isFinite(seconds)||seconds<0)throw Error('invalidDuration');
+ return Object.fromEntries(game.potions.filter(p=>(config.brews[p.kind]??-1)>=0).map(p=>[game.withRarity(p.itemId,config.brews[p.kind]),seconds/(game.potionDurationTicks*game.tickMs/1000)]));
 }

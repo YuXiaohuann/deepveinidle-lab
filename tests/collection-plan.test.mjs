@@ -6,13 +6,14 @@ import {collectionPlanDefaults,validateCollectionPlan,addCollectionPlan,removeCo
 import {priceDefaults} from '../src/item-prices.js';
 const state=()=>({...collectionDefaults(),initialized:true});
 const pick=(itemId,target)=>({itemId,jobId:collectionRoutes(itemId)[0].id,target});
-const priced=()=>{const prices=priceDefaults();for(const item of game.items)prices.prices[item.id]={source:'manual',price:2};return prices;};
+const priced=()=>{const prices=priceDefaults();for(const item of game.items)prices.quotes[item.id]={ask:{value:2,capturedAt:100},bid:{value:2,capturedAt:100}};return prices;};
 
 test('milestones normalize to the highest per complete item and never double count rewards/materials',()=>{
  const s=state();s.counts[40]=9;
  const plan=validateCollectionPlan({version:1,selections:[pick(40,10),pick(40,100),pick(40,1000),pick(40,1000)]});
  assert.deepEqual(plan.selections,[pick(40,1000)]);
  const r=calculateCollectionPlan(s,plan,priced());assert.equal(r.points,14);assert.equal(r.cost,3964);assert.deepEqual(r.materials.map(m=>[m.itemId,m.quantity]),[[1,991],[2,991]]);
+ s.buyMode='vendor';assert.equal(calculateCollectionPlan(s,plan,priced()).cost,991*(game.vendorPrice(1)+game.vendorPrice(2)));
  assert.deepEqual(addCollectionPlan(plan,pick(40,10)),plan);assert.deepEqual(addCollectionPlan(plan,pick(40,1000)),plan);
  const lower=addCollectionPlan(removeCollectionPlan(plan,40),pick(40,100));assert.equal(calculateCollectionPlan(s,lower,priced()).materials[0].quantity,91);
  assert.deepEqual(removeCollectionPlan(lower,40),collectionPlanDefaults());assert.equal(plan.selections[0].target,1000);
@@ -42,8 +43,8 @@ test('unavailable routes stay in the plan and cannot masquerade as a complete ze
 test('missing prices and amount overflow preserve quantities, and explicit zero stays valid',()=>{
  const s=state(),plan=addCollectionPlan(collectionPlanDefaults(),pick(40,100));
  const prices=priceDefaults(),missing=calculateCollectionPlan(s,plan,prices);assert.equal(missing.cost,null);assert.equal(missing.materials[0].quantity,100);assert.equal(missing.missingPrices,2);
- prices.prices[1]={source:'manual',price:0};prices.prices[2]={source:'manual',price:0};assert.equal(calculateCollectionPlan(s,plan,prices).cost,0);
- prices.prices[1].price=Number.MAX_SAFE_INTEGER;const overflow=calculateCollectionPlan(s,plan,prices);assert.equal(overflow.cost,null);assert.equal(overflow.amountOverflow,true);assert.equal(overflow.materials[0].quantity,100);
+ prices.quotes[1]={ask:{value:0,capturedAt:100}};prices.quotes[2]={ask:{value:0,capturedAt:100}};assert.equal(calculateCollectionPlan(s,plan,prices).cost,0);
+ prices.quotes[1].ask.value=Number.MAX_SAFE_INTEGER;const overflow=calculateCollectionPlan(s,plan,prices);assert.equal(overflow.cost,null);assert.equal(overflow.amountOverflow,true);assert.equal(overflow.materials[0].quantity,100);
 });
 test('bad selections fail explicitly and never mutate the existing plan',()=>{
  const plan=addCollectionPlan(collectionPlanDefaults(),pick(40,10)),before=structuredClone(plan);

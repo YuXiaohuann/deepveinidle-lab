@@ -1,8 +1,8 @@
 import * as game from './upstream.js';
 import {translatedName} from './i18n.js';
-import {marketFamilies,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot} from './item-prices.js';
-import {priceState,priceSaveError,updatePrices,subscribePrices} from './item-price-store.js';
-import {requestMarket} from './market-import.js';
+import {marketFamilies,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices} from './item-prices.js';
+import {priceState,priceSaveError,updatePrices,subscribePrices,refreshMarketPrices} from './item-price-store.js';
+import {marketErrors} from './market-import.js';
 
 let editing=false;
 let language='zh',dialog,selected=new Set(),busy=false,status=null,marketError=null,query='',family='all',tier='all',plus=0,filter='all';
@@ -14,7 +14,7 @@ const familyName=f=>text(labels[f.key],f.label);
 const opts=(arr,value)=>arr.map(([v,label])=>`<option value="${v}" ${String(v)===String(value)?'selected':''}>${esc(label)}</option>`).join('');
 const number=v=>v.toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:6});
 const date=v=>new Date(v).toLocaleString(language==='zh'?'zh-CN':'en');
-const errors={marketNetworkFailed:['官方行情请求失败，请检查网络后重试；已有价格保留。','Could not reach the official market API. Check your connection and retry; existing prices were kept.'],marketTimeout:['官方行情请求超时，请重试；已有价格保留。','The official market request timed out. Retry; existing prices were kept.'],marketHttpFailed:['官方行情接口返回错误，请稍后重试；已有价格保留。','The official market API returned an error. Retry later; existing prices were kept.'],marketStale:['官方行情早于当前缓存，已有报价与价格保留。','Official quotes are older than the current cache; existing quotes and prices were kept.'],invalidMarketData:['官方行情数据格式异常，已有价格保留。','Invalid official market data; existing prices were kept.'],noMarketData:['官方接口暂无物品报价，请稍后重试；已有价格保留。','The official API has no item quotes. Retry later; existing prices were kept.'],invalidPrice:['单价必须为空或范围内的非负数值。','Unit prices must be blank or finite nonnegative numbers within range.'],invalidPriceStorage:['已保存价格格式无效，当前使用空价格表；未自动覆盖原存档。','Saved prices are invalid. An empty table is shown; the saved data has not been overwritten.'],priceReadFailed:['价格存储读取失败，当前设置未恢复。','Could not read saved prices.'],priceSaveFailed:['价格未保存：浏览器存储不可用，当前内存设置仍有效。','Prices were not saved. Browser storage is unavailable; current in-memory settings still apply.']};
+const errors={...marketErrors,invalidPrice:['单价必须为空或范围内的非负数值。','Unit prices must be blank or finite nonnegative numbers within range.'],invalidPriceStorage:['已保存价格格式无效，当前使用空价格表；未自动覆盖原存档。','Saved prices are invalid. An empty table is shown; the saved data has not been overwritten.'],priceReadFailed:['价格存储读取失败，当前设置未恢复。','Could not read saved prices.'],priceSaveFailed:['价格未保存：浏览器存储不可用，当前内存设置仍有效。','Prices were not saved. Browser storage is unavailable; current in-memory settings still apply.']};
 const errorText=key=>(errors[key]??[key,key])[language==='zh'?0:1];
 const statusError=()=>!busy&&(marketError||status?.error);
 function message(){
@@ -93,12 +93,7 @@ ${saved?`<p class="issue-box" role="alert">${esc((errors[saved]??[saved,saved])[
 }
 render.importOpen=true;
 async function importPrices(){if(busy)return;const preferences=structuredClone(priceState().preferences);busy=true;render();
- try{const response=await requestMarket();if(!response.snapshot)throw Error('noMarketData');const parsed=validateMarketSnapshot(response.snapshot);if(!Object.keys(parsed.quotes).length){if(parsed.invalid)throw Error('invalidMarketData');throw Error('noMarketData');}
-  const latest=Math.max(0,...Object.values(priceState().quotes).flatMap(q=>Object.values(q).map(side=>side.capturedAt)));
-  const incoming=Math.max(...Object.values(parsed.quotes).flatMap(q=>Object.values(q).map(side=>side.capturedAt)));
-  if(incoming<latest)throw Error('marketStale');
-  marketError=null;
-  const result=importItemPrices(priceState(),response.snapshot,preferences);status={stats:result.stats};updatePrices({...result.state,quotes:parsed.quotes});
+ try{const result=await refreshMarketPrices(preferences);marketError=null;status={stats:result.stats};
  }catch(error){marketError=error.message;status=null;}finally{busy=false;render();}
 }
 export function mountItemPrices(nextLanguage){language=nextLanguage;

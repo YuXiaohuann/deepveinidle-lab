@@ -32,3 +32,5 @@ export async function requestMarket(){
   throw Error('marketNetworkFailed');
  }finally{clearTimeout(timeout);}
 }
+
+export const marketErrors={marketNetworkFailed:['官方行情请求失败，请检查网络后重试；已有价格保留。','Could not reach the official market API. Check your connection and retry; existing prices were kept.'],marketTimeout:['官方行情请求超时，请重试；已有价格保留。','The official market request timed out. Retry; existing prices were kept.'],marketHttpFailed:['官方行情接口返回错误，请稍后重试；已有价格保留。','The official market API returned an error. Retry later; existing prices were kept.'],marketStale:['官方行情早于当前缓存，已有报价与价格保留。','Official quotes are older than the current cache; existing quotes and prices were kept.'],invalidMarketData:['官方行情数据格式异常，已有价格保留。','Invalid official market data; existing prices were kept.'],noMarketData:['官方接口暂无物品报价，请稍后重试；已有价格保留。','The official API has no item quotes. Retry later; existing prices were kept.']};

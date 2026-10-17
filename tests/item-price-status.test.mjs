@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import * as game from '../src/upstream.js';
+import {marketErrors} from '../src/market-import.js';
 import {priceDefaults,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes} from '../src/item-prices.js';
 const source=fs.readFileSync(new URL('../src/item-price-controls.js',import.meta.url),'utf8').replace(/^import .*;\n/gm,'').replace('export function mountItemPrices','function mountItemPrices');
+const refreshSource='let marketRequest;'+fs.readFileSync(new URL('../src/item-price-store.js',import.meta.url),'utf8').split('let marketRequest;')[1].replace('export async function','async function');
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 function harness(requestMarket,priceInputs=[]){
  const state=priceDefaults();state.quotes={1:{bid:{value:36,capturedAt:Date.now()-1000}}};
@@ -12,8 +14,8 @@ function harness(requestMarket,priceInputs=[]){
  const controls=new Map(),element=()=>({focus(){},setAttribute(key,value){this[key]=value;},scrollTop:0,textContent:''});
  const dialog={open:false,innerHTML:'',showModal(){this.open=true;},setAttribute(){},addEventListener(){},querySelector(selector){if(!controls.has(selector))controls.set(selector,element());return controls.get(selector);},querySelectorAll(selector){return selector==='[data-price-value]'?priceInputs:[];}};
  const button={};const document={createElement:()=>dialog,body:{append(){}},getElementById:()=>button};let current=state,subscriber;
- const ctx=vm.createContext({game,marketFamilies:game.marketFamilies,translatedName:s=>s,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes,document,Date,Set,Number,Object,String,structuredClone,marketPricesUrl:"https://deepveinidle.com/api/market/prices.json",requestAnimationFrame:fn=>frames.push(fn),requestMarket,priceState:()=>current,priceSaveError:()=>null,updatePrices:next=>{current=next;subscriber?.();},subscribePrices:fn=>subscriber=fn});
- vm.runInContext(source,ctx);ctx.mountItemPrices('zh');return {dialog,button,controls,ctx,nextFrame(){for(const fn of frames.splice(0))fn();},runFrames(){while(frames.length)this.nextFrame();}};
+ const ctx=vm.createContext({marketErrors,game,marketFamilies:game.marketFamilies,translatedName:s=>s,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes,document,Date,Set,Number,Object,String,structuredClone,marketPricesUrl:"https://deepveinidle.com/api/market/prices.json",requestAnimationFrame:fn=>frames.push(fn),requestMarket,priceState:()=>current,priceSaveError:()=>null,updatePrices:next=>{current=next;subscriber?.();},subscribePrices:fn=>subscriber=fn});
+ vm.runInContext(refreshSource,ctx);vm.runInContext(source,ctx);ctx.mountItemPrices('zh');return {dialog,button,controls,ctx,nextFrame(){for(const fn of frames.splice(0))fn();},runFrames(){while(frames.length)this.nextFrame();}};
 }
 function changeFilter(h,key,value){const el=h.controls.get('#price-'+key);el.value=value;el.onchange();}
 test('price list includes all legal rarities without quotes and generates enhancements only on selection',()=>{
