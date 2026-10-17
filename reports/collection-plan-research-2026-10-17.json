@@ -1,0 +1,79 @@
+{
+  "date": "2026-10-17",
+  "source": "local verified 1.0.1190; no online version check",
+  "supportedRecipes": 198,
+  "multipleRoutes": [],
+  "gatheringRoutes": 26,
+  "gatheringWithInputs": [],
+  "batchOutputs": [],
+  "overlappingMilestones": {
+    "current": 9,
+    "rows": [
+      {
+        "id": 40,
+        "jobId": 41,
+        "target": 10,
+        "points": 1,
+        "materials": {
+          "1": 1,
+          "2": 1
+        }
+      },
+      {
+        "id": 40,
+        "jobId": 41,
+        "target": 100,
+        "points": 4,
+        "materials": {
+          "1": 91,
+          "2": 91
+        }
+      },
+      {
+        "id": 40,
+        "jobId": 41,
+        "target": 1000,
+        "points": 14,
+        "materials": {
+          "1": 991,
+          "2": 991
+        }
+      }
+    ],
+    "naivePoints": 19,
+    "naiveMaterials": 1083,
+    "effective": [
+      {
+        "id": 40,
+        "jobId": 41,
+        "target": 1000,
+        "points": 14,
+        "materials": {
+          "1": 991,
+          "2": 991
+        }
+      }
+    ],
+    "totals": {
+      "1": 991,
+      "2": 991
+    }
+  },
+  "rarity": {
+    "normal": 40,
+    "rare": 1040,
+    "rareMaterials": {
+      "1001": 1,
+      "1002": 1
+    }
+  },
+  "burn": {
+    "jobId": 61,
+    "itemId": 60,
+    "burn": 0.3,
+    "attempts": 1.4285714285714286,
+    "materials": {
+      "20": 1.4285714285714286
+    }
+  }
+}

@@ -31,6 +31,9 @@
 
 ## 计算机制与方案
 
+- [收藏执行计划与自动导入实施](collection-plan-implementation-2026-10-17.md)（2026-10-17，本地待发布）
+- [收藏精通执行计划与材料汇总调研](collection-plan-research-2026-10-17.md)（2026-10-17，已采纳，保留调研依据）
+
 - [采集“丢弃采集物”支持调研](gathering-discard-research-2026-10-16.md)（2026-10-16，原始机制与统计边界）
 
 - [战斗配置导入全部生效世界增益调研](combat-world-buffs-research-2026-10-16.md)（2026-10-16）

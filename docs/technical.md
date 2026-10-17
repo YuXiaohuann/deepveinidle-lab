@@ -72,8 +72,10 @@
 | `src/character-import.js`、`src/import-controls.js` | 全部支持字段校验与转换、配置导入及跨页面请求 |
 | `tests/character-import.test.mjs` | 全部字段映射、角色脚本旁听与存储桥接回归 |
 | `src/debug-controls.js`、`tests/debug-controls.test.mjs` | 隐藏调试页、角色配置 JSON 文件下载与战斗／强化两个共用导入入口、文件往返及失败状态验证 |
-| `src/collection-model.js`、`src/collection-simulation.js`、`src/collection-worker.js`、`src/collection-controls.js` | 隐藏收藏页、独立最小进度与角色导入、原始里程碑／奖励、动作期望和双侧采购／回收估值、按需目标事件模拟 |
-| `tests/collection.test.mjs`、`tests/collection-browser.mjs` | 收藏边界、品质／烧焦／被捕、价格缺失与零价、独立目标事件对照、DOM 桥接／Worker／窄屏专项 |
+| `src/collection-model.js`、`src/collection-controls.js`、`src/collection-simulation.js` | 隐藏收藏页、独立最小进度与角色导入、原始里程碑／奖励、动作期望和双侧采购／回收估值、纯动作计算、材料／产物明细及离线目标事件回归 |
+| `src/collection-plan.js`、`src/collection-plan-controls.js`、`src/collection-auto-import.js` | 独立计划存储、最高目标去重、材料归并与展示，以及焦点／定时自动导入调度与过期响应隔离 |
+| `tests/collection.test.mjs`、`tests/collection-browser.mjs` | 收藏边界、品质／烧焦／被捕、价格缺失与零价、独立目标事件对照、DOM 桥接、材料／产物展开区与窄屏专项 |
+| `tests/collection-plan.test.mjs`、`tests/collection-auto-import.test.mjs`、`tests/collection-plan-browser.mjs` | 计划去重、数量和金额边界、定时／焦点调度、导入并发与存档保留、双语窄屏交互 |
 | `src/mastery.js`、`src/mastery-controls.js` | 独立精通预算、升级成本、配置校验与双语交互 |
 | `src/app.js`、`src/style.css` | 双语交互、呈现、本地保存和响应式布局 |
 | `scripts/release.mjs`、`scripts/release-*.mjs` | 发布三阶段编排、证据摘要、隔离提取、HTTP／浏览器验收与完整日志 |
