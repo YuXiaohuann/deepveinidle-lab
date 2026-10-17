@@ -14,7 +14,7 @@ node scripts/serve.mjs
 
 打开 [本机页面](http://127.0.0.1:4173)。安装依赖、测试、原始代码提取与本机服务边界见 [本地开发](docs/development.md)。
 
-隐藏收藏性价比页 `/collection`，只通过 URL 进入，不列入菜单。支持导入未完成收藏，比较获取精通点的动作耗时与材料成本；范围见[收藏页面设计](docs/pages/collection.md)。基础页面随1.4.0上线，1.4.1增加执行计划材料汇总、完成进度及可选自动导入，生产状态见[当前状态](docs/status.md)。
+隐藏收藏性价比页 `/collection`，只通过 URL 进入，不列入菜单。支持导入未完成收藏，比较获取精通点的动作耗时与材料成本；范围见[收藏页面设计](docs/pages/collection.md)。基础页面随1.4.0上线，1.4.1增加执行计划材料汇总、完成进度及自动导入；1.4.2简化为时间与材料成本比较，支持商人估值及角色导入联动市场报价。生产状态见[当前状态](docs/status.md)。
 
 “公式”页入口为 `/formulas`，支持章节目录和链接定位。正文维护于 [中文 Markdown](src/content/formulas/combat.zh.md)，浏览器使用随站点发布的 markdown-it 渲染；页面范围与验收见 [公式页面设计](docs/pages/formulas.md)。
 
