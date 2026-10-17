@@ -34,15 +34,15 @@ pnpm release:verify --evidence .test-artifacts/release/candidate-check --package
 
 | 阶段 | 检查范围与结果 |
 | --- | --- |
-| `release:check` | 完整测试、唯一完整独立原始计算对照、隔离重复提取与未知摘要拒绝、源码语法／文档引用／版本／路由定义，以及本机 17 路由、全部公开资源和八页双语两视口的 32 组浏览器验收。保存 `check.json`、五阶段完整日志、HTTP／浏览器结果、32 张截图与 `report.md`。 |
+| `release:check` | 完整测试、唯一完整独立原始计算对照、隔离重复提取与未知摘要拒绝、源码语法／文档引用／版本／路由定义，以及本机 19 路由、全部公开资源和九页双语两视口的 36 组浏览器验收。保存 `check.json`、五阶段完整日志、HTTP／浏览器结果、36 张截图与 `report.md`。 |
 | `release:package` | 核对同轮通过证据与完整候选输入，按下节白名单创建全新包目录，包清单保存在检查证据目录。 |
-| `release:verify` | 重新核对候选输入与包摘要，独立检查实际目标的 17 路由、路径保留、全部资源与来源清单、逐文件一致性、HTML 入口与双语版本，以及 32 组布局、独立滚动／键盘／滚轮／页脚与普通战斗完成。保存带目标 URL 的 `verify.json`、截图与报告。 |
+| `release:verify` | 重新核对候选输入与包摘要，独立检查实际目标的 19 路由、路径保留、全部资源与来源清单、逐文件一致性、HTML 入口与双语版本，以及 36 组布局、独立滚动／键盘／滚轮／页脚与普通战斗完成。保存带目标 URL 的 `verify.json`、截图与报告。 |
 
 独立计算验证须包含人工算例，不能再次调用同一函数生成预期值；完整对照已包含战斗子集，常规发布不叠加重跑。日期型原始对照文件继续作为历史证据保留。
 
 视觉或功能变更仍须执行相关页面专项与人工截图审阅，并在本轮发布报告单独记录；基础矩阵不能证明全部交互或视觉正确，工具保存截图不等于人工审阅完成。
 
-本机预览将 `/`、`/combat`、`/gather`、`/craft`、`/enhance`、`/mastery`、`/forecast`、`/formulas`、`/debug` 及各页面尾斜线形式映射到同一 `index.html`。Cloudflare Pages 的 `_redirects` 使用 200 代理到 `/`；不能代理到 `/index.html`，否则规范化跳转可能丢失页面路径。
+本机预览将 `/`、`/combat`、`/gather`、`/craft`、`/enhance`、`/mastery`、`/forecast`、`/formulas`、`/collection`、`/debug` 及各页面尾斜线形式映射到同一 `index.html`。Cloudflare Pages 的 `_redirects` 使用 200 代理到 `/`；不能代理到 `/index.html`，否则规范化跳转可能丢失页面路径。
 
 HTML 一致性检查仅允许已知 analytics loader、Cloudflare Web／Pages Analytics 边界注释及标签间空白。HTTP 与浏览器错误不得忽略；线上失败不改写发布前已通过的结果，正式版准备也不等于部署成功。
 

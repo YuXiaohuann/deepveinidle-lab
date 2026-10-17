@@ -8,7 +8,7 @@
 node scripts/serve.mjs
 ```
 
-打开 [本机页面](http://127.0.0.1:4173)。服务仅监听本机，可通过 `PORT` 环境变量修改端口；支持 `/combat`、`/gather`、`/craft`、`/enhance`、`/mastery`、`/forecast`、`/formulas` 和隐藏调试页 `/debug`。调试页仅提供角色配置 JSON 导出、战斗／强化配置文件导入；完整角色快照捕获、导入、导出与模拟已在当前版本移除。
+打开 [本机页面](http://127.0.0.1:4173)。服务仅监听本机，可通过 `PORT` 环境变量修改端口；支持 `/combat`、`/gather`、`/craft`、`/enhance`、`/mastery`、`/forecast`、`/formulas` 、隐藏收藏页 `/collection` 和调试页 `/debug`。调试页仅提供角色配置 JSON 导出、战斗／强化配置文件导入；完整角色快照捕获、导入、导出与模拟已在当前版本移除。
 
 运行测试：
 
@@ -62,3 +62,7 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 `node --test tests/upstream-1190.test.mjs` 覆盖迁移战斗区域、自动及两个指定仓库、巨像六件五品质材料、保存兼容与任务自动领奖隔离。独立离线对照使用 `scripts/native-questless.mjs` 按日边界分段保持空任务，以数学日／周编号独立于应用适配函数核验。
 
 `node tests/upstream-browser.mjs --out .test-artifacts/upstream-1190` 检查双语桌面／390px 战斗完成、来源版本、巨像材料／经验与库存计划刷新保存，以及合成消息下的真实 Blob Worker；需要本机监听和 Chrome。指定 `--url https://dvi-lab.pages.dev --out <证据目录>` 时检查该实际目标四组页面，不把本地 Worker 当作生产测试。截图和机器结果落盘，仍需人工审阅。
+
+## 收藏页专项
+
+`node --test tests/collection.test.mjs tests/i18n.test.mjs` 验证收藏目标、价格、奖励、原始事件和名称翻译。`node tests/collection-browser.mjs --out .test-artifacts/collection/local` 运行本机专项，`--url https://dvi-lab.pages.dev --out <目录>` 验证指定线上目标；结果包含目标 URL、真实 Worker、受控桥接／报价、双语桌面与390px截图。需要本机监听及Chrome；实际账号与成交不在验证范围，页面设计和边界见[收藏页面](pages/collection.md)。

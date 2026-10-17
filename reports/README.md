@@ -30,6 +30,7 @@
 ## 计算机制与方案
 
 - [采集“丢弃采集物”支持调研](gathering-discard-research-2026-10-16.md)（2026-10-16，原始机制与统计边界）
+
 - [战斗配置导入全部生效世界增益调研](combat-world-buffs-research-2026-10-16.md)（2026-10-16）
 - [强化模拟器调研](enhancement-simulator-research-2026-10-07.md)（2026-10-07）
 - [采集原始机制核验与验证边界](gathering-engine-audit-2026-10-09.md)（2026-10-09）
@@ -40,8 +41,11 @@
 
 ## 功能实施与专项验证
 
+- [收藏性价比首版实施与验证](collection-implementation-2026-10-17.md)（2026-10-17，含原始依据、开发期证据与验证入口）
+
 - [采集两项世界增益实施与验证](gathering-world-buffs-implementation-2026-10-16.md)（2026-10-16，已随1.3.8发布）
 - [采集丢弃配置实施与验证](gathering-discard-implementation-2026-10-16.md)（2026-10-16，已随1.3.7发布）
+
 - [战斗世界增益导入与文案实施验证](combat-world-buffs-implementation-2026-10-16.md)（2026-10-16）
 - [制造首版实施与发布验证](crafting-implementation-2026-10-12.md)（2026-10-12）
 - [预报配色、多选与面板实施验证](forecast-implementation-2026-10-16.md)（2026-10-16）

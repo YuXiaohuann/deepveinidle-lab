@@ -36,7 +36,7 @@
 
 - 游戏地址：<https://deepveinidle.com/>。
 - 当前工作树已完整同步公开资源 <https://deepveinidle.com/assets/index-DAY9oe71.js>，2026-10-16 获取并核验，SHA-256 `c61c0f23060ecb43ebc22d6e2e1742b16c265383a1dc1b2860357b341047aeb5`。资源最新更新条目为 1.0.1190（2026-10-15）；文件名和摘要作为快照标识。
-- 当前生成模块完整提取 715 个原始声明，manifest 无 overrides，不混合旧声明或局部替换。此前战斗局部补充保留为历史证据；适配验证与发布状态见 [当前状态](status.md)，此前发布证据不作为 1.0.1190 验证。
+- 当前生成模块完整提取 719 个原始声明，manifest 无 overrides，不混合旧声明或局部替换。此前战斗局部补充保留为历史证据；适配验证与发布状态见 [当前状态](status.md)，此前发布证据不作为 1.0.1190 验证。
 - 保存完整公开资源；`.gitattributes` 仅对 `vendor/game-original.js` 关闭行尾空格检查，保留上游模板字符串中的原始空格及完整摘要，其余空白检查保持。原样提取计算函数及数据依赖，不加载整个游戏应用，也不依赖游戏账号。函数体及数据字面量保持原样，每个提取声明可追溯并校验摘要；原始计算模块不依赖 DOM、网络或账号。压缩符号只是当前快照定位信息，不是稳定接口。
 - 新版物品 397 为满月礼盒（Moon box），定义价值 25，原始商人售价函数返回 10，归贵重物品分类；仅补齐物品定义、翻译、分类与价格导入，不增加现实活动利润模拟。新版活动 `box` 事件已携带实际 `itemId`，统计优先读取该字段，不把其他活动礼盒计成旧礼盒。
 - 新版制造任务按初始仓库重选最近制造点；采集任务无输入材料时保留指定点。当前制造适配先从所选仓库初始化，需继续核验每配方／品质及两个仓库的选点一致性。
@@ -72,6 +72,8 @@
 | `src/character-import.js`、`src/import-controls.js` | 全部支持字段校验与转换、配置导入及跨页面请求 |
 | `tests/character-import.test.mjs` | 全部字段映射、角色脚本旁听与存储桥接回归 |
 | `src/debug-controls.js`、`tests/debug-controls.test.mjs` | 隐藏调试页、角色配置 JSON 文件下载与战斗／强化两个共用导入入口、文件往返及失败状态验证 |
+| `src/collection-model.js`、`src/collection-simulation.js`、`src/collection-worker.js`、`src/collection-controls.js` | 隐藏收藏页、独立最小进度与角色导入、原始里程碑／奖励、动作期望和双侧采购／回收估值、按需目标事件模拟 |
+| `tests/collection.test.mjs`、`tests/collection-browser.mjs` | 收藏边界、品质／烧焦／被捕、价格缺失与零价、独立目标事件对照、DOM 桥接／Worker／窄屏专项 |
 | `src/mastery.js`、`src/mastery-controls.js` | 独立精通预算、升级成本、配置校验与双语交互 |
 | `src/app.js`、`src/style.css` | 双语交互、呈现、本地保存和响应式布局 |
 | `scripts/release.mjs`、`scripts/release-*.mjs` | 发布三阶段编排、证据摘要、隔离提取、HTTP／浏览器验收与完整日志 |

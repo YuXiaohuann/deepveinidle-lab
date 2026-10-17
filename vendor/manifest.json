@@ -48,6 +48,7 @@
     "magicDefenceScale": "hk",
     "maxEnhancement": "Lw",
     "potions": "Sg",
+    "potionDurationTicks": "D2",
     "recipes": "$o",
     "translations": "oD",
     "worldTranslations": "fD",
@@ -60,6 +61,9 @@
     "masteryTotalCost": "kI",
     "masteriesTotalCost": "wr",
     "masteryEarnedPoints": "ku",
+    "collectionThresholds": "Fd",
+    "collectionPoints": "S$",
+    "collectionItems": "Rd",
     "combatTick": "v8",
     "killMonster": "y8",
     "combatRarityMultiplier": "w8",
@@ -1710,6 +1714,12 @@
       "start": 171551,
       "end": 171556,
       "sha256": "d2105da26cea20861b5a50230f365a18a9c9002f5a205e310da4586986aaa44a"
+    },
+    {
+      "name": "D2",
+      "start": 171557,
+      "end": 171563,
+      "sha256": "66ca3ae77c03733916c30031eae701fdfd45c4645ccf58aefdab4f0e7208fbbb"
     },
     {
       "name": "$m",
@@ -4428,6 +4438,24 @@
       "start": 729453,
       "end": 731717,
       "sha256": "93722371909e839ce8cc611b127bc028d5e9e4b4616c201bdfd4acf841b7029b"
+    },
+    {
+      "name": "feo",
+      "start": 3155459,
+      "end": 3155480,
+      "sha256": "cf2666eb4611425be77f99c1f53773c6c1011f92a9e952017d206082e4e1815f"
+    },
+    {
+      "name": "oW",
+      "start": 3155481,
+      "end": 3155815,
+      "sha256": "fe7760a10103e6cbfb722fa1971ca7fe7b185b808a836d3b9cfbcb2176fa5630"
+    },
+    {
+      "name": "Rd",
+      "start": 3155816,
+      "end": 3155837,
+      "sha256": "f78bdfd366a605422422b36094d96e83a37ead7c7ce5d71fb1c0a6ed23143730"
     }
   ],
   "overrides": []

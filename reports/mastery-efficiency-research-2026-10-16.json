@@ -1,0 +1,136 @@
+{
+  "date": "2026-10-16",
+  "baseline": "local reviewed 1.0.1190 snapshot; not a live upstream check",
+  "cases": [
+    {
+      "id": 40,
+      "tier": 0,
+      "qty": 0,
+      "points": 0
+    },
+    {
+      "id": 40,
+      "tier": 0,
+      "qty": 1,
+      "points": 1
+    },
+    {
+      "id": 40,
+      "tier": 0,
+      "qty": 9,
+      "points": 1
+    },
+    {
+      "id": 40,
+      "tier": 0,
+      "qty": 10,
+      "points": 2
+    },
+    {
+      "id": 40,
+      "tier": 0,
+      "qty": 99,
+      "points": 2
+    },
+    {
+      "id": 40,
+      "tier": 0,
+      "qty": 100,
+      "points": 5
+    },
+    {
+      "id": 40,
+      "tier": 0,
+      "qty": 10000000,
+      "points": 2090
+    },
+    {
+      "id": 4040,
+      "tier": 4,
+      "qty": 0,
+      "points": 0
+    },
+    {
+      "id": 4040,
+      "tier": 4,
+      "qty": 1,
+      "points": 100
+    },
+    {
+      "id": 4040,
+      "tier": 4,
+      "qty": 9,
+      "points": 100
+    },
+    {
+      "id": 4040,
+      "tier": 4,
+      "qty": 10,
+      "points": 200
+    },
+    {
+      "id": 4040,
+      "tier": 4,
+      "qty": 99,
+      "points": 200
+    },
+    {
+      "id": 4040,
+      "tier": 4,
+      "qty": 100,
+      "points": 500
+    },
+    {
+      "id": 4040,
+      "tier": 4,
+      "qty": 10000000,
+      "points": 209000
+    },
+    {
+      "id": 316,
+      "qty": 0,
+      "points": 0,
+      "kind": "pet"
+    },
+    {
+      "id": 316,
+      "qty": 1,
+      "points": 1000,
+      "kind": "pet"
+    },
+    {
+      "id": 316,
+      "qty": 2,
+      "points": 1000,
+      "kind": "pet"
+    }
+  ],
+  "sourceFunctions": [
+    {
+      "name": "Fd",
+      "start": 242552,
+      "end": 242598
+    },
+    {
+      "name": "Pd",
+      "start": 242598,
+      "end": 242689
+    },
+    {
+      "name": "Hd",
+      "start": 242689,
+      "end": 242795
+    },
+    {
+      "name": "S$",
+      "start": 242795,
+      "end": 242881
+    },
+    {
+      "name": "d9",
+      "start": 242881,
+      "end": 242970
+    }
+  ],
+  "regularCraftingRecipes": 172
+}
