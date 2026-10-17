@@ -100,7 +100,7 @@ export function renderCollection(lang,{isActive=false}={}){
   try{localStorage.setItem(collectionAutoImportStorageKey,JSON.stringify({version:1,enabled:autoEnabled}));autoSaveError=false;}catch{autoSaveError=true;}
   autoImporter.set({enabled:autoEnabled,active});updateStatus();
  };
- host.querySelector('#collection-manual').onclick=()=>{state.initialized=true;state.edited=true;changed();renderCollection(language,{isActive:true});};
+ host.querySelector('#collection-manual').onclick=()=>{state.initialized=true;state.bank={};state.edited=true;changed();renderCollection(language,{isActive:true});};
  host.querySelector('#collection-reset').onclick=()=>{state=collectionDefaults();drafts.clear();opened.clear();status=null;loadError=false;changed();renderCollection(language,{isActive:true});};
  host.querySelectorAll('[data-collection-path]').forEach(el=>{
   el.oninput=()=>drafts.set(el.dataset.collectionPath,{value:el.value,checked:el.checked});

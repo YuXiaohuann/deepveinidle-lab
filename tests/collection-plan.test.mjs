@@ -4,7 +4,7 @@ import * as game from '../src/upstream.js';
 import {collectionDefaults,collectionRoutes,estimateCollection} from '../src/collection-model.js';
 import {collectionPlanDefaults,validateCollectionPlan,addCollectionPlan,addCollectionPlans,removeCollectionPlan,setCollectionPlanTarget,calculateCollectionPlan} from '../src/collection-plan.js';
 import {priceDefaults} from '../src/item-prices.js';
-const state=()=>({...collectionDefaults(),initialized:true});
+const state=()=>({...collectionDefaults(),initialized:true,bank:{}});
 const pick=(itemId,target)=>({itemId,jobId:collectionRoutes(itemId)[0].id,target});
 const priced=()=>{const prices=priceDefaults();for(const item of game.items)prices.quotes[item.id]={ask:{value:2,capturedAt:100},bid:{value:2,capturedAt:100}};return prices;};
 
@@ -70,4 +70,36 @@ test('bulk add preserves existing selections, merges highest milestones and reje
  assert.deepEqual(addCollectionPlans(added,values),added);
  assert.throws(()=>addCollectionPlans(plan,[pick(1040,100),pick(40,11)]),/invalidPlan/);
  assert.deepEqual(plan,before);
+});
+
+test('warehouse stock is deducted once after aggregation; qualities stay independent and full stock needs no quote',()=>{
+ const s=state();s.bank={1:6,2:15,1001:2};
+ const plan=addCollectionPlans(collectionPlanDefaults(),[pick(40,10),pick(1040,10)]);
+ const result=calculateCollectionPlan(s,plan,priced());
+ assert.deepEqual(result.materials.map(m=>[m.itemId,m.quantity,m.inventory,m.purchase,m.cost]),[[1,10,6,4,8],[2,10,15,0,0],[1001,10,2,8,16],[1002,10,0,10,20]]);
+ assert.equal(result.cost,44);assert.equal(result.knownCost,44);
+ const noPrices=priceDefaults();s.bank={1:10,2:100};
+ const covered=calculateCollectionPlan(s,addCollectionPlan(collectionPlanDefaults(),pick(40,10)),noPrices);
+ assert.equal(covered.cost,0);assert.equal(covered.missingPrices,0);assert.equal(covered.complete,true);
+ s.bank[1]=9;const short=calculateCollectionPlan(s,addCollectionPlan(collectionPlanDefaults(),pick(40,10)),noPrices);
+ assert.equal(short.materials[0].purchase,1);assert.equal(short.cost,null);assert.equal(short.missingPrices,1);
+});
+test('shared recipe inputs consume the warehouse only once and fractional burn needs remain exact',()=>{
+ const s=state();for(const skill in s.config.levels)s.config.levels[skill]=game.maxLevel;
+ const inputs=new Map();for(const job of game.recipes.filter(j=>!j.retired&&collectionRoutes(j.output.itemId).some(r=>r.id===j.id)))for(const input of game.recipeInputs(job,0)){const jobs=inputs.get(input.itemId)??[];jobs.push(job);inputs.set(input.itemId,jobs);}
+ const [id,[first,second]]=[...inputs].find(([,jobs])=>new Set(jobs.map(j=>j.output.itemId)).size>1);
+ const plan=addCollectionPlans(collectionPlanDefaults(),[pick(first.output.itemId,10),pick(second.output.itemId,10)]);
+ const expected=estimateCollection(s,first.output.itemId,first,undefined,10).materials[id]+estimateCollection(s,second.output.itemId,second,undefined,10).materials[id];
+ s.bank[id]=1;const m=calculateCollectionPlan(s,plan,priced()).materials.find(m=>m.itemId===id);
+ assert.equal(m.purchase,expected-1);assert.equal(m.cost,(expected-1)*2);
+ const cooking=game.recipes.find(j=>j.skill==='cooking'&&j.burn&&!j.retired);s.config.levels.cooking=cooking.levelReq;
+ const burnPlan=addCollectionPlan(collectionPlanDefaults(),pick(cooking.output.itemId,1));s.bank={};
+ const before=calculateCollectionPlan(s,burnPlan,priced()).materials[0];s.bank[before.itemId]=1;
+ const after=calculateCollectionPlan(s,burnPlan,priced()).materials[0];assert.equal(after.purchase,before.quantity-1);assert.equal(after.cost,(before.quantity-1)*2);assert.notEqual(after.purchase,Math.ceil(after.purchase));
+});
+test('unknown warehouse preserves gross needs and target rewards but never assumes zero inventory',()=>{
+ const s=state();s.bank=null;const plan=addCollectionPlan(collectionPlanDefaults(),pick(40,10));
+ const r=calculateCollectionPlan(s,plan,priced());assert.equal(r.missingInventory,true);assert.equal(r.complete,false);assert.equal(r.cost,null);assert.equal(r.points,2);
+ assert.equal(r.materials[0].quantity,10);assert.equal(r.materials[0].inventory,null);assert.equal(r.materials[0].purchase,null);assert.equal(r.materials[0].cost,null);
+ s.counts[40]=10;assert.equal(calculateCollectionPlan(s,plan,priced()).cost,0);
 });

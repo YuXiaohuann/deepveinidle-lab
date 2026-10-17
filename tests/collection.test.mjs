@@ -188,3 +188,15 @@ test('one configuration feeds both engines and excludes gathering-only upkeep fr
  assert.deepEqual(validateCollection(JSON.parse(JSON.stringify(s))),s);
  assert.throws(()=>validateCollection({...s,version:0}),/invalidConfiguration/);
 });
+
+test('collection imports and persists exact warehouse quantities; missing or malformed inventory rejects the entire import',()=>{
+ const current=setup(),snap=snapshot();snap.player.bank={1:7,2:0,1001:9};snap.player.pack=[{itemId:1,qty:99}];snap.player.overflow={1:88};
+ const imported=importCollection(current,snap);assert.deepEqual(imported.bank,{1:7,2:0,1001:9});
+ assert.deepEqual(validateCollection(JSON.parse(JSON.stringify(imported))).bank,imported.bank);
+ snap.player.bank[1]=8;assert.equal(imported.bank[1],7);
+ const before=structuredClone(imported);
+ for(const bank of [undefined,null,[],{1:-1},{1:.5},{1:'7'},{1:Number.MAX_SAFE_INTEGER+1},{'01':1},{999999999:1}]){
+  const bad={...snap,player:{...snap.player,bank,collections:{40:100}}};assert.throws(()=>importCollection(imported,bad),/invalidSnapshot|incompleteSnapshot/);assert.deepEqual(imported,before);
+ }
+ const withoutBank={...imported};delete withoutBank.bank;assert.equal(validateCollection(withoutBank).bank,null);
+});

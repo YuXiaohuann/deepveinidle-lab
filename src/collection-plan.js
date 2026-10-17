@@ -56,15 +56,18 @@ export function calculateCollectionPlan(state,raw,prices,{now=Date.now()}={}){
   return {...entry,...result};
  });
  let knownCost=0,missingPrices=0,amountOverflow=false;
+ const missingInventory=materials.size>0&&state.bank==null;
  const priced=[...materials.values()].sort((a,b)=>a.itemId-b.itemId).map(material=>{
   const quote=collectionPrice(material.itemId,prices,state.buyMode);
-  if(quote.price===null)missingPrices++;
-  let cost=material.quantity===null||quote.price===null?null:material.quantity*quote.price;
+  const inventory=state.bank==null?null:state.bank[material.itemId]??0;
+  const purchase=material.quantity===null||inventory===null?null:Math.max(0,material.quantity-inventory);
+  if(purchase>0&&quote.price===null)missingPrices++;
+  let cost=purchase===0?0:purchase===null||quote.price===null?null:purchase*quote.price;
   const overflow=cost!==null&&(!Number.isFinite(cost)||cost>Number.MAX_SAFE_INTEGER);
   if(overflow){cost=null;amountOverflow=true;}
   if(cost!==null&&knownCost!==null){knownCost+=cost;if(!Number.isFinite(knownCost)||knownCost>Number.MAX_SAFE_INTEGER){knownCost=null;amountOverflow=true;}}
-  return {...material,...quote,cost,overflow};
+  return {...material,...quote,inventory,purchase,cost,overflow};
  });
- const complete=blockedCount===0&&!quantityOverflow&&!amountOverflow&&missingPrices===0;
- return {entries,materials:priced,blockedCount,completedCount,quantityOverflow,amountOverflow,missingPrices,points:blockedCount||quantityOverflow?null:points,knownCost,cost:complete?knownCost:null,complete};
+ const complete=blockedCount===0&&!quantityOverflow&&!amountOverflow&&!missingInventory&&missingPrices===0;
+ return {entries,materials:priced,blockedCount,completedCount,quantityOverflow,amountOverflow,missingInventory,missingPrices,points:blockedCount||quantityOverflow?null:points,knownCost,cost:complete?knownCost:null,complete};
 }
