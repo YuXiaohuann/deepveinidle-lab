@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
 import {collectionDefaults,collectionRoutes,estimateCollection} from '../src/collection-model.js';
-import {collectionPlanDefaults,validateCollectionPlan,addCollectionPlan,removeCollectionPlan,calculateCollectionPlan} from '../src/collection-plan.js';
+import {collectionPlanDefaults,validateCollectionPlan,addCollectionPlan,addCollectionPlans,removeCollectionPlan,setCollectionPlanTarget,calculateCollectionPlan} from '../src/collection-plan.js';
 import {priceDefaults} from '../src/item-prices.js';
 const state=()=>({...collectionDefaults(),initialized:true});
 const pick=(itemId,target)=>({itemId,jobId:collectionRoutes(itemId)[0].id,target});
@@ -26,7 +26,7 @@ test('quality IDs remain independent and common materials sum across different r
  const [materialId,[first,second]]=[...inputs].find(([,jobs])=>jobs.length>1);assert.notEqual(first.output.itemId,second.output.itemId);
  const joined=addCollectionPlan(addCollectionPlan(collectionPlanDefaults(),pick(first.output.itemId,10)),pick(second.output.itemId,10));
  const expected=estimateCollection(s,first.output.itemId,first,undefined,10).materials[materialId]+estimateCollection(s,second.output.itemId,second,undefined,10).materials[materialId];
- const material=calculateCollectionPlan(s,joined,priced()).materials.find(m=>m.itemId===materialId);assert.equal(material.quantity,expected);assert.equal(material.contributors.length,2);
+ const material=calculateCollectionPlan(s,joined,priced()).materials.find(m=>m.itemId===materialId);assert.equal(material.quantity,expected);assert.equal('contributors' in material,false);
 });
 test('burn expectations are kept fractional, progress changes recompute, completed goals remain with zero need',()=>{
  const s=state(),cooking=game.recipes.find(j=>j.skill==='cooking'&&j.burn&&!j.retired);s.config.levels.cooking=cooking.levelReq;
@@ -51,4 +51,23 @@ test('bad selections fail explicitly and never mutate the existing plan',()=>{
  for(const entry of [{...pick(40,10),target:11},{...pick(40,10),itemId:1040,jobId:-1},{...pick(40,10),itemId:'40'}])assert.throws(()=>addCollectionPlan(plan,entry),/invalidPlan/);
  assert.throws(()=>validateCollectionPlan({version:2,selections:[]}),/invalidPlan/);assert.deepEqual(plan,before);
  assert.deepEqual(validateCollectionPlan(JSON.parse(JSON.stringify(plan))),plan);
+});
+
+test('explicit target adjustments raise or lower one route atomically and reject invalid choices',()=>{
+ const s=state();s.counts[40]=9;const initial=addCollectionPlan(collectionPlanDefaults(),pick(40,1000));
+ const lower=setCollectionPlanTarget(initial,40,100);assert.equal(calculateCollectionPlan(s,lower,priced()).materials[0].quantity,91);assert.equal(initial.selections[0].target,1000);
+ const higher=setCollectionPlanTarget(lower,40,1000);assert.deepEqual(higher,initial);
+ assert.equal(calculateCollectionPlan(s,setCollectionPlanTarget(lower,40,1),priced()).completedCount,1);
+ for(const [itemId,target]of [[40,11],[1040,100],[40,'100']])assert.throws(()=>setCollectionPlanTarget(initial,itemId,target),/invalidPlan/);
+ assert.equal(initial.selections[0].target,1000);
+});
+
+test('bulk add preserves existing selections, merges highest milestones and rejects invalid input atomically',()=>{
+ const plan=addCollectionPlan(collectionPlanDefaults(),pick(40,1000)),before=structuredClone(plan);
+ const values=[pick(40,10),pick(1040,10),pick(1040,100),pick(1040,10)];
+ const added=addCollectionPlans(plan,values);
+ assert.deepEqual(added.selections,[pick(40,1000),pick(1040,100)]);
+ assert.deepEqual(addCollectionPlans(added,values),added);
+ assert.throws(()=>addCollectionPlans(plan,[pick(1040,100),pick(40,11)]),/invalidPlan/);
+ assert.deepEqual(plan,before);
 });

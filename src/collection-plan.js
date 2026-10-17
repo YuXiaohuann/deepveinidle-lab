@@ -22,6 +22,15 @@ export function addCollectionPlan(plan,value){
  const entry=selection(value),current=validateCollectionPlan(plan),previous=current.selections.find(s=>s.itemId===entry.itemId);
  return validateCollectionPlan({version:1,selections:[...current.selections.filter(s=>s.itemId!==entry.itemId),{...entry,target:previous?.jobId===entry.jobId?Math.max(entry.target,previous.target):entry.target}]});
 }
+export function addCollectionPlans(plan,values){
+ const current=validateCollectionPlan(plan);
+ return validateCollectionPlan({...current,selections:[...current.selections,...values]});
+}
+export function setCollectionPlanTarget(plan,itemId,target){
+ const current=validateCollectionPlan(plan);
+ if(!current.selections.some(entry=>entry.itemId===itemId))throw Error('invalidPlan');
+ return validateCollectionPlan({...current,selections:current.selections.map(entry=>entry.itemId===itemId?{...entry,target}:entry)});
+}
 export function removeCollectionPlan(plan,itemId){return validateCollectionPlan({version:1,selections:plan.selections.filter(s=>s.itemId!==itemId)});}
 export function calculateCollectionPlan(state,raw,prices,{now=Date.now()}={}){
  const plan=validateCollectionPlan(raw),players=collectionPlayers(state,now),materials=new Map();
@@ -36,8 +45,7 @@ export function calculateCollectionPlan(state,raw,prices,{now=Date.now()}={}){
    points+=result.points;
    if(!Number.isSafeInteger(points))quantityOverflow=true;
    for(const [id,qty]of Object.entries(result.materials)){
-    const itemId=Number(id),material=materials.get(itemId)??{itemId,quantity:0,contributors:[]};
-    material.contributors.push({...entry,quantity:qty});
+    const itemId=Number(id),material=materials.get(itemId)??{itemId,quantity:0};
     if(material.quantity!==null){
      const sum=material.quantity+qty;
      if(!Number.isFinite(sum)||sum<0||sum>Number.MAX_SAFE_INTEGER){material.quantity=null;quantityOverflow=true;}else material.quantity=sum;

@@ -7,38 +7,61 @@ import {characterImportPanel,requestCharacter,importStatusText} from './import-c
 import {priceState,subscribePrices,priceSaveError,refreshMarketPrices} from './item-price-store.js';
 import {translatedName,translatedItemName} from './i18n.js';
 import {worldBuffWarningText} from './world-buffs.js';
-import {collectionPlanStorageKey,collectionPlanDefaults,validateCollectionPlan,addCollectionPlan,removeCollectionPlan} from './collection-plan.js';
+import {collectionPlanStorageKey,collectionPlanDefaults,validateCollectionPlan,addCollectionPlan,addCollectionPlans,removeCollectionPlan,setCollectionPlanTarget} from './collection-plan.js';
 import {renderCollectionPlan} from './collection-plan-controls.js';
 import {collectionAutoImportStorageKey,validateCollectionAutoImport,createCollectionAutoImporter} from './collection-auto-import.js';
 
 
 let state,language='zh',status=null,marketStatus=null,marketBusy=false,busy=false,saveError=false,loadError=false,error=null,rows=[];
-let query='',routeType='craft',skill='all',tier='all',sort='costPerPoint',onlyLevelMet=true,includeComplete=false,limit=40,pointsMin='',pointsMax='',pointsFilterError=null;
+let query='',routeType='craft',skill='all',tier='all',sort='costPerPoint',onlyLevelMet=true,includeComplete=false,page=1,filterError=null;
 let calculationNow=Date.now(),active=false,plan=collectionPlanDefaults(),planLoadError=false,planSaveError=false,autoEnabled=false,autoLoadError=false,autoSaveError=false,autoImporter;
 
 const union=(a,b,key)=>[...new Map([...a,...b].map(v=>[key?v[key]:v,v])).values()];
 const skills=collectionSkills,rooms=union(gatheringRooms,craftingRooms,'id'),masteries=union(gatheringMasteries,craftingMasteries,'id'),perks=gatheringPerks,slots=union(gatheringSlots,craftingSlots),potions=gatheringPotions;
+const metricFilters=[
+ {key:'points',label:['新增精通点 ≥','Points gained ≥']},
+ {key:'cost',label:['总材料成本 ≤','Total material cost ≤']},
+ {key:'minutes',label:['总时间 ≤（分钟）','Total time ≤ (min)']},
+ {key:'secondsPerPoint',label:['秒/点 ≤','Seconds/point ≤']},
+ {key:'costPerPoint',label:['材料金币/点 ≤','Material coins/point ≤']},
+];
+const filterValues=Object.fromEntries(metricFilters.map(({key})=>[key,'']));
+const filtersStorageKey='dvi-collection-filters-v1';
+let filtersLoadError=false,filtersSaveError=false;
+const pageSize=10;
 const recipesById=new Map(game.recipes.map(job=>[job.id,job]));
 const opened=new Set(),drafts=new Map();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const text=(zh,en)=>language==='zh'?zh:en;
 const name=s=>translatedName(s,language);
 const itemName=id=>translatedItemName(id,language);
-const number=n=>n===null||n===undefined?'—':Number(n).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:3});
-const duration=seconds=>seconds===null||seconds===undefined?'—':seconds>=3600?`${number(seconds/3600)} ${text('小时','h')}`:seconds>=60?`${number(seconds/60)} ${text('分钟','min')}`:`${number(seconds)} ${text('秒','s')}`;
+const number=(n,maximumFractionDigits=3,minimumFractionDigits=0)=>n===null||n===undefined?'—':Number(n).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits,minimumFractionDigits});
+const duration=seconds=>seconds===null||seconds===undefined?'—':seconds>=3600?`${number(seconds/3600,1,1)} ${text('小时','h')}`:seconds>=60?`${number(seconds/60,1,1)} ${text('分钟','min')}`:`${number(seconds,1,1)} ${text('秒','s')}`;
 const skillName=k=>name(({mining:'Mining',fishing:'Fishing',woodcutting:'Woodcutting',thieving:'Thieving',cooking:'Cooking',smithing:'Smithing',fletching:'Fletching',herblore:'Herblore',crafting:'Crafting'})[k]??k);
 const tierNames=()=>text(['普通','罕见','稀有','史诗','传说'],['Normal','Uncommon','Rare','Epic','Legendary']);
-const labels={invalidNumber:['请输入范围内的有效非负数字','Enter a valid non-negative number in range'],invalidPointRange:['精通点范围无效：请输入非负整数，且最小值不得大于最大值','Invalid mastery point range: use non-negative integers, with minimum no greater than maximum'],uninitialized:['请先导入或开始手动场景','Import or start a manual scenario'],complete:['已完成','Completed'],levelTooLow:['等级不足','Level too low'],noSites:['无合法地点','No legal site'],unreachable:['当前概率为零','Currently zero probability'],ok:['',''],invalidInteger:['请输入范围内的非负整数','Enter a non-negative integer in range'],invalidConfiguration:['配置无效，已有有效数据保留','Invalid settings; valid data was kept'],quantityOverflow:['数量超出计算范围','Quantity exceeds the supported range'],invalidPlan:['计划无效，已有选择保留','Invalid plan; existing selections were kept']};
+const labels={invalidNumber:['请输入范围内的有效非负数字','Enter a valid non-negative number in range'],invalidFilter:['筛选数值无效：请输入范围内的非负数字','Invalid filter: enter a non-negative number within range'],uninitialized:['请先导入或开始手动场景','Import or start a manual scenario'],complete:['已完成','Completed'],levelTooLow:['等级不足','Level too low'],noSites:['无合法地点','No legal site'],unreachable:['当前概率为零','Currently zero probability'],ok:['',''],invalidInteger:['请输入范围内的非负整数','Enter a non-negative integer in range'],invalidConfiguration:['配置无效，已有有效数据保留','Invalid settings; valid data was kept'],quantityOverflow:['数量超出计算范围','Quantity exceeds the supported range'],invalidPlan:['计划无效，已有选择保留','Invalid plan; existing selections were kept']};
 function message(code){return labels[code]?.[language==='zh'?0:1]??text('计算失败：','Calculation failed: ')+code;}
 function overflowNote(row){return row.overflowFields.length?text('材料金额超出计算范围','Material amount exceeds supported range'):'';}
 function key(row){return `${row.id}:${row.jobId??'none'}:${row.target??'complete'}`;}
 function initialize(){
  if(state)return;
  try{const raw=localStorage.getItem(collectionStorageKey);state=raw?validateCollection(JSON.parse(raw)):collectionDefaults();}catch{state=collectionDefaults();loadError=true;}
+ try{
+  const raw=localStorage.getItem(filtersStorageKey);
+  if(raw){
+   const saved=JSON.parse(raw);
+   if(saved?.version!==1||!['all','gather','craft'].includes(saved.routeType)||!['all',...collectionSkills].includes(saved.skill)||!['all','0','1','2','3','4'].includes(saved.tier)||!['secondsPerPoint','costPerPoint'].includes(saved.sort)||typeof saved.query!=='string'||typeof saved.onlyLevelMet!=='boolean'||typeof saved.includeComplete!=='boolean'||!metricFilters.every(({key})=>typeof saved.filterValues?.[key]==='string'))throw Error('invalidFilters');
+   ({query,routeType,skill,tier,sort,onlyLevelMet,includeComplete}=saved);
+   for(const {key}of metricFilters)filterValues[key]=saved.filterValues[key];
+  }
+ }catch{filtersLoadError=true;}
  try{const raw=localStorage.getItem(collectionPlanStorageKey);if(raw)plan=validateCollectionPlan(JSON.parse(raw));}catch{planLoadError=true;}
  try{const raw=localStorage.getItem(collectionAutoImportStorageKey);if(raw)autoEnabled=validateCollectionAutoImport(JSON.parse(raw)).enabled;}catch{autoLoadError=true;}
  autoImporter=createCollectionAutoImporter({run:isCurrent=>importBuild({automatic:true,isCurrent}),onError:e=>{status={error:e.message};updateStatus();},listenFocus:handler=>{window.addEventListener('focus',handler);return ()=>window.removeEventListener('focus',handler);}});
  subscribePrices(()=>{if(document.getElementById('collection-results'))updateResults();});
+}
+function saveFilters(){
+ try{localStorage.setItem(filtersStorageKey,JSON.stringify({version:1,query,routeType,skill,tier,sort,onlyLevelMet,includeComplete,filterValues}));filtersSaveError=false;filtersLoadError=false;}catch{filtersSaveError=true;}
 }
 function save(){try{localStorage.setItem(collectionStorageKey,JSON.stringify(validateCollection(state)));saveError=false;}catch{saveError=true;}}
 function changed(){autoImporter?.invalidate();calculationNow=Date.now();error=null;save();compute();}
@@ -65,7 +88,11 @@ export function renderCollection(lang,{isActive=false}={}){
  initialize();rememberExpanded(host);const openDetails=new Set([...host.querySelectorAll('.config-detail[open]')].map(d=>d.id));
  host.innerHTML=`<aside class="panel gather-config"><div class="panel-heading"><h1 id="collection-title">${text('收藏性价比','Collection efficiency')}</h1><button id="collection-reset" class="text-button" title="${text('保留执行计划与自动导入选项','Keeps the execution plan and auto-import setting')}">${text('清空配置','Reset')}</button></div>${characterImportPanel(language,{id:'collection-import-panel',statusId:'collection-import-status',buttons:[{id:'collection-import',label:text('导入收藏与角色','Import collection & build')}],extra:`<label class="check"><input type="checkbox" id="collection-auto-import" ${autoEnabled?'checked':''}>${text('自动导入（聚焦时及每60秒）','Auto-import (on focus & every 60s)')}</label><p class="micro import-status" role="status" id="collection-auto-status"></p>`})}<button id="collection-manual" class="secondary" ${state.initialized?'hidden':''}>${text('手动场景（从零开始）','Manual scenario (start from zero)')}</button><p id="collection-origin" class="micro"></p><p id="collection-buff-warning" class="micro" role="status"></p>${configuration()}<p class="micro">${text('动作估算固定当前属性；药剂与祝福全程有效，不计药剂与祝福费用。不计设备购置、材料自采、交易等待及费用。','Fixed-stat action estimates; boosts stay active throughout. Potion and blessing costs, equipment, self-sourcing, trading time and fees are excluded.')}</p><p id="collection-save" role="status" class="micro"></p></aside>
  <div class="collection-information"><section class="panel"><h2>${text('精通性价比','Mastery efficiency')}</h2><p class="micro">${text('奖励来自亲自产出的数量里程碑，买成品不增加进度。各行独立比较，副产物点数不计入。动作估算不含移动、回仓与升级，热门只取所选时刻。','Rewards require your own production milestones. Buying finished items adds no progress. Routes are independent; bonus-item points are excluded. Action estimates exclude travel, deposits and levelling; hot bonuses use the selected instant.')}</p>
- <div class="collection-filters"><div class="collection-filter-row"><label>${text('类型','Type')}<select id="collection-type">${options([['all',text('全部','All')],['gather',text('采集','Gathering')],['craft',text('制造','Crafting')]],routeType)}</select></label><label>${text('技能','Skill')}<select id="collection-skill">${options([['all',text('全部','All')],...collectionSkills.map(k=>[k,skillName(k)])],skill)}</select></label><label>${text('品质','Rarity')}<select id="collection-tier">${options([['all',text('全部','All')],...tierNames().map((n,i)=>[i,n])],tier)}</select></label><label>${text('搜索物品','Search items')}<input id="collection-search" type="search" value="${esc(query)}"></label><label>${text('材料成本价格','Material cost prices')}<select id="collection-buy">${options([['ask',text('市场卖单','Market sell orders')],['bid',text('市场买单','Market buy orders')],['vendor',text('商人价格','Vendor prices')]],state.buyMode)}</select></label></div><div class="collection-filter-row"><label>${text('排序','Sort')}<select id="collection-sort">${options([['secondsPerPoint',text('时间（升序）','Time (ascending)')],['costPerPoint',text('材料成本（升序）','Material cost (ascending)')]],sort)}</select></label><label>${text('本次新增精通点最小值','Minimum mastery points gained')}<input id="collection-points-min" type="text" inputmode="numeric" value="${esc(pointsMin)}" placeholder="${text('不限','Any')}" aria-describedby="collection-points-help"></label><label>${text('本次新增精通点最大值','Maximum mastery points gained')}<input id="collection-points-max" type="text" inputmode="numeric" value="${esc(pointsMax)}" placeholder="${text('不限','Any')}" aria-describedby="collection-points-help"></label><label class="check"><input id="collection-level-met" type="checkbox" ${onlyLevelMet?'checked':''}>${text('仅显示等级达标','Meets level requirement')}</label><label class="check"><input id="collection-completed" type="checkbox" ${includeComplete?'checked':''}>${text('含已完成','Include completed')}</label></div></div><p id="collection-points-help" class="micro">${text('按当前目标本次新增精通点数筛选，留空不限；最小值与最大值相同可筛选指定点数。','Filter by mastery points gained from the current target. Leave blank for no limit; equal bounds select an exact reward.')}</p><p class="micro">${text('市场模式仅使用游戏API报价；商人价格仅作估值，不代表可采购。忽略全局价格设置，缺价不兜底。','Market modes use game API quotes. Vendor prices are valuations, not guaranteed purchases. Global price settings are ignored; missing quotes have no fallback.')}</p><p id="collection-summary" class="micro" role="status"></p><p id="collection-error" role="alert"></p><p class="micro"><a id="collection-plan-link" href="#collection-plan"></a></p><div id="collection-results"></div><button id="collection-more" class="secondary" hidden>${text('再显示 40 条','Show 40 more')}</button></section><section class="panel" id="collection-plan" aria-label="${text('执行计划与材料需求','Execution plan and materials')}"></section></div>`;
+ <div class="collection-filters">
+ <div class="collection-filter-row"><label>${text('类型','Type')}<select id="collection-type">${options([['all',text('全部','All')],['gather',text('采集','Gathering')],['craft',text('制造','Crafting')]],routeType)}</select></label><label>${text('技能','Skill')}<select id="collection-skill">${options([['all',text('全部','All')],...collectionSkills.map(k=>[k,skillName(k)])],skill)}</select></label><label>${text('品质','Rarity')}<select id="collection-tier">${options([['all',text('全部','All')],...tierNames().map((n,i)=>[i,n])],tier)}</select></label><label>${text('物品搜索','Search items')}<input id="collection-search" type="search" value="${esc(query)}"></label></div>
+ <div class="collection-filter-row"><label>${text('材料成本','Material cost')}<select id="collection-buy">${options([['ask',text('市场卖单','Market sell orders')],['bid',text('市场买单','Market buy orders')],['vendor',text('商人价格','Vendor prices')]],state.buyMode)}</select></label><label>${text('排序','Sort')}<select id="collection-sort">${options([['secondsPerPoint',text('时间（升序）','Time (ascending)')],['costPerPoint',text('材料成本（升序）','Material cost (ascending)')]],sort)}</select></label><label class="check"><input id="collection-level-met" type="checkbox" ${onlyLevelMet?'checked':''}>${text('仅显示等级达标','Meets level requirement')}</label><label class="check"><input id="collection-completed" type="checkbox" ${includeComplete?'checked':''}>${text('包含已完成','Include completed')}</label></div>
+ <div class="collection-filter-row">${metricFilters.map(({key,label})=>`<label>${text(...label)}<input id="collection-filter-${key}" type="text" inputmode="decimal" value="${esc(filterValues[key])}" placeholder="${text('不限','Any')}"></label>`).join('')}</div></div>
+ <p id="collection-summary" class="micro" role="status"></p><p id="collection-error" role="alert"></p><div class="collection-list-actions"><a id="collection-plan-link" href="#collection-plan"></a><button id="collection-add-filtered" class="text-button" disabled></button></div><div id="collection-results"></div><nav id="collection-pages-bottom" class="collection-pagination" hidden></nav></section><section class="panel" id="collection-plan" aria-label="${text('执行计划','Execution plan')}"></section></div>`;
  for(const id of openDetails){const el=document.getElementById(id);if(el)el.open=true;}
  host.querySelector('#collection-import').onclick=()=>importBuild();
  host.querySelector('#collection-auto-import').onchange=e=>{
@@ -89,11 +116,11 @@ export function renderCollection(lang,{isActive=false}={}){
   };
   const draft=drafts.get(el.dataset.collectionPath);if(draft){el.value=draft.value;el.checked=draft.checked;}
  });
- for(const [id,set]of [['collection-search',v=>query=v],['collection-type',v=>routeType=v],['collection-skill',v=>skill=v],['collection-tier',v=>tier=v],['collection-sort',v=>sort=v],['collection-points-min',v=>pointsMin=v],['collection-points-max',v=>pointsMax=v]])host.querySelector('#'+id)[id==='collection-search'||id.startsWith('collection-points-')?'oninput':'onchange']=e=>{set(e.target.value);limit=40;updateResults();};
- host.querySelector('#collection-level-met').onchange=e=>{onlyLevelMet=e.target.checked;limit=40;updateResults();};
- host.querySelector('#collection-completed').onchange=e=>{includeComplete=e.target.checked;limit=40;updateResults();};
- host.querySelector('#collection-buy').onchange=e=>{state.buyMode=e.target.value;save();updateResults();};
- host.querySelector('#collection-more').onclick=()=>{limit+=40;updateResults();};
+ for(const [id,set]of [['collection-search',v=>query=v],['collection-type',v=>routeType=v],['collection-skill',v=>skill=v],['collection-tier',v=>tier=v],['collection-sort',v=>sort=v]])host.querySelector('#'+id)[id==='collection-search'?'oninput':'onchange']=e=>{set(e.target.value);page=1;saveFilters();updateResults();};
+ for(const {key}of metricFilters)host.querySelector('#collection-filter-'+key).oninput=e=>{filterValues[key]=e.target.value;page=1;saveFilters();updateResults();};
+ host.querySelector('#collection-level-met').onchange=e=>{onlyLevelMet=e.target.checked;page=1;saveFilters();updateResults();};
+ host.querySelector('#collection-completed').onchange=e=>{includeComplete=e.target.checked;page=1;saveFilters();updateResults();};
+ host.querySelector('#collection-buy').onchange=e=>{state.buyMode=e.target.value;page=1;save();updateResults();};
  compute();
  autoImporter.set({enabled:autoEnabled,active});
 }
@@ -104,33 +131,53 @@ function updateStatus(){
  host.querySelector('#collection-buff-warning').textContent=state.importWarnings.map(w=>worldBuffWarningText(language,w)).join(' ')+(state.importWarnings.length?text(' 该提示针对导入时的数据；当前手动配置以表单为准。',' This warning concerns the imported capture; current manual settings are shown in the form.'):'');
  host.querySelector('#collection-import-status').textContent=[importStatusText(language,status,busy&&!marketBusy),marketBusy?text('正在更新市场数据…','Updating market data…'):marketStatus?.error?text('市场更新失败：','Market update failed: ')+(marketErrors[marketStatus.error]?.[language==='zh'?0:1]??marketStatus.error):marketStatus?text('市场数据已更新。','Market data updated.'):''].filter(Boolean).join('\n');
  host.querySelector('#collection-origin').textContent=!state.initialized?message('uninitialized'):state.capturedAt?text('收藏捕获于：','Collection captured: ')+new Date(state.capturedAt).toLocaleString(language==='zh'?'zh-CN':'en')+(state.edited?text(' · 已手动修正',' · Manually adjusted'):''):text('手动场景；未填写的数量为 0。','Manual scenario; unspecified counts are zero.');
- host.querySelector('#collection-save').textContent=[loadError?text('存档无法读取，已恢复默认配置。','Saved settings could not be read; defaults restored.'):'',saveError?text('保存失败，当前内存计算仍可用。','Save failed; calculations remain available.'):'',!loadError&&!saveError?text('配置自动保存在此浏览器。','Settings are saved in this browser.'):''].filter(Boolean).join(' ');
- host.querySelector('#collection-error').textContent=pointsFilterError?message(pointsFilterError):error?message(error):priceSaveError()?text('全局价格存储异常，请打开物品价格查看。','Price storage error; open Item prices for details.'):'';
+ host.querySelector('#collection-save').textContent=[filtersLoadError?text('筛选无法读取，已使用默认筛选。','Filters could not be read; defaults are in use.'):'',filtersSaveError?text('筛选保存失败，当前内存筛选仍可用。','Filters could not be saved; current filters remain usable.'):'',loadError?text('存档无法读取，已恢复默认配置。','Saved settings could not be read; defaults restored.'):'',saveError?text('保存失败，当前内存计算仍可用。','Save failed; calculations remain available.'):'',!loadError&&!saveError?text('配置自动保存在此浏览器。','Settings are saved in this browser.'):''].filter(Boolean).join(' ');
+ host.querySelector('#collection-error').textContent=filterError?message(filterError):error?message(error):priceSaveError()?text('全局价格存储异常，请打开物品价格查看。','Price storage error; open Item prices for details.'):'';
 }
 function updateResults(){
  const host=document.getElementById('collection-results');if(!host)return;
  rememberExpanded(host);
  updatePlan();
- let minimum,maximum;
- try{minimum=pointsMin.trim()===''?0:collectionInteger(pointsMin);maximum=pointsMax.trim()===''?Number.MAX_SAFE_INTEGER:collectionInteger(pointsMax);if(minimum>maximum)throw Error('invalidPointRange');pointsFilterError=null;}
- catch{pointsFilterError='invalidPointRange';updateStatus();host.innerHTML='';document.getElementById('collection-more').hidden=true;document.getElementById('collection-summary').textContent='';return;}
+ updateCandidateActions([],false);
+ let thresholds;
+ try{thresholds=Object.fromEntries(metricFilters.map(({key})=>[key,filterValues[key].trim()===''?null:collectionNumber(filterValues[key],0,Number.MAX_SAFE_INTEGER)]));filterError=null;}
+ catch{filterError='invalidFilter';updateStatus();host.innerHTML='';document.getElementById('collection-summary').textContent='';return;}
  updateStatus();
  if(!state.initialized){host.innerHTML=`<p class="empty-results">${message('uninitialized')}</p>`;return;}
  const prices=priceState(),q=query.trim().toLowerCase();let valued;
- const matching=rows.filter(r=>r.points>=minimum&&r.points<=maximum&&(includeComplete||!r.complete)&&(!onlyLevelMet||state.config.levels[r.skill]>=recipesById.get(r.jobId).levelReq)&&(routeType==='all'||(routeType==='gather'?gatheringSkills:craftingSkills).includes(r.skill))&&(skill==='all'||r.skill===skill)&&(tier==='all'||game.itemTier(r.id)===Number(tier))&&(!q||`${game.item(r.id).name} ${translatedItemName(r.id,'zh')} ${itemName(r.id)}`.toLowerCase().includes(q)));
- try{valued=matching.map(r=>priceCollection(r,prices,state.buyMode));}catch(e){error=e.message;updateStatus();host.innerHTML='';return;}
+ const matching=rows.filter(r=>(includeComplete||!r.complete)&&(!onlyLevelMet||state.config.levels[r.skill]>=recipesById.get(r.jobId).levelReq)&&(routeType==='all'||(routeType==='gather'?gatheringSkills:craftingSkills).includes(r.skill))&&(skill==='all'||r.skill===skill)&&(tier==='all'||game.itemTier(r.id)===Number(tier))&&(!q||`${game.item(r.id).name} ${translatedItemName(r.id,'zh')} ${itemName(r.id)}`.toLowerCase().includes(q)));
+ try{valued=matching.map(r=>priceCollection(r,prices,state.buyMode)).filter(row=>metricFilters.every(({key})=>{
+  const bound=thresholds[key];if(bound===null)return true;
+  const value=key==='minutes'?(row.seconds===null?null:row.seconds/60):row[key];
+  return Number.isFinite(value)&&(key==='points'?value>=bound:value<=bound);
+ }));}catch(e){error=e.message;updateStatus();host.innerHTML='';return;}
  const unfinished=rows.filter(r=>!r.complete).length,missingPrices=valued.filter(r=>r.status==='ok'&&r.materialsPriced.some(i=>i.qty>0&&i.price===null)).length,overflows=valued.filter(r=>r.overflowFields.length>0).length;
- document.getElementById('collection-summary').textContent=text(`未完成目标 ${unfinished} · 匹配 ${matching.length} · 材料缺价 ${missingPrices}${overflows?` · 金额超限 ${overflows}`:''}`,`Unfinished targets ${unfinished} · Matching ${matching.length} · Missing material prices ${missingPrices}${overflows?` · Amount overflow ${overflows}`:''}`);
+ document.getElementById('collection-summary').textContent=text(`未完成目标 ${unfinished} · 匹配 ${valued.length} · 材料缺价 ${missingPrices}${overflows?` · 金额超限 ${overflows}`:''}`,`Unfinished targets ${unfinished} · Matching ${valued.length} · Missing material prices ${missingPrices}${overflows?` · Amount overflow ${overflows}`:''}`);
  const sortValue=row=>row.status==='ok'?row[sort]:null;
  valued.sort((a,b)=>{const av=sortValue(a),bv=sortValue(b);return (av===null)-(bv===null)||(av===null?0:av-bv)||a.id-b.id||(a.jobId??0)-(b.jobId??0)||(a.target??0)-(b.target??0);});
- document.getElementById('collection-more').hidden=valued.length<=limit;
- host.innerHTML=valued.length?valued.slice(0,limit).map(r=>`<details class="collection-card" data-collection-key="${key(r)}" ${opened.has(key(r))?'open':''}><summary><span class="collection-item"><strong class="collection-item-heading"><span class="collection-item-name">${esc(itemName(r.id))}</span> · <span class="collection-item-tier">${tierNames()[game.itemTier(r.id)]}</span></strong><small>${esc(skillName(r.skill))}</small></span><span><small>${text('当前 → 目标','Current → target')}</small>${number(r.current)} → ${number(r.target)}</span><span class="collection-points"><small>${text('新增精通点','Points gained')}</small><strong>${number(r.points)}</strong></span><span class="collection-total-cost"><small>${text('总材料成本','Total material cost')}</small>${r.status==='ok'?number(r.cost):'—'}</span><span class="collection-total-time" data-collection-metric="seconds"><small>${text('总时间','Total time')}</small>${duration(r.seconds)}</span><span data-collection-metric="secondsPerPoint"><small>${text('秒／点','Seconds/point')}</small>${number(r.secondsPerPoint)}</span><span data-collection-metric="costPerPoint"><small>${text('材料金币／点','Material coins/point')}</small>${r.status==='ok'?number(r.costPerPoint):'—'}${r.status!=='ok'?`<small>${message(r.status)}</small>`:''}${r.overflowFields.length?`<small class="collection-overflow">⚠ ${overflowNote(r)}</small>`:''}</span><span class="collection-plan-action">${planButton(r)}</span></summary><div class="collection-detail"></div></details>`).join(''):`<p class="empty-results">${text('没有匹配的收藏','No matching collections')}</p>`;
+ updateCandidateActions(valued);
+ host.innerHTML=valued.length?valued.slice((page-1)*pageSize,page*pageSize).map(r=>`<details class="collection-card" data-collection-key="${key(r)}" ${opened.has(key(r))?'open':''}><summary><span class="collection-item"><strong class="collection-item-heading"><span class="collection-item-name">${esc(itemName(r.id))}</span> · <span class="collection-item-tier">${tierNames()[game.itemTier(r.id)]}</span></strong><small>${esc(skillName(r.skill))}</small></span><span><small>${text('当前 → 目标','Current → target')}</small>${number(r.current)} → ${number(r.target)}</span><span class="collection-points"><small>${text('新增精通点','Points gained')}</small><strong>${number(r.points)}</strong></span><span class="collection-total-cost"><small>${text('总材料成本','Total material cost')}</small>${r.status==='ok'?number(r.cost,0):'—'}</span><span class="collection-total-time" data-collection-metric="seconds"><small>${text('总时间','Total time')}</small>${duration(r.seconds)}</span><span data-collection-metric="secondsPerPoint"><small>${text('秒／点','Seconds/point')}</small>${number(r.secondsPerPoint,1,1)}</span><span data-collection-metric="costPerPoint"><small>${text('材料金币／点','Material coins/point')}</small>${r.status==='ok'?number(r.costPerPoint,0):'—'}${r.status!=='ok'?`<small>${message(r.status)}</small>`:''}${r.overflowFields.length?`<small class="collection-overflow">⚠ ${overflowNote(r)}</small>`:''}</span><span class="collection-plan-action">${planButton(r)}</span></summary><div class="collection-detail"></div></details>`).join(''):`<p class="empty-results">${text('没有匹配的收藏','No matching collections')}</p>`;
  host.querySelectorAll('[data-collection-key]').forEach(card=>{
   const row=valued.find(r=>key(r)===card.dataset.collectionKey);
   card.querySelector('[data-collection-plan]')?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();const selected=plan.selections.find(s=>s.itemId===row.id&&s.jobId===row.jobId&&s.target===row.target);changePlan(()=>selected?removeCollectionPlan(plan,row.id):addCollectionPlan(plan,{itemId:row.id,jobId:row.jobId,target:row.target}));});
   card.ontoggle=()=>{if(!card.isConnected)return;if(card.open){opened.add(key(row));detail(card,row);}else opened.delete(key(row));};
   if(card.open)detail(card,row);
  });
+}
+function updateCandidateActions(valued,clamp=true){
+ const pages=Math.max(1,Math.ceil(valued.length/pageSize));if(clamp)page=Math.min(page,pages);
+ const nav=document.getElementById('collection-pages-bottom');nav.hidden=pages===1;
+ nav.setAttribute('aria-label',text('候选方案翻页','Candidate routes pagination'));
+ nav.innerHTML=`<button class="text-button" data-page-step="-1" ${page===1?'disabled':''}>${text('上一页','Previous')}</button><span>${text(`第 ${page} / ${pages} 页`,`Page ${page} / ${pages}`)}</span><button class="text-button" data-page-step="1" ${page===pages?'disabled':''}>${text('下一页','Next')}</button>`;
+ nav.querySelectorAll('[data-page-step]').forEach(button=>button.onclick=()=>{
+  page+=Number(button.dataset.pageStep);updateResults();
+  document.getElementById('collection-results').scrollIntoView({block:'start'});
+ });
+ const eligible=valued.filter(row=>row.status==='ok'&&row.target!==null);
+ const button=document.getElementById('collection-add-filtered');
+ button.textContent=text(`将当前筛选的 ${eligible.length} 个方案加入计划`,`Add ${eligible.length} filtered routes to plan`);
+ button.disabled=planLoadError||eligible.length===0;
+ button.onclick=()=>changePlan(()=>addCollectionPlans(plan,eligible.map(row=>({itemId:row.id,jobId:row.jobId,target:row.target}))));
 }
 function detail(card,row){
  const list=items=>items.length?items.map(i=>`<li>${esc(itemName(i.id))} (${tierNames()[game.itemTier(i.id)]}) × ${number(i.qty)} — ${number(i.price)} ${text('金币','coins')} <small>${({ask:text('最低卖单','Lowest sell order'),bid:text('最高买单','Highest buy order'),vendor:text('商人估值','Vendor valuation')})[i.source]}${i.time?' · '+esc(new Date(i.time).toLocaleString(language==='zh'?'zh-CN':'en')):''}${i.price===null?' · '+text('缺报价','Missing price'):''}</small></li>`).join(''):`<li>${text('无','None')}</li>`;
@@ -161,5 +208,7 @@ function planButton(row){
 function updatePlan(){
  const link=document.getElementById('collection-plan-link');if(link)link.textContent=text('已选方案：','Selected routes: ')+plan.selections.length;
  renderCollectionPlan(document.getElementById('collection-plan'),{state,plan,prices:priceState(),language,now:calculationNow,loadError:planLoadError,saveError:planSaveError,statusText:message,
-  onClear:()=>{planLoadError=false;plan=collectionPlanDefaults();savePlan();updateResults();}});
+  onClear:()=>{planLoadError=false;plan=collectionPlanDefaults();savePlan();updateResults();},
+  onTarget:(itemId,target)=>changePlan(()=>setCollectionPlanTarget(plan,itemId,target)),
+  onRemove:itemId=>changePlan(()=>removeCollectionPlan(plan,itemId))});
 }
