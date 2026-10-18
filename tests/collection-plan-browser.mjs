@@ -7,6 +7,7 @@ import {once} from 'node:events';
 import {chromium} from 'playwright-core';
 import {browserPath} from '../scripts/release-common.mjs';
 import {game,preset} from '../src/model.js';
+import {priceDefaults} from '../src/item-prices.js';
 import {createScenario} from '../src/simulation.js';
 import {craftingSkills,craftingSlots} from '../src/crafting-model.js';
 import {gatheringSkills,gatheringSlots} from '../src/gathering-model.js';
@@ -30,7 +31,7 @@ try{
  results.base=base;
  browser=await chromium.launch({headless:true,executablePath:await browserPath()});const context=await browser.newContext({viewport:{width:1440,height:960}});
  const build=preset('ranged');build.manual.enemySelection=`monster-${game.monsters[0].id}`;build.manual.simulationHours=1;
- await context.addInitScript(build=>{localStorage.setItem('dvi-price-auto-import-at-v1',String(Date.now()));if(!localStorage.getItem('dvi-simulator-v1'))localStorage.setItem('dvi-simulator-v1',JSON.stringify({language:'zh',state:build}));window.collectionWorkers=0;const OriginalWorker=Worker;window.Worker=class extends OriginalWorker{constructor(url,options){super(url,options);if(String(url).includes('collection-worker.js'))window.collectionWorkers++;}};},build);
+ await context.addInitScript(({build,prices})=>{const savedPrices=JSON.parse(localStorage.getItem('dvi-item-prices-v1')??'null')??prices;savedPrices.preferences.autoImport=false;localStorage.setItem('dvi-item-prices-v1',JSON.stringify(savedPrices));if(!localStorage.getItem('dvi-simulator-v1'))localStorage.setItem('dvi-simulator-v1',JSON.stringify({language:'zh',state:build}));window.collectionWorkers=0;const OriginalWorker=Worker;window.Worker=class extends OriginalWorker{constructor(url,options){super(url,options);if(String(url).includes('collection-worker.js'))window.collectionWorkers++;}};},{build,prices:priceDefaults()});
  const {player}=createScenario({});for(const skill of [...craftingSkills,...gatheringSkills])player.skills[skill]=game.levelXp(1);for(const slot of [...craftingSlots,...gatheringSlots])player.equipment[slot]=null;
  Object.assign(player,{house:{},houseFurniture:{},masteries:{},perks:{},ironman:false,homeBank:null});
  const snapshot=JSON.parse(JSON.stringify({version:2,capturedAt:Date.now(),worldBuffsVersion:1,worldTick:player.lastTick,worldBuffs:[],player,guild:null}));
