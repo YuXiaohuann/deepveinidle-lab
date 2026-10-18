@@ -28,3 +28,25 @@ export async function refreshMarketPrices(preferences=priceState().preferences,{
  updatePrices({...result.state,quotes:parsed.quotes});
  return result;
 }
+
+export const priceAutoImportTimeKey='dvi-price-auto-import-at-v1';
+export const priceAutoImportInterval=5*60*1000;
+export async function importAutomaticPrices(now=Date.now()){
+ const claim=()=>{
+  initialize();
+  if(saveError)throw Error(saveError);
+  if(!state.preferences.autoImport||!Object.values(state.preferences.categories).some(mode=>mode!=='off'))return false;
+  try{
+   const saved=localStorage.getItem(priceAutoImportTimeKey),last=Number(saved);
+   if(saved!==null&&(!Number.isSafeInteger(last)||last<=0))throw Error('invalidAutoImportTime');
+   if(last&&now-last<priceAutoImportInterval)return false;
+   localStorage.setItem(priceAutoImportTimeKey,String(now));
+  }catch{throw Error('priceAutoImportStorageFailed');}
+  return true;
+ };
+ const claimed=globalThis.navigator?.locks?await navigator.locks.request(priceAutoImportTimeKey,async()=>claim()):claim();
+ if(!claimed)return null;
+ const result=await refreshMarketPrices();
+ if(priceSaveError())throw Error(priceSaveError());
+ return result;
+}

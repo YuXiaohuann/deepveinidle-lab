@@ -41,7 +41,7 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 ## 角色捕获 Worker 专项
 
-运行 `node --test tests/capture-worker.test.mjs tests/character-import.test.mjs tests/market-import.test.mjs` 验证角色捕获、保存协调、市场捕获移除、角色桥接及官方行情适配。运行 `node scripts/check-capture-browser.mjs` 后，在 Chrome 打开 `http://127.0.0.1:4186/`，页面自动验证真实 Blob Worker、字段裁剪、慢存储合并、跨连接隔离和失败提示，完成后显示 PASS。此服务只暴露测试页与当前候选脚本，不连接游戏，GM 存储和 WebSocket 使用合成替身；`PORT` 可修改端口。源码变化后刷新重测，结束后停止服务。
+运行 `node --test tests/capture-worker.test.mjs tests/character-import.test.mjs tests/market-import.test.mjs` 验证角色捕获、保存协调、市场捕获移除、角色桥接及官方市场价格适配。运行 `node scripts/check-capture-browser.mjs` 后，在 Chrome 打开 `http://127.0.0.1:4186/`，页面自动验证真实 Blob Worker、字段裁剪、慢存储合并、跨连接隔离和失败提示，完成后显示 PASS。此服务只暴露测试页与当前候选脚本，不连接游戏，GM 存储和 WebSocket 使用合成替身；`PORT` 可修改端口。源码变化后刷新重测，结束后停止服务。
 
 本地真实 Worker 验证不代表脚本管理器沙箱兼容或真实账号卡顿改善；安装／更新角色脚本后仍须刷新游戏和实验室（当前版本见 [当前状态](status.md#已发布基线)），并单独记录该环境的验收。Worker 不可用时明确提示失败并要求刷新，不会回退到主线程捕获。
 
@@ -51,11 +51,11 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 完整独立原始计算对照的常规入口为 `node scripts/native-audit.mjs`，复用已核验全部页面审计；日期型报告脚本仅保留历史证据。浏览器依赖为固定版本 playwright-core，需本机 Chrome／Chromium，或通过 RELEASE_BROWSER 指定可执行文件；不下载浏览器，也不使用用户已有会话和游戏账号。
 
-## 官方行情与价格弹窗专项
+## 官方市场价格与价格弹窗专项
 
 运行 `node --test tests/market-import.test.mjs tests/item-prices.test.mjs tests/item-price-store.test.mjs tests/item-price-status.test.mjs`。运行 `node tests/market-prices-browser.mjs` 验证官方 API 真实跨域、双语桌面／390px 弹窗、导入与锁定、错误保留及真实 Blob Worker；需要网络、本机监听和 Chrome。结果和截图保存在 `.test-artifacts/market-prices/`；接口异常明确失败，不以请求替身通过代替真实跨域验证。功能场景使用可控响应替身，不连接游戏账号。
 
-仅修改价格筛选、操作栏布局、提示或导入请求时机时，运行 `node --test tests/item-price-status.test.mjs tests/item-prices.test.mjs tests/item-price-store.test.mjs` 及 `node tests/market-prices-browser.mjs --toolbar-only`，后者仅执行双语桌面／390px 操作栏和弹窗四组验证，包含无筛选空状态、保留的状态选项、五类独立筛选与清空勾选、空列表全局导入／清空、打开／重开零请求、错误持续与显式重试；同时保存初始与已筛选截图。结果保存至 `.test-artifacts/price-toolbar/`，不重跑无关的真实 API 或角色 Worker 专项。此模式仍需要本机监听及 Chrome，行情使用请求替身。
+价格设置及自动导入专项可运行 `node tests/market-prices-browser.mjs --toolbar-only`，覆盖双语桌面／390px 筛选、手动导入、锁定、分类兜底、重置、自动导入开关、5 分钟边界与不轮询，以及成功／失败通知 30 秒自动关闭和点击／键盘关闭。行情使用请求替身，不重跑真实 API 或角色 Worker 专项。默认结果保存至 `.test-artifacts/price-toolbar/`；可用 `--out <目录>` 单独保存本轮证据，使用 `--base-url <目标网址>` 对指定候选或生产目标执行相同专项。目标参数不启动本机服务，也不代表完整发布验收通过。
 
 ## 上游版本适配专项
 

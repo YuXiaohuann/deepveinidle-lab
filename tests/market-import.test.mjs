@@ -11,7 +11,7 @@ test('official prices map full variant IDs and use generation time, with null di
  const s=parseMarketPrices(payload({1:{lowestSell:84,highestBuy:null},1110:{lowestSell:900,highestBuy:700},2:{lowestSell:5},3:{lowestSell:0,highestBuy:'1'},9999999:{lowestSell:1,highestBuy:2}}));
  assert.deepEqual(s.quotes[1],{ask:{value:84,capturedAt:Date.parse(generatedAt)},bid:{value:null,capturedAt:Date.parse(generatedAt)}});
  assert.equal(s.quotes[1110].bid.value,700);assert.equal(s.quotes[110],undefined);assert.equal(s.quotes[2].bid.invalid,true);assert.equal(s.quotes[3].ask.invalid,true);assert.equal(s.quotes[3].bid.invalid,true);assert.equal(s.invalid,1);
- const state=priceDefaults();state.preferences.categories.ore='bidVendor';
+ const state=priceDefaults();state.preferences.categories.ore='bid';state.preferences.vendorFallback.ore=true;
  const r=importItemPrices(state,s);assert.equal(r.state.prices[2],undefined);assert.equal(r.state.prices[3],undefined);assert.ok(r.state.prices[1]);assert.ok(r.stats.invalid>0);
 });
 test('invalid metadata, unknown-only items and empty official data fail explicitly',()=>{

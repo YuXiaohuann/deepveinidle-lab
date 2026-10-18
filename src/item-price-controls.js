@@ -1,6 +1,6 @@
 import * as game from './upstream.js';
 import {translatedName} from './i18n.js';
-import {marketFamilies,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices} from './item-prices.js';
+import {priceDefaults,marketFamilies,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices} from './item-prices.js';
 import {priceState,priceSaveError,updatePrices,subscribePrices,refreshMarketPrices} from './item-price-store.js';
 import {marketErrors} from './market-import.js';
 
@@ -18,7 +18,7 @@ const errors={...marketErrors,invalidPrice:['单价必须为空或范围内的�
 const errorText=key=>(errors[key]??[key,key])[language==='zh'?0:1];
 const statusError=()=>!busy&&(marketError||status?.error);
 function message(){
- if(busy)return text('正在读取官方行情…','Reading official market prices…');
+ if(busy)return text('正在读取官方市场价格…','Reading official market prices…');
  if(statusError())return errorText(statusError());
  if(status?.stats){
   const s=status.stats,parts=[text(`已更新 ${s.updated} 项价格`,`Updated ${s.updated} prices`),text(`商人价 ${s.vendor}`,`Vendor price ${s.vendor}`),text(`锁定跳过 ${s.locked}`,`Locked ${s.locked}`),text(`缺报价 ${s.missing}`,`Missing ${s.missing}`)];
@@ -61,8 +61,8 @@ function render(){if(!dialog?.open||editing)return;
  dialog.innerHTML=`<div class="price-heading"><h2 id="item-prices-title">${text('物品价格','Item prices')}</h2><button id="price-close" class="secondary">${text('关闭','Close')}</button></div>
  <p class="micro">${text('全页面共用 · 单价为税前参考 · 空值为未定价 · 手动修改自动锁定 · 锁定价格将阻止导入覆盖。','Shared across pages · Prices are before-tax references · Blank means unpriced · Manual edits lock prices automatically · Locked prices prevent import overwrites.')}</p>
  <details class="price-import config-detail character-import" id="price-import-settings" ${render.importOpen?'open':''}><summary>${text('市场价格导入','Import market prices')}</summary>
- <div class="import-body">
- <div class="price-categories"><table><thead><tr><th>${text('分类','Category')}</th><th>${text('报价物品数','Quoted items')}</th><th>${text('价格选项','Price source')}</th></tr></thead><tbody>${marketFamilies.map(f=>{const count=Object.keys(s.quotes).filter(id=>itemFamily(Number(id))===f.key).length;return `<tr><td>${familyName(f)}</td><td>${count}</td><td><div class="price-options" role="radiogroup" aria-label="${esc(familyName(f)+' '+text('价格选项','price source'))}">${[['ask',text('卖单价','Ask')],['bid',text('买单价','Bid')],['bidVendor',text('买单价（商人价兜底）','Bid (vendor floor)')],['vendor',text('商人价','Vendor price')],['off',text('不导入','Skip')]].map(([value,label])=>`<label class="check"><input type="radio" name="price-category-${f.key}" data-price-category="${f.key}" value="${value}" ${s.preferences.categories[f.key]===value?'checked':''}>${label}</label>`).join('')}</div></td></tr>`;}).join('')}</tbody></table></div>
+ <div class="import-body"><div class="price-import-options"><label class="check"><input id="price-auto-import" type="checkbox" ${s.preferences.autoImport?'checked':''}>${text('打开网站时自动导入','Automatically import when opening the site')}</label><button id="price-import-reset" class="secondary">${text('重置为默认值','Reset to defaults')}</button></div>
+ <div class="price-categories"><table><thead><tr><th>${text('分类','Category')}</th><th>${text('报价物品数','Quoted items')}</th><th>${text('价格选项','Price source')}</th></tr></thead><tbody>${marketFamilies.map(f=>{const count=Object.keys(s.quotes).filter(id=>itemFamily(Number(id))===f.key).length;return `<tr><td>${familyName(f)}</td><td>${count}</td><td><div class="price-category-settings"><div class="price-options" role="radiogroup" aria-label="${esc(familyName(f)+' '+text('价格选项','price source'))}">${[['ask',text('卖单价','Ask')],['bid',text('买单价','Bid')],['vendor',text('商人价','Vendor price')],['off',text('不导入','Skip')]].map(([value,label])=>`<label class="check"><input type="radio" name="price-category-${f.key}" data-price-category="${f.key}" value="${value}" ${s.preferences.categories[f.key]===value?'checked':''}>${label}</label>`).join('')}</div><label class="check price-fallback"><input type="checkbox" data-price-fallback="${f.key}" ${s.preferences.vendorFallback[f.key]?'checked':''} ${['ask','bid'].includes(s.preferences.categories[f.key])?'':'disabled'}>${text('商人价兜底','Vendor floor')}</label></div></td></tr>`;}).join('')}</tbody></table></div>
 
  </div></details>
 
@@ -73,7 +73,10 @@ ${saved?`<p class="issue-box" role="alert">${esc((errors[saved]??[saved,saved])[
  dialog.querySelector('#price-close').onclick=()=>dialog.close();
  dialog.querySelector('#price-import-settings').ontoggle=e=>{render.importOpen=e.target.open;};
  dialog.querySelector('#price-import').onclick=()=>importPrices();
+ dialog.querySelector('#price-auto-import').onchange=e=>{updatePrices({...priceState(),preferences:{...priceState().preferences,autoImport:e.target.checked}});dialog.querySelector('#price-auto-import')?.focus();};
+ dialog.querySelector('#price-import-reset').onclick=()=>{updatePrices({...priceState(),preferences:priceDefaults().preferences});dialog.querySelector('#price-import-reset')?.focus();};
  for(const el of dialog.querySelectorAll('[data-price-category]'))el.onchange=()=>{if(!el.checked)return;const preferences=structuredClone(priceState().preferences);preferences.categories[el.dataset.priceCategory]=el.value;updatePrices({...priceState(),preferences});dialog.querySelector(`[data-price-category="${el.dataset.priceCategory}"]:checked`)?.focus();};
+ for(const el of dialog.querySelectorAll('[data-price-fallback]'))el.onchange=()=>{const preferences=structuredClone(priceState().preferences);preferences.vendorFallback[el.dataset.priceFallback]=el.checked;updatePrices({...priceState(),preferences});dialog.querySelector(`[data-price-fallback="${el.dataset.priceFallback}"]`)?.focus();};
  const filters=[['price-family',v=>family=v],['price-search',v=>query=v],['price-tier',v=>tier=v],['price-plus',v=>plus=Math.min(game.maxEnhancement,Math.max(0,Math.floor(Number(v)||0)))],['price-filter',v=>filter=v]];
  for(const [id,assign]of filters){const el=dialog.querySelector('#'+id);el.onchange=()=>{assign(el.value);selected.clear();render();dialog.querySelector('#'+id)?.focus();};}
  for(const el of dialog.querySelectorAll('[data-price-select]'))el.onchange=()=>{const id=Number(el.dataset.priceSelect);el.checked?selected.add(id):selected.delete(id);render();};

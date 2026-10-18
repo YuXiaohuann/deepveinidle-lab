@@ -21,7 +21,7 @@
 
 #### 官方市场价格
 
-实验室 `src/market-import.js` 直接 GET 官方公开 API，将完整物品 ID、最低卖价、最高买价和生成时间适配为现有行情模型；不发送凭据，不使用代理或 userscript 桥接。`src/item-price-store.js`统一执行行情验证与防倒退，收藏角色导入仅更新官方报价缓存，价格面板按最新锁定状态应用有效价格；两者共用入口并共享并发网络请求；双语市场错误文案由市场适配模块共用。接口校验、缓存兼容、分类导入和失败规则见 [全局物品价格](shared.md#24-全局物品价格)。2.7.0 删除 `marketBook`／`marketBooks`／`marketDepth` 专用解析、`dvi-market-request/response` 桥接、`dvi-market-quotes-v1` GM 存储读写及市场提示。旧角色脚本的角色桥接仍兼容，但移除游戏侧市场捕获须更新脚本并刷新游戏。
+实验室 `src/market-import.js` 直接 GET 官方公开 API，将完整物品 ID、最低卖价、最高买价和生成时间适配为现有行情模型；不发送凭据，不使用代理或 userscript 桥接。`src/item-price-store.js`统一执行行情验证与防倒退，收藏角色导入仅更新官方报价缓存，价格面板及打开网站时按 5 分钟间隔判断的后台自动导入按最新锁定状态应用有效价格；各入口共享并发网络请求，自动导入由 `src/price-auto-import.js` 展示完成通知，启用选项、时间戳去重与存档保护由价格存储模块负责；双语市场错误文案由市场适配模块共用。接口校验、缓存兼容、分类导入和失败规则见 [全局物品价格](shared.md#24-全局物品价格)。2.7.0 删除 `marketBook`／`marketBooks`／`marketDepth` 专用解析、`dvi-market-request/response` 桥接、`dvi-market-quotes-v1` GM 存储读写及市场提示。旧角色脚本的角色桥接仍兼容，但移除游戏侧市场捕获须更新脚本并刷新游戏。
 
 #### 捕获 Worker
 

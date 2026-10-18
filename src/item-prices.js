@@ -10,20 +10,28 @@ export function validItemId(id){
  try{const base=game.baseItemId(id),tier=game.itemTier(id),plus=Math.floor(id/game.encode(0,1));return tier>=0&&tier<=4&&plus<=game.maxEnhancement&&game.encode(game.withRarity(base,tier),plus)===id&&game.item(id).id===id&&(!plus||game.canEnhance(id));}catch{return false;}
 }
 export function itemFamily(id){try{return game.marketFamily(game.baseItemId(id));}catch{return null;}}
-export function priceDefaults(){return {version:3,prices:{},quotes:{},preferences:{categories:Object.fromEntries(marketFamilies.map(f=>[f.key,['weapons','armour','jewellery','tools','mounts'].includes(f.key)?'off':'bidVendor']))}};}
+export function priceDefaults(){return {version:4,prices:{},quotes:{},preferences:{autoImport:true,categories:Object.fromEntries(marketFamilies.map(f=>[f.key,'ask'])),vendorFallback:Object.fromEntries(marketFamilies.map(f=>[f.key,false]))}};}
 export function normalizePriceState(raw){
- if(!record(raw)||![2,3].includes(raw.version)||!record(raw.prices)||!record(raw.quotes)||!record(raw.preferences)||!record(raw.preferences.categories))throw Error('invalidPriceStorage');
+ if(!record(raw)||![2,3,4].includes(raw.version)||!record(raw.prices)||!record(raw.quotes)||!record(raw.preferences)||!record(raw.preferences.categories))throw Error('invalidPriceStorage');
  // Game capture times and official generation times use different baselines.
  const next=priceDefaults();
  for(const [key,p] of Object.entries(raw.prices)){
   if(String(Number(key))!==key||!validItemId(Number(key))||!record(p)||p.price!==null&&!validPrice(p.price)||typeof p.locked!=='boolean'||!['manual','ask','bid','vendor'].includes(p.source)||!time(p.updatedAt)||p.quoteCapturedAt!==null&&!time(p.quoteCapturedAt))throw Error('invalidPriceStorage');
   next.prices[key]={price:p.price,locked:p.locked,source:p.source,updatedAt:p.updatedAt,quoteCapturedAt:raw.version===2?null:p.quoteCapturedAt};
  }
- if(raw.version===3){
+ if(raw.version>=3){
   const parsed=validateMarketSnapshot({version:1,quotes:raw.quotes,invalid:0});
   if(parsed.invalid)throw Error('invalidPriceStorage');next.quotes=parsed.quotes;
  }
- for(const f of marketFamilies){const mode=raw.preferences.categories[f.key];if(!['off','ask','bid','bidVendor','vendor'].includes(mode))throw Error('invalidPriceStorage');next.preferences.categories[f.key]=mode;}
+ if(raw.version===4&&(typeof raw.preferences.autoImport!=='boolean'||!record(raw.preferences.vendorFallback)))throw Error('invalidPriceStorage');
+ if(raw.version===4)next.preferences.autoImport=raw.preferences.autoImport;
+ for(const f of marketFamilies){
+  const mode=raw.preferences.categories[f.key],legacy=raw.version<4;
+  if(!(legacy?['off','ask','bid','bidVendor','vendor']:['off','ask','bid','vendor']).includes(mode))throw Error('invalidPriceStorage');
+  if(!legacy&&typeof raw.preferences.vendorFallback[f.key]!=='boolean')throw Error('invalidPriceStorage');
+  next.preferences.categories[f.key]=mode==='bidVendor'?'bid':mode;
+  next.preferences.vendorFallback[f.key]=legacy?mode==='bidVendor':raw.preferences.vendorFallback[f.key];
+ }
  return next;
 }
 export function validateMarketSnapshot(raw){
@@ -72,7 +80,7 @@ export function importItemPrices(state,snapshot,preferences=state.preferences,no
  // Include configured items with no quote so missing coverage is visible.
  const ids=new Set([...game.items.filter(i=>i.id===game.baseItemId(i.id)&&itemFamily(i.id)&&game.canSell(i.id)).map(i=>i.id),...Object.keys(prices).map(Number),...Object.keys(quotes).map(Number)]);
  for(const id of ids){
-  const mode=preferences.categories[itemFamily(id)];if(!['ask','bid','bidVendor','vendor'].includes(mode))continue;const side=mode==='bidVendor'?'bid':mode;
+  const category=itemFamily(id),mode=preferences.categories[category];if(!['ask','bid','vendor'].includes(mode))continue;const side=mode;
   const old=prices[id];if(old?.locked){stats.locked++;continue;}
   if(mode==='vendor'){
    if(!game.canSell(id)){stats.unavailable++;continue;}
@@ -85,7 +93,7 @@ export function importItemPrices(state,snapshot,preferences=state.preferences,no
   if(q.invalid){stats.invalid++;continue;}
   if(q.capturedAt<(quotes[id]?.[side]?.capturedAt??0)||old?.quoteCapturedAt&&q.capturedAt<old.quoteCapturedAt){stats.stale++;continue;}
   let value=q.value,source=side;
-  const fallback=mode==='bidVendor';
+  const fallback=preferences.vendorFallback?.[category]===true;
   if(value===null&&!fallback){stats.missing++;continue;}
   if(fallback){
    if(game.canSell(id)){
