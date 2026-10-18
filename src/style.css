@@ -272,13 +272,14 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
 
 .collection-information>#collection-plan{margin-top:20px;scroll-margin-top:20px}
 .collection-plan-toggle{display:block;margin-top:0;text-align:left}.collection-plan-toggle[aria-pressed=true]{color:var(--gold)}.collection-plan-toggle:disabled{cursor:default}
+.collection-plan-overview{display:flex;align-items:center;justify-content:space-between;gap:8px 16px;flex-wrap:wrap;margin:12px 0}.collection-plan-overview p{margin:0}.collection-plan-overview .check{margin:0;white-space:nowrap}
 .collection-plan-table-wrap{max-width:100%;overflow-x:auto;margin:16px 0}
-.collection-plan-table{width:100%;white-space:normal;table-layout:fixed}
-.collection-plan-table th,.collection-plan-table td{padding:10px 8px;overflow-wrap:anywhere;vertical-align:top}
-.collection-plan-selections{min-width:680px}.collection-plan-selections th:first-child{width:110px}.collection-plan-selections th:nth-child(2){width:90px}.collection-plan-selections th:nth-child(3){width:100px}.collection-plan-selections th:nth-child(4){width:180px}.collection-plan-selections th:last-child{width:200px}
+.collection-plan-table{width:100%;min-width:0;white-space:normal;table-layout:auto}
+.collection-plan-table th,.collection-plan-table td{padding:8px 4px;overflow-wrap:anywhere;vertical-align:top}
+.collection-plan-table .sort-header{display:inline;white-space:normal}.collection-plan-table td{white-space:nowrap}.collection-plan-table td:first-child{white-space:normal;min-width:60px}.collection-plan-selections td:nth-child(4){white-space:normal;min-width:80px}
+
 .collection-plan-selections td:nth-child(3),.collection-plan-materials td:not(:first-child){font-variant-numeric:tabular-nums}
 .collection-plan-actions{display:flex;flex-wrap:nowrap;gap:8px;align-items:baseline;white-space:nowrap;font:inherit;line-height:inherit}.collection-plan-control{flex:0 0 auto;color:#a1b2b5;cursor:pointer}.collection-plan-control:hover{color:var(--gold)}.collection-plan-control:focus-visible{outline:2px solid var(--teal);outline-offset:2px}.collection-plan-control[aria-disabled=true]{opacity:.4;cursor:default;color:var(--muted)}
-.collection-plan-materials{min-width:940px}.collection-plan-materials th:not(:first-child){width:125px}
 #collection-plan [role=alert]{color:#ef9a94}
 
 .collection-list-actions,.collection-pagination{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:12px 0}

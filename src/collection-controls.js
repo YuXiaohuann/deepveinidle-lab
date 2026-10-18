@@ -15,6 +15,7 @@ import {collectionAutoImportStorageKey,validateCollectionAutoImport,createCollec
 let state,language='zh',status=null,marketStatus=null,marketBusy=false,busy=false,saveError=false,loadError=false,error=null,rows=[];
 let query='',routeType='craft',skill='all',tier='all',sort='costPerPoint',onlyLevelMet=true,includeComplete=false,page=1,filterError=null;
 const planSort={selections:{key:null,direction:'asc'},materials:{key:null,direction:'asc'}};
+let planHideCompleted=true;
 let calculationNow=Date.now(),active=false,plan=collectionPlanDefaults(),planLoadError=false,planSaveError=false,autoEnabled=false,autoLoadError=false,autoSaveError=false,autoImporter;
 
 const union=(a,b,key)=>[...new Map([...a,...b].map(v=>[key?v[key]:v,v])).values()];
@@ -208,7 +209,7 @@ function planButton(row){
 }
 function updatePlan(){
  const link=document.getElementById('collection-plan-link');if(link)link.textContent=text('已选方案：','Selected routes: ')+plan.selections.length;
- renderCollectionPlan(document.getElementById('collection-plan'),{state,plan,prices:priceState(),language,now:calculationNow,loadError:planLoadError,saveError:planSaveError,statusText:message,sort:planSort,onSort:updatePlan,
+ renderCollectionPlan(document.getElementById('collection-plan'),{state,plan,prices:priceState(),language,now:calculationNow,loadError:planLoadError,saveError:planSaveError,statusText:message,sort:planSort,onSort:updatePlan,hideCompleted:planHideCompleted,onHideCompleted:value=>{planHideCompleted=value;updatePlan();},
   onClear:()=>{planLoadError=false;plan=collectionPlanDefaults();savePlan();updateResults();},
   onTarget:(itemId,target)=>changePlan(()=>setCollectionPlanTarget(plan,itemId,target)),
   onRemove:itemId=>changePlan(()=>removeCollectionPlan(plan,itemId))});
