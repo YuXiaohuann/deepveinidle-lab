@@ -13,6 +13,12 @@ export function renderCollectionPlan(host,{state,plan,prices,language,now,loadEr
   const current=sort[table],active=current.key===key;
   return `<th scope="col"${key?` aria-sort="${active?(current.direction==='asc'?'ascending':'descending'):'none'}"`:''}>${key?`<button class="sort-header" data-plan-sort="${key}" data-plan-table="${table}">${text(zh,en)} <span class="sort-arrow" aria-hidden="true">${active?(current.direction==='asc'?'↑':'↓'):'↕'}</span></button>`:text(zh,en)}</th>`;
  }).join('');
+ const percentage=(current,target)=>target===0?100:Math.floor(Math.min(current,target)*100/target);
+ const coverage=material=>material.inventory===null||material.quantity===null?null:material.quantity===0?1:Math.min(1,material.inventory/material.quantity);
+ const stock=material=>{
+  const ratio=coverage(material);
+  return `<span data-plan-inventory>${number(material.inventory,0)}</span> / <span data-plan-quantity>${number(material.quantity,0)}</span> · <span data-plan-coverage>${ratio===null?'—':number(percentage(material.inventory,material.quantity),0)+'%'}</span>`;
+ };
  const sorted=(rows,table)=>{
   const {key,direction}=sort[table];
   if(!key)return rows;
@@ -26,7 +32,7 @@ export function renderCollectionPlan(host,{state,plan,prices,language,now,loadEr
  };
  const progress=entry=>{
   if(!state.initialized)return '—';
-  const current=state.counts[entry.itemId]??0,percent=Math.floor(Math.min(1,current/entry.target)*1000)/10;
+  const current=state.counts[entry.itemId]??0,percent=percentage(current,entry.target);
   return `${number(current)} / ${number(entry.target)} · ${current>=entry.target?text('已完成','Completed'):number(percent)+'%'}`;
  };
  const actions=entry=>{
@@ -49,7 +55,7 @@ export function renderCollectionPlan(host,{state,plan,prices,language,now,loadEr
  <div class="collection-plan-table-wrap" tabindex="0" role="region" aria-label="${text('计划方案','Plan routes')}"><table class="collection-plan-table collection-plan-selections"><thead><tr>${headers('selections',[['物品','Item','item'],['稀有度','Rarity','tier'],['数量','Quantity','target'],['完成进度','Progress'],['操作','Actions']])}</tr></thead><tbody>${sorted(visibleEntries,'selections').map(entry=>`<tr data-plan-item="${entry.itemId}"><td>${esc(translatedItemName(entry.itemId,language))}</td><td>${tiers[game.itemTier(entry.itemId)]}</td><td>${number(entry.target)}</td><td data-plan-progress>${progress(entry)}</td><td><div class="collection-plan-actions">${actions(entry)}</div></td></tr>`).join('')||`<tr><td colspan="5">${text('所有方案均已完成','All routes are completed')}</td></tr>`}</tbody></table></div>
  <h3>${text('预计材料需求（期望）','Expected material requirements')}</h3>
  <p class="micro">${text('同方案仅计算最高目标；需求包含烧焦的期望消耗，不是保底备料。仓库库存按合并后的材料抵扣，不抵扣其他方案产物，不包含药剂。','Only the highest milestone per route is counted. Quantities include expected burns, not guaranteed supplies. Warehouse stock is deducted after combining requirements; other planned outputs and potions are excluded.')}</p>
- ${result.materials.length?`<div class="collection-plan-table-wrap" tabindex="0" role="region" aria-label="${text('预计材料需求','Expected material requirements')}"><table class="collection-plan-table collection-plan-materials"><thead><tr>${headers('materials',[['物品','Item','item'],['稀有度','Rarity','tier'],['预计需求','Expected quantity','quantity'],['库存数量','In stock','inventory'],['需要采购','To purchase','purchase'],['单价','Unit price','price'],['总价','Total price','cost']])}</tr></thead><tbody>${sorted(result.materials,'materials').map(material=>`<tr data-plan-material="${material.itemId}"><td>${esc(translatedItemName(material.itemId,language))}</td><td>${tiers[game.itemTier(material.itemId)]}</td><td data-plan-quantity>${number(material.quantity,0)}</td><td data-plan-inventory>${number(material.inventory,0)}</td><td data-plan-purchase>${number(material.purchase,0)}</td><td>${number(material.price,0)}${material.purchase>0&&material.price===null?' · '+text('缺报价','Missing price'):''}</td><td data-plan-cost>${number(material.cost,0)}${material.overflow?' · '+text('金额超限','Amount overflow'):''}</td></tr>`).join('')}</tbody></table></div>`:`<p class="micro">${result.blockedCount?text('有效部分无材料需求；仍有不可计算方案。','The valid portion has no material inputs; unavailable routes remain.'):text('无配方材料需求。','No recipe materials required.')}</p>`}`}`;
+ ${result.materials.length?`<div class="collection-plan-table-wrap" tabindex="0" role="region" aria-label="${text('预计材料需求','Expected material requirements')}"><table class="collection-plan-table collection-plan-materials"><thead><tr>${headers('materials',[['物品','Item','item'],['稀有度','Rarity','tier'],['需要采购','To purchase','purchase'],['库存 / 需求','Stock / required'],['单价','Unit price','price'],['总价','Total price','cost']])}</tr></thead><tbody>${sorted(result.materials,'materials').map(material=>`<tr data-plan-material="${material.itemId}"><td>${esc(translatedItemName(material.itemId,language))}</td><td>${tiers[game.itemTier(material.itemId)]}</td><td data-plan-purchase>${number(material.purchase,0)}</td><td data-plan-stock>${stock(material)}</td><td>${number(material.price,0)}${material.purchase>0&&material.price===null?' · '+text('缺报价','Missing price'):''}</td><td data-plan-cost>${number(material.cost,0)}${material.overflow?' · '+text('金额超限','Amount overflow'):''}</td></tr>`).join('')}</tbody></table></div>`:`<p class="micro">${result.blockedCount?text('有效部分无材料需求；仍有不可计算方案。','The valid portion has no material inputs; unavailable routes remain.'):text('无配方材料需求。','No recipe materials required.')}</p>`}`}`;
 
  host.querySelector('#collection-plan-hide-completed')?.addEventListener('change',event=>{
   onHideCompleted(event.target.checked);
