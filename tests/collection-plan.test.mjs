@@ -26,11 +26,11 @@ test('quality IDs remain independent and common materials sum across different r
  const [materialId,[first,second]]=[...inputs].find(([,jobs])=>jobs.length>1);assert.notEqual(first.output.itemId,second.output.itemId);
  const joined=addCollectionPlan(addCollectionPlan(collectionPlanDefaults(),pick(first.output.itemId,10)),pick(second.output.itemId,10));
  const expected=estimateCollection(s,first.output.itemId,first,undefined,10).materials[materialId]+estimateCollection(s,second.output.itemId,second,undefined,10).materials[materialId];
- const material=calculateCollectionPlan(s,joined,priced()).materials.find(m=>m.itemId===materialId);assert.equal(material.quantity,expected);assert.equal('contributors' in material,false);
+ const material=calculateCollectionPlan(s,joined,priced()).materials.find(m=>m.itemId===materialId);assert.equal(material.quantity,Math.ceil(expected));assert.equal('contributors' in material,false);
 });
-test('burn expectations are kept fractional, progress changes recompute, completed goals remain with zero need',()=>{
+test('burn expectations round up after aggregation, progress changes recompute, completed goals remain with zero need',()=>{
  const s=state(),cooking=game.recipes.find(j=>j.skill==='cooking'&&j.burn&&!j.retired);s.config.levels.cooking=cooking.levelReq;
- const r=calculateCollectionPlan(s,addCollectionPlan(collectionPlanDefaults(),pick(cooking.output.itemId,1)),priced());assert.ok(Math.abs(r.materials[0].quantity-1/.7)<1e-12);
+ const r=calculateCollectionPlan(s,addCollectionPlan(collectionPlanDefaults(),pick(cooking.output.itemId,1)),priced());assert.equal(r.materials[0].quantity,2);assert.equal(r.materials[0].purchase,2);assert.equal(r.materials[0].cost,4);assert.equal(r.cost,r.materials.reduce((sum,m)=>sum+m.cost,0));assert.ok(Math.abs(r.entries[0].materials[r.materials[0].itemId]-1/.7)<1e-12);
  const plan=addCollectionPlan(collectionPlanDefaults(),pick(40,1000));s.counts[40]=99;assert.equal(calculateCollectionPlan(s,plan,priced()).materials[0].quantity,901);
  s.counts[40]=1000;const done=calculateCollectionPlan(s,plan,priced());assert.equal(done.completedCount,1);assert.equal(done.cost,0);assert.equal(done.points,0);assert.deepEqual(done.materials,[]);assert.equal(plan.selections.length,1);
 });
@@ -84,18 +84,19 @@ test('warehouse stock is deducted once after aggregation; qualities stay indepen
  s.bank[1]=9;const short=calculateCollectionPlan(s,addCollectionPlan(collectionPlanDefaults(),pick(40,10)),noPrices);
  assert.equal(short.materials[0].purchase,1);assert.equal(short.cost,null);assert.equal(short.missingPrices,1);
 });
-test('shared recipe inputs consume the warehouse only once and fractional burn needs remain exact',()=>{
+test('shared recipe inputs consume the warehouse only once and rounded burn needs determine cost',()=>{
  const s=state();for(const skill in s.config.levels)s.config.levels[skill]=game.maxLevel;
  const inputs=new Map();for(const job of game.recipes.filter(j=>!j.retired&&collectionRoutes(j.output.itemId).some(r=>r.id===j.id)))for(const input of game.recipeInputs(job,0)){const jobs=inputs.get(input.itemId)??[];jobs.push(job);inputs.set(input.itemId,jobs);}
  const [id,[first,second]]=[...inputs].find(([,jobs])=>new Set(jobs.map(j=>j.output.itemId)).size>1);
  const plan=addCollectionPlans(collectionPlanDefaults(),[pick(first.output.itemId,10),pick(second.output.itemId,10)]);
  const expected=estimateCollection(s,first.output.itemId,first,undefined,10).materials[id]+estimateCollection(s,second.output.itemId,second,undefined,10).materials[id];
  s.bank[id]=1;const m=calculateCollectionPlan(s,plan,priced()).materials.find(m=>m.itemId===id);
- assert.equal(m.purchase,expected-1);assert.equal(m.cost,(expected-1)*2);
+ assert.equal(m.purchase,Math.ceil(expected)-1);assert.equal(m.cost,(Math.ceil(expected)-1)*2);
  const cooking=game.recipes.find(j=>j.skill==='cooking'&&j.burn&&!j.retired);s.config.levels.cooking=cooking.levelReq;
  const burnPlan=addCollectionPlan(collectionPlanDefaults(),pick(cooking.output.itemId,1));s.bank={};
  const before=calculateCollectionPlan(s,burnPlan,priced()).materials[0];s.bank[before.itemId]=1;
- const after=calculateCollectionPlan(s,burnPlan,priced()).materials[0];assert.equal(after.purchase,before.quantity-1);assert.equal(after.cost,(before.quantity-1)*2);assert.notEqual(after.purchase,Math.ceil(after.purchase));
+ const after=calculateCollectionPlan(s,burnPlan,priced()).materials[0];assert.equal(after.purchase,before.quantity-1);assert.equal(after.cost,(before.quantity-1)*2);assert.equal(after.purchase,1);assert.equal(after.cost,2);
+ s.bank[before.itemId]=2;const covered=calculateCollectionPlan(s,burnPlan,priceDefaults());assert.equal(covered.materials[0].purchase,0);assert.equal(covered.materials[0].cost,0);
 });
 test('unknown warehouse preserves gross needs and target rewards but never assumes zero inventory',()=>{
  const s=state();s.bank=null;const plan=addCollectionPlan(collectionPlanDefaults(),pick(40,10));
