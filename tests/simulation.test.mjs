@@ -24,8 +24,9 @@ test('banking first eats warehouse food without overflowing HP, then loads trip 
 });
 
 
-test('effective mastery values preserve existing ranks and original units',()=>{
- for(const m of game.masteries)for(const rank of [0,1,13,20000])assert.equal(masteryRank(m.id,masteryValue(m.id,rank)),rank);
+test('effective mastery values cap enhancement while stored ranks and original units survive',()=>{
+ for(const m of game.masteries)for(const rank of [0,1,13,20000])assert.equal(masteryRank(m.id,masteryValue(m.id,rank)),m.id==='enhance'?Math.min(rank,200):rank);
+ const stored=defaultBuild();stored.masteries.enhance=20000;assert.equal(normalize(stored).masteries.enhance,20000);
  assert.equal(masteryValue('accuracy',1),1);assert.equal(masteryRank('accuracy',11),11);
  assert.equal(masteryRank('enhance',0.5),2);assert.equal(masteryValue('enhance',1),0.25);assert.equal(masteryValue('offline',1),0.12);
 });

@@ -7,7 +7,7 @@ export const enhanceableItems=[...new Set([...game.equipment,...game.tools].map(
 const record=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const integer=(v,min,max)=>Number.isSafeInteger(v)&&v>=min&&v<=max;
 export function enhancementDefaults(){return {guild:null,itemId:110,tier:3,current:0,target:7,level:1,lectern:0,mastery:0,protect:true,protectFrom:game.protectionMin,shardPrice:null,scrollPrice:null,basePrice:null,priceModes:{shardPrice:'global',scrollPrice:'global',basePrice:'global'},basePriceItem:null};}
-export function validateEnhancement(input){
+export function validateEnhancement(input,{allowUnsupportedTarget=false}={}){
  if(!record(input))throw Error('invalidConfiguration');
  const s={...input,guild:readGuild(input.guild)};
  if(!enhanceableItems.some(x=>x.id===s.itemId)||!integer(s.tier,0,4)||!game.canEnhance(game.withRarity(s.itemId,s.tier)))throw Error('invalidItem');
@@ -22,6 +22,7 @@ export function validateEnhancement(input){
  if(s.basePriceItem!==null&&!integer(s.basePriceItem,0,Number.MAX_SAFE_INTEGER))throw Error('invalidPrice');
  if(s.priceModes.basePrice!=='global'&&s.basePriceItem!==baseId){s.priceModes.basePrice='global';s.basePrice=null;s.basePriceItem=null;}
  if(s.target<s.current)throw Error('targetBelowCurrent');
+ if(!allowUnsupportedTarget&&s.target>game.enhancementTargetLimit&&s.target!==s.current)throw Error('targetAboveLimit');
  return s;
 }
 export function enhancementSteps(input){

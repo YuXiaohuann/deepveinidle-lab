@@ -40,9 +40,9 @@ test('positive recurrence matches independent chain solution, including rebuildi
  }
  const r=calculateEnhancement(config({itemId:328,tier:2,level:32,current:5,target:6}));near(r.totals.gold,367901.05340684234);assert.ok(r.totals.gold>144000/.7434);
 });
-test('100% steps equal deterministic sums and +100 remains finite and positive',()=>{
+test('100% steps equal deterministic sums and +20 remains finite and positive',()=>{
  const r=calculateEnhancement(config({itemId:328,tier:2,current:5,target:10,lectern:1000}));assert.equal(r.totals.gold,24000*(6+7+8+9+10));assert.equal(r.totals.shards,3*(6+7+8+9+10));assert.equal(r.totals.attempts,5);
- for(const protect of [false,true]){const result=calculateEnhancement(config({target:100,protect}));for(const value of Object.values(result.totals))assert.ok(Number.isFinite(value)&&value>=0);assert.ok(result.totals.attempts>100);}
+ for(const protect of [false,true]){const result=calculateEnhancement(config({target:20,protect}));for(const value of Object.values(result.totals))assert.ok(Number.isFinite(value)&&value>=0);assert.ok(result.totals.attempts>20);}
 });
 test('zero target cost, blank prices and explicit zero pricing stay distinct',()=>{
  const zero=calculateEnhancement(config({current:5,target:5}));assert.deepEqual(zero.totals,{gold:0,shards:0,scrolls:0,attempts:0,seconds:0});assert.equal(zero.pricedGold,0);
@@ -82,9 +82,9 @@ test('import rejects missing or illegal data atomically and ignores ordinary inv
 });
 
 test('high target without protection matches an independent renewal calculation',()=>{
- for(const current of [0,5,50,99]){
-  const r=calculateEnhancement(config({current,target:100}));
-  const segment=start=>{let survival=1,attempts=0,gold=0;for(let k=start;k<100;k++){attempts+=survival;gold+=survival*r.steps[k].gold;survival*=r.steps[k].chance;}return {survival,attempts,gold};};
+ for(const current of [0,5,18,19]){
+  const r=calculateEnhancement(config({current,target:20}));
+  const segment=start=>{let survival=1,attempts=0,gold=0;for(let k=start;k<20;k++){attempts+=survival;gold+=survival*r.steps[k].gold;survival*=r.steps[k].chance;}return {survival,attempts,gold};};
   const initial=segment(0),remaining=segment(current);
   for(const key of ['attempts','gold'])near(r.totals[key],remaining[key]+(1-remaining.survival)*initial[key]/initial.survival);
  }

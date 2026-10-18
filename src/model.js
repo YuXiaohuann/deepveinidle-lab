@@ -71,5 +71,5 @@ export function sortEnemies(rows,key,direction=key==='level'?'asc':'desc',value=
 }
 
 // Storage keeps upstream ranks; UI shows effective values, preserving existing saves.
-export function masteryValue(id,rank){const m=game.masteries.find(x=>x.id===id);return Number((rank*m.perRank*(m.unit==='percent'?100:game.masteryOfflineBaseHours)).toFixed(6));}
+export function masteryValue(id,rank){const m=game.masteries.find(x=>x.id===id);const bonus=id==='enhance'?game.enhanceMasteryMultiplier({masteries:{enhance:rank}})-1:rank*m.perRank;return Number((bonus*(m.unit==='percent'?100:game.masteryOfflineBaseHours)).toFixed(6));}
 export function masteryRank(id,value){const m=game.masteries.find(x=>x.id===id);return integer(Math.round(Number(value)/(m.perRank*(m.unit==='percent'?100:game.masteryOfflineBaseHours))),0,game.masteryRankLimit);}

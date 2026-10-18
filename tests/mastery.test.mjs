@@ -67,9 +67,9 @@ test('independent storage round trips and rejects corruption and unavailable sto
 test('mastery import replaces ranks and points and resets targets and mode',async()=>{
  const {importMastery}=await import('../src/mastery.js');
  const s=masteryDefaults();s.mode='unlimited';s.budget=1234;s.target.xp=99;
- const ranks=Object.fromEntries(game.masteries.map((m,i)=>[m.id,i*3]));
+ const ranks=Object.fromEntries(game.masteries.map((m,i)=>[m.id,i]));
  const snapshot={version:2,capturedAt:Date.now(),player:{masteries:ranks,collections:{64:1},forgeLog:{29:1073741823},bank:{64:99}}};
- const result=importMastery(s,snapshot);assert.deepEqual(result.state.current,ranks);assert.deepEqual(result.state.target,ranks);assert.equal(result.state.mode,'limited');assert.equal(result.state.totalPoints,4376857);assert.equal(result.state.budget,4376857-game.masteriesTotalCost(ranks));assert.equal(result.capturedAt,snapshot.capturedAt);assert.equal(result.state.bank,undefined);assert.equal(calculateMastery(result.state).spent,0);assert.equal(s.target.xp,99);
+ const result=importMastery(s,snapshot);assert.deepEqual(result.state.current,ranks);assert.deepEqual(result.state.target,ranks);assert.equal(result.state.mode,'limited');assert.equal(result.state.totalPoints,5337);assert.equal(result.state.budget,5337-game.masteriesTotalCost(ranks));assert.equal(result.capturedAt,snapshot.capturedAt);assert.equal(result.state.bank,undefined);assert.equal(calculateMastery(result.state).spent,0);assert.equal(s.target.xp,99);
  result.state.current.xp=10;assert.equal(snapshot.player.masteries.xp,0);assert.equal(result.state.target.xp,0);
  snapshot.player.masteries={enhance:1,offline:2};const sparse=importMastery(s,snapshot).state;assert.equal(sparse.current.xp,0);assert.equal(sparse.current.enhance,1);assert.equal(sparse.current.offline,2);
 });
