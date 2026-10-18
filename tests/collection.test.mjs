@@ -72,7 +72,7 @@ test('material costs handle missing inputs and zero without calculating recovery
 test('minimal import accepts sparse collection and no forgeLog; failed import is atomic',()=>{
  const s=setup(),snap=snapshot();delete snap.player.forgeLog;const imported=importCollection(s,snap);assert.equal(imported.counts[40],9);assert.equal(imported.initialized,true);assert.equal(imported.config.blessing,false);assert.ok(Object.values(imported.config.brews).every(v=>v===-1));
  const before=structuredClone(s);delete snap.player.collections;assert.throws(()=>importCollection(s,snap),/incompleteSnapshot/);assert.deepEqual(s,before);
- for(const invalid of [-1,.5,'4',null]){snap.player.collections={40:invalid};assert.throws(()=>importCollection(s,snap),/invalidSnapshot/);}
+ for(const invalid of [-1,.5,'4',null]){snap.player.collections={40:invalid};const result=importCollection(s,snap);assert.deepEqual(result.counts,{});assert.ok(result.importWarnings.includes('collections.invalid:1'));}
  snap.player.collections={40:0};delete snap.player.skills.smithing;assert.throws(()=>importCollection(s,snap),/incompleteSnapshot/);
 });
 test('storage and user quantities reject invalid values instead of clipping',()=>{
@@ -199,4 +199,17 @@ test('collection imports and persists exact warehouse quantities; missing or mal
   const bad={...snap,player:{...snap.player,bank,collections:{40:100}}};assert.throws(()=>importCollection(imported,bad),/invalidSnapshot|incompleteSnapshot/);assert.deepEqual(imported,before);
  }
  const withoutBank={...imported};delete withoutBank.bank;assert.equal(validateCollection(withoutBank).bank,null);
+});
+
+test('collection import skips invalid records, persists warning and clears it on a clean import',()=>{
+ const s=setup(),snap=snapshot();
+ snap.player.collections={40:9,41:0,42341:1,42343:1,53341:2,53343:1,999999999:1,'01':2,bad:1,42:-1,43:1.5,44:'2',45:null,46:Number.MAX_SAFE_INTEGER+1};
+ const before=structuredClone(s),original=structuredClone(snap),result=importCollection(s,snap);
+ assert.deepEqual(result.counts,{40:9,41:0});assert.ok(result.importWarnings.includes('collections.invalid:12'));
+ assert.deepEqual(validateCollection(JSON.parse(JSON.stringify(result))),result);
+ assert.deepEqual(s,before);assert.deepEqual(snap,original);
+ snap.player.collections={40:10};const clean=importCollection(result,snap);
+ assert.equal(clean.counts[40],10);assert.ok(!clean.importWarnings.some(w=>w.startsWith('collections.invalid:')));
+ const corrupt=structuredClone(result);corrupt.counts[42341]=1;assert.throws(()=>validateCollection(corrupt),/invalidSnapshot/);
+ for(const warning of ['collections.invalid:0','collections.invalid:-1','collections.invalid:1.5','collections.invalid:9007199254740992'])assert.throws(()=>validateCollection({...result,importWarnings:[warning]}),/invalidConfiguration/);
 });

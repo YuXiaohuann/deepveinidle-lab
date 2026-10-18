@@ -32,13 +32,15 @@ export function collectionWorkConfig(state,kind){
  config.weeklyXp=state.config.weeklyXp;
  return config;
 }
-function validateCounts(raw){
+function validateCounts(raw,onInvalid){
  if(!record(raw))throw Error('incompleteSnapshot');
  const counts={};for(const [key,n]of Object.entries(raw)){
-  const id=Number(key);if(String(id)!==key||typeof n!=='number'||!Number.isSafeInteger(n)||n<0)throw Error('invalidSnapshot');
-  // The game can log valid items outside the visible collection catalogue.
-  try{if(game.itemTier(id)>4||game.item(id).id!==id||id!==game.withRarity(game.baseItemId(id),game.itemTier(id)))throw Error();}catch{throw Error('invalidSnapshot');}
-  if(idSet.has(id))counts[id]=n;
+  try{
+   const id=Number(key);if(String(id)!==key||typeof n!=='number'||!Number.isSafeInteger(n)||n<0)throw Error('invalidSnapshot');
+   // The game can log valid items outside the visible collection catalogue.
+   try{if(game.itemTier(id)>4||game.item(id).id!==id||id!==game.withRarity(game.baseItemId(id),game.itemTier(id)))throw Error();}catch{throw Error('invalidSnapshot');}
+   if(idSet.has(id))counts[id]=n;
+  }catch(error){if(!onInvalid||error.message!=='invalidSnapshot')throw error;onInvalid();}
  }return counts;
 }
 function validateBank(raw){
@@ -58,7 +60,7 @@ export function validateCollection(raw){
  const buyMode=raw.buyMode;
  if(!['ask','bid','vendor'].includes(buyMode))throw Error('invalidConfiguration');
  const importWarnings=raw.importWarnings;
- if(!Array.isArray(importWarnings)||importWarnings.some(w=>!['worldBuffs.upgrade','weeklyXp.reset'].includes(w)))throw Error('invalidConfiguration');
+ if(!Array.isArray(importWarnings)||importWarnings.some(w=>!['worldBuffs.upgrade','weeklyXp.reset'].includes(w)&&!(typeof w==='string'&&/^collections\.invalid:[1-9]\d*$/.test(w)&&Number.isSafeInteger(Number(w.split(':')[1])))))throw Error('invalidConfiguration');
  const state={version:1,initialized:raw.initialized,edited:raw.edited,capturedAt:raw.capturedAt,buyMode,importWarnings:[...importWarnings],counts:validateCounts(raw.counts),bank:raw.bank==null?null:validateBank(raw.bank),config:null};
  if(!record(raw.config))throw Error('invalidConfiguration');
  const gather=normalizeGathering(raw.config),craft=normalizeCrafting(raw.config);
@@ -74,12 +76,13 @@ export function validateCollection(raw){
 }
 export function importCollection(current,snapshot){
  if(!record(snapshot)||snapshot.version!==2||!Number.isSafeInteger(snapshot.capturedAt)||snapshot.capturedAt<=0||snapshot.capturedAt>Date.now()+60000||!record(snapshot.player))throw Error('invalidSnapshot');
- const counts=validateCounts(snapshot.player.collections),bank=validateBank(snapshot.player.bank),craft=importCrafting(collectionWorkConfig(current,'craft'),snapshot),gather=importGathering(collectionWorkConfig(current,'gather'),snapshot);
+ let invalidCounts=0;
+ const counts=validateCounts(snapshot.player.collections,()=>invalidCounts++),bank=validateBank(snapshot.player.bank),craft=importCrafting(collectionWorkConfig(current,'craft'),snapshot),gather=importGathering(collectionWorkConfig(current,'gather'),snapshot);
  const warnings=[...craft.warnings,...gather.warnings].filter(k=>/^(skills|equipment|house|masteries|perks|ironman|homeBank|brews|brewBuckets|brewTier|blessing|guildBonus)/.test(k));
  if(warnings.length)throw Error('incompleteSnapshot');
  const world=readWorldBuffs(snapshot);
  gather.state.weeklyXp=world.weeklyXp;gather.state.worldRarity=world.worldRarity;
- return validateCollection({...current,initialized:true,capturedAt:snapshot.capturedAt,edited:false,importWarnings:world.warning?[world.warning]:[],counts,bank,config:mergeConfig(gather.state,craft.state)});
+ return validateCollection({...current,initialized:true,capturedAt:snapshot.capturedAt,edited:false,importWarnings:[...(world.warning?[world.warning]:[]),...(invalidCounts?[`collections.invalid:${invalidCounts}`]:[])],counts,bank,config:mergeConfig(gather.state,craft.state)});
 }
 export function collectionTarget(state,id,target){
  const current=state.counts[id]??0,base=game.baseItemId(id),thresholds=game.collectionThresholds(base);
