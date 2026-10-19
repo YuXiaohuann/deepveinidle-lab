@@ -1,3 +1,4 @@
+import {itemPrice} from './item-prices.js';
 import {readGuild} from './guild.js';
 import * as game from './upstream.js';
 
@@ -83,7 +84,7 @@ export const enhancementPriceItems={shardPrice:208,scrollPrice:359};
 export function resolveEnhancementPrices(input,prices={}){
  const s=validateEnhancement(input),baseId=game.encode(game.withRarity(s.itemId,s.tier),s.current);
  for(const key of ['shardPrice','scrollPrice','basePrice']){
-  if(s.priceModes[key]==='global')s[key]=prices[key==='basePrice'?baseId:enhancementPriceItems[key]]?.price??null;
+  if(s.priceModes[key]==='global')s[key]=itemPrice(key==='basePrice'?baseId:enhancementPriceItems[key],prices);
   else if(s.priceModes[key]==='owned')s[key]=0;
  }
  return s;

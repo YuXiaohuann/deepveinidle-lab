@@ -44,6 +44,11 @@ export function validateMarketSnapshot(raw){
    if(!Object.hasOwn(q,side))continue;const v=q[side];
    if(!record(v)||!time(v.capturedAt)||!(v.invalid===true||v.value===null||validPrice(v.value)&&v.value>0)){invalid++;continue;}
    entry[side]=v.invalid===true?{invalid:true,capturedAt:v.capturedAt}:{value:v.value,capturedAt:v.capturedAt};
+   if(v.quantityInvalid===true)entry[side].quantityInvalid=true;
+   else if(Object.hasOwn(v,'quantity')){
+    if(Number.isSafeInteger(v.quantity)&&v.quantity>=0)entry[side].quantity=v.quantity;
+    else {entry[side].quantityInvalid=true;invalid++;}
+   }
   }
   if(Object.keys(entry).length)quotes[key]=entry;else invalid++;
  }
@@ -107,8 +112,13 @@ export function importItemPrices(state,snapshot,preferences=state.preferences,no
  }
  return {state:{...state,prices,quotes},stats};
 }
-export function itemPrice(id,prices){return prices[id]?.price??null;}
-export function valuationPrice(id,prices={}){if(game.isPet(Number(id)))return {price:0,fallback:false};return {price:itemPrice(id,prices)??(game.canSell(Number(id))?game.vendorPrice(Number(id)):0),fallback:itemPrice(id,prices)===null};}
+export function itemPrice(id,prices){return prices.getItem?prices.getItem(Number(id)).price:prices[id]?.price??null;}
+export function valuationPrice(id,prices={}){
+ id=Number(id);if(game.isPet(id))return {price:0,fallback:false};
+ const price=itemPrice(id,prices);
+ const vendor=prices.getItem?prices.getItem(id).vendorPrice:game.canSell(id)?game.vendorPrice(id):null;
+ return {price:price??vendor??0,fallback:price===null};
+}
 export function valueItems(items,mode,prices={}){
  let partial=0;const missing=[];
  for(const [key,qty]of Object.entries(items)){

@@ -29,9 +29,9 @@ try{
  await livePage.goto(base+'/forecast');
  result.live=await livePage.evaluate(async()=>{
   const {requestMarket}=await import('/src/market-import.js');const {snapshot}=await requestMarket();
-  return {items:Object.keys(snapshot.quotes).length,invalid:snapshot.invalid,generatedAt:new Date(Object.values(snapshot.quotes)[0].ask.capturedAt).toISOString()};
+  return {quantities:Object.values(snapshot.quotes).filter(q=>Number.isSafeInteger(q.ask?.quantity)&&Number.isSafeInteger(q.bid?.quantity)).length,items:Object.keys(snapshot.quotes).length,invalid:snapshot.invalid,generatedAt:new Date(Object.values(snapshot.quotes)[0].ask.capturedAt).toISOString()};
  });
- assert.ok(result.live.items>0);result.cases.push('real browser cross-origin official API request without userscript');await live.close();
+ assert.ok(result.live.items>0);assert.ok(result.live.quantities>0);result.cases.push('real browser cross-origin official API request without userscript');await live.close();
  }
  for(const language of ['zh','en'])for(const width of [1280,390]){
   const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(15000);

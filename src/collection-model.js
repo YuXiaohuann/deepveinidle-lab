@@ -26,7 +26,7 @@ function mergeConfig(gather,craft){
  for(const key of ['guild','guildXp','weeklyXp','worldRarity','blessing','ironman','homeBank','hotSetting'])config[key]=gather[key];
  return config;
 }
-export function collectionDefaults(){return {version:1,initialized:false,capturedAt:null,edited:false,importWarnings:[],counts:{},bank:null,buyMode:'ask',config:mergeConfig(gatheringDefaults(),craftingDefaults())};}
+export function collectionDefaults(){return {version:1,initialized:false,capturedAt:null,edited:false,importWarnings:[],counts:{},bank:null,buyMode:'global',config:mergeConfig(gatheringDefaults(),craftingDefaults())};}
 export function collectionWorkConfig(state,kind){
  const config=(kind==='gather'?normalizeGathering:normalizeCrafting)(state.config);
  config.weeklyXp=state.config.weeklyXp;
@@ -58,7 +58,7 @@ export function validateCollection(raw){
  if(!record(raw)||raw.version!==1||typeof raw.initialized!=='boolean'||typeof raw.edited!=='boolean')throw Error('invalidConfiguration');
  if(raw.capturedAt!==null&&(!Number.isSafeInteger(raw.capturedAt)||raw.capturedAt<=0||raw.capturedAt>Date.now()+60000))throw Error('invalidConfiguration');
  const buyMode=raw.buyMode;
- if(!['ask','bid','vendor'].includes(buyMode))throw Error('invalidConfiguration');
+ if(!['global','ask','bid','vendor'].includes(buyMode))throw Error('invalidConfiguration');
  const importWarnings=raw.importWarnings;
  if(!Array.isArray(importWarnings)||importWarnings.some(w=>!['worldBuffs.upgrade','weeklyXp.reset'].includes(w)&&!(typeof w==='string'&&/^collections\.invalid:[1-9]\d*$/.test(w)&&Number.isSafeInteger(Number(w.split(':')[1])))))throw Error('invalidConfiguration');
  const state={version:1,initialized:raw.initialized,edited:raw.edited,capturedAt:raw.capturedAt,buyMode,importWarnings:[...importWarnings],counts:validateCounts(raw.counts),bank:raw.bank==null?null:validateBank(raw.bank),config:null};
@@ -96,12 +96,14 @@ export function collectionRoutes(id){
  const base=game.baseItemId(id);
  return game.recipes.filter(j=>j.output.itemId===base&&!j.retired&&collectionSkills.includes(j.skill));
 }
-export function collectionPrice(id,prices,buyMode='ask'){
- if(buyMode==='vendor')return {price:game.canSell(id)?game.vendorPrice(id):null,source:'vendor',time:null};
- const quote=prices.quotes[id]?.[buyMode];
- return {price:quote&&!quote.invalid&&quote.value!==null?quote.value:null,source:buyMode,time:quote?.capturedAt??null};
+export function collectionPrice(id,prices,buyMode='global'){
+ const item=prices.getItem(id);
+ if(buyMode==='global')return {price:item.price,source:'global',time:item.configured.updatedAt};
+ if(buyMode==='vendor')return {price:item.vendorPrice,source:'vendor',time:null};
+ if(!['ask','bid'].includes(buyMode))throw Error('invalidPriceMode');
+ return {price:buyMode==='ask'?item.sellPrice:item.buyPrice,source:buyMode,time:item.market.generatedAt};
 }
-export function priceCollection(result,prices,buyMode='ask'){
+export function priceCollection(result,prices,buyMode='global'){
  const materials=Object.entries(result.materials??{}).map(([id,qty])=>({id:Number(id),qty,...collectionPrice(Number(id),prices,buyMode)}));
  let sum=0,missing=false;
  for(const row of materials){

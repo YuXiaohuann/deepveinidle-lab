@@ -4,7 +4,7 @@ import {collectionDefaults,collectionStorageKey,validateCollection,importCollect
 import {craftingSkills,craftingRooms,craftingMasteries,craftingSlots} from './crafting-model.js';
 import {gatheringSkills,gatheringRooms,gatheringMasteries,gatheringPerks,gatheringSlots,slotItems,gatheringPotions} from './gathering-model.js';
 import {characterImportPanel,requestCharacter,importStatusText} from './import-controls.js';
-import {priceState,subscribePrices,priceSaveError,refreshMarketPrices} from './item-price-store.js';
+import {getSnapshot,subscribe,getSaveError,refreshMarket} from './price-service.js';
 import {translatedName,translatedItemName} from './i18n.js';
 import {worldBuffWarningText} from './world-buffs.js';
 import {collectionPlanStorageKey,collectionPlanDefaults,validateCollectionPlan,addCollectionPlan,addCollectionPlans,removeCollectionPlan,setCollectionPlanTarget} from './collection-plan.js';
@@ -60,7 +60,7 @@ function initialize(){
  try{const raw=localStorage.getItem(collectionPlanStorageKey);if(raw)plan=validateCollectionPlan(JSON.parse(raw));}catch{planLoadError=true;}
  try{const raw=localStorage.getItem(collectionAutoImportStorageKey);if(raw)autoEnabled=validateCollectionAutoImport(JSON.parse(raw)).enabled;}catch{autoLoadError=true;}
  autoImporter=createCollectionAutoImporter({run:isCurrent=>importBuild({automatic:true,isCurrent}),onError:e=>{status={error:e.message};updateStatus();},listenFocus:handler=>{window.addEventListener('focus',handler);return ()=>window.removeEventListener('focus',handler);}});
- subscribePrices(()=>{if(document.getElementById('collection-results'))updateResults();});
+ subscribe(change=>{if(document.getElementById('collection-results')&&(change.storage||state.buyMode==='global'&&change.prices||['ask','bid'].includes(state.buyMode)&&change.market))updateResults();});
 }
 function saveFilters(){
  try{localStorage.setItem(filtersStorageKey,JSON.stringify({version:1,query,routeType,skill,tier,sort,onlyLevelMet,includeComplete,filterValues}));filtersSaveError=false;filtersLoadError=false;}catch{filtersSaveError=true;}
@@ -92,7 +92,7 @@ export function renderCollection(lang,{isActive=false}={}){
  <div class="collection-information"><section class="panel"><h2>${text('精通性价比','Mastery efficiency')}</h2><p class="micro">${text('奖励来自亲自产出的数量里程碑，买成品不增加进度。各行独立比较，副产物点数不计入。动作估算不含移动、回仓与升级，热门只取所选时刻。','Rewards require your own production milestones. Buying finished items adds no progress. Routes are independent; bonus-item points are excluded. Action estimates exclude travel, deposits and levelling; hot bonuses use the selected instant.')}</p>
  <div class="collection-filters">
  <div class="collection-filter-row"><label>${text('类型','Type')}<select id="collection-type">${options([['all',text('全部','All')],['gather',text('采集','Gathering')],['craft',text('制造','Crafting')]],routeType)}</select></label><label>${text('技能','Skill')}<select id="collection-skill">${options([['all',text('全部','All')],...collectionSkills.map(k=>[k,skillName(k)])],skill)}</select></label><label>${text('品质','Rarity')}<select id="collection-tier">${options([['all',text('全部','All')],...tierNames().map((n,i)=>[i,n])],tier)}</select></label><label>${text('物品搜索','Search items')}<input id="collection-search" type="search" value="${esc(query)}"></label></div>
- <div class="collection-filter-row"><label>${text('材料成本','Material cost')}<select id="collection-buy">${options([['ask',text('市场卖单','Market sell orders')],['bid',text('市场买单','Market buy orders')],['vendor',text('商人价格','Vendor prices')]],state.buyMode)}</select></label><label>${text('排序','Sort')}<select id="collection-sort">${options([['secondsPerPoint',text('时间（升序）','Time (ascending)')],['costPerPoint',text('材料成本（升序）','Material cost (ascending)')]],sort)}</select></label><label class="check"><input id="collection-level-met" type="checkbox" ${onlyLevelMet?'checked':''}>${text('仅显示等级达标','Meets level requirement')}</label><label class="check"><input id="collection-completed" type="checkbox" ${includeComplete?'checked':''}>${text('包含已完成','Include completed')}</label></div>
+ <div class="collection-filter-row"><label>${text('材料成本','Material cost')}<select id="collection-buy">${options([['global',text('全局物品价格','Global item prices')],['ask',text('市场卖单','Market sell orders')],['bid',text('市场买单','Market buy orders')],['vendor',text('商人价格','Vendor prices')]],state.buyMode)}</select></label><label>${text('排序','Sort')}<select id="collection-sort">${options([['secondsPerPoint',text('时间（升序）','Time (ascending)')],['costPerPoint',text('材料成本（升序）','Material cost (ascending)')]],sort)}</select></label><label class="check"><input id="collection-level-met" type="checkbox" ${onlyLevelMet?'checked':''}>${text('仅显示等级达标','Meets level requirement')}</label><label class="check"><input id="collection-completed" type="checkbox" ${includeComplete?'checked':''}>${text('包含已完成','Include completed')}</label></div>
  <div class="collection-filter-row">${metricFilters.map(({key,label})=>`<label>${text(...label)}<input id="collection-filter-${key}" type="text" inputmode="decimal" value="${esc(filterValues[key])}" placeholder="${text('不限','Any')}"></label>`).join('')}</div></div>
  <p id="collection-summary" class="micro" role="status"></p><p id="collection-error" role="alert"></p><div class="collection-list-actions"><a id="collection-plan-link" href="#collection-plan"></a><button id="collection-add-filtered" class="text-button" disabled></button></div><div id="collection-results"></div><nav id="collection-pages-bottom" class="collection-pagination" hidden></nav></section><section class="panel" id="collection-plan" aria-label="${text('执行计划','Execution plan')}"></section></div>`;
  for(const id of openDetails){const el=document.getElementById(id);if(el)el.open=true;}
@@ -134,7 +134,7 @@ function updateStatus(){
  host.querySelector('#collection-import-status').textContent=[importStatusText(language,status,busy&&!marketBusy),marketBusy?text('正在更新市场数据…','Updating market data…'):marketStatus?.error?text('市场更新失败：','Market update failed: ')+(marketErrors[marketStatus.error]?.[language==='zh'?0:1]??marketStatus.error):marketStatus?text('市场数据已更新。','Market data updated.'):''].filter(Boolean).join('\n');
  host.querySelector('#collection-origin').textContent=!state.initialized?message('uninitialized'):state.capturedAt?text('收藏捕获于：','Collection captured: ')+new Date(state.capturedAt).toLocaleString(language==='zh'?'zh-CN':'en')+(state.edited?text(' · 已手动修正',' · Manually adjusted'):''):text('手动场景；未填写的数量为 0。','Manual scenario; unspecified counts are zero.');
  host.querySelector('#collection-save').textContent=[filtersLoadError?text('筛选无法读取，已使用默认筛选。','Filters could not be read; defaults are in use.'):'',filtersSaveError?text('筛选保存失败，当前内存筛选仍可用。','Filters could not be saved; current filters remain usable.'):'',loadError?text('存档无法读取，已恢复默认配置。','Saved settings could not be read; defaults restored.'):'',saveError?text('保存失败，当前内存计算仍可用。','Save failed; calculations remain available.'):'',!loadError&&!saveError?text('配置自动保存在此浏览器。','Settings are saved in this browser.'):''].filter(Boolean).join(' ');
- host.querySelector('#collection-error').textContent=filterError?message(filterError):error?message(error):priceSaveError()?text('全局价格存储异常，请打开物品价格查看。','Price storage error; open Item prices for details.'):'';
+ host.querySelector('#collection-error').textContent=filterError?message(filterError):error?message(error):getSaveError()?text('全局价格存储异常，请打开物品价格查看。','Price storage error; open Item prices for details.'):'';
 }
 function updateResults(){
  const host=document.getElementById('collection-results');if(!host)return;
@@ -146,7 +146,7 @@ function updateResults(){
  catch{filterError='invalidFilter';updateStatus();host.innerHTML='';document.getElementById('collection-summary').textContent='';return;}
  updateStatus();
  if(!state.initialized){host.innerHTML=`<p class="empty-results">${message('uninitialized')}</p>`;return;}
- const prices=priceState(),q=query.trim().toLowerCase();let valued;
+ const prices=getSnapshot(),q=query.trim().toLowerCase();let valued;
  const matching=rows.filter(r=>(includeComplete||!r.complete)&&(!onlyLevelMet||state.config.levels[r.skill]>=recipesById.get(r.jobId).levelReq)&&(routeType==='all'||(routeType==='gather'?gatheringSkills:craftingSkills).includes(r.skill))&&(skill==='all'||r.skill===skill)&&(tier==='all'||game.itemTier(r.id)===Number(tier))&&(!q||`${game.item(r.id).name} ${translatedItemName(r.id,'zh')} ${itemName(r.id)}`.toLowerCase().includes(q)));
  try{valued=matching.map(r=>priceCollection(r,prices,state.buyMode)).filter(row=>metricFilters.every(({key})=>{
   const bound=thresholds[key];if(bound===null)return true;
@@ -182,7 +182,7 @@ function updateCandidateActions(valued,clamp=true){
  button.onclick=()=>changePlan(()=>addCollectionPlans(plan,eligible.map(row=>({itemId:row.id,jobId:row.jobId,target:row.target}))));
 }
 function detail(card,row){
- const list=items=>items.length?items.map(i=>`<li>${esc(itemName(i.id))} (${tierNames()[game.itemTier(i.id)]}) × ${number(i.qty)} — ${number(i.price)} ${text('金币','coins')} <small>${({ask:text('最低卖单','Lowest sell order'),bid:text('最高买单','Highest buy order'),vendor:text('商人估值','Vendor valuation')})[i.source]}${i.time?' · '+esc(new Date(i.time).toLocaleString(language==='zh'?'zh-CN':'en')):''}${i.price===null?' · '+text('缺报价','Missing price'):''}</small></li>`).join(''):`<li>${text('无','None')}</li>`;
+ const list=items=>items.length?items.map(i=>`<li>${esc(itemName(i.id))} (${tierNames()[game.itemTier(i.id)]}) × ${number(i.qty)} — ${number(i.price)} ${text('金币','coins')} <small>${({global:text('全局物品价格','Global item prices'),ask:text('最低卖单','Lowest sell order'),bid:text('最高买单','Highest buy order'),vendor:text('商人估值','Vendor valuation')})[i.source]}${i.time?' · '+esc(new Date(i.time).toLocaleString(language==='zh'?'zh-CN':'en')):''}${i.price===null?' · '+text('缺报价','Missing price'):''}</small></li>`).join(''):`<li>${text('无','None')}</li>`;
  card.querySelector('.collection-detail').innerHTML=`<h3>${text('材料采购','Material purchases')}</h3><ul>${list(row.materialsPriced)}</ul>`;
 }
 
@@ -195,7 +195,7 @@ async function importBuild({automatic=false,isCurrent=()=>true}={}){
   if(!response.snapshot)throw Error('noSnapshot');
   state=importCollection(state,response.snapshot);drafts.clear();loadError=false;status={capturedAt:state.capturedAt};changed();renderCollection(language,{isActive:active});
   marketBusy=true;updateStatus();
-  try{await refreshMarketPrices(undefined,{quotesOnly:true});marketStatus={updated:true};}catch(e){marketStatus={error:e.message};}finally{marketBusy=false;}
+  try{await refreshMarket();marketStatus={updated:true};}catch(e){marketStatus={error:e.message};}finally{marketBusy=false;}
  }catch(e){if(!automatic||isCurrent())status={error:e.message};}finally{busy=false;updateStatus();}
 }
 function changePlan(action){
@@ -209,7 +209,7 @@ function planButton(row){
 }
 function updatePlan(){
  const link=document.getElementById('collection-plan-link');if(link)link.textContent=text('已选方案：','Selected routes: ')+plan.selections.length;
- renderCollectionPlan(document.getElementById('collection-plan'),{state,plan,prices:priceState(),language,now:calculationNow,loadError:planLoadError,saveError:planSaveError,statusText:message,sort:planSort,onSort:updatePlan,hideCompleted:planHideCompleted,onHideCompleted:value=>{planHideCompleted=value;updatePlan();},
+ renderCollectionPlan(document.getElementById('collection-plan'),{state,plan,prices:getSnapshot(),language,now:calculationNow,loadError:planLoadError,saveError:planSaveError,statusText:message,sort:planSort,onSort:updatePlan,hideCompleted:planHideCompleted,onHideCompleted:value=>{planHideCompleted=value;updatePlan();},
   onClear:()=>{planLoadError=false;plan=collectionPlanDefaults();savePlan();updateResults();},
   onTarget:(itemId,target)=>changePlan(()=>setCollectionPlanTarget(plan,itemId,target)),
   onRemove:itemId=>changePlan(()=>removeCollectionPlan(plan,itemId))});

@@ -1,14 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
-import {collectionWorkConfig,collectionDefaults,validateCollection,collectionTarget,pointsForProduction,collectionRoutes,estimateCollection,collectionRows,priceCollection,collectionPrice,importCollection,collectionInteger,collectionNumber,collectionPlayers,collectionWindows} from '../src/collection-model.js';
+import {collectionWorkConfig,collectionDefaults,validateCollection,collectionTarget,pointsForProduction,collectionRoutes,estimateCollection,collectionRows,priceCollection as priceCollectionSnapshot,collectionPrice as collectionPriceSnapshot,importCollection,collectionInteger,collectionNumber,collectionPlayers,collectionWindows} from '../src/collection-model.js';
 import {priceDefaults} from '../src/item-prices.js';
 import {createScenario,simulationTick,START_TICK} from '../src/simulation.js';
 import {createCraftingScenario} from '../src/crafting-simulation.js';
 import {simulateCollection,collectionPotionItems} from '../src/collection-simulation.js';
 import {craftingSlots,craftingSkills} from '../src/crafting-model.js';
 import {gatheringSlots,gatheringSkills,gatheringPlayer} from '../src/gathering-model.js';
-const setup=()=>({...collectionDefaults(),initialized:true});
+import {createPriceSnapshot} from '../src/price-protocol.js';
+const priceCollection=(result,state,mode='ask')=>priceCollectionSnapshot(result,createPriceSnapshot(state),mode);
+const collectionPrice=(id,state,mode='ask')=>collectionPriceSnapshot(id,createPriceSnapshot(state),mode);
+const setup=()=>({...collectionDefaults(),buyMode:'ask',initialized:true});
 const job=id=>collectionRoutes(id)[0];
 function snapshot(){
  const {player}=createScenario({});for(const skill of [...craftingSkills,...gatheringSkills])player.skills[skill]=game.levelXp(1);

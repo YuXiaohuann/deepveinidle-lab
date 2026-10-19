@@ -1,4 +1,4 @@
-import {priceState,subscribePrices} from './item-price-store.js';
+import {getSnapshot,subscribe} from './price-service.js';
 import {searchSelectMarkup,bindSearchSelect} from './search-select.js';
 import * as game from './upstream.js';
 import {translatedName} from './i18n.js';
@@ -20,7 +20,7 @@ const errorMessage=code=>(errors[code]??[code,code])[language==='zh'?0:1];
 const format=v=>v>=1e12?v.toExponential(4):v.toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:2});
 const field=(key,label,min,max,step=1,value=state[key])=>`<label class="number-field"><span>${label}</span><input data-enhance-field="${key}" type="number" min="${min}" max="${max}" step="${step}" value="${value??''}"></label>`;
 function resetBaseOverride(){const id=game.encode(game.withRarity(state.itemId,state.tier),state.current);if(state.basePriceItem!==null&&state.basePriceItem!==id){state.priceModes.basePrice='global';state.basePrice=null;state.basePriceItem=null;}}
-function previewPrices(){try{return resolveEnhancementPrices(state,priceState().prices);}catch{return {shardPrice:null,scrollPrice:null,basePrice:null};}}
+function previewPrices(){try{return resolveEnhancementPrices(state,getSnapshot());}catch{return {shardPrice:null,scrollPrice:null,basePrice:null};}}
 function save(){try{localStorage.setItem(enhancementStorageKey,JSON.stringify(validateEnhancement(state)));saveOK=true;}catch(error){saveOK=false;}}
 function renderStatus(){const el=document.getElementById('enhance-import-status');if(!el)return;
  el.textContent=importStatusText(language,status,busy);
@@ -28,7 +28,7 @@ function renderStatus(){const el=document.getElementById('enhance-import-status'
 }
 function renderResults(){const host=document.getElementById('enhance-results');if(!host)return;
  const note=document.getElementById('enhance-save-note');note.textContent=saveOK?text('● 强化配置独立保存在此浏览器','● Enhancement settings saved separately in this browser'):text('配置未保存：请检查输入或浏览器存储。','Settings were not saved. Check inputs or browser storage.');
- let result,priced;try{priced=resolveEnhancementPrices(state,priceState().prices);result=calculateEnhancement(priced);}catch(error){host.innerHTML=`<div class="issue-box" role="alert">${esc(errorMessage(error.message))}</div>`;return;}
+ let result,priced;try{priced=resolveEnhancementPrices(state,getSnapshot());result=calculateEnhancement(priced);}catch(error){host.innerHTML=`<div class="issue-box" role="alert">${esc(errorMessage(error.message))}</div>`;return;}
  const {totals,steps,purchaseTotal,taxedGold}=result;
  const incomplete=text('未完整定价','Incomplete pricing');
  const money=value=>value===null?incomplete:format(value);
@@ -93,7 +93,8 @@ export function renderEnhancement(nextLanguage){
  renderStatus();renderResults();for(const [id,open]of openDetails){const el=document.getElementById(id);if(el)el.open=open;}
 }
 
-subscribePrices(()=>{
+subscribe(change=>{
+ if(!change.prices)return;
  const host=document.getElementById('enhance-content');if(!host)return;
  const priced=previewPrices();
  for(const key of ['shardPrice','scrollPrice','basePrice'])if(state.priceModes[key]==='global'){const el=host.querySelector(`[data-enhance-field="${key}"]`);if(el)el.value=priced[key]??'';}

@@ -5,7 +5,7 @@ import {mountScrollLayout,rememberScrollLayout} from './scroll-layout.js';
 import {startAutomaticPriceImport} from './price-auto-import.js';
 import {mountItemPrices} from './item-price-controls.js';
 import {calculateWorldBosses,renderWorldBosses} from './world-bosses.js';
-import {priceState,subscribePrices} from './item-price-store.js';
+import {getSnapshot,subscribe} from './price-service.js';
 import {valueRewards,valueCombatRewards,valuationPrice} from './item-prices.js';
 import {renderCollection} from './collection-controls.js';
 import {renderMastery} from './mastery-controls.js';
@@ -169,7 +169,7 @@ function scheduleSimulation(force=false){
 const formatAmount=n=>n.toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:2});
 const formatDropQuantity=n=>{const value=rewardAmount(n,'day',state.manual.simulationHours),locale=language==='zh'?'zh-CN':'en';if(value===0)return '0';if(value<0.1)return '1/'+(1/value).toLocaleString(locale,{maximumFractionDigits:0});const digits=value>=10?0:2;return value.toLocaleString(locale,{minimumFractionDigits:digits,maximumFractionDigits:digits});};
 const formatRate=(n,metric='count')=>{if(n===null)return language==='zh'?'未完整定价':'Incomplete pricing';const value=rewardAmount(n,'day',state.manual.simulationHours);if(['xp','coins'].includes(metric)){const compact=compactNumber(value);if(compact!==null)return compact;}const digits=['xp','coins','attempts'].includes(metric)?0:1;return value.toLocaleString(language==='zh'?'zh-CN':'en',{minimumFractionDigits:digits,maximumFractionDigits:digits});};
-function lootDetails(items,drop=false){return Object.entries(items).sort((a,b)=>b[1]-a[1]).map(([id,qty])=>{const tier=game.itemTier(Number(id)),base=game.item(game.baseItemId(Number(id)));const p=valuationPrice(id,priceState().prices);const note=game.isPet(Number(id))?'':' '+(p.fallback?'<span title="'+(language==='zh'?'部分物品未设置价格，采用商人价格计算':'Some items have no configured price; vendor prices are used')+'">⚠</span> ':'')+(compactNumber(p.price)??formatAmount(p.price));return '<div class="loot-line"><span>'+esc(name(base.name))+(tier?' · '+t('rarity')[tier]:'')+note+'</span><span>'+(drop?formatDropQuantity(qty):formatRate(qty))+'</span></div>';}).join('');}
+function lootDetails(items,drop=false){return Object.entries(items).sort((a,b)=>b[1]-a[1]).map(([id,qty])=>{const tier=game.itemTier(Number(id)),base=game.item(game.baseItemId(Number(id)));const p=valuationPrice(id,getSnapshot());const note=game.isPet(Number(id))?'':' '+(p.fallback?'<span title="'+(language==='zh'?'部分物品未设置价格，采用商人价格计算':'Some items have no configured price; vendor prices are used')+'">⚠</span> ':'')+(compactNumber(p.price)??formatAmount(p.price));return '<div class="loot-line"><span>'+esc(name(base.name))+(tier?' · '+t('rarity')[tier]:'')+note+'</span><span>'+(drop?formatDropQuantity(qty):formatRate(qty))+'</span></div>';}).join('');}
 
 function depotCell(monster){
  const result=hourly.get(monster.key);
@@ -179,7 +179,7 @@ function levelCell(monster,open=false){
  const fields=[['health',monster.hp],['damage',monster.max],['chance',(monster.chance*100).toFixed(2)+'%'],['enemyDamage',monster.enemyMax??'—'],['enemyChance',monster.enemyChance===null?'—':(monster.enemyChance*100).toFixed(2)+'%']];
  return `<details id="enemy-level-${esc(monster.key)}" class="reward-detail level-detail"${open?' open':''}><summary><span class="enemy-name"><span><strong>${esc(name(monster.name))}</strong><small>${esc(t('level'))} ${monster.level}</small></span></span></summary><div>${fields.map(([label,value])=>`<div class="loot-line"><span>${esc(t(label))}</span><span>${esc(value)}</span></div>`).join('')}</div></details>`;
 }
-function valuedResult(result){try{return valueCombatRewards(result,priceState().prices);}catch(error){return result?{...result,normalValue:null,rareValue:null,totalIncome:null,profit:null,foodCost:null,potionCost:null,consumableCost:null,valuationError:error.message}:result;}}
+function valuedResult(result){try{return valueCombatRewards(result,getSnapshot());}catch(error){return result?{...result,normalValue:null,rareValue:null,totalIncome:null,profit:null,foodCost:null,potionCost:null,consumableCost:null,valuationError:error.message}:result;}}
 function priceWarning(missing){return missing?.length?'<span title="'+(language==='zh'?'部分物品未设置价格，采用商人价格计算':'Some items have no configured price; vendor prices are used')+'" aria-label="'+(language==='zh'?'缺价':'Unset price')+'">⚠</span> ':'';}
 function hourlyCells(monster){
  const arrange=cells=>[cells[2],cells[6],cells[8],cells[1],cells[0],cells[3],cells[4],cells[5],cells[7]].join('');
@@ -227,6 +227,6 @@ render();
 setInterval(()=>updateForecast(esc),1000);
 probeCharacter().then(()=>{if(!importStatus){importStatus={ready:true};updateImportStatus();}}).catch(error=>{if(!importStatus){importStatus={error:error.message};updateImportStatus();}});
 
-subscribePrices(()=>{renderResults();});
+subscribe(change=>{if(change.prices)renderResults();});
 
 startAutomaticPriceImport(()=>language);

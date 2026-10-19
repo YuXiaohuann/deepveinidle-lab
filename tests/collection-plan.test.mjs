@@ -1,10 +1,12 @@
+import {createPriceSnapshot} from '../src/price-protocol.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
 import {collectionDefaults,collectionRoutes,estimateCollection} from '../src/collection-model.js';
-import {collectionPlanDefaults,validateCollectionPlan,addCollectionPlan,addCollectionPlans,removeCollectionPlan,setCollectionPlanTarget,calculateCollectionPlan} from '../src/collection-plan.js';
+import {collectionPlanDefaults,validateCollectionPlan,addCollectionPlan,addCollectionPlans,removeCollectionPlan,setCollectionPlanTarget,calculateCollectionPlan as calculatePlanSnapshot} from '../src/collection-plan.js';
 import {priceDefaults} from '../src/item-prices.js';
-const state=()=>({...collectionDefaults(),initialized:true,bank:{}});
+const calculateCollectionPlan=(state,plan,prices,options)=>calculatePlanSnapshot(state,plan,createPriceSnapshot(prices),options);
+const state=()=>({...collectionDefaults(),buyMode:'ask',initialized:true,bank:{}});
 const pick=(itemId,target)=>({itemId,jobId:collectionRoutes(itemId)[0].id,target});
 const priced=()=>{const prices=priceDefaults();for(const item of game.items)prices.quotes[item.id]={ask:{value:2,capturedAt:100},bid:{value:2,capturedAt:100}};return prices;};
 

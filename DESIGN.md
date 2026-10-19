@@ -14,6 +14,7 @@
 
 | 主题 | 文档 |
 | --- | --- |
+| 物品价格数据、访问协议及页面定价 | [物品价格模块](docs/modules/item-prices.md) |
 | 导航、语言、布局、保存、页脚、赞赏及全局物品价格 | [共用页面框架](docs/shared.md) |
 | 战斗配置、模拟、利润与世界首领估算 | [战斗页面](docs/pages/combat.md) |
 | 采集配置、点位平均与统计 | [采集页面](docs/pages/gathering.md) |

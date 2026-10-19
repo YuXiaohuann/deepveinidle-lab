@@ -1,9 +1,9 @@
-import {importAutomaticPrices} from './item-price-store.js';
+import {importAutomatically} from './price-service.js';
 import {marketErrors} from './market-import.js';
 
 export async function startAutomaticPriceImport(getLanguage){
  let result,error;
- try{result=await importAutomaticPrices();}catch(cause){error=cause.message;}
+ try{result=await importAutomatically();}catch(cause){error=cause.message;}
  if(!result&&!error)return;
  const zh=getLanguage()==='zh';
  const storageErrors={

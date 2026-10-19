@@ -6,9 +6,10 @@ function initialize(){if(initialized)return;initialized=true;
 }
 export function priceState(){initialize();return state;}
 export function priceSaveError(){initialize();return saveError;}
-export function updatePrices(next){initialize();state=next;
+export function updatePrices(next){initialize();const previous=state,previousError=saveError;state=next;
  try{localStorage.setItem(priceStorageKey,JSON.stringify(state));saveError=null;}catch{saveError='priceSaveFailed';}
- for(const listener of listeners)listener();
+ const change=Object.freeze({...Object.fromEntries(['prices','quotes','preferences'].map(key=>[key==='quotes'?'market':key,JSON.stringify(previous[key])!==JSON.stringify(state[key])])),storage:previousError!==saveError});
+ for(const listener of listeners)listener(change);
 }
 export function subscribePrices(listener){listeners.add(listener);return ()=>listeners.delete(listener);}
 

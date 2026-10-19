@@ -88,7 +88,7 @@ test('gathering random-source failure is explicit and does not start a fallback 
 
 function craftScheduler(){
  const h=harness(),source=fs.readFileSync(new URL('../src/crafting-controls.js',import.meta.url),'utf8');
- h.context=vm.createContext({...h.ctx,...crafting,game,localStorage:{getItem:()=>null},subscribePrices:()=>{},priceState:()=>({prices:{}})});
+ h.context=vm.createContext({...h.ctx,...crafting,game,localStorage:{getItem:()=>null},subscribe:()=>{},getSnapshot:()=>({})});
  vm.runInContext(source.replaceAll('import.meta.url',"'http://localhost/'").replace(/^import .*;\n/gm,'').replace('export function renderCrafting','function renderCrafting'),h.context);
  vm.runInContext('renderResults=()=>{};active=true;',h.context);h.read=expr=>vm.runInContext(expr,h.context);
  h.complete=worker=>{for(const p of worker.data.plans)worker.onmessage({data:{result:{key:p.key,seed:worker.data.seed},mode:p.mode}});worker.onmessage({data:{done:true}});};return h;

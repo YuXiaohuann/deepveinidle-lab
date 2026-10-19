@@ -1,5 +1,5 @@
 import {compactNumber} from './number-format.js';
-import {priceState,subscribePrices} from './item-price-store.js';
+import {getSnapshot,subscribe} from './price-service.js';
 import {valueRewards,valuationPrice} from './item-prices.js';
 import * as game from './upstream.js';
 import {translatedName,translatedItemName} from './i18n.js';
@@ -50,7 +50,7 @@ function gearRow(slot){const v=state.gear[slot],label=name({pickaxe:'Pickaxe',ro
 function houseDescription(room){const label=room.bonus.kind==='gatherSpeed'?`${skillName(room.bonus.skill)}${text('速度',' speed')}`:text('稀有掉落概率','Rare-find chance');return `${label} · ${text('每级','per level')} +${format(game.houseBonus(room,1)*100,2)}% · ${text('当前','current')} +${format(game.houseBonus(room,state.house[room.id])*100,2)}%`;}
 function detail(id,summary,html){return `<details class="reward-detail" id="gather-${id}"><summary>${summary}</summary><div>${html}</div></details>`;}
 function priceWarning(missing){return missing?.length?`<span title="${text('部分物品未设置价格，采用商人价格计算','Some items have no configured price; vendor prices are used')}" aria-label="${text('缺价','Unset price')}">⚠</span> `:'';}
-function priceNote(id){if(game.isPet(Number(id)))return '';const p=valuationPrice(id,priceState().prices);return (p.fallback?`<span title="${text('部分物品未设置价格，采用商人价格计算','Some items have no configured price; vendor prices are used')}">⚠</span> `:'')+money(p.price);}
+function priceNote(id){if(game.isPet(Number(id)))return '';const p=valuationPrice(id,getSnapshot());return (p.fallback?`<span title="${text('部分物品未设置价格，采用商人价格计算','Some items have no configured price; vendor prices are used')}">⚠</span> `:'')+money(p.price);}
 function expectedQuantity(value){if(value===0)return '0';if(value<.1)return '1/'+format(1/value,0);const digits=value>=10?0:2;return value.toLocaleString(language==='zh'?'zh-CN':'en',{minimumFractionDigits:digits,maximumFractionDigits:digits});}
 function methodNote(){return (state.discardGathered?text('已开启丢弃采集物：产物及收入仅计入已存放与期末未丢弃的机会期望，已丢弃部分不估值；特殊奖励按各自规则保留。','Discard gathering is enabled: items and income include only stored and end-of-run retained opportunity expectations. Discarded items have no value; special rewards follow their own rules.')+'<br>':'')+text('采集次数、移动占比、经验、回仓及偷窃被抓和停顿来自<strong class="simulation-caveat">原始模拟</strong>；金币按本次模拟成功次数计算，主要产物与额外掉落为基于本次模拟机会的<strong class="simulation-caveat">数学期望</strong>，活动礼盒仍按原始模拟统计；收入结合物品价格推算，不扣药水成本。所有采集点模式按各点结果等权平均。','Gather counts, moving share, XP, banking, catches and stuns come from the <strong class="simulation-caveat">original simulation</strong>; coins use successful actions in this run, while main products and extra drops are <strong class="simulation-caveat">mathematical expectations</strong> based on its opportunities. Event boxes still use simulated counts. Income uses item prices and excludes potion costs. All-sites mode takes an equal average of site results.');}
 function itemDetail(items){return Object.entries(items).sort((a,b)=>Number(a[0])-Number(b[0])).map(([id,qty])=>`<div class="gather-item"><span>${esc(translatedItemName(Number(id),language))} · ${rarities()[game.itemTier(Number(id))]}${state.vendorValues?' '+(state.valuationMode==='custom'?(priceNote(id)):money(game.canSell(Number(id))?game.vendorPrice(Number(id)):0)):''}</span><span>${expectedQuantity(rewardAmount(qty,period,state.simulationHours))}</span></div>`).join('')||text('无','None');}
@@ -61,7 +61,7 @@ function headers(){const entries=[[text('任务','Task'),null],[text('所需等�
  return entries.map(([label,key])=>`<th ${key?`aria-sort="${sort===key?(direction==='asc'?'ascending':'descending'):'none'}"`:''}>${key?`<button class="sort-header" data-gather-sort="${key}">${label} <span class="sort-arrow">${sort===key?(direction==='asc'?'↑':'↓'):'↕'}</span></button>`:label}</th>`).join('');
 }
 function renderStatus(){const worldWarnings=(status?.warnings??[]).filter(w=>w==='worldBuffs.upgrade'||w==='weeklyXp.reset'),warnings=(status?.warnings??[]).filter(w=>!worldWarnings.includes(w));const el=document.getElementById('gather-import-status');if(el){el.textContent=importStatusText(language,status,busy)+(warnings.length?`\n${text('以下字段未导入，已保留原值：','These fields were not imported; previous values were kept: ')}${[...new Set(warnings.map(field=>({skills:text('技能','Skills'),equipment:text('工具与装备','Tools & equipment'),brews:text('药水','Potions'),brewBuckets:text('药水','Potions'),brewTier:text('药水','Potions'),house:text('家园','Home'),masteries:text('精通','Masteries'),perks:text('特权','Perks'),guildBonus:text('公会经验','Guild XP'),guild:text('公会','Guild'),blessing:text('祝福','Blessing'),weeklyXp:text('世界增益经验','World buff XP'),homeBank:text('初始仓库','Starting depot'),ironman:text('铁人模式','Ironman')}[field.split('.')[0]]??text('角色配置','Character build'))))].join(text('、',', '))}`:'')+worldWarnings.map(w=>'\n'+worldBuffWarningText(language,w)).join('');document.getElementById('gather-import').disabled=busy;}}
-function valuedResult(result){try{return valueRewards(result,state.valuationMode,priceState().prices);}catch(error){return result?{...result,normalValue:null,rareValue:null,totalIncome:null,valuationError:error.message}:result;}}
+function valuedResult(result){try{return valueRewards(result,state.valuationMode,getSnapshot());}catch(error){return result?{...result,normalValue:null,rareValue:null,totalIncome:null,valuationError:error.message}:result;}}
 function renderResults(){const host=document.getElementById('gather-results');if(!host)return;rememberDetails('#gather-results');
  const periodSelect=document.getElementById('gather-period');if(periodSelect)periodSelect.innerHTML=periodOptions();
  const stats=gatheringStats(state),jobs=selectedGatheringJobs(state).filter(j=>`${j.name} ${translatedName(j.name,'zh')}`.toLowerCase().includes(query.toLowerCase()));
@@ -130,4 +130,4 @@ export function renderGathering(nextLanguage,{isActive=active}={}){
  renderStatus();restoreDetails();
 }
 
-subscribePrices(renderResults);
+subscribe(change=>{if(change.prices)renderResults();});

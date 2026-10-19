@@ -32,7 +32,7 @@ try{
  await context.route('https://deepveinidle.com/api/market/prices.json',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({game:'Deep Vein Idle',generatedAt:new Date().toISOString(),refreshSeconds:60,items:{40:{lowestSell:25,highestBuy:20}}})}));
  await page.goto(new URL('/collection/',base).href);await page.locator('#collection-section').waitFor({state:'visible'});
  assert.equal(await page.locator('[data-section="collection"]').count(),0);assert.equal(await page.locator('.collection-card').count(),0);
- await page.locator('#collection-manual').click();assert.equal(await page.locator('#collection-type').inputValue(),'craft');assert.equal(await page.locator('#collection-level-met').isChecked(),true);
+ await page.locator('#collection-manual').click();assert.equal(await page.locator('#collection-buy').inputValue(),'global');await page.locator('#collection-buy').selectOption('ask');assert.equal(await page.locator('#collection-type').inputValue(),'craft');assert.equal(await page.locator('#collection-level-met').isChecked(),true);
  const cards=()=>page.locator('.collection-card');
  const keys=()=>cards().evaluateAll(es=>es.map(e=>e.dataset.collectionKey));
  await page.locator('#collection-search').fill('Bronze bar');
@@ -101,7 +101,7 @@ try{
  for(const invalid of ['abc','Infinity','9007199254740992']){await page.locator('#collection-filter-cost').fill(invalid);assert.equal(await page.locator('.collection-card').count(),0);assert.match(await page.locator('#collection-error').innerText(),/筛选数值无效/);}await page.locator('#collection-filter-cost').fill('');
  results.cases.push('three ordered filter rows; all five inclusive numeric boundaries, decimals, intersections, missing quotes and invalid bounds');
  await page.locator('#collection-buy').selectOption('bid');assert.equal(await metric('costPerPoint'),3);assert.match(await details().innerText(),/最高买单/);
- await page.locator('#collection-buy').selectOption('ask');assert.equal(await page.locator('#collection-buy option').count(),3);assert.equal(await page.locator('#collection-sell').count(),0);
+ await page.locator('#collection-buy').selectOption('ask');assert.equal(await page.locator('#collection-buy option').count(),4);assert.equal(await page.locator('#collection-sell').count(),0);
  await page.evaluate(async()=>{const {priceState,updatePrices}=await import('/src/item-price-store.js');const prices=structuredClone(priceState());prices.prices[1]={price:0,source:'manual',locked:true,updatedAt:Date.now(),quoteCapturedAt:null};prices.preferences.categories.ore='vendor';updatePrices(prices);});assert.equal(await metric('costPerPoint'),5);
  await page.locator('#collection-buy').selectOption('vendor');assert.equal(await metric('costPerPoint'),game.vendorPrice(1)+game.vendorPrice(2));assert.match(await details().innerText(),/商人估值/);await page.reload();assert.equal(await page.locator('#collection-buy').inputValue(),'vendor');await page.locator('#collection-search').fill('Bronze bar');await page.locator('#collection-tier').selectOption('0');await page.locator('#collection-filter-minutes').fill('0.04');await openFirst();await page.locator('#collection-buy').selectOption('ask');
  assert.deepEqual(await headings(),['材料采购']);assert.equal(await page.evaluate(()=>window.collectionWorkers),0);

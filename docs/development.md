@@ -10,11 +10,13 @@ node scripts/serve.mjs
 
 打开 [本机页面](http://127.0.0.1:4173)。服务仅监听本机，可通过 `PORT` 环境变量修改端口；支持 `/combat`、`/gather`、`/craft`、`/enhance`、`/mastery`、`/forecast`、`/formulas`、隐藏收藏页 `/collection` 和调试页 `/debug`。调试页仅提供角色配置 JSON 导出、战斗／强化配置文件导入；完整角色快照捕获、导入、导出与模拟已在当前版本移除。
 
-运行测试：
+运行测试（功能修改默认仅选相关测试，完整测试用于发布前验证）：
 
 ```sh
 node --test tests/*.test.mjs
 ```
+
+物品价格协议与命令测试为 `tests/price-protocol.test.mjs`、`tests/price-service.test.mjs`，官方接口解析见 `tests/market-import.test.mjs`。运行 `node tests/price-refactor-browser.mjs` 验证六项数据、全市场挂单总量、收藏四选项及默认全局价、强化方案覆盖与清空，以及价格消费者页面导航；输出位于 `.test-artifacts/price-refactor/protocol/`。沿用市场价格、收藏及收藏计划浏览器专项，需要本机端口和 Chrome 进程权限，不能替代完整发布验收。协议见[物品价格模块](modules/item-prices.md)。
 
 重新提取原始计算代码时，安装开发依赖后执行：
 

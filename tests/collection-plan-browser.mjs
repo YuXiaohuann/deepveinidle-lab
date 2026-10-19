@@ -49,7 +49,7 @@ try{
   await route.fulfill({status:marketFail?503:200,contentType:'application/json',body:JSON.stringify({game:'Deep Vein Idle',generatedAt:new Date(await page.evaluate(()=>Date.now())).toISOString(),refreshSeconds:60,items:{40:{lowestSell:20,highestBuy:15},...(marketMaterials?Object.fromEntries([1,2,1001,1002].map(id=>[id,{lowestSell:2,highestBuy:2}])):{})}})});
  });
  const page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',error=>results.errors.push(error.message));await page.clock.install();
- await page.goto(new URL('/collection',base).href);await page.locator('#collection-section').waitFor({state:'visible'});
+ await page.goto(new URL('/collection',base).href);await page.locator('#collection-section').waitFor({state:'visible'});assert.equal(await page.locator('#collection-buy').inputValue(),'global');await page.locator('#collection-buy').selectOption('ask');
  const until=async expression=>{for(let i=0;i<200;i++){if(await page.evaluate(expression))return;await new Promise(resolve=>setTimeout(resolve,20));}throw Error('Condition did not become true: '+expression);};
  const readState=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-collection-v1')));
  const button=target=>page.locator(`[data-collection-plan="40:41:${target}"]`);
@@ -108,8 +108,8 @@ try{
     await page.locator(`[data-plan-table="${table}"][data-plan-sort="${key}"]`).click();
     assert.equal(await page.locator(`[data-plan-table="${table}"][data-plan-sort="${key}"]`).locator('..').getAttribute('aria-sort'),direction==='asc'?'ascending':'descending');
     const expected=await page.evaluate(async({table,key,direction})=>{
-     const {calculateCollectionPlan}=await import('/src/collection-plan.js'),game=await import('/src/upstream.js'),{translatedItemName}=await import('/src/i18n.js'),{priceState}=await import('/src/item-price-store.js');
-     const result=calculateCollectionPlan(JSON.parse(localStorage.getItem('dvi-collection-v1')),JSON.parse(localStorage.getItem('dvi-collection-plan-v1')),priceState());
+     const {calculateCollectionPlan}=await import('/src/collection-plan.js'),game=await import('/src/upstream.js'),{translatedItemName}=await import('/src/i18n.js'),{getSnapshot}=await import('/src/price-service.js');
+     const result=calculateCollectionPlan(JSON.parse(localStorage.getItem('dvi-collection-v1')),JSON.parse(localStorage.getItem('dvi-collection-plan-v1')),getSnapshot());
      const value=row=>key==='item'?translatedItemName(row.itemId,'zh'):key==='tier'?game.itemTier(row.itemId):row[key];
      return (table==='selections'?result.entries:result.materials).sort((a,b)=>{
       const av=value(a),bv=value(b);if(av==null||bv==null)return av==null?(bv==null?a.itemId-b.itemId:1):-1;
@@ -187,7 +187,7 @@ try{
  const roundedMaterial=await page.evaluate(async()=>{
   const game=await import('/src/upstream.js'),{collectionDefaults,collectionRoutes}=await import('/src/collection-model.js'),{priceDefaults}=await import('/src/item-prices.js');
   const job=game.recipes.find(j=>j.skill==='cooking'&&j.burn&&!j.retired&&collectionRoutes(j.output.itemId).some(r=>r.id===j.id));
-  const state={...collectionDefaults(),initialized:true,bank:{},counts:{}};state.config.levels.cooking=job.levelReq;
+  const state={...collectionDefaults(),buyMode:'ask',initialized:true,bank:{},counts:{}};state.config.levels.cooking=job.levelReq;
   const prices=priceDefaults(),inputs=game.recipeInputs(job,0);
   for(const input of inputs){state.bank[input.itemId]=1;prices.quotes[input.itemId]={ask:{value:2.5,capturedAt:Date.now()}};}
   localStorage.setItem('dvi-collection-v1',JSON.stringify(state));localStorage.setItem('dvi-item-prices-v1',JSON.stringify(prices));localStorage.setItem('dvi-collection-plan-v1',JSON.stringify({version:1,selections:[{itemId:job.output.itemId,jobId:job.id,target:1}]}));

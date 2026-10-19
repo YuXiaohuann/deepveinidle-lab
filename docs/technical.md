@@ -21,6 +21,8 @@
 
 #### 官方市场价格
 
+页面统一使用 `src/price-service.js` 的公开读写协议，纯数据快照由 `src/price-protocol.js` 定义；协议、六项数据及页面选价见[物品价格模块](modules/item-prices.md)。内部存储与行情解析不作为页面访问协议。
+
 实验室 `src/market-import.js` 直接 GET 官方公开 API，将完整物品 ID、最低卖价、最高买价和生成时间适配为现有行情模型；不发送凭据，不使用代理或 userscript 桥接。`src/item-price-store.js`统一执行行情验证与防倒退，收藏角色导入仅更新官方报价缓存，价格面板及打开网站时按 5 分钟间隔判断的后台自动导入按最新锁定状态应用有效价格；各入口共享并发网络请求，自动导入由 `src/price-auto-import.js` 展示完成通知，启用选项、时间戳去重与存档保护由价格存储模块负责；双语市场错误文案由市场适配模块共用。接口校验、缓存兼容、分类导入和失败规则见 [全局物品价格](shared.md#24-全局物品价格)。2.7.0 删除 `marketBook`／`marketBooks`／`marketDepth` 专用解析、`dvi-market-request/response` 桥接、`dvi-market-quotes-v1` GM 存储读写及市场提示。旧角色脚本的角色桥接仍兼容，但移除游戏侧市场捕获须更新脚本并刷新游戏。
 
 #### 捕获 Worker
@@ -77,6 +79,8 @@
 | `tests/collection.test.mjs`、`tests/collection-browser.mjs` | 收藏边界、品质／烧焦／被捕、价格缺失与零价、独立目标事件对照、DOM 桥接、材料采购展开区与窄屏专项 |
 | `tests/collection-plan.test.mjs`、`tests/collection-auto-import.test.mjs`、`tests/collection-plan-browser.mjs` | 计划去重、数量和金额边界、定时／焦点调度、导入并发与存档保留、双语窄屏交互 |
 | `src/mastery.js`、`src/mastery-controls.js` | 独立精通预算、升级成本、配置校验与双语交互 |
+| `src/price-protocol.js`、`src/price-service.js` | 物品价格六项数据的只读快照、固定公开协议、统一设价命令及分类变更通知 |
+| `src/item-prices.js`、`src/item-price-store.js`、`src/market-import.js`、`src/item-price-controls.js`、`src/price-auto-import.js` | 价格模块内部规则、存储、官方价格及挂单总量解析、管理弹窗与自动导入通知 |
 | `src/app.js`、`src/style.css` | 双语交互、呈现、本地保存和响应式布局 |
 | `scripts/release.mjs`、`scripts/release-*.mjs` | 发布三阶段编排、证据摘要、隔离提取、HTTP／浏览器验收与完整日志 |
 | `scripts/native-audit.mjs` | 全部页面独立原始计算对照，常规发布唯一完整对照入口 |
