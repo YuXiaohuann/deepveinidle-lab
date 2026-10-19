@@ -13,7 +13,7 @@
 ## 本轮验证
 
 - `node --test tests/crafting-display.test.mjs tests/crafting.test.mjs tests/crafting-upgrades.test.mjs`：29 项通过，包含五技能全部有效配方／品质原始计算对照、即时升级与存档、七列顺序与品质名称、周期换算和次数取整、估值异常列数。日志 `.test-artifacts/crafting-table/unit.txt`。
-- 随后简化异常行字符串拼接，重跑 `node --test tests/crafting-display.test.mjs`，9 项通过；日志 `.test-artifacts/crafting-table/display-final.txt`。
+- 最终实现的显示专项 `node --test tests/crafting-display.test.mjs`：9 项通过；日志 `.test-artifacts/crafting-table/display-final.txt`。
 - `node tests/crafting-table-browser.mjs`：5 组通过；结果 `.test-artifacts/crafting-table/results.json`。正常场景使用真实 Worker，验证名称／品质／等级、默认及切换排序、高亮与锁定状态、周期表头、按原始结果换算的整数次数、筛选与空结果、双语桌面／390px、最后一列计划填写、即时升级单位与周期不变、计划与已有材料保留。受控进度／逐项错误消息验证等待和失败行、同一输入节点焦点及横向滚动保留。
 - 截图 `.test-artifacts/crafting-table/{zh,en}-{1440,390}.png` 及 `upgrade-en-390.png`，已审阅双语桌面／窄屏及即时升级窄屏，名称、等级、表头与展开内容可读；窄表在自身容器滚动，页面无横向溢出。截图使用关闭自动导入的独立价格配置，避免通知遮挡；不连接真实账号。
 - `node --check src/crafting-controls.js`、`git diff --check` 通过。

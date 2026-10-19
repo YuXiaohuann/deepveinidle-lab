@@ -67,6 +67,10 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 `node tests/upstream-browser.mjs --out .test-artifacts/upstream-1194` 检查双语桌面／390px 战斗完成、来源版本、巨像材料／经验与库存计划刷新保存，强化新旧目标与高强化存档、精通加成封顶，以及合成消息下的真实 Blob Worker；需要本机监听和 Chrome。指定 `--url https://dvi-lab.pages.dev --out <证据目录>` 时检查该实际目标四组页面，不把本地 Worker 当作生产测试。截图和机器结果落盘，仍需人工审阅。
 
+## 采集与制造表格专项
+
+`node --test tests/crafting-display.test.mjs` 验证配方列序、品质、周期换算、制造次数取整、经验明细与异常行。浏览器专项使用 `node tests/gathering-table-browser.mjs [输出目录]`、`node tests/crafting-table-browser.mjs [输出目录]`，需要本机监听和 Chrome；默认分别输出至 `.test-artifacts/gathering-table/`、`.test-artifacts/crafting-table/`，复验时指定独立目录以保留历史证据。覆盖双语桌面／390px、排序、经验展开、周期切换、等待／失败及计划输入；正常计算使用真实 Worker，异常场景使用受控消息，不替代完整发布验收。
+
 ## 收藏页专项
 
 `node --test tests/collection.test.mjs tests/i18n.test.mjs` 验证收藏目标、价格、奖励、原始事件和名称翻译。`node tests/collection-browser.mjs --out .test-artifacts/collection/local` 运行本机专项，`--url https://dvi-lab.pages.dev --out <目录>` 验证指定线上目标；结果包含目标 URL、仅材料采购展开区、受控桥接／报价、双语桌面与390px截图。需要本机监听及Chrome；实际账号与成交不在验证范围，页面设计和边界见[收藏页面](pages/collection.md)。

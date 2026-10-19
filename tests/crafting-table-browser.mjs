@@ -9,7 +9,7 @@ import {browserPath} from '../scripts/release-common.mjs';
 import {craftingDefaults} from '../src/crafting-model.js';
 import {priceDefaults} from '../src/item-prices.js';
 
-const directory=path.resolve('.test-artifacts/crafting-table');await fs.mkdir(directory,{recursive:true});
+const directory=path.resolve(process.argv[2]??'.test-artifacts/crafting-table');await fs.mkdir(directory,{recursive:true});
 const socket=net.createServer();socket.listen(0,'127.0.0.1');await once(socket,'listening');const port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
 const server=spawn(process.execPath,['scripts/serve.mjs'],{env:{...process.env,PORT:String(port)},stdio:['ignore','pipe','pipe']});
 const results={cases:[],errors:[]};let browser;
@@ -53,7 +53,8 @@ try{
  await page.locator('#craft-search').fill('no-such-recipe');await checkRows();assert.equal(await table().locator('.empty-results').getAttribute('colspan'),'7');await page.locator('#craft-search').fill('');
  results.cases.push('daily/hourly headers and rounded counts match real Worker result; period, filters and empty results preserve cache');
  for(const width of [1440,390])for(const language of ['zh','en']){
-  await page.setViewportSize({width,height:1000});await page.selectOption('#language',language);await checkRows();assert.equal(await recipe.getAttribute('open'),'');
+  await page.setViewportSize({width,height:1000});await page.selectOption('#language',language);await checkRows();
+  assert.equal(await xpDetail.locator('.loot-line span').first().innerText(),language==='zh'?'平均单次经验':'Average XP per action');assert.equal(await xpDetail.locator('p').count(),0);assert.equal(await recipe.getAttribute('open'),'');
   if(language==='en')assert.deepEqual(await headers(),['Recipe','XP/day','Profit/day','Crafts/day','Material cost / craft','Product value / craft','Planned crafts']);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await table().evaluate(el=>el.parentElement.scrollLeft=0);await table().locator('thead').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(directory,`${language}-${width}.png`)});

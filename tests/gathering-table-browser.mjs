@@ -7,8 +7,9 @@ import {once} from 'node:events';
 import {chromium} from 'playwright-core';
 import {browserPath} from '../scripts/release-common.mjs';
 import {gatheringDefaults} from '../src/gathering-model.js';
+import {priceDefaults} from '../src/item-prices.js';
 
-const directory=path.resolve('.test-artifacts/gathering-table');await fs.mkdir(directory,{recursive:true});
+const directory=path.resolve(process.argv[2]??'.test-artifacts/gathering-table');await fs.mkdir(directory,{recursive:true});
 const socket=net.createServer();socket.listen(0,'127.0.0.1');await once(socket,'listening');const port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
 const server=spawn(process.execPath,['scripts/serve.mjs'],{env:{...process.env,PORT:String(port)},stdio:['ignore','pipe','pipe']});
 const results={cases:[],errors:[]};let browser;
@@ -16,6 +17,8 @@ try{
  await Promise.race([once(server.stdout,'data'),once(server,'exit').then(([code])=>{throw Error(`Server exited: ${code}`);})]);
  browser=await chromium.launch({headless:true,executablePath:await browserPath()});
  const context=await browser.newContext({viewport:{width:1440,height:1000}});
+ const prices=priceDefaults();prices.preferences.autoImport=false;
+ await context.addInitScript(prices=>localStorage.setItem('dvi-item-prices-v1',JSON.stringify(prices)),prices);
  await context.addInitScript(state=>{
   if(!localStorage.getItem('dvi-gathering-v1'))localStorage.setItem('dvi-gathering-v1',JSON.stringify(state));
   window.gatherRuns=[];const OriginalWorker=Worker;
@@ -55,9 +58,10 @@ try{
  results.cases.push('three bilingual period headers, scaled gather counts, empty results and expanded state survive redraw without new Workers');
  for(const width of [1440,390])for(const language of ['zh','en']){
   await page.setViewportSize({width,height:1000});await page.selectOption('#language',language);await checkRows();
+  assert.equal(await xpDetail.locator('.loot-line span').first().innerText(),language==='zh'?'平均单次经验':'Average XP per action');assert.equal(await xpDetail.locator('p').count(),0);
   await page.locator(`#${id}`).evaluate(el=>el.open=false);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-  await page.locator('#gather-results .gather-table').evaluate(el=>el.parentElement.scrollLeft=0);await page.locator('#gather-results .gather-table').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(directory,`${language}-${width}.png`)});
+  await page.locator('#gather-results .gather-table').evaluate(el=>el.parentElement.scrollLeft=0);await page.locator('#gather-results .gather-table thead').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(directory,`${language}-${width}.png`)});
   await page.locator(`#${id}`).evaluate(el=>el.open=true);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await page.screenshot({path:path.join(directory,`${language}-${width}-expanded.png`)});

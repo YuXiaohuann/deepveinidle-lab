@@ -41,9 +41,8 @@ test('hour/day toggles scale only cached rate columns and retain per-craft value
  vm.runInContext("language='en'",p);assert.match(vm.runInContext('recipeRow(visibleJobs()[0])',p),/Random seed<\/span><span>4294967295/);
 });
 
-
 test('rarity filter defaults to normal, combines with search and retains plans and totals',()=>{
- const p=page();vm.runInContext("selectedTiers.clear();selectedTiers.add(0);state.plans={'61:0':2,'61:2':7};query='Cook Shrimp'",p);
+ const p=page();vm.runInContext("selectedTiers.clear();selectedTiers.add(0);state.plans={'61:0':2,'61:2':7}",p);
  // Use the actual upstream recipe name to avoid translation assumptions.
  vm.runInContext("query=craftingJobs.find(j=>j.id===61).name",p);
  assert.equal(vm.runInContext('visibleJobs().length',p),1);
@@ -59,7 +58,6 @@ test('rarity filter defaults to normal, combines with search and retains plans a
  assert.match(source,/const selectedTiers=new Set\(\[0\]\)/);
 });
 
-
 test('calculation status keeps its layout slot when idle, running and failed',()=>{
  const p=page();assert.match(vm.runInContext('craftingProgress()',p),/craft-progress is-idle/);
  vm.runInContext('running=true;progress={completed:1,total:5}',p);
@@ -70,14 +68,12 @@ test('calculation status keeps its layout slot when idle, running and failed',()
  assert.doesNotMatch(source,/<p class="table-note gather-progress"/);
 });
 
-
 test('recipe cost and value details show prices without editable fields',()=>{
  const p=page(),row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
  assert.doesNotMatch(row,/data-craft-price|craft-price-input/);
  assert.equal((row.match(/<input /g)||[]).length,1);
  assert.match(row,/-cost/);assert.match(row,/-value/);
 });
-
 
 test('toolbar orders group, search, rarity, filled button and clear, with no batch UI',()=>{
  const toolbar=source.slice(source.indexOf('<div class="toolbar craft-toolbar">'),source.indexOf('<p id="craft-notice"'));
@@ -119,7 +115,7 @@ test('XP details use unrounded run totals, include burnt attempts and do not sca
  const p=page();vm.runInContext(`const plan=visibleJobs()[0];rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{completed:4,success:3,burnt:1,xp:15,items:{},consumed:{}}});`,p);
  for(const period of ['day','hour']){
   vm.runInContext(`state.period='${period}'`,p);const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
-  assert.match(row,/id="craft-61:0-xp"/);assert.match(row,/单次经验<\/span><span>3.75<\/span>/);assert.match(row,/平均单次经验/);assert.doesNotMatch(row,/本轮平均|Average for this run/);
+  assert.match(row,/id="craft-61:0-xp"/);assert.match(row,/平均单次经验<\/span><span>3.75<\/span>/);assert.doesNotMatch(row,/本轮平均|Average for this run/);
  }
  vm.runInContext('rateFor(visibleJobs()[0]).result.completed=0;rateFor(visibleJobs()[0]).result.xp=0',p);
  assert.match(vm.runInContext('recipeRow(visibleJobs()[0])',p),/单次经验<\/span><span>—<\/span>/);
