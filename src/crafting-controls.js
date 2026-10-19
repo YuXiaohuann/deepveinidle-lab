@@ -77,11 +77,11 @@ function recipeRow(plan){
  try{
   const materials=craftingMaterials(job,tier,1),cost=priceItems(materials,getSnapshot()),products={[game.withRarity(job.output.itemId,tier)]:job.output.qty},value=priceItems(products,getSnapshot()),entry=rateFor(plan),r=entry?.result,factor=state.period==='day'?1:1/24;
   const unitValues=`<td>${detail(`${key}-cost`,warn(cost.missing)+format(cost.value,2),itemLines(materials,{prices:true}))}</td><td>${detail(`${key}-value`,warn(value.missing)+format(value.value,2),itemLines(products,{prices:true}))}</td>`;
-  if(job.upgrade)return lead+`<td class="column-highlight">${format(job.xp)} ${text('/次','/ upgrade')}</td><td class="column-highlight">${warn([...cost.missing,...value.missing])+format(value.value-cost.value,2)} ${text('/次','/ upgrade')}</td><td>${text('即时升级','Instant upgrade')}</td>`+unitValues+input+'</tr>';
+  if(job.upgrade)return lead+`<td class="column-highlight">${detail(`${key}-xp`,format(job.xp)+' '+text('/次','/ upgrade'),`<div class="loot-line"><span>${text('单次经验','XP per action')}</span><span>${format(job.xp)}</span></div>`)}</td><td class="column-highlight">${warn([...cost.missing,...value.missing])+format(value.value-cost.value,2)} ${text('/次','/ upgrade')}</td><td>${text('即时升级','Instant upgrade')}</td>`+unitValues+input+'</tr>';
   const label=locked?errorText('levelTooLow'):entry?.error?errorText(entry.error):r?.error?errorText(r.error):text('计算中…','Calculating…');
   const profit=r?priceItems(r.items,getSnapshot(),{expected:true}).value-priceItems(r.consumed,getSnapshot()).value:0;
   const missing=r?[...priceItems(r.items,getSnapshot(),{expected:true}).missing,...priceItems(r.consumed,getSnapshot()).missing]:[];
-  return lead+`<td class="column-highlight">${r&&!r.error?format(r.xp*factor,2):label}</td><td class="column-highlight">${r&&!r.error?warn(missing)+format(profit*factor,2):label}</td><td>${r&&!r.error?format(r.completed*factor):label}</td>`+unitValues+input+'</tr>';
+  return lead+`<td class="column-highlight">${r&&!r.error?detail(`${key}-xp`,format(r.xp*factor,2),`<div class="loot-line"><span>${text('平均单次经验','Average XP per action')}</span><span>${r.completed>0?format(r.xp/r.completed,2):'—'}</span></div>`):label}</td><td class="column-highlight">${r&&!r.error?warn(missing)+format(profit*factor,2):label}</td><td>${r&&!r.error?format(r.completed*factor):label}</td>`+unitValues+input+'</tr>';
  }catch(error){return lead+['column-highlight','column-highlight','hourly-muted','hourly-muted','hourly-muted'].map(style=>`<td class="${style}">${esc(errorText(error.message))}</td>`).join('')+input+'</tr>';}
 }
 function craftingProgress(){

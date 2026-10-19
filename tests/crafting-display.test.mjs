@@ -114,3 +114,15 @@ test('valuation errors preserve all seven cells, highlighted XP/profit and plan 
  const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
  assert.equal((row.match(/<td[ >]/g)||[]).length,7);assert.equal((row.match(/class="column-highlight"/g)||[]).length,3);assert.match(row,/data-craft-count/);
 });
+
+test('XP details use unrounded run totals, include burnt attempts and do not scale with period',()=>{
+ const p=page();vm.runInContext(`const plan=visibleJobs()[0];rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{completed:4,success:3,burnt:1,xp:15,items:{},consumed:{}}});`,p);
+ for(const period of ['day','hour']){
+  vm.runInContext(`state.period='${period}'`,p);const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
+  assert.match(row,/id="craft-61:0-xp"/);assert.match(row,/单次经验<\/span><span>3.75<\/span>/);assert.match(row,/平均单次经验/);assert.doesNotMatch(row,/本轮平均|Average for this run/);
+ }
+ vm.runInContext('rateFor(visibleJobs()[0]).result.completed=0;rateFor(visibleJobs()[0]).result.xp=0',p);
+ assert.match(vm.runInContext('recipeRow(visibleJobs()[0])',p),/单次经验<\/span><span>—<\/span>/);
+ vm.runInContext("state.skill='smithing';query='Colossus blade'",p);const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
+ assert.match(row,/单次经验<\/span><span>1,900<\/span>/);assert.doesNotMatch(row,/本轮平均/);
+});

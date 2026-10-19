@@ -20,7 +20,7 @@ try{
   if(!localStorage.getItem('dvi-gathering-v1'))localStorage.setItem('dvi-gathering-v1',JSON.stringify(state));
   window.gatherRuns=[];const OriginalWorker=Worker;
   window.Worker=class extends OriginalWorker{
-   constructor(url,options){super(url,options);if(String(url).includes('gathering-worker.js')){this.run={};window.gatherRuns.push(this.run);this.addEventListener('message',({data})=>{if(data.done)this.run.done=true;});}}
+   constructor(url,options){super(url,options);if(String(url).includes('gathering-worker.js')){this.run={results:[]};window.gatherRuns.push(this.run);this.addEventListener('message',({data})=>{if(data.result)this.run.results.push(data.result);if(data.done)this.run.done=true;});}}
    postMessage(data,...rest){if(this.run){this.run.mode=window.tableMode;if(window.tableMode==='wait')return;if(window.tableMode==='error'){setTimeout(()=>this.onmessage({data:{error:'invalidRoute',done:true}}),0);return;}}return super.postMessage(data,...rest);}
   };
  },{...gatheringDefaults(),hotSetting:'off'});
@@ -28,6 +28,10 @@ try{
  await page.goto(`http://127.0.0.1:${port}/gather`);await page.waitForFunction(()=>window.gatherRuns.at(-1)?.done);
  const headers=()=>page.locator('#gather-results .gather-table th button').allTextContents().then(items=>items.map(item=>item.replace(/\s*[↑↓↕]/g,'').trim()));
  const checkRows=async(count=8)=>assert.ok(await page.locator('#gather-results .gather-table tbody tr').evaluateAll((rows,count)=>rows.every(row=>[...row.cells].reduce((sum,cell)=>sum+cell.colSpan,0)===count),count));
+ const sample=await page.evaluate(()=>window.gatherRuns.at(-1).results[0]);
+ const xpDetail=page.locator(`#gather-${sample.jobId}-xp`);await xpDetail.locator('summary').click();
+ const singleXp=(sample.xp/sample.completed).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
+ assert.equal(await xpDetail.locator('.loot-line span').last().innerText(),singleXp);
  const daily=['任务','经验/天','收入/天','移动占比','采集次数/天','金币/天','主要产物/天','额外掉落/天'];
  assert.deepEqual(await headers(),daily);await checkRows();
  assert.equal(await page.locator('#gather-results .enemies-heading h2 span').count(),0);
@@ -41,7 +45,7 @@ try{
  await page.locator('#gather-simulation').evaluate(el=>el.open=true);
  const runs=await page.evaluate(()=>window.gatherRuns.length);
  const countText=()=>page.locator('#gather-results .gather-table tbody tr').first().locator('td').nth(4).innerText();
- await page.selectOption('#gather-period','hour');assert.deepEqual(await headers(),daily.map(label=>label.replace('/天','/小时')));const hourly=await countText();
+ await page.selectOption('#gather-period','hour');assert.deepEqual(await headers(),daily.map(label=>label.replace('/天','/小时')));const hourly=await countText();assert.equal(await xpDetail.getAttribute('open'),'');assert.equal(await xpDetail.locator('.loot-line span').last().innerText(),singleXp);
  await page.selectOption('#gather-period','total');assert.deepEqual(await headers(),daily.map(label=>label.replace('/天','')));const total=await countText();assert.ok(Number(total.replaceAll(',',''))>Number(hourly.replaceAll(',','')));
  await page.selectOption('#gather-period','day');assert.equal(await countText(),total);
  await page.locator('#gather-search').fill('no-such-task');await checkRows();assert.equal(await page.locator('#gather-results .empty-results').getAttribute('colspan'),'8');await page.locator('#gather-search').fill('');

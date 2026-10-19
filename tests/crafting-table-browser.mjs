@@ -43,9 +43,12 @@ try{
  results.cases.push('seven columns, name/rarity and level, default/ascending sorting, highlighted values and locked rows, independent quality rows');
  await page.locator('#craft-settings').evaluate(el=>el.open=true);const runs=await page.evaluate(()=>window.craftRuns.length);
  const data=await page.evaluate(()=>window.craftRuns[0].results.find(r=>r.mode==='rate'&&r.result.key==='61:0').result);
+ const xpDetail=page.locator('#craft-61\\:0-xp');await xpDetail.locator('summary').click();
+ assert.equal(await xpDetail.locator('.loot-line span').last().innerText(),(data.xp/data.completed).toLocaleString('zh-CN',{maximumFractionDigits:2}));
  const countCell=()=>page.locator('[data-craft-count="61:0"]').locator('xpath=ancestor::tr').locator('td').nth(3);
  assert.equal(await countCell().innerText(),data.completed.toLocaleString('zh-CN',{maximumFractionDigits:0}));
  await page.selectOption('#craft-period','hour');assert.deepEqual(await headers(),daily.map(label=>label.replace('/天','/小时')));assert.equal(await countCell().innerText(),(data.completed/24).toLocaleString('zh-CN',{maximumFractionDigits:0}));
+ assert.equal(await xpDetail.getAttribute('open'),'');assert.equal(await xpDetail.locator('.loot-line span').last().innerText(),(data.xp/data.completed).toLocaleString('zh-CN',{maximumFractionDigits:2}));
  await page.selectOption('#craft-period','day');assert.equal(await page.evaluate(()=>window.craftRuns.length),runs);
  await page.locator('#craft-search').fill('no-such-recipe');await checkRows();assert.equal(await table().locator('.empty-results').getAttribute('colspan'),'7');await page.locator('#craft-search').fill('');
  results.cases.push('daily/hourly headers and rounded counts match real Worker result; period, filters and empty results preserve cache');
