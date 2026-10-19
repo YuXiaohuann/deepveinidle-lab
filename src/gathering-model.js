@@ -73,5 +73,5 @@ export function gatheringStats(raw){const {state:s,player:p}=gatheringPlayer(raw
 }
 export function gatheringJobStats(raw,job){const {player:p}=gatheringPlayer(raw),chance=game.workChance(job,p);return {chance,seconds:game.tickMs/1000/chance,caught:game.caughtChance(job,p)};}
 export function importGathering(current,snapshot){
- return importWorkConfig(current,snapshot,{skills:gatheringSkills,slots:gatheringSlots,potions:gatheringPotions,rooms:gatheringRooms,masteries:gatheringMasteries,perks:gatheringPerks,normalize:normalizeGathering,gear:gatheringGear,completeWorldBuffs:true,reset:{jobSelection:'all',siteSelection:0,simulationHours:24,customSimulation:false,hotSetting:'game',vendorValues:true,valuationMode:'custom',discardGathered:false}});
+ return importWorkConfig(current,snapshot,{skills:gatheringSkills,slots:gatheringSlots,potions:gatheringPotions,rooms:gatheringRooms,masteries:gatheringMasteries,perks:gatheringPerks,normalize:normalizeGathering,gear:gatheringGear,reset:{jobSelection:'all',siteSelection:0,simulationHours:24,customSimulation:false,hotSetting:'game',vendorValues:true,valuationMode:'custom',discardGathered:false}});
 }

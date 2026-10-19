@@ -15,12 +15,13 @@ export function readWorldBuffs(snapshot){
  return {weeklyXp,worldRarity};
 }
 
-export function worldBuffWarningText(language,warning){
+export function worldBuffWarningText(language,warning,{rarity=true}={}){
+ const zhField=rarity?'经验与稀有度':'经验',enField=rarity?'XP and rarity were':'XP was';
  if(warning==='worldBuffs.upgrade')return language==='zh'
-  ?'【世界增益】请更新 userscript 至 2.8.0 或更新版本，刷新游戏后重新捕获并导入；世界增益经验与稀有度已重置为 0%。'
-  :'[World buffs] Update userscript to 2.8.0 or later, refresh the game, recapture and import again. World buff XP and rarity were reset to 0%.';
+  ?`【世界增益】请更新 userscript 至 2.8.0 或更新版本，刷新游戏后重新捕获并导入；世界增益${zhField}已重置为 0%。`
+  :`[World buffs] Update userscript to 2.8.0 or later, refresh the game, recapture and import again. World buff ${enField} reset to 0%.`;
  if(warning==='weeklyXp.reset')return language==='zh'
-  ?'【世界增益】数据缺失或无效，世界增益经验与稀有度已重置为 0%，请手动配置。'
-  :'[World buffs] Missing or invalid data. World buff XP and rarity were reset to 0%; please configure manually.';
+  ?`【世界增益】数据缺失或无效，世界增益${zhField}已重置为 0%，请手动配置。`
+  :`[World buffs] Missing or invalid data. World buff ${enField} reset to 0%; please configure manually.`;
  return '';
 }

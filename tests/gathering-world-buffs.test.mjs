@@ -55,11 +55,12 @@ test('legacy or malformed world captures reset both gathering fields and still i
  }
 });
 
-test('crafting retains the weekly-only import contract without a capture capability marker',()=>{
+test('crafting shares full world XP imports and warns on legacy captures',()=>{
  const snap=snapshot([window(1.25,2),{...window(1.1),label:'Weekly goal: gathered'}]);delete snap.worldBuffsVersion;
  const result=importCrafting(craftingDefaults(),snap);
- assert.equal(result.state.weeklyXp,10);assert.ok(!('worldRarity' in result.state));
- assert.ok(!result.warnings.some(w=>/worldBuffs|weeklyXp/.test(w)));
+ assert.equal(result.state.weeklyXp,0);assert.ok(!('worldRarity' in result.state));
+ assert.ok(result.warnings.includes('worldBuffs.upgrade'));
+ snap.worldBuffsVersion=1;assert.equal(importCrafting(craftingDefaults(),snap).state.weeklyXp,35);
 });
 
 test('gathering world windows cover the full run in every hot mode and feed quality expectations',()=>{
