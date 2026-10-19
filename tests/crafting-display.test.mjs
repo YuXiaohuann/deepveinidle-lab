@@ -12,14 +12,16 @@ function page(language='zh'){
  vm.runInContext(source.replaceAll('import.meta.url',"'http://localhost/'").replace(/^import .*;\n/gm,'').replace('export function renderCrafting','function renderCrafting'),context);
  vm.runInContext(`language=${JSON.stringify(language)};state.levels.cooking=100;[1,2,3,4].forEach(t=>selectedTiers.add(t));`,context);return context;
 }
-test('all five rarities appear independently, with unit columns first and plan input last',()=>{
+test('all five rarities appear independently, with XP and profit first and plan input last',()=>{
  for(const lang of ['zh','en']){
   const p=page(lang),rows=vm.runInContext('visibleJobs()',p);assert.equal(rows.length,40);
   assert.deepEqual(Array.from(rows.slice(0,5),r=>r.tier),[0,1,2,3,4]);
-  const headers=vm.runInContext('headers()',p);assert.equal((headers.match(/<th /g)||[]).length,9);
-  const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);assert.equal((row.match(/<td[ >]/g)||[]).length,9);
+  const headers=vm.runInContext('headers()',p);assert.equal((headers.match(/<th /g)||[]).length,7);
+  const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);assert.equal((row.match(/<td[ >]/g)||[]).length,7);
   assert.doesNotMatch(row,/<select|data-craft-tier/);assert.match(row,/<td><input[^>]+data-craft-count="61:0"[^>]+value="0"[^>]*><\/td><\/tr>$/);
-  assert.ok(headers.indexOf(lang==='zh'?'单次材料成本':'Material cost / craft')<headers.indexOf(lang==='zh'?'制造次数/天':'Crafts/day'));
+  assert.ok(headers.indexOf(lang==='zh'?'经验/天':'XP/day')<headers.indexOf(lang==='zh'?'单次材料成本':'Material cost / craft'));
+  assert.match(row,lang==='zh'?/ · 普通<\/strong><small>所需等级 1/:/ · Normal<\/strong><small>Level 1/);
+  assert.match(headers,/data-craft-sort="levelReq"/);
   vm.runInContext("state.plans={'61:2':7};filledOnly=true",p);assert.equal(vm.runInContext('visibleJobs()[0].tier',p),2);assert.equal(vm.runInContext('visibleJobs().length',p),1);
  }
 });
@@ -27,15 +29,16 @@ test('hour/day toggles scale only cached rate columns and retain per-craft value
  const p=page();vm.runInContext(`const plan=visibleJobs()[0];rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{seed:4294967295,completed:240,xp:480,items:{40:240},consumed:{20:240}}});`,p);
  vm.runInContext("state.period='hour'",p);
  const hour=vm.runInContext('recipeRow(visibleJobs()[0])',p);
- assert.match(hour,/随机种子：4294967295/);
+ assert.match(hour,/随机种子<\/span><span>4294967295/);
  vm.runInContext("state.period='day'",p);const day=vm.runInContext('recipeRow(visibleJobs()[0])',p);
  const cells=s=>s.match(/<td[^>]*>.*?<\/td>/g);
- assert.deepEqual(cells(hour).slice(0,5),cells(day).slice(0,5));
- assert.equal(cells(hour)[5],'<td>10</td>');assert.equal(cells(day)[5],'<td>240</td>');
- assert.match(cells(hour)[6],/>20</);assert.match(cells(day)[6],/>480</);
+ assert.deepEqual(cells(hour).slice(4),cells(day).slice(4));
+ assert.equal(cells(hour)[0],cells(day)[0]);
+ assert.equal(cells(hour)[3],'<td>10</td>');assert.equal(cells(day)[3],'<td>240</td>');
+ assert.match(cells(hour)[1],/>20</);assert.match(cells(day)[1],/>480</);
  vm.runInContext("state.plans={'61:0':90}",p);assert.equal(vm.runInContext('!!rateFor(visibleJobs()[0])',p),true);
  assert.match(vm.runInContext('headers()',p),/制造次数\/天/);
- vm.runInContext("language='en'",p);assert.match(vm.runInContext('recipeRow(visibleJobs()[0])',p),/Random seed: 4294967295/);
+ vm.runInContext("language='en'",p);assert.match(vm.runInContext('recipeRow(visibleJobs()[0])',p),/Random seed<\/span><span>4294967295/);
 });
 
 
@@ -85,14 +88,29 @@ test('toolbar orders group, search, rarity, filled button and clear, with no bat
  assert.doesNotMatch(source,/craft-batch|applyCraftingBatch|data-craft-tier/);
 });
 
-test('upgrades stay in the original nine-column table without extra recipe notes and keep per-upgrade units',()=>{
+test('upgrades stay in the seven-column table without extra recipe notes and keep per-upgrade units',()=>{
  for(const lang of ['zh','en']){
   const p=page(lang);vm.runInContext("state.skill='smithing';query='Colossus blade';state.levels.smithing=99",p);
   const plans=vm.runInContext('visibleJobs()',p);assert.equal(plans.length,5);
   const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
-  assert.equal((row.match(/<td[ >]/g)||[]).length,9);
+  assert.equal((row.match(/<td[ >]/g)||[]).length,7);
   assert.doesNotMatch(row,/即时升级 · 底装 \+0|Instant upgrade · base \+0|gear-stats/);
   assert.match(row,lang==='zh'?/1,900 \/次/:/1,900 \/ upgrade/);
   assert.match(row,/data-craft-count="upgrade-271:0"/);assert.doesNotMatch(row,/data-craft-upgrade-plus/);
  }
+});
+
+test('craft count rounds after period conversion while sorting retains raw counts',()=>{
+ const p=page();vm.runInContext(`const plan=visibleJobs()[0];rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{completed:241.6,xp:480,items:{40:240},consumed:{20:240}}});`,p);
+ for(const [period,expected]of [['day','242'],['hour','10']]){
+  vm.runInContext(`state.period='${period}'`,p);const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
+  assert.equal(row.match(/<td[^>]*>.*?<\/td>/g)[3],`<td>${expected}</td>`);
+ }
+ assert.equal(vm.runInContext('rateFor(visibleJobs()[0]).result.completed',p),241.6);
+});
+
+test('valuation errors preserve all seven cells, highlighted XP/profit and plan input',()=>{
+ const p=page();vm.runInContext("priceItems=()=>{throw Error('priceOverflow')}",p);
+ const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
+ assert.equal((row.match(/<td[ >]/g)||[]).length,7);assert.equal((row.match(/class="column-highlight"/g)||[]).length,3);assert.match(row,/data-craft-count/);
 });
