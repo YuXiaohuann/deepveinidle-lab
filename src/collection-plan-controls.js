@@ -2,7 +2,7 @@ import * as game from './upstream.js';
 import {translatedItemName} from './i18n.js';
 import {calculateCollectionPlan} from './collection-plan.js';
 
-export function renderCollectionPlan(host,{state,plan,prices,language,formatDuration,now,loadError,saveError,statusText,sort,onSort,onClearCompleted,onClear,onTarget,onRemove,clipboardBusy,clipboardStatus,onExport,onImport}){
+export function renderCollectionPlan(host,{state,plan,prices,language,formatDuration,now,loadError,saveError,statusText,sort,onSort,autoRemoveCompleted,onAutoRemoveCompleted,onClear,onTarget,onRemove,clipboardBusy,clipboardStatus,onExport,onImport}){
  if(!host)return;
  const text=(zh,en)=>language==='zh'?zh:en;
  const esc=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -59,8 +59,7 @@ export function renderCollectionPlan(host,{state,plan,prices,language,formatDura
  try{result=calculateCollectionPlan(state,plan,prices,{now});}catch(error){host.innerHTML=`<p role="alert">${esc(statusText(error.message))}</p>`;return;}
  const partialCost=result.missingPrices>0&&!result.blockedCount&&!result.missingInventory&&!result.quantityOverflow&&!result.amountOverflow;
  const materialCost=partialCost?result.knownCost:result.cost;
- const completedIds=new Set(result.entries.filter(entry=>entry.status==='complete').map(entry=>entry.itemId));
- host.innerHTML=`<div class="panel-heading"><h2>${text('执行计划','Execution plan')}</h2><div class="collection-plan-toolbar"><div class="collection-plan-toolbar-group"><button class="text-button" data-plan-export ${clipboardBusy||loadError?'disabled':''}>${text('导出到剪贴板','Export to clipboard')}</button><button class="text-button" data-plan-import ${clipboardBusy||loadError?'disabled':''}>${text('从剪贴板导入','Import from clipboard')}</button></div><div class="collection-plan-toolbar-group collection-plan-clear-group"><button class="text-button" data-plan-clear-completed ${!completedIds.size||loadError?'disabled':''}>${text('清除已完成','Clear completed')}</button><button class="text-button" data-plan-clear ${!plan.selections.length&&!loadError?'disabled':''}>${text('清空计划','Clear plan')}</button></div></div></div>
+ host.innerHTML=`<div class="panel-heading"><h2>${text('执行计划','Execution plan')}</h2><div class="collection-plan-toolbar"><label class="check collection-plan-auto-remove"><input type="checkbox" data-plan-auto-remove-completed ${autoRemoveCompleted?'checked':''}>${text('自动移除已完成','Auto-remove completed')}</label><div class="collection-plan-toolbar-group collection-plan-command-group"><button class="text-button" data-plan-export ${clipboardBusy||loadError?'disabled':''}>${text('导出','Export')}</button><button class="text-button" data-plan-import ${clipboardBusy||loadError?'disabled':''}>${text('导入','Import')}</button><button class="text-button" data-plan-clear ${!plan.selections.length&&!loadError?'disabled':''}>${text('清空','Clear')}</button></div></div></div>
  ${clipboardStatus&&!clipboardStatus.ok?`<p class="micro" data-plan-clipboard-status role="alert">${clipboardMessage()}</p>`:''}
  ${loadError?`<p role="alert">${text('计划存档无法读取，原数据未覆盖。请清空计划后重新选择。','The saved plan could not be read and has not been overwritten. Clear the plan before selecting again.')}</p>`:''}
  ${saveError?`<p role="alert">${text('计划保存失败，当前内存计算仍有效。','Plan could not be saved; calculations remain available in memory.')}</p>`:''}
@@ -80,7 +79,10 @@ export function renderCollectionPlan(host,{state,plan,prices,language,formatDura
  });
  host.querySelector('[data-plan-export]')?.addEventListener('click',onExport);
  host.querySelector('[data-plan-import]')?.addEventListener('click',onImport);
- host.querySelector('[data-plan-clear-completed]')?.addEventListener('click',()=>onClearCompleted(completedIds));
+ host.querySelector('[data-plan-auto-remove-completed]')?.addEventListener('change',event=>{
+  onAutoRemoveCompleted(event.target.checked);
+  host.querySelector('[data-plan-auto-remove-completed]')?.focus({preventScroll:true});
+ });
  host.querySelector('[data-plan-clear]')?.addEventListener('click',onClear);
  host.querySelectorAll('.collection-plan-control').forEach(control=>{
   const activate=()=>{

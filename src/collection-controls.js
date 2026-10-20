@@ -16,7 +16,7 @@ import {collectionAutoImportStorageKey,validateCollectionAutoImport,createCollec
 let state,language='zh',status=null,marketStatus=null,marketBusy=false,busy=false,saveError=false,loadError=false,error=null,rows=[];
 let query='',routeType='craft',skill='all',tier='all',sort='costPerPoint',page=1,filterError=null;
 const planSort={selections:{key:null,direction:'asc'},materials:{key:null,direction:'asc'}};
-let clipboardBusy=false,clipboardStatus=null;
+let clipboardBusy=false,clipboardStatus=null,planAutoRemoveCompleted=true;
 let calculationNow=Date.now(),active=false,plan=collectionPlanDefaults(),planLoadError=false,planSaveError=false,autoEnabled=false,autoLoadError=false,autoSaveError=false,autoImporter;
 
 const union=(a,b,key)=>[...new Map([...a,...b].map(v=>[key?v[key]:v,v])).values()];
@@ -206,7 +206,16 @@ function changePlan(action){
  if(planLoadError)return;
  try{plan=validateCollectionPlan(action());savePlan();updateResults();}catch(e){error=e.message;updateStatus();}
 }
-function savePlan(){try{localStorage.setItem(collectionPlanStorageKey,JSON.stringify(plan));planSaveError=false;}catch{planSaveError=true;}}
+function removeCompletedPlan(){
+ if(!planAutoRemoveCompleted||planLoadError||!state.initialized)return false;
+ const selections=plan.selections.filter(entry=>(state.counts[entry.itemId]??0)<entry.target);
+ if(selections.length===plan.selections.length)return false;
+ plan={...plan,selections};return true;
+}
+function savePlan(){
+ removeCompletedPlan();
+ try{localStorage.setItem(collectionPlanStorageKey,JSON.stringify(plan));planSaveError=false;}catch{planSaveError=true;}
+}
 function planButton(row){
  const entry=plan.selections.find(s=>s.itemId===row.id),same=entry?.jobId===row.jobId,selected=same&&entry.target===row.target,covered=same&&entry.target>row.target;
  return `<button class="text-button collection-plan-toggle" data-collection-plan="${key(row)}" aria-pressed="${selected}" ${planLoadError||covered||(!selected&&(row.status!=='ok'||row.target===null))?'disabled':''}>${selected?text('移出计划','Remove from plan'):covered?text('已含于目标 ','Included in target ')+number(entry.target):text('加入计划','Add to plan')}</button>`;
@@ -233,10 +242,11 @@ async function transferPlan(action){
  finally{clipboardBusy=false;updatePlan();}
 }
 function updatePlan(){
+ if(removeCompletedPlan())savePlan();
  const link=document.getElementById('collection-plan-link');if(link)link.textContent=text('已选方案：','Selected routes: ')+plan.selections.length;
  renderCollectionPlan(document.getElementById('collection-plan'),{state,plan,prices:getSnapshot(),language,formatDuration:duration,now:calculationNow,loadError:planLoadError,saveError:planSaveError,statusText:message,sort:planSort,onSort:updatePlan,
   clipboardBusy,clipboardStatus,onExport:()=>transferPlan('export'),onImport:()=>transferPlan('import'),
-  onClearCompleted:completedIds=>changePlan(()=>({...plan,selections:plan.selections.filter(entry=>!completedIds.has(entry.itemId))})),
+  autoRemoveCompleted:planAutoRemoveCompleted,onAutoRemoveCompleted:value=>{planAutoRemoveCompleted=value;updateResults();},
   onClear:()=>{
    if(!window.confirm(text('确定清空全部执行计划吗？','Clear the entire execution plan?')))return;
    clipboardStatus=null;planLoadError=false;plan=collectionPlanDefaults();savePlan();updateResults();
