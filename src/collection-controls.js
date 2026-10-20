@@ -9,13 +9,14 @@ import {translatedName,translatedItemName} from './i18n.js';
 import {worldBuffWarningText} from './world-buffs.js';
 import {collectionPlanStorageKey,collectionPlanDefaults,validateCollectionPlan,addCollectionPlan,addCollectionPlans,removeCollectionPlan,setCollectionPlanTarget} from './collection-plan.js';
 import {renderCollectionPlan} from './collection-plan-controls.js';
+import {encodeCollectionPlan,decodeCollectionPlan} from './collection-plan-transfer.js';
 import {collectionAutoImportStorageKey,validateCollectionAutoImport,createCollectionAutoImporter} from './collection-auto-import.js';
 
 
 let state,language='zh',status=null,marketStatus=null,marketBusy=false,busy=false,saveError=false,loadError=false,error=null,rows=[];
 let query='',routeType='craft',skill='all',tier='all',sort='costPerPoint',onlyLevelMet=true,includeComplete=false,page=1,filterError=null;
 const planSort={selections:{key:null,direction:'asc'},materials:{key:null,direction:'asc'}};
-let planHideCompleted=true;
+let planHideCompleted=true,clipboardBusy=false,clipboardStatus=null;
 let calculationNow=Date.now(),active=false,plan=collectionPlanDefaults(),planLoadError=false,planSaveError=false,autoEnabled=false,autoLoadError=false,autoSaveError=false,autoImporter;
 
 const union=(a,b,key)=>[...new Map([...a,...b].map(v=>[key?v[key]:v,v])).values()];
@@ -88,7 +89,7 @@ export function renderCollection(lang,{isActive=false}={}){
  if(!isActive){autoImporter?.set({enabled:autoEnabled,active:false});return;}
  const host=document.getElementById('collection-content');if(!host)return;
  initialize();rememberExpanded(host);const openDetails=new Set([...host.querySelectorAll('.config-detail[open]')].map(d=>d.id));
- host.innerHTML=`<aside class="panel gather-config"><div class="panel-heading"><h1 id="collection-title">${text('角色配置','Character build')}</h1><button id="collection-reset" class="text-button" title="${text('保留执行计划与自动导入选项','Keeps the execution plan and auto-import setting')}">${text('清空配置','Reset')}</button></div>${characterImportPanel(language,{id:'collection-import-panel',statusId:'collection-import-status',buttons:[{id:'collection-import',label:text('导入收藏与角色','Import collection & build')}],extra:`<label class="check"><input type="checkbox" id="collection-auto-import" ${autoEnabled?'checked':''}>${text('自动导入（聚焦时及每60秒）','Auto-import (on focus & every 60s)')}</label><p class="micro import-status" role="status" id="collection-auto-status"></p>`})}<button id="collection-manual" class="secondary" ${state.initialized?'hidden':''}>${text('手动场景（从零开始）','Manual scenario (start from zero)')}</button><p id="collection-origin" class="micro"></p><p id="collection-buff-warning" class="micro" role="status"></p>${configuration()}<p class="micro">${text('动作估算固定当前属性；药剂与祝福全程有效，不计药剂与祝福费用。不计设备购置、材料自采、交易等待及费用。','Fixed-stat action estimates; boosts stay active throughout. Potion and blessing costs, equipment, self-sourcing, trading time and fees are excluded.')}</p><p id="collection-save" role="status" class="micro"></p></aside>
+ host.innerHTML=`<aside class="panel gather-config"><div class="panel-heading"><h1 id="collection-title">${text('角色配置','Character build')}</h1><button id="collection-reset" class="text-button" title="${text('保留执行计划与自动导入选项','Keeps the execution plan and auto-import setting')}">${text('清空配置','Reset')}</button></div>${characterImportPanel(language,{id:'collection-import-panel',statusId:'collection-import-status',buttons:[{id:'collection-import',label:text('导入收藏与角色','Import collection & build')}],extra:`<label class="check"><input type="checkbox" id="collection-auto-import" ${autoEnabled?'checked':''}>${text('自动导入（每次聚焦时）','Auto-import (on every focus)')}</label><p class="micro import-status" role="status" id="collection-auto-status"></p>`})}<button id="collection-manual" class="secondary" ${state.initialized?'hidden':''}>${text('手动场景（从零开始）','Manual scenario (start from zero)')}</button><p id="collection-origin" class="micro"></p><p id="collection-buff-warning" class="micro" role="status"></p>${configuration()}<p class="micro">${text('动作估算固定当前属性；药剂与祝福全程有效，不计药剂与祝福费用。不计设备购置、材料自采、交易等待及费用。','Fixed-stat action estimates; boosts stay active throughout. Potion and blessing costs, equipment, self-sourcing, trading time and fees are excluded.')}</p><p id="collection-save" role="status" class="micro"></p></aside>
  <div class="collection-information"><section class="panel"><h2>${text('精通性价比','Mastery efficiency')}</h2><p class="micro">${text('奖励来自亲自产出的数量里程碑，买成品不增加进度。各行独立比较，副产物点数不计入。动作估算不含移动、回仓与升级，热门只取所选时刻。','Rewards require your own production milestones. Buying finished items adds no progress. Routes are independent; bonus-item points are excluded. Action estimates exclude travel, deposits and levelling; hot bonuses use the selected instant.')}</p>
  <div class="collection-filters">
  <div class="collection-filter-row"><label>${text('类型','Type')}<select id="collection-type">${options([['all',text('全部','All')],['gather',text('采集','Gathering')],['craft',text('制造','Crafting')]],routeType)}</select></label><label>${text('技能','Skill')}<select id="collection-skill">${options([['all',text('全部','All')],...collectionSkills.map(k=>[k,skillName(k)])],skill)}</select></label><label>${text('品质','Rarity')}<select id="collection-tier">${options([['all',text('全部','All')],...tierNames().map((n,i)=>[i,n])],tier)}</select></label><label>${text('物品搜索','Search items')}<input id="collection-search" type="search" value="${esc(query)}"></label></div>
@@ -102,7 +103,7 @@ export function renderCollection(lang,{isActive=false}={}){
   try{localStorage.setItem(collectionAutoImportStorageKey,JSON.stringify({version:1,enabled:autoEnabled}));autoSaveError=false;}catch{autoSaveError=true;}
   autoImporter.set({enabled:autoEnabled,active});updateStatus();
  };
- host.querySelector('#collection-manual').onclick=()=>{state.initialized=true;state.bank={};state.edited=true;changed();renderCollection(language,{isActive:true});};
+ host.querySelector('#collection-manual').onclick=()=>{state.initialized=true;state.bank={};state.pack={};state.edited=true;changed();renderCollection(language,{isActive:true});};
  host.querySelector('#collection-reset').onclick=()=>{state=collectionDefaults();drafts.clear();opened.clear();status=null;loadError=false;changed();renderCollection(language,{isActive:true});};
  host.querySelectorAll('[data-collection-path]').forEach(el=>{
   el.oninput=()=>drafts.set(el.dataset.collectionPath,{value:el.value,checked:el.checked});
@@ -207,10 +208,31 @@ function planButton(row){
  const entry=plan.selections.find(s=>s.itemId===row.id),same=entry?.jobId===row.jobId,selected=same&&entry.target===row.target,covered=same&&entry.target>row.target;
  return `<button class="text-button collection-plan-toggle" data-collection-plan="${key(row)}" aria-pressed="${selected}" ${planLoadError||covered||(!selected&&(row.status!=='ok'||row.target===null))?'disabled':''}>${selected?text('移出计划','Remove from plan'):covered?text('已含于目标 ','Included in target ')+number(entry.target):text('加入计划','Add to plan')}</button>`;
 }
+async function transferPlan(action){
+ if(clipboardBusy||planLoadError)return;
+ const original=plan;
+ clipboardBusy=true;clipboardStatus=null;updatePlan();
+ try{
+  if(action==='export'){
+   if(!navigator.clipboard?.writeText)throw Error('unavailable');
+   await navigator.clipboard.writeText(await encodeCollectionPlan(plan));
+  }else{
+   if(!navigator.clipboard?.readText)throw Error('unavailable');
+   const raw=await navigator.clipboard.readText();
+   let incoming;
+   try{incoming=await decodeCollectionPlan(raw);}catch(e){throw Error(e.message==='decompressionUnavailable'?e.message:'invalidPlan');}
+   if(plan!==original||planLoadError)throw Error('changed');
+   plan=incoming;savePlan();updateResults();
+  }
+  clipboardStatus={action,ok:true};
+ }catch(e){clipboardStatus={action,error:e.message};}
+ finally{clipboardBusy=false;updatePlan();}
+}
 function updatePlan(){
  const link=document.getElementById('collection-plan-link');if(link)link.textContent=text('已选方案：','Selected routes: ')+plan.selections.length;
  renderCollectionPlan(document.getElementById('collection-plan'),{state,plan,prices:getSnapshot(),language,now:calculationNow,loadError:planLoadError,saveError:planSaveError,statusText:message,sort:planSort,onSort:updatePlan,hideCompleted:planHideCompleted,onHideCompleted:value=>{planHideCompleted=value;updatePlan();},
-  onClear:()=>{planLoadError=false;plan=collectionPlanDefaults();savePlan();updateResults();},
+  clipboardBusy,clipboardStatus,onExport:()=>transferPlan('export'),onImport:()=>transferPlan('import'),
+  onClear:()=>{clipboardStatus=null;planLoadError=false;plan=collectionPlanDefaults();savePlan();updateResults();},
   onTarget:(itemId,target)=>changePlan(()=>setCollectionPlanTarget(plan,itemId,target)),
   onRemove:itemId=>changePlan(()=>removeCollectionPlan(plan,itemId))});
 }

@@ -6,7 +6,7 @@ import {collectionDefaults,collectionRoutes,estimateCollection} from '../src/col
 import {collectionPlanDefaults,validateCollectionPlan,addCollectionPlan,addCollectionPlans,removeCollectionPlan,setCollectionPlanTarget,calculateCollectionPlan as calculatePlanSnapshot} from '../src/collection-plan.js';
 import {priceDefaults} from '../src/item-prices.js';
 const calculateCollectionPlan=(state,plan,prices,options)=>calculatePlanSnapshot(state,plan,createPriceSnapshot(prices),options);
-const state=()=>({...collectionDefaults(),buyMode:'ask',initialized:true,bank:{}});
+const state=()=>({...collectionDefaults(),buyMode:'ask',initialized:true,bank:{},pack:{}});
 const pick=(itemId,target)=>({itemId,jobId:collectionRoutes(itemId)[0].id,target});
 const priced=()=>{const prices=priceDefaults();for(const item of game.items)prices.quotes[item.id]={ask:{value:2,capturedAt:100},bid:{value:2,capturedAt:100}};return prices;};
 
@@ -105,4 +105,14 @@ test('unknown warehouse preserves gross needs and target rewards but never assum
  const r=calculateCollectionPlan(s,plan,priced());assert.equal(r.missingInventory,true);assert.equal(r.complete,false);assert.equal(r.cost,null);assert.equal(r.points,2);
  assert.equal(r.materials[0].quantity,10);assert.equal(r.materials[0].inventory,null);assert.equal(r.materials[0].purchase,null);assert.equal(r.materials[0].cost,null);
  s.counts[40]=10;assert.equal(calculateCollectionPlan(s,plan,priced()).cost,0);
+});
+
+test('plan uses progress difference and combines bank with backpack once per material',()=>{
+ const s=state();s.counts={40:9};s.bank={1:3};s.pack={1:4,2:10};
+ const plan=addCollectionPlan(collectionPlanDefaults(),pick(40,100));
+ const r=calculateCollectionPlan(s,plan,priced());assert.equal(r.entries[0].remaining,91);
+ assert.deepEqual(r.materials.map(m=>[m.itemId,m.inventory,m.purchase]),[[1,7,84],[2,10,81]]);
+ s.counts[40]=101;assert.equal(calculateCollectionPlan(s,plan,priced()).entries[0].remaining,0);
+ s.initialized=false;assert.equal(calculateCollectionPlan(s,plan,priced()).entries[0].remaining,null);
+ s.initialized=true;s.counts={};s.pack=null;assert.equal(calculateCollectionPlan(s,plan,priced()).missingInventory,true);
 });

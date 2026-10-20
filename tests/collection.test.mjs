@@ -193,14 +193,18 @@ test('one configuration feeds both engines and excludes gathering-only upkeep fr
 });
 
 test('collection imports and persists exact warehouse quantities; missing or malformed inventory rejects the entire import',()=>{
- const current=setup(),snap=snapshot();snap.player.bank={1:7,2:0,1001:9};snap.player.pack=[{itemId:1,qty:99}];snap.player.overflow={1:88};
- const imported=importCollection(current,snap);assert.deepEqual(imported.bank,{1:7,2:0,1001:9});
- assert.deepEqual(validateCollection(JSON.parse(JSON.stringify(imported))).bank,imported.bank);
+ const current=setup(),snap=snapshot();snap.player.bank={1:7,2:0,1001:9};snap.player.pack=[{itemId:1,qty:99},{itemId:1,qty:2},{itemId:1001,qty:3}];snap.player.overflow={1:88};
+ const imported=importCollection(current,snap);assert.deepEqual(imported.bank,{1:7,2:0,1001:9});assert.deepEqual(imported.pack,{1:101,1001:3});
+ assert.deepEqual(validateCollection(JSON.parse(JSON.stringify(imported))),imported);
  snap.player.bank[1]=8;assert.equal(imported.bank[1],7);
  const before=structuredClone(imported);
  for(const bank of [undefined,null,[],{1:-1},{1:.5},{1:'7'},{1:Number.MAX_SAFE_INTEGER+1},{'01':1},{999999999:1}]){
   const bad={...snap,player:{...snap.player,bank,collections:{40:100}}};assert.throws(()=>importCollection(imported,bad),/invalidSnapshot|incompleteSnapshot/);assert.deepEqual(imported,before);
  }
+ for(const pack of [undefined,null,{},[null],[{itemId:1,qty:0}],[{itemId:1,qty:.5}],[{itemId:'1',qty:1}],[{itemId:999999999,qty:1}],[{itemId:1,qty:Number.MAX_SAFE_INTEGER}],[{itemId:2,qty:Number.MAX_SAFE_INTEGER},{itemId:2,qty:1}]]){
+  assert.throws(()=>importCollection(imported,{...snap,player:{...snap.player,pack}}),/invalidSnapshot|incompleteSnapshot/);assert.deepEqual(imported,before);
+ }
+ const withoutPack={...imported};delete withoutPack.pack;assert.equal(validateCollection(withoutPack).pack,null);
  const withoutBank={...imported};delete withoutBank.bank;assert.equal(validateCollection(withoutBank).bank,null);
 });
 

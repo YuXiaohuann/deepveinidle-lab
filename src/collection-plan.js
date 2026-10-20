@@ -53,14 +53,14 @@ export function calculateCollectionPlan(state,raw,prices,{now=Date.now()}={}){
     materials.set(itemId,material);
    }
   }
-  return {...entry,...result};
+  return {...entry,...result,remaining:state.initialized?Math.max(0,entry.target-(state.counts[entry.itemId]??0)):null};
  });
  let knownCost=0,missingPrices=0,amountOverflow=false;
- const missingInventory=materials.size>0&&state.bank==null;
+ const missingInventory=materials.size>0&&(state.bank==null||state.pack==null);
  const priced=[...materials.values()].sort((a,b)=>a.itemId-b.itemId).map(material=>{
   const quote=collectionPrice(material.itemId,prices,state.buyMode);
   const quantity=material.quantity===null?null:Math.ceil(material.quantity);
-  const inventory=state.bank==null?null:Math.ceil(state.bank[material.itemId]??0);
+  const inventory=state.bank==null||state.pack==null?null:(state.bank[material.itemId]??0)+(state.pack[material.itemId]??0);
   const purchase=quantity===null||inventory===null?null:Math.ceil(Math.max(0,quantity-inventory));
   if(purchase>0&&quote.price===null)missingPrices++;
   let cost=purchase===0?0:purchase===null||quote.price===null?null:purchase*quote.price;

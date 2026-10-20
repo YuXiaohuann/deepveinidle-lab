@@ -26,7 +26,7 @@ function mergeConfig(gather,craft){
  for(const key of ['guild','guildXp','weeklyXp','worldRarity','blessing','ironman','homeBank','hotSetting'])config[key]=gather[key];
  return config;
 }
-export function collectionDefaults(){return {version:1,initialized:false,capturedAt:null,edited:false,importWarnings:[],counts:{},bank:null,buyMode:'global',config:mergeConfig(gatheringDefaults(),craftingDefaults())};}
+export function collectionDefaults(){return {version:1,initialized:false,capturedAt:null,edited:false,importWarnings:[],counts:{},bank:null,pack:null,buyMode:'global',config:mergeConfig(gatheringDefaults(),craftingDefaults())};}
 export function collectionWorkConfig(state,kind){
  const config=(kind==='gather'?normalizeGathering:normalizeCrafting)(state.config);
  config.weeklyXp=state.config.weeklyXp;
@@ -61,7 +61,8 @@ export function validateCollection(raw){
  if(!['global','ask','bid','vendor'].includes(buyMode))throw Error('invalidConfiguration');
  const importWarnings=raw.importWarnings;
  if(!Array.isArray(importWarnings)||importWarnings.some(w=>!['worldBuffs.upgrade','weeklyXp.reset'].includes(w)&&!(typeof w==='string'&&/^collections\.invalid:[1-9]\d*$/.test(w)&&Number.isSafeInteger(Number(w.split(':')[1])))))throw Error('invalidConfiguration');
- const state={version:1,initialized:raw.initialized,edited:raw.edited,capturedAt:raw.capturedAt,buyMode,importWarnings:[...importWarnings],counts:validateCounts(raw.counts),bank:raw.bank==null?null:validateBank(raw.bank),config:null};
+ const state={version:1,initialized:raw.initialized,edited:raw.edited,capturedAt:raw.capturedAt,buyMode,importWarnings:[...importWarnings],counts:validateCounts(raw.counts),bank:raw.bank==null?null:validateBank(raw.bank),pack:raw.pack==null?null:validateBank(raw.pack),config:null};
+ if(state.bank&&state.pack)for(const [id,qty]of Object.entries(state.pack))if(!Number.isSafeInteger(qty+(state.bank[id]??0)))throw Error('invalidSnapshot');
  if(!record(raw.config))throw Error('invalidConfiguration');
  const gather=normalizeGathering(raw.config),craft=normalizeCrafting(raw.config);
  state.config=mergeConfig(gather,craft);
@@ -78,11 +79,20 @@ export function importCollection(current,snapshot){
  if(!record(snapshot)||snapshot.version!==2||!Number.isSafeInteger(snapshot.capturedAt)||snapshot.capturedAt<=0||snapshot.capturedAt>Date.now()+60000||!record(snapshot.player))throw Error('invalidSnapshot');
  let invalidCounts=0;
  const counts=validateCounts(snapshot.player.collections,()=>invalidCounts++),bank=validateBank(snapshot.player.bank),craft=importCrafting(collectionWorkConfig(current,'craft'),snapshot),gather=importGathering(collectionWorkConfig(current,'gather'),snapshot);
+ if(!Array.isArray(snapshot.player.pack))throw Error('incompleteSnapshot');
+ const pack={};
+ for(const stack of snapshot.player.pack){
+  if(!record(stack)||!Number.isSafeInteger(stack.itemId)||!Number.isSafeInteger(stack.qty)||stack.qty<1)throw Error('invalidSnapshot');
+  validateBank({[stack.itemId]:stack.qty});
+  const quantity=(pack[stack.itemId]??0)+stack.qty;
+  if(!Number.isSafeInteger(quantity))throw Error('invalidSnapshot');
+  pack[stack.itemId]=quantity;
+ }
  const warnings=[...craft.warnings,...gather.warnings].filter(k=>/^(skills|equipment|house|masteries|perks|ironman|homeBank|brews|brewBuckets|brewTier|blessing|guildBonus)/.test(k));
  if(warnings.length)throw Error('incompleteSnapshot');
  const world=readWorldBuffs(snapshot);
  gather.state.weeklyXp=world.weeklyXp;gather.state.worldRarity=world.worldRarity;
- return validateCollection({...current,initialized:true,capturedAt:snapshot.capturedAt,edited:false,importWarnings:[...(world.warning?[world.warning]:[]),...(invalidCounts?[`collections.invalid:${invalidCounts}`]:[])],counts,bank,config:mergeConfig(gather.state,craft.state)});
+ return validateCollection({...current,initialized:true,capturedAt:snapshot.capturedAt,edited:false,importWarnings:[...(world.warning?[world.warning]:[]),...(invalidCounts?[`collections.invalid:${invalidCounts}`]:[])],counts,bank,pack,config:mergeConfig(gather.state,craft.state)});
 }
 export function collectionTarget(state,id,target){
  const current=state.counts[id]??0,base=game.baseItemId(id),thresholds=game.collectionThresholds(base);

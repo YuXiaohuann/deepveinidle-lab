@@ -28,7 +28,7 @@
 #### 捕获 Worker
 
 - 主线程只旁听同源 `/ws`、转交原始字符串与接收时间、维护连接代次／积压计数、执行角色 GM 保存及提示。内置 Blob Worker 执行 JSON 解析、必要角色字段裁剪、公会／窗口状态维护；不额外下载代码、不发送游戏指令。传入原始帧中可含市场消息，但不提取、合并或保存市场报价。
-- 角色保留所有导入消费者所需字段，包括强化的 bank/pack/overflow、收藏计划库存的 bank 和精通的 collections/forgeLog；世界窗口增加保留 rarityMult，快照增加 `worldBuffsVersion: 1` 完整捕获能力标记。同帧最多更新一次角色状态。战斗与采集按捕获时点汇总全部有效窗口的经验与稀有度，全程用于模拟，共用世界窗口校验和汇总；旧快照缺能力标记时清零两项并明确提示更新脚本及重新捕获。制造共用完整世界窗口校验与经验汇总，不导入无效的世界稀有度；旧捕获经验清零并明确提示。角色桥接 2.4、数据协议 2 与存储键保持兼容。
+- 角色保留所有导入消费者所需字段，包括强化的 bank/pack/overflow、收藏计划库存的 bank/pack 和精通的 collections/forgeLog；世界窗口增加保留 rarityMult，快照增加 `worldBuffsVersion: 1` 完整捕获能力标记。同帧最多更新一次角色状态。战斗与采集按捕获时点汇总全部有效窗口的经验与稀有度，全程用于模拟，共用世界窗口校验和汇总；旧快照缺能力标记时清零两项并明确提示更新脚本及重新捕获。制造共用完整世界窗口校验与经验汇总，不导入无效的世界稀有度；旧捕获经验清零并明确提示。角色桥接 2.4、数据协议 2 与存储键保持兼容。
 - Worker 合并最新角色状态，只发修订通知。主线程最多一个请求／保存进行中，空闲后合并 100ms 再拉取最新角色快照；持续更新不延长已安排的等待。保存期间不回传中间快照。跨连接串行完成已开始的写入，再保存新连接状态，旧结果不显示成功。
 - 原始消息积压跨连接累计，最多 128 条、合计 16Mi 个 UTF-16 代码单元；旧连接 ACK 也须扣减积压。超过上限、Worker 启动 5 秒超时、待处理消息连续 10 秒无 ACK、创建／执行／传递错误均停止捕获并显示失败，要求刷新恢复；不丢帧后继续冒充成功，不回退到主线程解析。限值是保守保护参数，尚不代表真实流量性能结论。
 - 成功提示仅在保存成功后显示，每连接首次显示 5 秒；隐藏时停止全 DOM 观察。页面退出终止 Worker，释放 Blob URL；不保证关闭前最后一次异步保存完成。
@@ -75,9 +75,9 @@
 | `tests/character-import.test.mjs` | 全部字段映射、角色脚本旁听与存储桥接回归 |
 | `src/debug-controls.js`、`tests/debug-controls.test.mjs` | 隐藏调试页、角色配置 JSON 文件下载与战斗／强化两个共用导入入口、文件往返及失败状态验证 |
 | `src/collection-model.js`、`src/collection-controls.js`、`src/collection-simulation.js` | 隐藏收藏页、独立最小进度与角色导入、原始里程碑／奖励、动作期望与API／商人材料采购估值、材料明细及离线目标事件回归（产出和药剂数量只在离线事件验证中保留） |
-| `src/collection-plan.js`、`src/collection-plan-controls.js`、`src/collection-auto-import.js` | 独立计划存储、最高目标去重、材料归并、导入仓库抵扣及采购成本展示，以及焦点／定时自动导入调度与过期响应隔离 |
+| `src/collection-plan.js`、`src/collection-plan-controls.js`、`src/collection-plan-transfer.js`、`src/collection-auto-import.js` | 独立计划存储、最高目标去重、材料归并、导入仓库与背包抵扣、采购成本展示、计划 JSON／gzip+Base64 剪贴板交换，以及焦点自动导入调度与过期响应隔离 |
 | `tests/collection.test.mjs`、`tests/collection-browser.mjs` | 收藏边界、品质／烧焦／被捕、价格缺失与零价、独立目标事件对照、DOM 桥接、材料采购展开区与窄屏专项 |
-| `tests/collection-plan.test.mjs`、`tests/collection-auto-import.test.mjs`、`tests/collection-plan-browser.mjs` | 计划去重、数量和金额边界、定时／焦点调度、导入并发与存档保留、双语窄屏交互 |
+| `tests/collection-plan.test.mjs`、`tests/collection-plan-transfer.test.mjs`、`tests/collection-auto-import.test.mjs`、`tests/collection-plan-browser.mjs` | 计划去重、数量和金额边界、焦点调度、压缩往返、导入并发与存档保留、双语窄屏交互 |
 | `src/mastery.js`、`src/mastery-controls.js` | 独立精通预算、升级成本、配置校验与双语交互 |
 | `src/price-protocol.js`、`src/price-service.js` | 物品价格六项数据的只读快照、固定公开协议、统一设价命令及分类变更通知 |
 | `src/item-prices.js`、`src/item-price-store.js`、`src/market-import.js`、`src/item-price-controls.js`、`src/price-auto-import.js` | 价格模块内部规则、存储、官方价格及挂单总量解析、管理弹窗与自动导入通知 |
