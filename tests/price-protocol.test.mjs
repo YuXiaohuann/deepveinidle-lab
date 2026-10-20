@@ -51,7 +51,7 @@ test('collection global default honors locks and zero without fallback; old sele
  assert.equal(priceCollection({materials:{1:3,2:1},points:1},snapshot).cost,null);
  assert.equal(priceCollection({materials:{1:3},points:1},snapshot).cost,0);
  const plan=addCollectionPlan(collectionPlanDefaults(),{itemId:40,jobId:41,target:1});
- const configured={...state,initialized:true,bank:{1:1,2:1}};
+ const configured={...state,initialized:true,bank:{1:1,2:1},pack:{}};
  const result=calculateCollectionPlan(configured,plan,snapshot);assert.equal(result.cost,0);assert.equal(result.missingPrices,0);
 });
 test('existing valuation fallback and enhancement local overrides work with protocol snapshots',()=>{
