@@ -146,7 +146,12 @@ function updateResults(){
  updateStatus();
  if(!state.initialized){host.innerHTML=`<p class="empty-results">${message('uninitialized')}</p>`;return;}
  const prices=getSnapshot(),q=query.trim().toLowerCase();let valued;
- const matching=rows.filter(r=>!r.complete&&state.config.levels[r.skill]>=recipesById.get(r.jobId).levelReq&&(routeType==='all'||(routeType==='gather'?gatheringSkills:craftingSkills).includes(r.skill))&&(skill==='all'||r.skill===skill)&&(tier==='all'||game.itemTier(r.id)===Number(tier))&&(!q||`${game.item(r.id).name} ${translatedItemName(r.id,'zh')} ${itemName(r.id)}`.toLowerCase().includes(q)));
+ const matching=rows.filter(row=>
+  !row.complete&&state.config.levels[row.skill]>=recipesById.get(row.jobId).levelReq&&
+  (routeType==='all'||(routeType==='gather'?gatheringSkills:craftingSkills).includes(row.skill))&&
+  (skill==='all'||row.skill===skill)&&(tier==='all'||game.itemTier(row.id)===Number(tier))&&
+  (!q||`${game.item(row.id).name} ${translatedItemName(row.id,'zh')} ${itemName(row.id)}`.toLowerCase().includes(q))
+ );
  try{valued=matching.map(r=>priceCollection(r,prices,state.buyMode)).filter(row=>metricFilters.every(({key})=>{
   const bound=thresholds[key];if(bound===null)return true;
   const value=key==='minutes'?(row.seconds===null?null:row.seconds/60):row[key];
@@ -232,7 +237,10 @@ function updatePlan(){
  renderCollectionPlan(document.getElementById('collection-plan'),{state,plan,prices:getSnapshot(),language,formatDuration:duration,now:calculationNow,loadError:planLoadError,saveError:planSaveError,statusText:message,sort:planSort,onSort:updatePlan,
   clipboardBusy,clipboardStatus,onExport:()=>transferPlan('export'),onImport:()=>transferPlan('import'),
   onClearCompleted:completedIds=>changePlan(()=>({...plan,selections:plan.selections.filter(entry=>!completedIds.has(entry.itemId))})),
-  onClear:()=>{if(!window.confirm(text('确定清空全部执行计划吗？','Clear the entire execution plan?')))return;clipboardStatus=null;planLoadError=false;plan=collectionPlanDefaults();savePlan();updateResults();},
+  onClear:()=>{
+   if(!window.confirm(text('确定清空全部执行计划吗？','Clear the entire execution plan?')))return;
+   clipboardStatus=null;planLoadError=false;plan=collectionPlanDefaults();savePlan();updateResults();
+  },
   onTarget:(itemId,target)=>changePlan(()=>setCollectionPlanTarget(plan,itemId,target)),
   onRemove:itemId=>changePlan(()=>removeCollectionPlan(plan,itemId))});
 }

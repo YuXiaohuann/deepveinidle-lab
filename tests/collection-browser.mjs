@@ -7,6 +7,8 @@ import {once} from 'node:events';
 import {chromium} from 'playwright-core';
 import {browserPath} from '../scripts/release-common.mjs';
 import {game,preset} from '../src/model.js';
+import {craftingSkills} from '../src/crafting-model.js';
+import {gatheringSkills} from '../src/gathering-model.js';
 
 const args={};
 for(let i=2;i<process.argv.length;i+=2){
@@ -40,7 +42,7 @@ try{
  const originalBuild=await page.evaluate(()=>localStorage.getItem('dvi-collection-v1'));
  await page.evaluate(()=>{const state=JSON.parse(localStorage.getItem('dvi-collection-v1'));for(const skill in state.config.levels)state.config.levels[skill]=100;localStorage.setItem('dvi-collection-v1',JSON.stringify(state));});await page.reload();await page.locator('#collection-type').selectOption('all');
  const allCount=await matchCount();assert.ok(allCount>0);let typeTotal=0;
- for(const [type,allowed]of [['gather',['mining','fishing','woodcutting','thieving']],['craft',['cooking','smithing','fletching','alchemy','crafting']]]){
+ for(const [type,allowed]of [['gather',gatheringSkills],['craft',craftingSkills]]){
   await page.locator('#collection-type').selectOption(type);const count=await matchCount();assert.ok(count>0);typeTotal+=count;
   assert.ok((await keys()).every(key=>allowed.includes(game.recipes.find(r=>r.id===Number(key.split(':')[1])).skill)));
  }
@@ -50,7 +52,7 @@ try{
  for(const skill of skillOptions){
   await page.locator('#collection-skill').selectOption(skill);const count=await matchCount();assert.ok(count>0,skill);skillTotal+=count;
   assert.ok((await keys()).every(key=>game.recipes.find(r=>r.id===Number(key.split(':')[1])).skill===skill),skill);
-  await page.locator('#collection-type').selectOption(['mining','fishing','woodcutting','thieving'].includes(skill)?'craft':'gather');assert.equal(await matchCount(),0,skill+' incompatible type');await page.locator('#collection-type').selectOption('all');
+  await page.locator('#collection-type').selectOption(gatheringSkills.includes(skill)?'craft':'gather');assert.equal(await matchCount(),0,skill+' incompatible type');await page.locator('#collection-type').selectOption('all');
  }
  assert.equal(skillTotal,allCount);await page.locator('#collection-skill').selectOption('all');let tierTotal=0;
  for(const tier of ['0','1','2','3','4']){await page.locator('#collection-tier').selectOption(tier);const count=await matchCount();assert.ok(count>0);tierTotal+=count;assert.ok((await keys()).every(key=>game.itemTier(Number(key.split(':')[0]))===Number(tier)));}
@@ -138,7 +140,7 @@ try{
  await page.evaluate(async()=>{const {priceState,updatePrices}=await import('/src/item-price-store.js');const prices=structuredClone(priceState());prices.prices[1]={price:0,source:'manual',locked:true,updatedAt:Date.now(),quoteCapturedAt:null};prices.preferences.categories.ore='vendor';updatePrices(prices);});assert.equal(await metric('costPerPoint'),5);
  await page.evaluate(async()=>{const {priceState,updatePrices}=await import('/src/item-price-store.js');const prices=structuredClone(priceState());prices.prices[2]={price:7,source:'manual',locked:true,updatedAt:Date.now(),quoteCapturedAt:null};updatePrices(prices);});await page.locator('#collection-buy').selectOption('global');assert.equal(await metric('costPerPoint'),7);await page.locator('#collection-buy').selectOption('ask');assert.equal(await metric('costPerPoint'),5);await page.locator('#collection-buy').selectOption('vendor');assert.equal(await metric('costPerPoint'),game.vendorPrice(1)+game.vendorPrice(2));assert.match(await details().innerText(),/商人估值/);await page.reload();assert.equal(await page.locator('#collection-buy').inputValue(),'vendor');await page.locator('#collection-search').fill('Bronze bar');await page.locator('#collection-tier').selectOption('0');await page.locator('#collection-filter-minutes').fill('0.04');await openFirst();await page.locator('#collection-buy').selectOption('ask');
  assert.deepEqual(await headings(),['材料采购']);assert.equal(await page.evaluate(()=>window.collectionWorkers),0);
- results.cases.push('ask/bid and vendor material valuation ignore global settings; vendor selection survives refresh');
+ results.cases.push('all four material valuation modes work; direct quote modes ignore global settings and vendor selection survives refresh');
  await page.locator('#collection-filter-minutes').fill('');
  assert.equal(await page.locator('[data-collection-key="40:41:100"] .collection-total-time').innerText(),'总时间\n4.0 分钟');assert.equal(await page.locator('[data-collection-key="40:41:1000000"] [data-collection-metric="secondsPerPoint"]').innerText(),'秒／点\n4,067.8');assert.match(await page.locator('[data-collection-key="40:41:10000000"] .collection-total-time').innerText(),/小时/);
  for(const mode of ['secondsPerPoint','costPerPoint']){await page.locator('#collection-sort').selectOption(mode);const values=await page.locator(`[data-collection-metric="${mode}"]`).evaluateAll(es=>es.map(e=>Number(e.childNodes[1].textContent.replace(/,/g,''))));assert.deepEqual(values,[...values].sort((a,b)=>a-b));}
@@ -146,7 +148,7 @@ try{
  await page.locator('#collection-filter-points').fill('-1');assert.equal(await page.locator('.collection-card').count(),0);assert.match(await page.locator('#collection-error').innerText(),/筛选数值无效/);await page.locator('#collection-filter-points').fill('');await page.locator('#collection-filter-cost').fill('');await page.locator('#collection-filter-minutes').fill('');
  await page.locator('#collection-type').selectOption('gather');assert.equal(await page.locator('.collection-card').count(),0);await page.locator('#collection-type').selectOption('craft');
  const lockedJob=game.recipes.find(j=>j.skill==='smithing'&&j.levelReq>1&&!j.retired&&game.collectionItems.has(j.output.itemId));await page.locator('#collection-search').fill(game.item(lockedJob.output.itemId).name);assert.equal(await page.locator('.collection-card').count(),0);await page.locator('#collection-levels').evaluate(e=>e.open=true);await page.locator('[data-collection-path="config.levels.smithing"]').fill(String(lockedJob.levelReq));await page.locator('[data-collection-path="config.levels.smithing"]').press('Tab');assert.ok(await cards().count()>0);await page.locator('[data-collection-path="config.levels.smithing"]').fill('1');await page.locator('[data-collection-path="config.levels.smithing"]').press('Tab');assert.equal(await cards().count(),0);
- results.cases.push('two ascending numeric sorts, inclusive numeric limits, type intersections and level-only filtering remain unchanged');
+ results.cases.push('two ascending numeric sorts, inclusive limits, type intersections and fixed level eligibility update with skill changes');
  await page.evaluate(()=>{window.testCollectionMissing=false;document.addEventListener('dvi-character-request',async event=>{const request=JSON.parse(event.detail);if(request.action!=='read')return;const {createScenario}=await import('/src/simulation.js');const {craftingSlots,craftingSkills}=await import('/src/crafting-model.js');const {gatheringSlots,gatheringSkills}=await import('/src/gathering-model.js');const {game}=await import('/src/model.js');const {player}=createScenario({});for(const skill of [...craftingSkills,...gatheringSkills])player.skills[skill]=game.levelXp(1);for(const slot of [...craftingSlots,...gatheringSlots])player.equipment[slot]=null;Object.assign(player,{house:{},houseFurniture:{},collections:{40:99,42341:1,42343:1,53341:2,53343:1},masteries:{},perks:{},ironman:false,homeBank:null});if(window.testCollectionBonuses){player.brews.hunter=player.lastTick+6000;player.brewTier.hunter=3;player.brews.elixir=player.lastTick+6000;player.brewTier.elixir=1;player.brews.blessing=player.lastTick+6000;player.guildBonus=.0125;}if(window.testCollectionMissing)delete player.collections;document.dispatchEvent(new CustomEvent('dvi-character-response',{detail:JSON.stringify({source:'dvi-character-script',version:'2.4',id:request.id,snapshot:{version:2,capturedAt:Date.now(),player,worldBuffsVersion:window.testCollectionBonuses?1:undefined,worldTick:player.lastTick,worldBuffs:window.testCollectionBonuses?[{fromTick:player.lastTick,toTick:player.lastTick+6000,xpMult:1.0275,rarityMult:1.0875}]:[],guild:null}})}));});});
  await page.locator('#collection-import-panel').evaluate(e=>e.open=true);await page.locator('#collection-import').click();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('dvi-collection-v1'))?.counts[40]===99);
  assert.match(await page.locator('#collection-buff-warning').innerText(),/已跳过 4 条/);await page.selectOption('#language','en');assert.match(await page.locator('#collection-buff-warning').innerText(),/skipped 4/);await page.selectOption('#language','zh');

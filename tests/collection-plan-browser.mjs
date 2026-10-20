@@ -104,7 +104,7 @@ try{
  assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-collection-plan-v1')).selections.map(e=>e.itemId)),[1040]);assert.equal(await page.evaluate(()=>localStorage.getItem('dvi-collection-v1')),mixedState);
  await page.locator('#collection-tier').selectOption('0');await button(1000).click();await page.locator('#collection-tier').selectOption('1');assert.equal(await page.locator('[data-plan-clear-completed]').isDisabled(),true);
  assert.equal(confirmations.length,0);
- results.cases.push('clear completed removes only completed routes from mixed plans, saves once and preserves character data and remaining routes');
+ results.cases.push('clear completed removes only completed routes from mixed plans, persists the result and preserves character data and remaining routes');
  await until(()=>!document.querySelector('#collection-import').disabled);
  marketMaterials=true;await page.evaluate(()=>window.planBank={1:10,2:2000,1001:3,1002:10});
  await page.locator('#collection-import').click();await until(()=>JSON.parse(localStorage.getItem('dvi-collection-v1')).bank?.[1]===10&&!document.querySelector('#collection-import').disabled);
@@ -178,7 +178,6 @@ try{
  await page.evaluate(()=>window.planProgress=9);await page.locator('#collection-import').click();await until(()=>JSON.parse(localStorage.getItem('dvi-collection-v1'))?.counts[40]===9);
  await page.locator('#collection-search').fill('青铜锭');await page.locator('#collection-tier').selectOption('0');await button(1000).click();
  results.cases.push('completed routes stay visible across sorting, language and reload; clearing all completed persists an empty plan and preserves character state');
- await page.evaluate(()=>window.planProgress=9);await page.locator('#collection-import').click();await until(()=>JSON.parse(localStorage.getItem('dvi-collection-v1'))?.counts[40]===9);
  results.cases.push('both compact plan tables keep first-column headers and cells visible when scrolling is needed in Chinese and English at 390px');
  results.cases.push('plan save/reload, config reset retention with unavailable state, imports recompute remaining needs and retain completed selections');
  await until(()=>!document.querySelector('#collection-import').disabled);
