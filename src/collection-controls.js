@@ -230,7 +230,7 @@ async function transferPlan(action){
 }
 function updatePlan(){
  const link=document.getElementById('collection-plan-link');if(link)link.textContent=text('已选方案：','Selected routes: ')+plan.selections.length;
- renderCollectionPlan(document.getElementById('collection-plan'),{state,plan,prices:getSnapshot(),language,now:calculationNow,loadError:planLoadError,saveError:planSaveError,statusText:message,sort:planSort,onSort:updatePlan,hideCompleted:planHideCompleted,onHideCompleted:value=>{planHideCompleted=value;updatePlan();},
+ renderCollectionPlan(document.getElementById('collection-plan'),{state,plan,prices:getSnapshot(),language,formatDuration:duration,now:calculationNow,loadError:planLoadError,saveError:planSaveError,statusText:message,sort:planSort,onSort:updatePlan,hideCompleted:planHideCompleted,onHideCompleted:value=>{planHideCompleted=value;updatePlan();},
   clipboardBusy,clipboardStatus,onExport:()=>transferPlan('export'),onImport:()=>transferPlan('import'),
   onClear:()=>{clipboardStatus=null;planLoadError=false;plan=collectionPlanDefaults();savePlan();updateResults();},
   onTarget:(itemId,target)=>changePlan(()=>setCollectionPlanTarget(plan,itemId,target)),

@@ -116,3 +116,21 @@ test('plan uses progress difference and combines bank with backpack once per mat
  s.initialized=false;assert.equal(calculateCollectionPlan(s,plan,priced()).entries[0].remaining,null);
  s.initialized=true;s.counts={};s.pack=null;assert.equal(calculateCollectionPlan(s,plan,priced()).missingInventory,true);
 });
+
+test('plan time adds independent remaining routes, ignores prices/stock and counts completed or empty plans as zero',()=>{
+ const s=state();s.counts[40]=9;
+ const plan=validateCollectionPlan({version:1,selections:[pick(40,100),pick(1040,10)]});
+ const now=1000000;
+ const expected=estimateCollection(s,40,collectionRoutes(40)[0],undefined,100).seconds+estimateCollection(s,1040,collectionRoutes(1040)[0],undefined,10).seconds;
+ const r=calculateCollectionPlan(s,plan,priced(),{now});assert.equal(r.seconds,expected);
+ s.bank={1:1000,2:1000};s.pack={1001:1000,1002:1000};
+ assert.equal(calculateCollectionPlan(s,plan,priceDefaults(),{now}).seconds,expected);
+ s.counts[40]=100;assert.equal(calculateCollectionPlan(s,plan,priced(),{now}).seconds,estimateCollection(s,1040,collectionRoutes(1040)[0],undefined,10).seconds);
+ s.counts[1040]=10;assert.equal(calculateCollectionPlan(s,plan,priced(),{now}).seconds,0);
+ assert.equal(calculateCollectionPlan(s,collectionPlanDefaults(),priced(),{now}).seconds,0);
+ s.initialized=false;assert.equal(calculateCollectionPlan(s,plan,priced(),{now}).seconds,null);
+ s.initialized=true;s.counts={};s.config.levels.smithing=1;
+ const blocked=game.recipes.find(j=>j.levelReq>1&&collectionRoutes(j.output.itemId).some(r=>r.id===j.id)&&j.skill==='smithing');
+ assert.ok(blocked);const unavailable=validateCollectionPlan({version:1,selections:[pick(40,100),{itemId:blocked.output.itemId,jobId:blocked.id,target:game.collectionThresholds(blocked.output.itemId)[0]}]});
+ assert.equal(calculateCollectionPlan(s,unavailable,priced(),{now}).seconds,null);
+});

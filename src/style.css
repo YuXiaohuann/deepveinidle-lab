@@ -279,7 +279,7 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
 .collection-plan-toolbar{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
 #collection-plan>.panel-heading{flex-wrap:wrap;gap:8px}
 .collection-plan-toggle{display:block;margin-top:0;text-align:left}.collection-plan-toggle[aria-pressed=true]{color:var(--gold)}.collection-plan-toggle:disabled{cursor:default}
-.collection-plan-overview{display:flex;align-items:center;justify-content:space-between;gap:8px 16px;flex-wrap:wrap;margin:12px 0}.collection-plan-overview p{margin:0}.collection-plan-overview .check{margin:0;white-space:nowrap}
+.collection-plan-overview{display:flex;align-items:center;justify-content:space-between;gap:8px 16px;flex-wrap:wrap;margin:12px 0}.collection-plan-overview p{margin:0;flex:1 1 420px}.collection-plan-overview .check{margin:0;white-space:nowrap}
 .collection-plan-table-wrap{max-width:100%;overflow-x:auto;margin:16px 0}
 .collection-plan-table{width:100%;min-width:0;white-space:normal;table-layout:auto}
 .collection-plan-table th,.collection-plan-table td{padding:8px 4px;overflow-wrap:anywhere;vertical-align:top}
@@ -288,7 +288,7 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
 
 .collection-plan-selections td:nth-child(3),.collection-plan-materials td:not(:first-child){font-variant-numeric:tabular-nums}
 .collection-plan-actions{display:flex;flex-wrap:nowrap;gap:8px;align-items:baseline;white-space:nowrap;font:inherit;line-height:inherit}.collection-plan-control{flex:0 0 auto;color:#a1b2b5;cursor:pointer}.collection-plan-control:hover{color:var(--gold)}.collection-plan-control:focus-visible{outline:2px solid var(--teal);outline-offset:2px}.collection-plan-control[aria-disabled=true]{opacity:.4;cursor:default;color:var(--muted)}
-#collection-plan [role=alert]{color:#ef9a94}
+#collection-plan [role=alert],.collection-plan-clipboard-success{color:#ef9a94}
 
 .collection-list-actions,.collection-pagination{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:12px 0}
 .collection-pagination{justify-content:center}

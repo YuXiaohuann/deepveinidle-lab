@@ -58,7 +58,7 @@ try{
  await page.locator('#collection-import').click();await until(()=>JSON.parse(localStorage.getItem('dvi-collection-v1'))?.counts[40]===9);
  await until(()=>!document.querySelector('#collection-import').disabled);assert.equal(marketReads,1);assert.match(await page.locator('#collection-import-status').innerText(),/市场数据已更新/);
  await page.locator('#collection-search').fill('青铜锭');await page.locator('#collection-tier').selectOption('0');
- await button(10).click();assert.equal(await quantity(),'1');assert.equal(await page.locator('[data-plan-material="1"] [data-plan-coverage]').innerText(),'0%');await button(100).click();assert.equal(await quantity(),'91');await button(1000).click();assert.equal(await quantity(),'991');
+ await button(10).click();assert.equal(await quantity(),'1');assert.equal(await page.locator('[data-plan-material="1"] [data-plan-coverage]').innerText(),'0%');await button(100).click();assert.equal(await quantity(),'91');await button(1000).click();assert.equal(await quantity(),'991');assert.notEqual(await page.locator('[data-plan-time]').innerText(),'—');
  assert.equal(await page.locator('[data-plan-item]').count(),1);assert.equal(await button(10).isDisabled(),true);assert.equal(await button(100).isDisabled(),true);assert.match(await page.locator('#collection-plan-summary').innerText(),/14/);assert.equal(await page.locator('[data-collection-key="40:41:1000"]').evaluate(e=>e.open),false);
  assert.equal(await page.locator('.collection-information').getByText('纯动作估算',{exact:true}).count(),0);
  assert.equal(await page.locator('#collection-plan').getByText('纯动作估算',{exact:true}).count(),0);
@@ -250,13 +250,26 @@ try{
  assert.match(await page.evaluate(()=>window.clipboardValue),/^DVILAB-PLAN:/);
  await page.locator('[data-plan-import]').click();
  await page.locator('[data-plan-export]').click();await until(()=>!document.querySelector('[data-plan-export]').disabled);assert.equal(await page.evaluate(()=>window.clipboardValue),await page.evaluate(()=>window.compressedClipboard));
+ assert.equal(await page.locator('#collection-plan-summary [data-plan-clipboard-status]').innerText(),'Plan copied to clipboard');
  const exported=await page.evaluate(()=>window.clipboardValue),saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-collection-plan-v1')));
  assert.deepEqual(await page.evaluate(async value=>(await import('/src/collection-plan-transfer.js')).decodeCollectionPlan(value),exported),saved);
  await page.locator('[data-plan-clear]').click();await page.locator('[data-plan-import]').click();await until(()=>!document.querySelector('[data-plan-import]').disabled);
  assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-collection-plan-v1'))),saved);
+ assert.equal(await page.locator('#collection-plan-summary [data-plan-clipboard-status]').innerText(),'Plan imported from clipboard.');
+ for(const language of ['zh','en'])for(const width of [320,390,1440]){
+  await page.selectOption('#language',language);await page.setViewportSize({width,height:960});
+  const summary=await page.locator('#collection-plan-summary').innerText();
+  const labels=language==='zh'?['已选方案','已完成','所选目标奖励','期望材料成本','期望时间成本','计划已从剪贴板导入。']:['Selected routes','Completed','Selected target rewards','Expected material cost','Expected time cost','Plan imported from clipboard.'];
+  let previous=-1;for(const label of labels){const index=summary.indexOf(label);assert.ok(index>previous);previous=index;}
+  assert.equal(await page.locator('#collection-plan-summary [data-plan-clipboard-status]').evaluate(e=>getComputedStyle(e).color),'rgb(239, 154, 148)');
+  assert.equal(await page.locator('#collection-plan > [data-plan-clipboard-status]').count(),0);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  await page.locator('#collection-plan').screenshot({path:path.join(directory,`summary-${language}-${width}.png`)});
+ }
+ results.cases.push('summary follows requested label order, shows expected time and inline red import status in both languages at 320/390/1440px');
  for(const value of ['bad-json','DVILAB-PLAN:bad!',JSON.stringify({version:1,selections:[{itemId:40,jobId:41,target:99}]})]){
   await page.evaluate(value=>window.clipboardValue=value,value);await page.locator('[data-plan-import]').click();
-  assert.match(await page.locator('[data-plan-clipboard-status]').innerText(),/Invalid plan/);
+  assert.match(await page.locator('[data-plan-clipboard-status]').innerText(),/Invalid plan/);assert.equal(await page.locator('#collection-plan-summary [data-plan-clipboard-status]').count(),0);assert.equal(await page.locator('[data-plan-clipboard-status]').getAttribute('role'),'alert');
   assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-collection-plan-v1'))),saved);
  }
  await page.evaluate(()=>window.clipboardFail=true);
@@ -267,7 +280,7 @@ try{
  await until(()=>!document.querySelector('[data-plan-import]').disabled);
  assert.match(await page.locator('[data-plan-clipboard-status]').innerText(),/plan changed/);
  assert.equal(await page.locator('[data-plan-item]').count(),0);
- await page.locator('[data-plan-export]').click();await until(()=>!document.querySelector('[data-plan-export]').disabled);assert.deepEqual(await page.evaluate(()=>JSON.parse(window.clipboardValue)),{version:1,selections:[]});
+ await page.locator('[data-plan-export]').click();await until(()=>!document.querySelector('[data-plan-export]').disabled);assert.deepEqual(await page.evaluate(()=>JSON.parse(window.clipboardValue)),{version:1,selections:[]});assert.equal(await page.locator('[data-plan-time]').innerText(),'0.0 s');assert.equal(await page.locator('#collection-plan-summary [data-plan-clipboard-status]').innerText(),'Plan copied to clipboard');
  results.cases.push('clipboard bilingual button order, roundtrip replacement, invalid JSON/target, permission failure, stale response rejection and empty export');
  await context.close();
  const broken=await browser.newContext();await broken.addInitScript(()=>{localStorage.setItem('dvi-collection-plan-v1','bad-json');localStorage.setItem('dvi-collection-auto-import-v1','bad-json');});const badPage=await broken.newPage();await badPage.goto(new URL('/collection',base).href);assert.match(await badPage.locator('#collection-plan').innerText(),/could not be read|无法读取/);assert.equal(await badPage.locator('#collection-auto-status').isVisible(),true);assert.match(await badPage.locator('#collection-auto-status').innerText(),/could not be read|无法读取/);assert.equal(await badPage.locator('#collection-auto-import').isChecked(),false);assert.equal(await badPage.evaluate(()=>localStorage.getItem('dvi-collection-plan-v1')),'bad-json');await badPage.locator('[data-plan-clear]').click();assert.equal(await badPage.locator('#collection-plan [role="alert"]').count(),0);await broken.close();
