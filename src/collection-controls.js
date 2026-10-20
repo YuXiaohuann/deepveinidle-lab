@@ -16,7 +16,7 @@ import {collectionAutoImportStorageKey,validateCollectionAutoImport,createCollec
 let state,language='zh',status=null,marketStatus=null,marketBusy=false,busy=false,saveError=false,loadError=false,error=null,rows=[];
 let query='',routeType='craft',skill='all',tier='all',sort='costPerPoint',onlyLevelMet=true,includeComplete=false,page=1,filterError=null;
 const planSort={selections:{key:null,direction:'asc'},materials:{key:null,direction:'asc'}};
-let planHideCompleted=true,clipboardBusy=false,clipboardStatus=null;
+let clipboardBusy=false,clipboardStatus=null;
 let calculationNow=Date.now(),active=false,plan=collectionPlanDefaults(),planLoadError=false,planSaveError=false,autoEnabled=false,autoLoadError=false,autoSaveError=false,autoImporter;
 
 const union=(a,b,key)=>[...new Map([...a,...b].map(v=>[key?v[key]:v,v])).values()];
@@ -210,6 +210,7 @@ function planButton(row){
 }
 async function transferPlan(action){
  if(clipboardBusy||planLoadError)return;
+ if(action==='import'&&!window.confirm(text('从剪贴板导入将替换当前计划，确定继续吗？','Importing from clipboard will replace the current plan. Continue?')))return;
  const original=plan;
  clipboardBusy=true;clipboardStatus=null;updatePlan();
  try{
@@ -230,9 +231,10 @@ async function transferPlan(action){
 }
 function updatePlan(){
  const link=document.getElementById('collection-plan-link');if(link)link.textContent=text('已选方案：','Selected routes: ')+plan.selections.length;
- renderCollectionPlan(document.getElementById('collection-plan'),{state,plan,prices:getSnapshot(),language,formatDuration:duration,now:calculationNow,loadError:planLoadError,saveError:planSaveError,statusText:message,sort:planSort,onSort:updatePlan,hideCompleted:planHideCompleted,onHideCompleted:value=>{planHideCompleted=value;updatePlan();},
+ renderCollectionPlan(document.getElementById('collection-plan'),{state,plan,prices:getSnapshot(),language,formatDuration:duration,now:calculationNow,loadError:planLoadError,saveError:planSaveError,statusText:message,sort:planSort,onSort:updatePlan,
   clipboardBusy,clipboardStatus,onExport:()=>transferPlan('export'),onImport:()=>transferPlan('import'),
-  onClear:()=>{clipboardStatus=null;planLoadError=false;plan=collectionPlanDefaults();savePlan();updateResults();},
+  onClearCompleted:completedIds=>changePlan(()=>({...plan,selections:plan.selections.filter(entry=>!completedIds.has(entry.itemId))})),
+  onClear:()=>{if(!window.confirm(text('确定清空全部执行计划吗？','Clear the entire execution plan?')))return;clipboardStatus=null;planLoadError=false;plan=collectionPlanDefaults();savePlan();updateResults();},
   onTarget:(itemId,target)=>changePlan(()=>setCollectionPlanTarget(plan,itemId,target)),
   onRemove:itemId=>changePlan(()=>removeCollectionPlan(plan,itemId))});
 }

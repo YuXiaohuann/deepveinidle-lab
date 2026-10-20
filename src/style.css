@@ -277,9 +277,10 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
 
 .collection-information>#collection-plan{margin-top:20px;scroll-margin-top:20px}
 .collection-plan-toolbar{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+.collection-plan-toolbar-group{display:flex;align-items:center;gap:8px}.collection-plan-clear-group{border-left:1px solid var(--line);padding-left:8px}
 #collection-plan>.panel-heading{flex-wrap:wrap;gap:8px}
 .collection-plan-toggle{display:block;margin-top:0;text-align:left}.collection-plan-toggle[aria-pressed=true]{color:var(--gold)}.collection-plan-toggle:disabled{cursor:default}
-.collection-plan-overview{display:flex;align-items:center;justify-content:space-between;gap:8px 16px;flex-wrap:wrap;margin:12px 0}.collection-plan-overview p{margin:0;flex:1 1 420px}.collection-plan-overview .check{margin:0;white-space:nowrap}
+.collection-plan-overview{margin:12px 0}.collection-plan-overview p{margin:0}
 .collection-plan-table-wrap{max-width:100%;overflow-x:auto;margin:16px 0}
 .collection-plan-table{width:100%;min-width:0;white-space:normal;table-layout:auto}
 .collection-plan-table th,.collection-plan-table td{padding:8px 4px;overflow-wrap:anywhere;vertical-align:top}
