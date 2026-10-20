@@ -141,7 +141,8 @@ try{
   await page.locator('#price-import-reset').click();assert.deepEqual((await stored()).preferences,priceDefaults().preferences);assert.equal(requests,1);assert.equal((await stored()).prices[1].locked,true);
   await page.screenshot({path:path.join(directory,`category-height-${language}-${width}.png`)});
   await page.reload();await page.locator('#item-prices-open').waitFor();assert.equal(requests,1);assert.equal(await page.locator('#price-auto-notice').count(),0);
-  await page.evaluate(()=>localStorage.setItem('dvi-price-auto-import-at-v1',String(Date.now()-300000)));await page.reload();await page.locator('#price-auto-notice').waitFor();assert.equal(requests,2);
+  await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await page.waitForTimeout(50);assert.equal(requests,1);
+  await page.evaluate(()=>{localStorage.setItem('dvi-price-auto-import-at-v1',String(Date.now()-300000));window.dispatchEvent(new Event('focus'));});await page.locator('#price-auto-notice').waitFor();assert.equal(requests,2);
   result.cases.push(`${language} ${width}px: automatic background import, completion notice/dismiss, locks, default asks, independent floors, compact category rows, reset preserves prices, reload within five minutes and import after five minutes`);
   await context.close();
  }

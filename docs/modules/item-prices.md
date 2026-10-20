@@ -16,7 +16,7 @@
 
 字段状态使用 `available`（有效）、`noOrders`（价格明确无单）、`unread`（未读取／旧缓存无数量）和 `invalid`（缺失或非法官方字段）；数量为 0 时仍为 available。
 
-`subscribe(listener)` 通知 `prices/market/preferences` 三类变化及递增 revision；页面按依赖重估，不重跑模拟。仅存储异常变化也通知界面。`setPrice` 自动锁定，`setLocked`、`clearPrices`、`setPreferences`、`resetPreferences` 统一执行写入及保存。`importPrices` 更新行情并按选项导入未锁定物品价格；`refreshMarket` 只更新行情。并发请求共用、超时、防倒退、打开网站时五分钟间隔及错误保留遵循共用价格规则。
+`subscribe(listener)` 通知 `prices/market/preferences` 三类变化及递增 revision；页面按依赖重估，不重跑模拟。仅存储异常变化也通知界面。`setPrice` 自动锁定，`setLocked`、`clearPrices`、`setPreferences`、`resetPreferences` 统一执行写入及保存。`importPrices` 更新行情并按选项导入未锁定物品价格；`refreshMarket` 只更新行情。并发请求共用、超时、防倒退、打开或聚焦网站时五分钟间隔及错误保留遵循共用价格规则。
 
 ## 页面采用规则
 

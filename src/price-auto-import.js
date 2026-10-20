@@ -1,7 +1,18 @@
 import {importAutomatically} from './price-service.js';
 import {marketErrors} from './market-import.js';
 
-export async function startAutomaticPriceImport(getLanguage){
+export function startAutomaticPriceImport(getLanguage){
+ let busy=false;
+ const trigger=async()=>{
+  if(busy)return;
+  busy=true;
+  try{await notifyAutomaticPriceImport(getLanguage);}finally{busy=false;}
+ };
+ window.addEventListener('focus',trigger);
+ return trigger();
+}
+
+async function notifyAutomaticPriceImport(getLanguage){
  let result,error;
  try{result=await importAutomatically();}catch(cause){error=cause.message;}
  if(!result&&!error)return;
@@ -12,6 +23,7 @@ export async function startAutomaticPriceImport(getLanguage){
   priceReadFailed:['价格存储读取失败，自动导入已跳过。','Could not read saved prices. Automatic import was skipped.'],
   priceSaveFailed:['自动导入结果未保存：浏览器存储不可用，当前内存价格仍有效。','Imported prices could not be saved. Browser storage is unavailable; prices still apply in memory.'],
  };
+ document.getElementById('price-auto-notice')?.click();
  const notification=document.createElement('div');notification.id='price-auto-notice';notification.className='price-auto-notice';
  const message=document.createElement('span');message.setAttribute('role',error?'alert':'status');
  message.textContent=error?(zh?'物品价格自动导入失败：':'Automatic price import failed: ')+(marketErrors[error]??storageErrors[error]??[error,error])[zh?0:1]:(zh?`物品价格自动导入完成，已更新 ${result.stats.updated} 项价格。`:`Automatic price import complete. Updated ${result.stats.updated} prices.`);
