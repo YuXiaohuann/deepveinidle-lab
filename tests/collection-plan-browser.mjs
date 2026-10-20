@@ -282,6 +282,53 @@ try{
  assert.equal(await page.locator('[data-plan-item]').count(),0);
  await page.locator('[data-plan-export]').click();await until(()=>!document.querySelector('[data-plan-export]').disabled);assert.deepEqual(await page.evaluate(()=>JSON.parse(window.clipboardValue)),{version:1,selections:[]});assert.equal(await page.locator('[data-plan-time]').innerText(),'0.0 s');assert.equal(await page.locator('#collection-plan-summary [data-plan-clipboard-status]').innerText(),'Plan copied to clipboard');
  results.cases.push('clipboard bilingual button order, roundtrip replacement, invalid JSON/target, permission failure, stale response rejection and empty export');
+ await page.evaluate(()=>{
+  window.clipboardHold=false;window.planProgress=9;window.planBank={1:90,2:91};window.planPack=[{itemId:1,qty:1}];
+  window.clipboardValue=JSON.stringify({version:1,selections:[{itemId:40,jobId:41,target:100},{itemId:1040,jobId:41,target:10}]});
+ });
+ await page.locator('[data-plan-import]').click();await until(()=>!document.querySelector('[data-plan-import]').disabled);
+ await page.locator('#collection-import').click();await until(()=>!document.querySelector('#collection-import').disabled);
+ const readyRow=page.locator('[data-plan-item="40"]'),rareRow=page.locator('[data-plan-item="1040"]');
+ assert.equal(await readyRow.evaluate(e=>e.classList.contains('collection-plan-ready')),true);
+ assert.equal(await rareRow.evaluate(e=>e.classList.contains('collection-plan-ready')),false);
+ assert.equal(await readyRow.locator('td:first-child[aria-describedby]').getAttribute('title'),'Expected materials ready');
+ const planBeforeReady=await page.evaluate(()=>localStorage.getItem('dvi-collection-plan-v1'));
+ await page.evaluate(async()=>{const {priceState,updatePrices}=await import('/src/item-price-store.js');updatePrices({...priceState(),quotes:{}});});
+ assert.equal(await readyRow.locator('td:first-child[aria-describedby]').count(),1);
+ await page.locator('[data-plan-table="selections"][data-plan-sort="item"]').click();
+ for(const language of ['zh','en'])for(const width of [320,390,1440]){
+  await page.selectOption('#language',language);await page.setViewportSize({width,height:960});
+  assert.equal(await readyRow.locator('td:first-child[aria-describedby]').getAttribute('title'),language==='zh'?'期望材料已备齐':'Expected materials ready');
+  assert.equal(await rareRow.locator('td:first-child[aria-describedby]').count(),0);
+  assert.ok(await readyRow.locator('td:first-child').evaluate(cell=>{
+   const description=document.getElementById(cell.getAttribute('aria-describedby'));
+   return description?.hidden&&description.textContent===cell.title&&!cell.innerText.includes(cell.title);
+  }));
+  assert.ok(await readyRow.evaluate(row=>{
+   const measure=()=>({height:row.getBoundingClientRect().height,widths:[...row.cells].map(cell=>cell.getBoundingClientRect().width)});
+   const before=measure();row.classList.remove('collection-plan-ready');const after=measure();row.classList.add('collection-plan-ready');
+   return Math.abs(before.height-after.height)<.1&&before.widths.every((width,i)=>Math.abs(width-after.widths[i])<.1);
+  }));
+  assert.ok(await readyRow.locator('td:first-child').evaluate(cell=>{
+   const marker=getComputedStyle(cell,'::before');return marker.position==='absolute'&&marker.width==='2px'&&marker.backgroundColor==='rgb(125, 201, 179)';
+  }));
+  assert.ok(await readyRow.evaluate(e=>[...e.cells].every(cell=>getComputedStyle(cell).backgroundColor==='rgb(27, 51, 50)')));
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  const wrap=page.locator('.collection-plan-selections').locator('..');await wrap.evaluate(e=>e.scrollLeft=e.scrollWidth);
+  assert.equal(await readyRow.locator('td:first-child').evaluate(e=>getComputedStyle(e).position),'sticky');
+  await wrap.evaluate(e=>e.scrollLeft=0);
+  await page.locator('#collection-plan').screenshot({path:path.join(directory,`materials-ready-${language}-${width}.png`)});
+ }
+ assert.equal(await page.evaluate(()=>localStorage.getItem('dvi-collection-plan-v1')),planBeforeReady);
+ await page.locator('[data-plan-increase="40"]').click();assert.equal(await readyRow.locator('td:first-child[aria-describedby]').count(),0);
+ await page.locator('[data-plan-decrease="40"]').click();assert.equal(await readyRow.locator('td:first-child[aria-describedby]').count(),1);
+ await page.evaluate(()=>{window.planBank={1:89,2:91};});await page.locator('#collection-import').click();await until(()=>!document.querySelector('#collection-import').disabled);
+ assert.equal(await readyRow.locator('td:first-child[aria-describedby]').count(),0);
+ await page.evaluate(()=>{window.planProgress=100;});await page.locator('#collection-import').click();await until(()=>!document.querySelector('#collection-import').disabled);
+ await page.locator('#collection-plan-hide-completed').uncheck();assert.match(await readyRow.locator('[data-plan-progress]').innerText(),/Completed/);assert.equal(await readyRow.locator('td:first-child[aria-describedby]').count(),0);
+ await page.evaluate(()=>{const state=JSON.parse(localStorage.getItem('dvi-collection-v1'));state.counts={40:9};state.pack=null;localStorage.setItem('dvi-collection-v1',JSON.stringify(state));});await page.reload();
+ assert.equal(await page.locator('td:first-child[aria-describedby]').count(),0);
+ results.cases.push('all dependency stocks must cover global demand; pack stock, quality separation, quote/sort/language redraw, target changes, role imports, completed/unknown stock, unchanged storage, compact marker without layout changes, tooltip/accessible description and sticky ready background at 320/390/1440px');
  await context.close();
  const broken=await browser.newContext();await broken.addInitScript(()=>{localStorage.setItem('dvi-collection-plan-v1','bad-json');localStorage.setItem('dvi-collection-auto-import-v1','bad-json');});const badPage=await broken.newPage();await badPage.goto(new URL('/collection',base).href);assert.match(await badPage.locator('#collection-plan').innerText(),/could not be read|无法读取/);assert.equal(await badPage.locator('#collection-auto-status').isVisible(),true);assert.match(await badPage.locator('#collection-auto-status').innerText(),/could not be read|无法读取/);assert.equal(await badPage.locator('#collection-auto-import').isChecked(),false);assert.equal(await badPage.evaluate(()=>localStorage.getItem('dvi-collection-plan-v1')),'bad-json');await badPage.locator('[data-plan-clear]').click();assert.equal(await badPage.locator('#collection-plan [role="alert"]').count(),0);await broken.close();
  results.cases.push('clear plan preserves character; invalid plan/auto settings are visible and kept until explicit repair');

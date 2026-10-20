@@ -72,6 +72,11 @@ export function calculateCollectionPlan(state,raw,prices,{now=Date.now()}={}){
   if(cost!==null&&knownCost!==null){knownCost+=cost;if(!Number.isFinite(knownCost)||knownCost>Number.MAX_SAFE_INTEGER){knownCost=null;amountOverflow=true;}}
   return {...material,...quote,quantity,inventory,purchase,cost,overflow};
  });
+ const coveredMaterials=new Set(priced.filter(material=>material.quantity>0&&material.inventory!==null&&material.inventory>=material.quantity).map(material=>String(material.itemId)));
+ for(const entry of entries){
+  const dependencies=Object.keys(entry.materials);
+  entry.materialsReady=entry.status==='ok'&&dependencies.length>0&&dependencies.every(id=>coveredMaterials.has(id));
+ }
  const complete=blockedCount===0&&!quantityOverflow&&!amountOverflow&&!missingInventory&&missingPrices===0;
  return {entries,materials:priced,blockedCount,completedCount,quantityOverflow,amountOverflow,timeOverflow,seconds,missingInventory,missingPrices,points:blockedCount||quantityOverflow?null:points,knownCost,cost:complete?knownCost:null,complete:complete&&!timeOverflow};
 }

@@ -134,3 +134,39 @@ test('plan time adds independent remaining routes, ignores prices/stock and coun
  assert.ok(blocked);const unavailable=validateCollectionPlan({version:1,selections:[pick(40,100),{itemId:blocked.output.itemId,jobId:blocked.id,target:game.collectionThresholds(blocked.output.itemId)[0]}]});
  assert.equal(calculateCollectionPlan(s,unavailable,priced(),{now}).seconds,null);
 });
+
+test('material readiness requires every dependency, combines pack stock and keeps qualities independent',()=>{
+ const s=state(),plan=validateCollectionPlan({version:1,selections:[pick(40,10),pick(1040,10)]});
+ const ready=()=>calculateCollectionPlan(s,plan,priceDefaults()).entries.map(e=>e.materialsReady);
+ s.bank={1:10,2:9};assert.deepEqual(ready(),[false,false]);
+ s.pack={2:1};assert.deepEqual(ready(),[true,false]);
+ s.bank={1:10,2:10,1001:10,1002:10};assert.deepEqual(ready(),[true,true]);
+ const raised=setCollectionPlanTarget(plan,40,100);assert.deepEqual(calculateCollectionPlan(s,raised,priceDefaults()).entries.map(e=>e.materialsReady),[false,true]);
+ s.pack=null;assert.deepEqual(ready(),[false,false]);s.pack={};s.bank=null;assert.deepEqual(ready(),[false,false]);
+ assert.deepEqual(plan,validateCollectionPlan(plan));assert.equal('materialsReady' in plan.selections[0],false);
+});
+test('shared stock must cover the whole plan and is never independently claimed twice',()=>{
+ const s=state();s.config.levels.smithing=game.maxLevel;
+ const plan=validateCollectionPlan({version:1,selections:[pick(41,10),pick(42,10)]});
+ s.bank={3:10,5:20};const short=calculateCollectionPlan(s,plan,priceDefaults());
+ assert.equal(short.materials.find(m=>m.itemId===3).quantity,20);assert.deepEqual(short.entries.map(e=>e.materialsReady),[false,false]);
+ s.pack={3:10};assert.deepEqual(calculateCollectionPlan(s,plan,priceDefaults()).entries.map(e=>e.materialsReady),[true,true]);
+ const removed=removeCollectionPlan(plan,42);s.pack={};assert.equal(calculateCollectionPlan(s,removed,priceDefaults()).entries[0].materialsReady,true);
+});
+test('completed, uninitialized, blocked and no-input routes never show material readiness',()=>{
+ const s=state(),bronze=addCollectionPlan(collectionPlanDefaults(),pick(40,10));s.bank={1:100,2:100};
+ s.counts[40]=10;assert.equal(calculateCollectionPlan(s,bronze,priced()).entries[0].materialsReady,false);
+ s.initialized=false;s.counts={};assert.equal(calculateCollectionPlan(s,bronze,priced()).entries[0].materialsReady,false);
+ s.initialized=true;const iron=addCollectionPlan(collectionPlanDefaults(),pick(41,10));
+ const blocked=calculateCollectionPlan(s,iron,priced()).entries[0];assert.equal(blocked.status,'levelTooLow');assert.equal(blocked.materialsReady,false);
+ const gather=addCollectionPlan(collectionPlanDefaults(),pick(1,10));const entry=calculateCollectionPlan(s,gather,priced()).entries[0];
+ assert.equal(entry.status,'ok');assert.deepEqual(entry.materials,{});assert.equal(entry.materialsReady,false);
+});
+test('readiness follows expected burn demand rounded after aggregation',()=>{
+ const s=state(),job=game.recipes.find(j=>j.skill==='cooking'&&j.burn&&!j.retired);s.config.levels.cooking=job.levelReq;
+ const plan=validateCollectionPlan({version:1,selections:[{itemId:job.output.itemId,jobId:job.id,target:1}]});
+ const initial=calculateCollectionPlan(s,plan,priced());assert.equal(initial.entries[0].status,'ok');
+ for(const m of initial.materials)s.bank[m.itemId]=m.quantity;
+ assert.equal(calculateCollectionPlan(s,plan,priceDefaults()).entries[0].materialsReady,true);
+ const id=initial.materials[0].itemId;s.bank[id]--;assert.equal(calculateCollectionPlan(s,plan,priceDefaults()).entries[0].materialsReady,false);
+});
