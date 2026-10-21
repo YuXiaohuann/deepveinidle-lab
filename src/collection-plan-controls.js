@@ -23,10 +23,9 @@ export function renderCollectionPlan(host,{state,plan,prices,language,formatDura
   return `<th scope="col"${key?` aria-sort="${active?(current.direction==='asc'?'ascending':'descending'):'none'}"`:''}>${key?`<button class="sort-header" data-plan-sort="${key}" data-plan-table="${table}">${text(zh,en)} <span class="sort-arrow" aria-hidden="true">${active?(current.direction==='asc'?'↑':'↓'):'↕'}</span></button>`:text(zh,en)}</th>`;
  }).join('');
  const percentage=(current,target)=>target===0?100:Math.floor(Math.min(current,target)*100/target);
- const coverage=material=>material.inventory===null||material.quantity===null?null:material.quantity===0?1:Math.min(1,material.inventory/material.quantity);
  const stock=material=>{
-  const ratio=coverage(material);
-  return `<span data-plan-inventory>${number(material.inventory,0)}</span> / <span data-plan-quantity>${number(material.quantity,0)}</span> · <span data-plan-coverage>${ratio===null?'—':number(percentage(material.inventory,material.quantity),0)+'%'}</span>`;
+  const unknown=material.inventory===null||material.quantity===null;
+  return `<span data-plan-inventory>${number(material.inventory,0)}</span> / <span data-plan-quantity>${number(material.quantity,0)}</span> · <span data-plan-coverage>${unknown?'—':number(percentage(material.inventory,material.quantity),0)+'%'}</span>`;
  };
  const sorted=(rows,table)=>{
   const {key,direction}=sort[table];

@@ -33,7 +33,7 @@ export function simulateCollection(state,id,jobId,{target:goal,seed=0,maxTicks=M
    if(['produced','burnt','caught'].includes(event.kind))result.attempts++;
    if(event.kind==='produced'||event.kind==='burnt'){
     for(const input of game.recipeInputs(job,tier))result.materials[input.itemId]=(result.materials[input.itemId]??0)+input.qty;
-    // Only main products and burnt products contribute to this route's recovery value.
+    // Keep actual main and burnt outputs for offline event regression.
     if(event.itemId!==game.coinItemId){result.outputs[event.itemId]=(result.outputs[event.itemId]??0)+(event.qty??1);}
     if(event.kind==='produced'&&event.itemId===id)result.quantity+=event.qty??1;
    }

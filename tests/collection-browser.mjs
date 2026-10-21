@@ -19,6 +19,7 @@ const directory=path.resolve(args['--out']??'.test-artifacts/collection');await 
 let base=args['--url'],server,browser;
 if(base){const url=new URL(base);assert.ok(['http:','https:'].includes(url.protocol),'Expected HTTP(S) URL');base=url.origin;}
 const results={cases:[],errors:[]};
+function trackPage(page){page.setDefaultTimeout(15000);page.on('pageerror',error=>results.errors.push(error.message));return page;}
 try{
  if(!base){
   const socket=net.createServer();socket.listen(0,'127.0.0.1');await once(socket,'listening');const port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
@@ -30,7 +31,7 @@ try{
  browser=await chromium.launch({headless:true,executablePath:await browserPath()});const context=await browser.newContext({viewport:{width:1440,height:960}});
  const build=preset('ranged');build.manual.enemySelection=`monster-${game.monsters[0].id}`;build.manual.simulationHours=1;
  await context.addInitScript(build=>{if(!localStorage.getItem('dvi-simulator-v1'))localStorage.setItem('dvi-simulator-v1',JSON.stringify({language:'zh',state:build}));window.collectionWorkers=0;const OriginalWorker=Worker;window.Worker=class extends OriginalWorker{constructor(url,options){super(url,options);if(String(url).includes('collection-worker.js'))window.collectionWorkers++;}};},build);
- const page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>results.errors.push(e.message));let marketRequests=0;page.on('request',r=>{if(r.url().includes('/api/market/'))marketRequests++;});
+ const page=trackPage(await context.newPage());let marketRequests=0;page.on('request',r=>{if(r.url().includes('/api/market/'))marketRequests++;});
  await context.route('https://deepveinidle.com/api/market/prices.json',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({game:'Deep Vein Idle',generatedAt:new Date().toISOString(),refreshSeconds:60,items:{40:{lowestSell:25,highestBuy:20}}})}));
  await page.goto(new URL('/collection/',base).href);await page.locator('#collection-section').waitFor({state:'visible'});
  assert.equal(await page.locator('[data-section="collection"]').count(),0);assert.equal(await page.locator('.collection-card').count(),0);
@@ -162,7 +163,7 @@ try{
  await page.locator('#collection-filter-points').fill('-1');assert.equal(await page.locator('.collection-card').count(),0);assert.match(await page.locator('#collection-error').innerText(),/筛选数值无效/);await page.locator('#collection-filter-points').fill('');await page.locator('#collection-filter-cost').fill('');await page.locator('#collection-filter-minutes').fill('');
  await page.locator('#collection-type').selectOption('gather');assert.ok(await page.locator('.collection-card').count()>0);await page.locator('#collection-type').selectOption('craft');
  const lockedJob=game.recipes.find(j=>j.skill==='smithing'&&j.levelReq>1&&!j.retired&&game.collectionItems.has(j.output.itemId));await page.locator('#collection-search').fill(game.item(lockedJob.output.itemId).name);assert.equal(await page.locator('.collection-card').count(),0);await page.locator('#collection-levels').evaluate(e=>e.open=true);await page.locator('[data-collection-path="config.levels.smithing"]').fill(String(lockedJob.levelReq));await page.locator('[data-collection-path="config.levels.smithing"]').press('Tab');assert.ok(await cards().count()>0);await page.locator('[data-collection-path="config.levels.smithing"]').fill('1');await page.locator('[data-collection-path="config.levels.smithing"]').press('Tab');assert.equal(await cards().count(),0);
- results.cases.push('two ascending numeric sorts, inclusive limits, type intersections and fixed level eligibility update with skill changes');
+ results.cases.push('two ascending numeric sorts, inclusive limits, type switching and fixed level eligibility update with skill changes');
  await page.evaluate(()=>{window.testCollectionMissing=false;document.addEventListener('dvi-character-request',async event=>{const request=JSON.parse(event.detail);if(request.action!=='read')return;const {createScenario}=await import('/src/simulation.js');const {craftingSlots,craftingSkills}=await import('/src/crafting-model.js');const {gatheringSlots,gatheringSkills}=await import('/src/gathering-model.js');const {game}=await import('/src/model.js');const {player}=createScenario({});for(const skill of [...craftingSkills,...gatheringSkills])player.skills[skill]=game.levelXp(1);for(const slot of [...craftingSlots,...gatheringSlots])player.equipment[slot]=null;Object.assign(player,{house:{},houseFurniture:{},collections:{40:99,42341:1,42343:1,53341:2,53343:1},masteries:{},perks:{},ironman:false,homeBank:null});if(window.testCollectionBonuses){player.brews.hunter=player.lastTick+6000;player.brewTier.hunter=3;player.brews.elixir=player.lastTick+6000;player.brewTier.elixir=1;player.brews.blessing=player.lastTick+6000;player.guildBonus=.0125;}if(window.testCollectionMissing)delete player.collections;document.dispatchEvent(new CustomEvent('dvi-character-response',{detail:JSON.stringify({source:'dvi-character-script',version:'2.4',id:request.id,snapshot:{version:2,capturedAt:Date.now(),player,worldBuffsVersion:window.testCollectionBonuses?1:undefined,worldTick:player.lastTick,worldBuffs:window.testCollectionBonuses?[{fromTick:player.lastTick,toTick:player.lastTick+6000,xpMult:1.0275,rarityMult:1.0875}]:[],guild:null}})}));});});
  await page.locator('#collection-import-panel').evaluate(e=>e.open=true);await page.locator('#collection-import').click();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('dvi-collection-v1'))?.counts[40]===99);
  assert.match(await page.locator('#collection-buff-warning').innerText(),/已跳过 4 条/);await page.selectOption('#language','en');assert.match(await page.locator('#collection-buff-warning').innerText(),/skipped 4/);await page.selectOption('#language','zh');
@@ -198,9 +199,68 @@ await openFirst();assert.deepEqual(await headings(),['材料采购']);
  await page.locator('#collection-filter-points').fill('0');assert.equal(await cards().count(),0);
  await page.locator('#collection-search').fill('Steel bar');assert.equal(await cards().count(),0);await page.reload();assert.equal(await cards().count(),0);assert.equal(await page.locator('#collection-search').inputValue(),'Steel bar');assert.doesNotMatch(await page.locator('#collection-save').innerText(),/筛选无法读取/);
  results.cases.push('completed and level-ineligible routes stay excluded, removed controls are absent, type-specific filters survive refresh');
- assert.equal(await page.locator('#collection-error').innerText(),'');assert.equal(await page.evaluate(()=>window.collectionWorkers),0);assert.ok(marketRequests>0);assert.deepEqual(results.errors,[]);await context.close();
- const broken=await browser.newContext();await broken.addInitScript(()=>{localStorage.setItem('dvi-collection-v1','invalid-json');localStorage.setItem('dvi-collection-filters-v2','invalid-json');const original=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key==='dvi-collection-v1'||key==='dvi-collection-filters-v2')throw Error('quota');return original.call(this,key,value);};});const errorPage=await broken.newPage();await errorPage.goto(new URL('/collection',base).href);assert.match(await errorPage.locator('#collection-save').innerText(),/could not be read|无法读取/);await errorPage.locator('#collection-manual').click();assert.match(await errorPage.locator('#collection-save').innerText(),/Save failed|保存失败/);assert.ok(await errorPage.locator('.collection-card').count()>0);assert.match(await errorPage.locator('#collection-save').innerText(),/Filters could not be read|筛选无法读取/);await errorPage.locator('#collection-search').fill('Bronze bar');assert.match(await errorPage.locator('#collection-save').innerText(),/Filters could not be saved|筛选保存失败/);assert.ok(await errorPage.locator('.collection-card').count()>0);await errorPage.locator('#collection-type').selectOption('gather');await errorPage.locator('#collection-search').fill('Copper');await errorPage.locator('#collection-type').selectOption('craft');assert.equal(await errorPage.locator('#collection-search').inputValue(),'Bronze bar');await broken.close();results.cases.push('storage read/quota errors remain visible with usable estimates and independent in-memory type profiles');
- const cleanup=await browser.newContext();await cleanup.addInitScript(()=>{localStorage.setItem('dvi-collection-filters-v1','old');window.failCleanup=true;const remove=Storage.prototype.removeItem;Storage.prototype.removeItem=function(key){if(key==='dvi-collection-filters-v1'&&window.failCleanup)throw Error('denied');return remove.call(this,key);};});const cleanupPage=await cleanup.newPage();await cleanupPage.goto(new URL('/collection',base).href);assert.equal(await cleanupPage.locator('#collection-type').inputValue(),'craft');assert.equal(await cleanupPage.locator('#collection-search').inputValue(),'');assert.match(await cleanupPage.locator('#collection-save').innerText(),/old filters could not be removed|旧存档无法删除/);await cleanupPage.locator('#collection-search').fill('Bronze');assert.match(await cleanupPage.locator('#collection-save').innerText(),/could not be saved|筛选保存失败/);await cleanupPage.evaluate(()=>window.failCleanup=false);await cleanupPage.locator('#collection-search').fill('Bronze bar');assert.doesNotMatch(await cleanupPage.locator('#collection-save').innerText(),/could not|失败|无法/);assert.equal(await cleanupPage.evaluate(()=>localStorage.getItem('dvi-collection-filters-v1')),null);await cleanup.close();results.cases.push('old-storage removal failures are visible and recover on successful retry');
+ assert.equal(await page.locator('#collection-error').innerText(),'');assert.equal(await page.evaluate(()=>window.collectionWorkers),0);assert.ok(marketRequests>0);
+ const validFilters=await page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-collection-filters-v2')));
+ await context.close();
+ // Reject the whole invalid filter record before applying either type's fields.
+ for(const mode of ['json','version','missingProfile','wrongSkill','readFailure','legacyOnly']){
+  const invalid=await browser.newContext();
+  const saved=structuredClone(validFilters);saved.routeType='gather';saved.profiles.gather.query='must not partially restore';
+  if(mode==='version')saved.version=1;
+  if(mode==='missingProfile')delete saved.profiles.craft;
+  if(mode==='wrongSkill')saved.profiles.craft.skill='mining';
+  const raw=mode==='json'?'{invalid':JSON.stringify(saved);
+  await invalid.addInitScript(({mode,raw})=>{
+   localStorage.setItem('dvi-collection-filters-v1',JSON.stringify({version:1,routeType:'all',query:'old query'}));
+   if(mode!=='legacyOnly')localStorage.setItem('dvi-collection-filters-v2',raw);
+   if(mode==='readFailure'){
+    const read=Storage.prototype.getItem;
+    Storage.prototype.getItem=function(key){if(key==='dvi-collection-filters-v2')throw Error('denied');return read.call(this,key);};
+   }
+  },{mode,raw});
+  const invalidPage=trackPage(await invalid.newPage());await invalidPage.goto(new URL('/collection',base).href);
+  assert.equal(await invalidPage.locator('#collection-type').inputValue(),'craft',mode);
+  assert.equal(await invalidPage.locator('#collection-search').inputValue(),'',mode);
+  assert.equal(await invalidPage.locator('#collection-skill').inputValue(),'all',mode);
+  const notice=await invalidPage.locator('#collection-save').innerText();
+  if(mode==='legacyOnly')assert.doesNotMatch(notice,/Filters could not be read|筛选无法读取/);
+  else assert.match(notice,/Filters could not be read|筛选无法读取/,mode);
+  if(mode!=='readFailure')assert.equal(await invalidPage.evaluate(()=>localStorage.getItem('dvi-collection-filters-v2')),mode==='legacyOnly'?null:raw);
+  assert.equal(await invalidPage.evaluate(()=>localStorage.getItem('dvi-collection-filters-v1')),null);
+  await invalid.close();
+ }
+ results.cases.push('invalid JSON/version/missing or incompatible type profile and read failures use defaults atomically without overwriting saved data; legacy-only filters are removed without migration');
+ const broken=await browser.newContext();
+ await broken.addInitScript(()=>{
+  localStorage.setItem('dvi-collection-v1','invalid-json');localStorage.setItem('dvi-collection-filters-v2','invalid-json');
+  window.failSave=true;const write=Storage.prototype.setItem;
+  Storage.prototype.setItem=function(key,value){if(window.failSave&&(key==='dvi-collection-v1'||key==='dvi-collection-filters-v2'))throw Error('quota');return write.call(this,key,value);};
+ });
+ const errorPage=trackPage(await broken.newPage());await errorPage.goto(new URL('/collection',base).href);
+ assert.match(await errorPage.locator('#collection-save').innerText(),/could not be read|无法读取/);
+ await errorPage.locator('#collection-manual').click();assert.match(await errorPage.locator('#collection-save').innerText(),/Save failed|保存失败/);assert.ok(await errorPage.locator('.collection-card').count()>0);
+ assert.match(await errorPage.locator('#collection-save').innerText(),/Filters could not be read|筛选无法读取/);
+ await errorPage.locator('#collection-search').fill('Bronze bar');assert.match(await errorPage.locator('#collection-save').innerText(),/Filters could not be saved|筛选保存失败/);assert.ok(await errorPage.locator('.collection-card').count()>0);
+ await errorPage.locator('#collection-type').selectOption('gather');await errorPage.locator('#collection-search').fill('Copper');
+ await errorPage.locator('#collection-type').selectOption('craft');assert.equal(await errorPage.locator('#collection-search').inputValue(),'Bronze bar');
+ await errorPage.evaluate(()=>window.failSave=false);await errorPage.locator('#collection-sort').selectOption('secondsPerPoint');
+ assert.doesNotMatch(await errorPage.locator('#collection-save').innerText(),/Filters could not|筛选无法读取|筛选保存失败/);
+ const recovered=await errorPage.evaluate(()=>JSON.parse(localStorage.getItem('dvi-collection-filters-v2')));
+ assert.equal(recovered.profiles.gather.query,'Copper');assert.equal(recovered.profiles.craft.query,'Bronze bar');
+ await broken.close();results.cases.push('storage read/quota errors remain visible with usable estimates and independent in-memory type profiles; retry saves both profiles');
+ const cleanup=await browser.newContext();
+ await cleanup.addInitScript(()=>{
+  localStorage.setItem('dvi-collection-filters-v1','old');window.failCleanup=true;const remove=Storage.prototype.removeItem;
+  Storage.prototype.removeItem=function(key){if(key==='dvi-collection-filters-v1'&&window.failCleanup)throw Error('denied');return remove.call(this,key);};
+ });
+ const cleanupPage=trackPage(await cleanup.newPage());await cleanupPage.goto(new URL('/collection',base).href);
+ assert.equal(await cleanupPage.locator('#collection-type').inputValue(),'craft');assert.equal(await cleanupPage.locator('#collection-search').inputValue(),'');
+ assert.match(await cleanupPage.locator('#collection-save').innerText(),/old filters could not be removed|旧存档无法删除/);
+ await cleanupPage.locator('#collection-search').fill('Bronze');assert.match(await cleanupPage.locator('#collection-save').innerText(),/could not be saved|筛选保存失败/);
+ await cleanupPage.evaluate(()=>window.failCleanup=false);await cleanupPage.locator('#collection-search').fill('Bronze bar');
+ assert.doesNotMatch(await cleanupPage.locator('#collection-save').innerText(),/could not|失败|无法/);assert.equal(await cleanupPage.evaluate(()=>localStorage.getItem('dvi-collection-filters-v1')),null);
+ await cleanup.close();results.cases.push('old-storage removal failures are visible and recover on successful retry');
+ assert.deepEqual(results.errors,[]);
 }catch(error){results.failure=String(error.stack??error);throw error;}
 finally{await fs.writeFile(path.join(directory,'result.json'),JSON.stringify(results,null,2)+'\n');await browser?.close();server?.kill();}
 console.log(JSON.stringify(results));

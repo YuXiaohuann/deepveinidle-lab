@@ -75,6 +75,6 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 ## 收藏页专项
 
-`node --test tests/collection.test.mjs tests/i18n.test.mjs` 验证收藏目标、价格、奖励、原始事件和名称翻译。`node tests/collection-browser.mjs --out .test-artifacts/collection/local` 运行本机专项，`--url https://dvi-lab.pages.dev --out <目录>` 验证指定线上目标；结果包含目标 URL、仅材料采购展开区、受控桥接／报价、双语桌面与390px截图。需要本机监听及Chrome；实际账号与成交不在验证范围，页面设计和边界见[收藏页面](pages/collection.md)。
+`node --test tests/collection.test.mjs tests/i18n.test.mjs` 验证收藏目标、价格、奖励、原始事件和名称翻译。`node tests/collection-browser.mjs --out .test-artifacts/collection/local` 运行本机专项，`--url https://dvi-lab.pages.dev --out <目录>` 验证指定线上目标；结果包含目标 URL、按类型独立筛选／保存与错误恢复、分页及批量加入、仅材料采购展开区、受控桥接／报价、双语桌面与320／390／740px筛选截图。需要本机监听及Chrome；实际账号与成交不在验证范围，页面设计和边界见[收藏页面](pages/collection.md)。
 
-执行计划与自动导入专项：`node --test tests/collection-plan.test.mjs tests/collection-plan-transfer.test.mjs tests/collection-auto-import.test.mjs`；`node tests/collection-plan-browser.mjs --out .test-artifacts/collection/plan-auto-local` 检查最高目标去重、材料归并、保存／导入保留、仓库与背包合计、计划 JSON／压缩剪贴板往返、每次焦点触发和无定时轮询、并发与过期响应，以及双语桌面／390px。支持 `--url <目标地址>`；自动导入使用受控桥接及浏览器时钟，不连接真实账号。此功能尚未部署时应使用本机目标。
+执行计划与自动导入专项：`node --test tests/collection-plan.test.mjs tests/collection-plan-transfer.test.mjs tests/collection-auto-import.test.mjs`；`node tests/collection-plan-browser.mjs --out .test-artifacts/collection/plan-auto-local` 检查最高目标去重、材料归并、保存／导入保留、仓库与背包合计、计划 JSON／压缩剪贴板往返、每次焦点触发和无定时轮询、并发与过期响应，以及自动移除、材料备齐高亮、排序与双语桌面／320／390／768px布局。支持 `--url <目标地址>`；自动导入使用受控桥接及浏览器时钟，不连接真实账号。本地待发布规则应使用本机目标核验，不以生产旧版本结果替代。

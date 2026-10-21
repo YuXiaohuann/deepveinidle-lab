@@ -12,7 +12,6 @@ import {renderCollectionPlan} from './collection-plan-controls.js';
 import {encodeCollectionPlan,decodeCollectionPlan} from './collection-plan-transfer.js';
 import {collectionAutoImportStorageKey,validateCollectionAutoImport,createCollectionAutoImporter} from './collection-auto-import.js';
 
-
 let state,language='zh',status=null,marketStatus=null,marketBusy=false,busy=false,saveError=false,loadError=false,error=null,rows=[];
 let query='',routeType='craft',skill='all',tier='all',sort='costPerPoint',page=1,filterError=null;
 const planSort={selections:{key:null,direction:'asc'},materials:{key:null,direction:'asc'}};
@@ -130,7 +129,6 @@ export function renderCollection(lang,{isActive=false}={}){
  });
  for(const [id,set]of [['collection-search',v=>query=v],['collection-skill',v=>skill=v],['collection-tier',v=>tier=v],['collection-sort',v=>sort=v]])host.querySelector('#'+id)[id==='collection-search'?'oninput':'onchange']=e=>{set(e.target.value);page=1;saveFilters();updateResults();};
  host.querySelector('#collection-type').onchange=e=>{
-  filterProfiles[routeType]={query,skill,tier,sort,filterValues:{...filterValues}};
   routeType=e.target.value;restoreFilters();page=1;opened.clear();
   host.querySelectorAll('[data-collection-key]').forEach(card=>card.open=false);
   saveFilters();renderCollection(language,{isActive:true});host.querySelector('#collection-type').focus();

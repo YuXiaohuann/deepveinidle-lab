@@ -21,6 +21,7 @@ const directory=path.resolve(args['--out']??'.test-artifacts/collection-plan');a
 let base=args['--url'],server,browser;
 if(base){const url=new URL(base);assert.ok(['http:','https:'].includes(url.protocol),'Expected HTTP(S) URL');base=url.origin;}
 const results={cases:[],errors:[]};
+function trackPage(page){page.setDefaultTimeout(15000);page.on('pageerror',error=>results.errors.push(error.message));return page;}
 try{
  if(!base){
   const socket=net.createServer();socket.listen(0,'127.0.0.1');await once(socket,'listening');const port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
@@ -48,7 +49,7 @@ try{
   marketReads++;
   await route.fulfill({status:marketFail?503:200,contentType:'application/json',body:JSON.stringify({game:'Deep Vein Idle',generatedAt:new Date(await page.evaluate(()=>Date.now())).toISOString(),refreshSeconds:60,items:{40:{lowestSell:20,highestBuy:15},...(marketMaterials?Object.fromEntries([1,2,1001,1002].map(id=>[id,{lowestSell:2,highestBuy:2}])):{})}})});
  });
- const page=await context.newPage();let dismissNext=false;const confirmations=[];page.on('dialog',async dialog=>{confirmations.push(dialog.message());assert.equal(dialog.type(),'confirm');if(dismissNext){dismissNext=false;await dialog.dismiss();}else await dialog.accept();});page.setDefaultTimeout(15000);page.on('pageerror',error=>results.errors.push(error.message));await page.clock.install();
+ const page=trackPage(await context.newPage());let dismissNext=false;const confirmations=[];page.on('dialog',async dialog=>{confirmations.push(dialog.message());assert.equal(dialog.type(),'confirm');if(dismissNext){dismissNext=false;await dialog.dismiss();}else await dialog.accept();});await page.clock.install();
  await page.goto(new URL('/collection',base).href);await page.locator('#collection-section').waitFor({state:'visible'});assert.equal(await page.locator('#collection-buy').inputValue(),'global');await page.locator('#collection-buy').selectOption('ask');
  const until=async expression=>{for(let i=0;i<200;i++){if(await page.evaluate(expression))return;await new Promise(resolve=>setTimeout(resolve,20));}throw Error('Condition did not become true: '+expression);};
  const readState=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-collection-v1')));
@@ -382,7 +383,7 @@ try{
    return original.call(this,key,value);
   };
  },savedRole);
- const quotaPage=await quota.newPage();
+ const quotaPage=trackPage(await quota.newPage());
  await quotaPage.goto(new URL('/collection',base).href);
  assert.equal(await quotaPage.locator('[data-plan-item]').count(),1);
  assert.match(await quotaPage.locator('#collection-plan [role="alert"]').innerText(),/保存失败|could not be saved/);
@@ -390,7 +391,7 @@ try{
  await quota.close();
  results.cases.push('clipboard imports prune only completed selections when enabled, opt-out retains them, and save failures expose alerts while retaining valid memory and original stored data');
  await context.close();
- const broken=await browser.newContext();await broken.addInitScript(()=>{localStorage.setItem('dvi-collection-plan-v1','bad-json');localStorage.setItem('dvi-collection-auto-import-v1','bad-json');});const badPage=await broken.newPage();badPage.on('dialog',dialog=>dialog.accept());await badPage.goto(new URL('/collection',base).href);assert.match(await badPage.locator('#collection-plan').innerText(),/could not be read|无法读取/);assert.equal(await badPage.locator('[data-plan-auto-remove-completed]').isChecked(),true);assert.equal(await badPage.locator('#collection-auto-status').isVisible(),true);assert.match(await badPage.locator('#collection-auto-status').innerText(),/could not be read|无法读取/);assert.equal(await badPage.locator('#collection-auto-import').isChecked(),false);assert.equal(await badPage.evaluate(()=>localStorage.getItem('dvi-collection-plan-v1')),'bad-json');await badPage.locator('[data-plan-clear]').click();assert.equal(await badPage.locator('#collection-plan [role="alert"]').count(),0);await broken.close();
+ const broken=await browser.newContext();await broken.addInitScript(()=>{localStorage.setItem('dvi-collection-plan-v1','bad-json');localStorage.setItem('dvi-collection-auto-import-v1','bad-json');});const badPage=trackPage(await broken.newPage());badPage.on('dialog',dialog=>dialog.accept());await badPage.goto(new URL('/collection',base).href);assert.match(await badPage.locator('#collection-plan').innerText(),/could not be read|无法读取/);assert.equal(await badPage.locator('[data-plan-auto-remove-completed]').isChecked(),true);assert.equal(await badPage.locator('#collection-auto-status').isVisible(),true);assert.match(await badPage.locator('#collection-auto-status').innerText(),/could not be read|无法读取/);assert.equal(await badPage.locator('#collection-auto-import').isChecked(),false);assert.equal(await badPage.evaluate(()=>localStorage.getItem('dvi-collection-plan-v1')),'bad-json');await badPage.locator('[data-plan-clear]').click();assert.equal(await badPage.locator('#collection-plan [role="alert"]').count(),0);await broken.close();
  results.cases.push('clear plan preserves character; invalid plan/auto settings are visible and kept until explicit repair');
  assert.deepEqual(results.errors,[]);
 }catch(error){results.failure=String(error.stack??error);throw error;}
