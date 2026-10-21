@@ -1,11 +1,9 @@
-<!doctype html><meta charset="utf-8"><title>捕获 Worker 本地验证</title>
+<!doctype html><meta charset="utf-8"><title>角色捕获本地验证</title>
 <style>body{font:16px system-ui;background:#171c24;color:#e6d6ae;padding:32px}pre{white-space:pre-wrap}button{padding:8px}</style>
-<h1>捕获 Worker 本地验证</h1><p>真实 Blob Worker、合成游戏消息、模拟 GM 存储；不连接游戏。</p><pre id="results">验证中…</pre>
+<h1>角色捕获本地验证</h1><p>直接捕获、合成游戏消息、模拟 GM 存储；不连接游戏。</p><pre id="results">验证中…</pre>
 <script type="module">
 const results=[],out=document.querySelector('#results'),storage=new Map(),writes=[];
-let release,holdKey,hold=false,callbackMax=0,acks=0,worker;
-const NativeWorker=window.Worker;
-class ObservedWorker extends NativeWorker{constructor(url){super(url);worker=this;this.addEventListener('message',e=>{if(e.data.type==='ack')acks++;});}}
+let release,holdKey,hold=false,callbackMax=0;
 const page=new EventTarget();page.WebSocket=class extends EventTarget{
  receive(m,tick=100){const raw=JSON.stringify({tick,m}),start=performance.now();this.dispatchEvent(new MessageEvent('message',{data:raw}));callbackMax=Math.max(callbackMax,performance.now()-start);}
  send(){throw Error('No game commands');}
@@ -17,21 +15,21 @@ const wait=async check=>{const until=performance.now()+5000;while(!check()){if(p
 function ok(condition,label){if(!condition)throw Error(label);results.push(label);out.textContent=JSON.stringify({passed:results,callbackMaxMs:callbackMax},null,2);}
 try{
  const source=await (await fetch('/candidate.js')).text();
- new Function('unsafeWindow','location','GM_setValue','Worker',source)(page,{origin:'https://deepveinidle.com',host:'deepveinidle.com',href:'https://deepveinidle.com/'},save,ObservedWorker);
+ new Function('unsafeWindow','location','GM_setValue','Worker','Blob',source)(page,{origin:'https://deepveinidle.com',host:'deepveinidle.com',href:'https://deepveinidle.com/'},save,undefined,undefined);
  const s=new page.WebSocket('wss://deepveinidle.com/ws');s.receive([{t:'welcome',you:you(100,true),guild:{name:'Test',tag:'T'},windows:[]}]);
  await wait(()=>storage.has(key));ok(storage.get(key).player.unusedHistory===undefined&&storage.get(key).player.password===undefined&&storage.get(key).player.forgeLog[0]===1,'角色裁剪并保留精通及库存字段');
- const before=writes.length,startAck=acks;
+ const before=writes.length;
  for(let i=0;i<100;i++)s.receive([{t:'marketBook',top:{itemId:i+1,bid:i+1}},{t:'marketBooks',tops:[]},{t:'marketDepth',itemId:1,bids:[]}]);
- await wait(()=>acks>=startAck+100);ok(writes.length===before&&!storage.has(mk),'市场消息不写入角色或市场缓存');
+ await new Promise(r=>setTimeout(r,150));ok(writes.length===before&&!storage.has(mk),'市场消息不写入角色或市场缓存');
  hold=true;holdKey=key;s.receive([{t:'snapshot',you:you(200)}]);await wait(()=>release);
- const pendingWrites=writes.length,pendingAck=acks;
+ const pendingWrites=writes.length;
  for(let i=0;i<100;i++)s.receive([{t:'snapshot',you:you(201+i)}]);
- await wait(()=>acks>=pendingAck+100);ok(writes.length===pendingWrites,'慢存储期间不保存中间角色快照');release();release=null;
+ await new Promise(r=>setTimeout(r,150));ok(writes.length===pendingWrites,'慢存储期间不保存中间角色快照');release();release=null;
  await wait(()=>storage.get(key).player.lastTick===300);ok(writes.length===pendingWrites+1,'慢存储结束后保存最新角色');
  hold=true;holdKey=key;s.receive([{t:'snapshot',you:you(400)}]);await wait(()=>release);
  const second=new page.WebSocket('wss://deepveinidle.com/ws');second.receive([{t:'welcome',you:you(500),guild:null,windows:[]}]);release();release=null;
  await wait(()=>storage.get(key).player.lastTick===500);ok(storage.get(key).guild===null&&!storage.has(mk),'跨连接旧写入后保存新角色，不生成市场缓存');
- worker.dispatchEvent(new Event('error'));await wait(()=>document.querySelector('#dvi-character-capture')?.textContent.includes('Worker failed'));ok(true,'Worker 执行异常明确显示失败');
- page.dispatchEvent(new Event('pagehide'));results.push('PASS');out.textContent=JSON.stringify({passed:results,callbackMaxMs:callbackMax,acks,writes:writes.length,environment:navigator.userAgent},null,2);
+ second.receive([{t:'snapshot',you:{}}]);ok(document.querySelector('#dvi-character-capture')?.textContent.includes('Incompatible character data'),'角色结构异常明确显示失败');
+ page.dispatchEvent(new Event('pagehide'));results.push('PASS');out.textContent=JSON.stringify({passed:results,callbackMaxMs:callbackMax,writes:writes.length,environment:navigator.userAgent},null,2);
 }catch(e){out.textContent=JSON.stringify({passed:results,error:e.message,stack:e.stack,badge:document.querySelector('#dvi-character-capture')?.textContent},null,2);}
 </script>

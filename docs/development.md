@@ -41,11 +41,11 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 运行 `node tests/appreciation-browser.mjs`，使用本机 Chrome 和临时回环服务，检查双语桌面／窄屏、各页面入口、弹窗交互、图片失败重试及静态资源交付，以及外部文案随机选择、失败隐藏、超时和关闭／重绘竞态（以请求替身验证，不依赖外部服务可用性）；结果与截图保存在 `.test-artifacts/appreciation/`。需要允许本机监听与浏览器进程，不下载浏览器、不连接支付服务。图片维护于 `src/assets/appreciation.jpg`，按原始字节纳入发行包；替换图片后重跑专项。
 
-## 角色捕获 Worker 专项
+## 角色捕获专项
 
-运行 `node --test tests/capture-worker.test.mjs tests/character-import.test.mjs tests/market-import.test.mjs` 验证角色捕获、保存协调、市场捕获移除、角色桥接及官方市场价格适配。运行 `node scripts/check-capture-browser.mjs` 后，在 Chrome 打开 `http://127.0.0.1:4186/`，页面自动验证真实 Blob Worker、字段裁剪、慢存储合并、跨连接隔离和失败提示，完成后显示 PASS。此服务只暴露测试页与当前候选脚本，不连接游戏，GM 存储和 WebSocket 使用合成替身；`PORT` 可修改端口。源码变化后刷新重测，结束后停止服务。
+运行 `node --test tests/character-capture.test.mjs tests/character-import.test.mjs tests/market-import.test.mjs` 验证角色捕获、保存协调、市场捕获移除、角色桥接及官方市场价格适配。运行 `node scripts/check-capture-browser.mjs` 后，在 Chrome 打开 `http://127.0.0.1:4186/`，页面自动验证直接捕获（不提供 Worker／Blob API）、字段裁剪、慢存储合并、跨连接隔离和失败提示，完成后显示 PASS。此服务只暴露测试页与当前候选脚本，不连接游戏，GM 存储和 WebSocket 使用合成替身；`PORT` 可修改端口。源码变化后刷新重测，结束后停止服务。
 
-本地真实 Worker 验证不代表脚本管理器沙箱兼容或真实账号卡顿改善；安装／更新角色脚本后仍须刷新游戏和实验室（当前版本见 [当前状态](status.md#已发布基线)），并单独记录该环境的验收。Worker 不可用时明确提示失败并要求刷新，不会回退到主线程捕获。
+本地合成消息验证不代表脚本管理器沙箱兼容或真实账号卡顿改善；安装／更新角色脚本后仍须刷新游戏和实验室（生产基线及本地候选见 [当前状态](status.md)），并单独记录该环境的验收。角色数据不兼容或保存失败时明确提示失败并要求刷新。
 
 ## 发布工具开发
 
@@ -55,9 +55,9 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 ## 官方市场价格与价格弹窗专项
 
-运行 `node --test tests/market-import.test.mjs tests/item-prices.test.mjs tests/item-price-store.test.mjs tests/item-price-status.test.mjs`。运行 `node tests/market-prices-browser.mjs` 验证官方 API 真实跨域、双语桌面／390px 弹窗、导入与锁定、错误保留及真实 Blob Worker；需要网络、本机监听和 Chrome。结果和截图保存在 `.test-artifacts/market-prices/`；接口异常明确失败，不以请求替身通过代替真实跨域验证。功能场景使用可控响应替身，不连接游戏账号。
+运行 `node --test tests/market-import.test.mjs tests/item-prices.test.mjs tests/item-price-store.test.mjs tests/item-price-status.test.mjs`。运行 `node tests/market-prices-browser.mjs` 验证官方 API 真实跨域、双语桌面／390px 弹窗、导入与锁定、错误保留及直接捕获（不提供 Worker／Blob API）；需要网络、本机监听和 Chrome。结果和截图保存在 `.test-artifacts/market-prices/`；接口异常明确失败，不以请求替身通过代替真实跨域验证。功能场景使用可控响应替身，不连接游戏账号。
 
-价格设置及自动导入专项可运行 `node tests/market-prices-browser.mjs --toolbar-only`，覆盖双语桌面／390px 筛选、手动导入、锁定、分类兜底、重置、自动导入开关、5 分钟边界与不轮询，以及成功／失败通知 30 秒自动关闭和点击／键盘关闭。行情使用请求替身，不重跑真实 API 或角色 Worker 专项。默认结果保存至 `.test-artifacts/price-toolbar/`；可用 `--out <目录>` 单独保存本轮证据，使用 `--base-url <目标网址>` 对指定候选或生产目标执行相同专项。目标参数不启动本机服务，也不代表完整发布验收通过。
+价格设置及自动导入专项可运行 `node tests/market-prices-browser.mjs --toolbar-only`，覆盖双语桌面／390px 筛选、手动导入、锁定、分类兜底、重置、自动导入开关、5 分钟边界与不轮询，以及成功／失败通知 30 秒自动关闭和点击／键盘关闭。行情使用请求替身，不重跑真实 API 或角色捕获专项。默认结果保存至 `.test-artifacts/price-toolbar/`；可用 `--out <目录>` 单独保存本轮证据，使用 `--base-url <目标网址>` 对指定候选或生产目标执行相同专项。目标参数不启动本机服务，也不代表完整发布验收通过。
 
 ## 上游版本适配专项
 
@@ -65,7 +65,7 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 `node --test tests/upstream-1190.test.mjs` 覆盖迁移战斗区域、自动及两个指定仓库、巨像六件五品质材料、保存兼容与任务自动领奖隔离。独立离线对照使用 `scripts/native-questless.mjs` 按日边界分段保持空任务，以数学日／周编号独立于应用适配函数核验。
 
-`node tests/upstream-browser.mjs --out .test-artifacts/upstream-1194` 检查双语桌面／390px 战斗完成、来源版本、巨像材料／经验与库存计划刷新保存，强化新旧目标与高强化存档、精通加成封顶，以及合成消息下的真实 Blob Worker；需要本机监听和 Chrome。指定 `--url https://dvi-lab.pages.dev --out <证据目录>` 时检查该实际目标四组页面，不把本地 Worker 当作生产测试。截图和机器结果落盘，仍需人工审阅。
+`node tests/upstream-browser.mjs --out .test-artifacts/upstream-1194` 检查双语桌面／390px 战斗完成、来源版本、巨像材料／经验与库存计划刷新保存，强化新旧目标与高强化存档、精通加成封顶，以及合成消息下的直接捕获（不提供 Worker／Blob API）；需要本机监听和 Chrome。指定 `--url https://dvi-lab.pages.dev --out <证据目录>` 时检查该实际目标四组页面，不把本地角色捕获专项当作生产测试。截图和机器结果落盘，仍需人工审阅。
 
 ## 采集与制造表格专项
 

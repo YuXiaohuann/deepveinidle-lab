@@ -20,7 +20,7 @@ for(const host of ['deepveinidle.com','cn.deepveinidle.com'])test(`${host} captu
  await flush();assert.deepEqual(h.storage.get(key).player.skills,player().skills);
 });
 
-test('Worker selection preserves all five import consumers and removes unrelated data',async()=>{
+test('field selection preserves all five import consumers and removes unrelated data',async()=>{
  const h=captureHarness(),s=new h.page.WebSocket('wss://deepveinidle.com/ws');
  const you=player(),windows=[{label:'Weekly goal: gathered',fromTick:0,toTick:200,xpMult:1.1,token:'secret'}],guild={name:'Guild',tag:'G',members:['private']};
  s.receive([{t:'welcome',you,windows,guild}],100);await flush();
@@ -30,8 +30,9 @@ test('Worker selection preserves all five import consumers and removes unrelated
  assert.equal(snapshot.player.name,undefined);assert.equal(snapshot.player.history,undefined);assert.equal(JSON.stringify(snapshot).includes('secret'),false);assert.deepEqual(snapshot.guild,{name:'Guild',tag:'G'});
 });
 
-test('main thread forwards raw messages without calling JSON.parse',async()=>{
- const h=captureHarness();h.context.JSON={parse(){throw Error('Main thread parse forbidden');}};
+test('capture runs without Worker or Blob APIs',async()=>{
+ const h=captureHarness();
+ assert.equal(h.context.Worker,undefined);assert.equal(h.context.Blob,undefined);
  const s=new h.page.WebSocket('wss://deepveinidle.com/ws');s.receive([{t:'welcome',you:player()}]);await flush();assert.ok(h.storage.get(key));
 });
 
@@ -41,12 +42,12 @@ test('one frame aggregates player, guild and world windows into one saved result
  assert.equal(h.writes.filter(w=>w.key===key).length,1);assert.equal(h.storage.get(key).guild.name,'Latest');assert.deepEqual(h.storage.get(key).worldBuffs,[]);
 });
 
-test('slow role storage requests only the latest state after an ongoing save',async()=>{
+test('slow role storage saves only the latest state after an ongoing write',async()=>{
  let release,hold=true;const h=captureHarness(async k=>{if(k===key&&hold){hold=false;await new Promise(r=>release=r);}});
  const s=new h.page.WebSocket('wss://deepveinidle.com/ws');s.receive([{t:'welcome',you:player()}]);await flush();
- const pulls=h.workers[0].sent.filter(m=>m.type==='pull').length;
+ const writes=h.writes.length;
  for(let i=0;i<100;i++){const you=player();you.lastTick=200+i;s.receive([{t:'snapshot',you}]);}
- await flush();assert.equal(h.workers[0].sent.filter(m=>m.type==='pull').length,pulls);
+ await flush();assert.equal(h.writes.length,writes);
  release();await flush();assert.equal(h.writes.filter(w=>w.key===key).length,2);
  assert.equal(h.storage.get(key).player.lastTick,299);
 });
@@ -59,42 +60,23 @@ test('capture deadline is fixed while updates continue, then saves latest role',
  h.fire(100);await flush();assert.equal(h.storage.get(key).player.lastTick,105);assert.equal(h.writes.filter(w=>w.key===key).length,1);
 });
 
-test('Worker creation, startup, execution and message errors stop capture visibly',async()=>{
- const blocked=captureHarness(undefined,{workerFailure:true});assert.match(blocked.badge().textContent,/Worker blocked/);assert.equal(blocked.urls.size,0);
- const startup=captureHarness();startup.fire(5000);await flush();assert.match(startup.badge().textContent,/startup timed out/);assert.ok(startup.workers[0].terminated);
- for(const event of ['onerror','onmessageerror']){
-  const h=captureHarness();await flush();h.workers[0][event]();assert.match(h.badge().textContent,/读取失败/);assert.ok(h.workers[0].terminated);assert.equal(h.timers.size,0);
- }
-});
-
-test('missing ACK and count/size overload stop without silently discarding frames',async()=>{
- const stalled=captureHarness();await flush();const worker=stalled.workers[0];worker.paused=true;
- const s=new stalled.page.WebSocket('wss://deepveinidle.com/ws');s.raw('{}');stalled.fire(10000);assert.match(stalled.badge().textContent,/unresponsive/);
- const count=captureHarness();await flush();count.workers[0].paused=true;const c=new count.page.WebSocket('wss://deepveinidle.com/ws');for(let i=0;i<129;i++)c.raw('{}');assert.match(count.badge().textContent,/backlog exceeded/);assert.ok(count.workers[0].terminated);
- const size=captureHarness();await flush();const z=new size.page.WebSocket('wss://deepveinidle.com/ws');z.raw(' '.repeat(16*1024*1024+1));assert.match(size.badge().textContent,/backlog exceeded/);assert.equal(size.workers[0].sent.filter(m=>m.type==='frame').length,0);
-});
-
 test('malformed JSON is ignored, incompatible role stops without showing success',async()=>{
  const h=captureHarness(),s=new h.page.WebSocket('wss://deepveinidle.com/ws');s.raw('not json');await flush();assert.match(h.badge().textContent,/Waiting/);
  s.receive([{t:'welcome',you:{}}]);await flush();assert.match(h.badge().textContent,/Incompatible/);assert.equal(h.storage.has(key),false);
 });
 
-test('page exit releases Worker and observers; hidden badge stops DOM observation',async()=>{
+test('page exit clears pending saves and observers; hidden badge stops DOM observation',async()=>{
  const h=captureHarness(),s=new h.page.WebSocket('wss://deepveinidle.com/ws');s.receive([{t:'welcome',you:player()}]);await flush();h.hideBadge();assert.equal(h.observing(),false);
- h.pagehide();assert.ok(h.workers[0].terminated);assert.equal(h.urls.size,0);assert.equal(h.timers.size,0);
+ s.receive([{t:'snapshot',you:player()}]);h.pagehide();await flush();assert.equal(h.timers.size,0);assert.equal(h.writes.length,1);assert.equal(h.observing(),false);
 });
 
-test('backlog bound includes pending messages across connection changes',async()=>{
- const h=captureHarness();await flush();h.workers[0].paused=true;
- const first=new h.page.WebSocket('wss://deepveinidle.com/ws');for(let i=0;i<100;i++)first.raw('{}');
- const second=new h.page.WebSocket('wss://deepveinidle.com/ws');for(let i=0;i<29;i++)second.raw('{}');
- assert.match(h.badge().textContent,/backlog exceeded/);
-});
-
-test('old-frame ACKs drain the backlog without affecting new connection state',async()=>{
- const h=captureHarness(),first=new h.page.WebSocket('wss://deepveinidle.com/ws');
- first.receive([{t:'welcome',you:{}}]);const second=new h.page.WebSocket('wss://deepveinidle.com/ws');second.receive([{t:'welcome',you:player()}]);await flush();
- assert.ok(h.storage.get(key));assert.match(h.badge().textContent,/Character captured/);assert.equal([...h.timers.values()].some(t=>t.ms===10000),false);
+test('connection replacement discards pending saves and ignores old socket messages',async()=>{
+ const h=captureHarness(undefined,{autoSave:false}),first=new h.page.WebSocket('wss://deepveinidle.com/ws');
+ first.receive([{t:'welcome',you:player()}]);
+ const second=new h.page.WebSocket('wss://deepveinidle.com/ws');first.receive([{t:'welcome',you:{}}]);
+ h.fire(100);await flush();assert.equal(h.writes.length,0);assert.match(h.badge().textContent,/Waiting/);
+ const next=player();next.lastTick=500;second.receive([{t:'welcome',you:next}]);h.fire(100);await flush();
+ assert.equal(h.storage.get(key).player.lastTick,500);assert.match(h.badge().textContent,/Character captured/);
 });
 
 test('previous connection storage rejection cannot replace current waiting or success state',async()=>{

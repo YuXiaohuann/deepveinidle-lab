@@ -155,15 +155,15 @@ try{
   result.cases.push('automatic API failure is visible and not retried on reload within five minutes');await context.close();
  }
  if(!toolbarOnly){
- const workerContext=await browser.newContext(),workerPage=await workerContext.newPage();
- workerPage.on('pageerror',e=>result.errors.push(e.message));
- await workerContext.route('**/capture-worker-check',route=>route.fulfill({contentType:'text/html',path:'tests/fixtures/capture-worker.html'}));
- await workerContext.route('**/candidate.js',route=>route.fulfill({contentType:'text/javascript',path:'src/character-import.user.js'}));
- await workerPage.goto(base+'/capture-worker-check');
- await workerPage.waitForFunction(()=>{const text=document.querySelector('#results').textContent;if(!text.startsWith('{'))return false;const r=JSON.parse(text);return r.error||r.passed?.includes('PASS');},{},{timeout:20000});
- result.worker=JSON.parse(await workerPage.locator('#results').innerText());assert.equal(result.worker.error,undefined,JSON.stringify(result.worker));assert.ok(result.worker.passed.includes('PASS'));
- result.cases.push('real Blob Worker: role trimming, ignored market frames, coalesced slow role saves, connection isolation and visible Worker failure');
- await workerContext.close();
+ const captureContext=await browser.newContext(),capturePage=await captureContext.newPage();
+ capturePage.on('pageerror',e=>result.errors.push(e.message));
+ await captureContext.route('**/character-capture-check',route=>route.fulfill({contentType:'text/html',path:'tests/fixtures/character-capture.html'}));
+ await captureContext.route('**/candidate.js',route=>route.fulfill({contentType:'text/javascript',path:'src/character-import.user.js'}));
+ await capturePage.goto(base+'/character-capture-check');
+ await capturePage.waitForFunction(()=>{const text=document.querySelector('#results').textContent;if(!text.startsWith('{'))return false;const r=JSON.parse(text);return r.error||r.passed?.includes('PASS');},{},{timeout:20000});
+ result.capture=JSON.parse(await capturePage.locator('#results').innerText());assert.equal(result.capture.error,undefined,JSON.stringify(result.capture));assert.ok(result.capture.passed.includes('PASS'));
+ result.cases.push('direct character capture without Worker: trimming, ignored market frames, coalesced slow saves, connection isolation and visible data errors');
+ await captureContext.close();
  }
  {
   const context=await browser.newContext(),page=await context.newPage();let requests=0;

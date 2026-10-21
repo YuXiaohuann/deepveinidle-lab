@@ -87,11 +87,11 @@ try{
   result.cases.push({language,width,status:'passed',screenshots:[combatScreenshot,craftScreenshot,enhanceScreenshot,highScreenshot,masteryScreenshot],requirements});await context.close();
  }
  if(!option('--url')){
-  const workerBase=await serve('scripts/check-capture-browser.mjs'),page=await browser.newPage();await page.goto(workerBase);
+  const captureBase=await serve('scripts/check-capture-browser.mjs'),page=await browser.newPage();await page.goto(captureBase);
   await page.waitForFunction(()=>{const text=document.querySelector('#results').textContent;return text.includes('"PASS"')||text.includes('"error"');},{},{timeout:20000});
-  result.worker=JSON.parse(await page.locator('#results').textContent());assert.ok(result.worker.passed.includes('PASS'),JSON.stringify(result.worker));
+  result.capture=JSON.parse(await page.locator('#results').textContent());assert.ok(result.capture.passed.includes('PASS'),JSON.stringify(result.capture));
  }
- assert.deepEqual(result.errors,[]);result.status='passed';console.log(`PASS upstream browser: ${result.cases.length} bilingual/viewport cases${result.worker?', native Blob Worker passed':''}`);
+ assert.deepEqual(result.errors,[]);result.status='passed';console.log(`PASS upstream browser: ${result.cases.length} bilingual/viewport cases${result.capture?', character capture passed':''}`);
 }catch(error){result.status='failed';result.error=error.stack;throw error;}
 finally{
  await fs.writeFile(path.join(output,'result.json'),JSON.stringify(result,null,2)+'\n');

@@ -25,7 +25,7 @@ try{
   fake.dispatchEvent(new Event('pagehide'));return result;
  },{source,player,windows});
  assert.equal(snapshot.worldBuffsVersion,1);assert.equal(snapshot.worldBuffs[1].rarityMult,1.5);
- results.cases.push('native Blob Worker captures both effects and capability marker');await capture.close();
+ results.cases.push('character script captures both effects and capability marker');await capture.close();
  for(const language of ['zh','en'])for(const width of [1440,390]){
   const context=await browser.newContext({viewport:{width,height:1000}});
   const page=await context.newPage();page.on('pageerror',e=>results.errors.push(e.message));
