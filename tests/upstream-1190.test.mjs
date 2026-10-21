@@ -58,7 +58,7 @@ test('automatic task payouts are excluded from thieving coins and XP across the 
  const scenario=createGatheringScenario(s,job,site);let player;
  game.predict(scenario.player,scenario.context,p=>{player=p;return false;});player.offlineCapTicks=scenario.durationTicks*2;
  assert.ok(game.startWork(player,scenario.context,site.id,job.id,'bank',null));
- const before=player.skills.thieving,raw=structuredClone(player);
+ const before=player.skills.thieving,raw=structuredClone(player);raw.quests.day=-1;raw.quests.week=-1;
  const report=questlessOffline(game,player,scenario.context,game.predictionStartTick+scenario.durationTicks);
  game.offline(raw,scenario.context,game.predictionStartTick+scenario.durationTicks);
  const actual=simulateGatheringSite(s,job,site);

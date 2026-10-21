@@ -15,6 +15,7 @@ export const craftingPotions=game.potions.filter(p=>['elixir','swift'].includes(
 export const craftingRooms=game.rooms.filter(r=>r.bonus.kind==='craftSpeed'&&craftingSkills.includes(r.bonus.skill));
 export const craftingMasteries=game.masteries.filter(m=>['craft','xp','move'].includes(m.id));
 export const craftingPerks=game.perks.filter(p=>['pockets','quick','hands'].includes(p.id));
+export const craftingTiers=job=>Array.from({length:5},(_,tier)=>tier).filter(tier=>job.upgrade||game.recipeRarity(job,tier)===tier);
 export const planKey=(jobId,tier)=>`${jobId}:${tier}`;
 export const validQuantity=value=>Number.isSafeInteger(value)&&value>=0;
 export const safeAdd=(a,b)=>{const value=a+b;if(!Number.isSafeInteger(value)||value<0)throw Error('quantityOverflow');return value;};
@@ -37,7 +38,16 @@ export function normalizeCrafting(raw){
  for(const p of craftingPerks)s.perks[p.id]=integer(raw.perks?.[p.id]??0,0,p.ranks);
  const manual=normalizeManual(raw,{fractionalWorldXp:true});for(const k of ['guildXp','weeklyXp','ironman','blessing','hotSetting'])s[k]=manual[k];
  s.homeBank=game.world.banks.some(b=>b.id===Number(raw.homeBank))?Number(raw.homeBank):0;s.guild=readGuild(raw.guild);
- for(const job of craftingJobs){s.tiers[job.id]=integer(raw.tiers?.[job.id]??0,0,4);for(let tier=0;tier<=4;tier++){const key=planKey(job.id,tier),n=raw.plans?.[key];if(validQuantity(n)&&n>0)s.plans[key]=n;}}
+ for(const job of craftingJobs){
+  s.tiers[job.id]=integer(raw.tiers?.[job.id]??0,0,4);
+  const tiers=craftingTiers(job);
+  for(let tier=0;tier<5;tier++){
+   const key=planKey(job.id,tier),n=raw.plans?.[key];
+   if(!validQuantity(n)||n===0)continue;
+   if(!tiers.includes(tier))throw Error('invalidQuantity');
+   s.plans[key]=n;
+  }
+ }
  s.upgradeMigration=raw.upgradeMigration===true;
  for(const retired of game.recipes.filter(r=>r.retired)){
   const job=craftingJobs.find(j=>j.upgrade?.to.includes(retired.output.itemId));if(!job)throw Error('invalidRecipe');
@@ -50,10 +60,10 @@ export function normalizeCrafting(raw){
  return s;
 }
 export function craftingPlan(raw){
- const s=normalizeCrafting(raw);return craftingJobs.flatMap(job=>Array.from({length:5},(_,tier)=>({job,tier,key:planKey(job.id,tier),count:s.plans[planKey(job.id,tier)]??0})).filter(p=>p.count>0));
+ const s=normalizeCrafting(raw);return craftingJobs.flatMap(job=>craftingTiers(job).map(tier=>({job,tier,key:planKey(job.id,tier),count:s.plans[planKey(job.id,tier)]??0})).filter(p=>p.count>0));
 }
 export function craftingMaterials(job,tier,count){
- if(!validQuantity(count)||!Number.isInteger(tier)||tier<0||tier>4)throw Error('invalidQuantity');
+ if(!validQuantity(count)||!Number.isInteger(tier)||!craftingTiers(job).includes(tier))throw Error('invalidQuantity');
  if(job.upgrade){
   const base=game.withRarity(job.upgrade.from[0],tier),items={[base]:count};
   for(const i of game.upgradeMaterials(job.upgrade,base).named)items[i.itemId]=safeAdd(items[i.itemId]??0,safeMultiply(i.qty,count));

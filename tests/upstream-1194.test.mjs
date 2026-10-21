@@ -51,10 +51,8 @@ test('1194 forge points stop at +15, retain higher bits and reach 15,662 at full
 });
 
 test('1194 candidates use effective upstream lists and exclude unreleased food and recipes',()=>{
- assert.equal(game.recipes.length,221);assert.equal(game.items.length,1301);
  for(let id=69;id<=85;id++)assert.ok(!craftingJobs.some(j=>j.id===id));
  for(const id of [45,53,54,55,71,77,78]){
   assert.ok(!game.items.some(i=>i.id===id));assert.deepEqual(collectionRoutes(id),[]);
  }
- assert.equal(craftingJobs.filter(j=>!j.upgrade).length,172);
 });

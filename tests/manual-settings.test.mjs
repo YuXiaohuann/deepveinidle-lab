@@ -41,14 +41,14 @@ test('legacy buff expiry and home overrides reset to permanent buffs and configu
  const baseline=structuredClone(s);baseline.manual.placed.target=true;baseline.manual.upgradeMinutes.target=-1;
  assert.equal(calculate(s).stats.hit,calculate(baseline).stats.hit);
 });
-test('hot XP and rarity bonuses are cancelled at every tick across a full hot cycle',()=>{
+test('disabled hot bonuses stay zero at every tick across a full hot cycle',()=>{
  // Exercise more than the fixed prediction hour, including combat XP/rare periods
  // and all boundary ticks. The game changes hot periods every 36000 ticks.
  const start=START_TICK,end=start+36*36000,windows=manualWindows(start,end),seen=new Set();
  for(let tick=start;tick<=end;tick++){
   const hot=game.hotSkill(tick);if(hot.skill==='combat')seen.add(hot.kind);
-  let xp=hot.skill==='combat'&&hot.kind==='xp'?hot.mult-1:0;
-  let rare=hot.skill==='combat'&&hot.kind==='rarity'?hot.mult-1:0;
+  let xp=0;
+  let rare=0;
   for(const w of windows)if(tick>=w.fromTick&&tick<=w.toTick){xp+=w.xpMult-1;rare+=w.rarityMult-1;}
   assert.ok(Math.abs(xp)<1e-10);assert.ok(Math.abs(rare)<1e-10);
  }
@@ -91,7 +91,7 @@ test('world buff XP preserves fractional percentages and adds to guild and bless
 test('weekly goal window covers the full hour without adding rare or restoring hot bonuses',()=>{
  const start=START_TICK,end=start+6000,windows=manualWindows(start,end,30);
  for(let tick=start;tick<=end;tick++){
-  const hot=game.hotSkill(tick);let xp=hot.skill==='combat'&&hot.kind==='xp'?hot.mult-1:0,rare=hot.skill==='combat'&&hot.kind==='rarity'?hot.mult-1:0;
+  let xp=0,rare=0;
   for(const w of windows)if(tick>=w.fromTick&&tick<=w.toTick){xp+=w.xpMult-1;rare+=w.rarityMult-1;}
   assert.ok(Math.abs(xp-.3)<1e-10);assert.ok(Math.abs(rare)<1e-10);
  }

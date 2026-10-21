@@ -27,8 +27,8 @@ test('mapped windows match forecast for every tick including initialization and 
  const schedule=combatHot(Date.UTC(2026,9,2),24),windows=[...manualWindows(START_TICK,START_TICK+DAY_TICKS,30),...combatHotWindows(schedule)],seen=new Set();
  const expectedHot=Array.from({length:DAY_TICKS+1},(_,offset)=>game.hotSkill(schedule.start+Math.max(0,offset-1)));
  for(let offset=0;offset<=DAY_TICKS;offset++){
-  const tick=START_TICK+offset,native=game.hotSkill(tick),forecast=expectedHot[offset];
-  let xp=native.skill==='combat'&&native.kind==='xp'?native.mult-1:0,rare=native.skill==='combat'&&native.kind==='rarity'?native.mult-1:0;
+  const tick=START_TICK+offset,forecast=expectedHot[offset];
+  let xp=0,rare=0;
   for(const w of windows)if(tick>=w.fromTick&&tick<=w.toTick){xp+=w.xpMult-1;rare+=w.rarityMult-1;}
   assert.ok(Math.abs(xp-(.3+(forecast.skill==='combat'&&forecast.kind==='xp'?forecast.mult-1:0)))<1e-10);
   assert.ok(Math.abs(rare-(forecast.skill==='combat'&&forecast.kind==='rarity'?forecast.mult-1:0))<1e-10);
@@ -51,17 +51,17 @@ test('forecast changes XP and aligns with original offline chunks over 24 hours'
  assert.throws(()=>simulateMonster(s,m,{now:epoch-1}),/invalidTime/);
  assert.deepEqual(simulateMonster({...s,manual:{...s.manual,hotSetting:'off'}},m,{now:epoch-1}),baseline);
 });
-test('game mode retains native hot rules while current and off replace or cancel them',()=>{
+test('game mode maps native hot rules while current and off select explicit windows',()=>{
  const s=preset('ranged'),m=game.monsters[0];s.manual.simulationHours=24;s.manual.hotSetting='game';
  const {player,context}=createScenario(s,m,{now:NaN});
- assert.deepEqual(context.windows,[]);
+ assert.ok(context.windows.length>0);
  const zone=game.world.zones.find(z=>z.monsterId===m.id),nativeContext=game.createContext(game.world,0);
  const expected=nativeDay(player,nativeContext,p=>game.startFight(p,nativeContext,zone.id));
  const result=simulateMonster(s,m,{now:NaN});
  assert.equal(result.xp,expected.xpPerHour);assert.deepEqual(result.bySkill,expected.bySkill);
- s.manual.hotSetting='off';assert.ok(createScenario(s,m,{now:NaN}).context.windows.length>0);
+ s.manual.hotSetting='off';assert.deepEqual(createScenario(s,m,{now:NaN}).context.windows,[]);
  s.manual.hotSetting='current';assert.throws(()=>createScenario(s,m,{now:NaN}),/invalidTime/);
  s.manual.hotSetting='game';s.manual.weeklyXp=20;
  const windows=createScenario(s,m,{now:NaN}).context.windows;
- assert.deepEqual(windows,[{fromTick:START_TICK,toTick:START_TICK+DAY_TICKS,xpMult:1.2,rarityMult:1}]);
+ assert.deepEqual(windows[0],{fromTick:START_TICK,toTick:START_TICK+DAY_TICKS,xpMult:1.2,rarityMult:1});
 });

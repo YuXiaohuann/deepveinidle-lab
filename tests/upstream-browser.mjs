@@ -12,7 +12,7 @@ import {masteryDefaults,masteryStorageKey} from '../src/mastery.js';
 import {craftingDefaults,craftingStorageKey} from '../src/crafting-model.js';
 
 const args=process.argv.slice(2),option=name=>args.includes(name)?args[args.indexOf(name)+1]:null;
-const output=path.resolve(option('--out')??'.test-artifacts/upstream-1194');
+const output=path.resolve(option('--out')??'.test-artifacts/upstream-1196/browser');
 await fs.mkdir(output,{recursive:true});
 const servers=[],result={cases:[],errors:[]};let browser;
 async function serve(script){
@@ -29,15 +29,15 @@ try{
   const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(20000);
   page.on('pageerror',error=>result.errors.push(error.message));
   const state=preset('ranged');state.manual.simulationHours=1;state.manual.enemySelection='monster-11';state.manual.hotSetting='off';
-  const craft=craftingDefaults();craft.skill='smithing';craft.levels.smithing=99;craft.plans={'upgrade-271:4':2};craft.owned={4044:6,4114:1,4252:1};
+  const craft=craftingDefaults();craft.skill='smithing';craft.levels.smithing=99;craft.levels.crafting=99;craft.plans={'upgrade-271:4':2};craft.owned={4044:6,4114:1,4252:1};
   await context.addInitScript(({state,craft,key,language})=>{
-   localStorage.setItem('dvi-simulator-v1',JSON.stringify({language,state}));localStorage.setItem(key,JSON.stringify(craft));
+   if(!localStorage.getItem('dvi-simulator-v1'))localStorage.setItem('dvi-simulator-v1',JSON.stringify({language,state}));if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify(craft));
   },{state,craft,key:craftingStorageKey,language});
   await page.goto(base+'/combat');await page.selectOption('#language',language);
   await page.waitForFunction(()=>document.querySelector('#simulation-status').hidden&&!document.querySelector('#rows .pending'));
   assert.equal(await page.locator('#rows tr[data-enemy]').count(),1);
   assert.ok(!/Simulation failed|模拟失败/.test(await page.locator('#rows').innerText()));
-  assert.match(await page.locator('.footer-source').innerText(),/2026-10-18.*1\.0\.1194/);
+  assert.match(await page.locator('.footer-source').innerText(),/2026-10-21.*1\.0\.1196/);
   const combatScreenshot=`combat-${language}-${width}.png`;await page.screenshot({path:path.join(output,combatScreenshot),fullPage:true});
   await page.locator('#craft-nav').click();await page.locator('[data-craft-rarity="4"]').click();await page.locator('#craft-filled').click();
   await page.waitForFunction(()=>document.querySelector('#craft-results').textContent.includes('3,800 XP'));
@@ -52,6 +52,27 @@ try{
   const craftScreenshot=`craft-${language}-${width}.png`;await page.screenshot({path:path.join(output,craftScreenshot),fullPage:true});
   await page.reload();await page.locator('#craft-section').waitFor({state:'visible'});
   assert.deepEqual(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).plans,craftingStorageKey),craft.plans);
+  await page.locator('[data-craft-skill="crafting"]').click();
+  assert.equal(await page.locator('#craft-filled').getAttribute('aria-pressed'),'false');
+  await page.locator('[data-craft-rarity="4"]').click();await page.selectOption('#craft-group','Fireworks');
+  assert.equal(await page.locator('[data-craft-count]').count(),9);
+  assert.equal(await page.locator('[data-craft-count="421:4"]').count(),0);
+  await page.locator('[data-craft-count="420:4"]').fill('2');
+  await page.locator('[data-craft-count="421:0"]').fill('3');
+  await page.locator('[data-craft-price="700"]').fill('50');
+  await page.waitForFunction(()=>![...document.querySelectorAll('.craft-table tbody tr')].some(row=>/计算中|Calculating/.test(row.textContent)),{},{timeout:120000});
+  assert.ok(!/制造计算失败|Crafting computation failed|invalidRoute|noSites/.test(await page.locator('#craft-results').innerText()));
+  assert.equal(await page.locator('[data-craft-price="700"]').inputValue(),'50');
+  assert.match(await page.locator('#craft-results').innerText(),language==='zh'?/烟花火药/:/Firework powder/);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  const fireworksScreenshot=`fireworks-${language}-${width}.png`;await page.screenshot({path:path.join(output,fireworksScreenshot),fullPage:true});
+  await page.reload();
+  await page.selectOption('#craft-group','Fireworks');
+  assert.equal(await page.locator('[data-craft-count="420:4"]').count(),0); // refreshed rarity filter defaults to normal
+  assert.equal(await page.locator('[data-craft-count="421:0"]').inputValue(),'3');
+  await page.locator('[data-craft-rarity="4"]').click();
+  assert.equal(await page.locator('[data-craft-count="420:4"]').inputValue(),'2');
+  assert.equal(await page.locator('[data-craft-price="700"]').inputValue(),'50');
   const enhance={...enhancementDefaults(),mastery:201,target:100};
   await page.evaluate(({key,state})=>localStorage.setItem(key,JSON.stringify(state)),{key:enhancementStorageKey,state:enhance});
   await page.goto(base+'/enhance');
@@ -84,7 +105,7 @@ try{
   assert.equal(await card.locator('[data-mastery-value="target"]').innerText(),'+50%');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   const masteryScreenshot=`mastery-${language}-${width}.png`;await page.screenshot({path:path.join(output,masteryScreenshot),fullPage:true});
-  result.cases.push({language,width,status:'passed',screenshots:[combatScreenshot,craftScreenshot,enhanceScreenshot,highScreenshot,masteryScreenshot],requirements});await context.close();
+  result.cases.push({language,width,status:'passed',screenshots:[combatScreenshot,craftScreenshot,fireworksScreenshot,enhanceScreenshot,highScreenshot,masteryScreenshot],requirements});await context.close();
  }
  if(!option('--url')){
   const captureBase=await serve('scripts/check-capture-browser.mjs'),page=await browser.newPage();await page.goto(captureBase);

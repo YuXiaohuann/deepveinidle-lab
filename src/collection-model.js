@@ -104,6 +104,7 @@ export function collectionTarget(state,id,target){
 export function pointsForProduction(id,current,quantity){return game.collectionPoints(current+quantity,game.itemTier(id),game.baseItemId(id))-game.collectionPoints(current,game.itemTier(id),game.baseItemId(id));}
 export function collectionRoutes(id){
  const base=game.baseItemId(id);
+ if(game.collectionExcluded(id))return [];
  return game.recipes.filter(j=>j.output.itemId===base&&!j.retired&&collectionSkills.includes(j.skill));
 }
 export function collectionPrice(id,prices,buyMode='global'){
@@ -143,7 +144,7 @@ export function estimateCollection(state,id,job,players=collectionPlayers(state)
  if(!game.world.sites.some(s=>s.jobIds.includes(job.id)))return {...base,status:'noSites'};
  const tier=game.itemTier(id),chance=game.workChance(job,p),burn=game.burnChance(job,p),caught=game.caughtChance(job,p);
  const at=config.hotSetting==='current'?Math.floor((players.now-epoch)/game.tickMs):game.predictionStartTick;
- const context={windows:manualWindows(at,at,config.weeklyXp,config.hotSetting==='off',job.skill,config.worldRarity??0)};
+ const context={hypothetical:true,windows:manualWindows(at,at,config.weeklyXp,config.hotSetting==='off',job.skill,config.worldRarity??0)};
  const qualities=gathering&&game.itemSupportsRarity(job.output.itemId)?workQualities(p,context,job,at):[1];
  const quality=gathering?qualities[tier]:1;
  const success=(1-burn)*(1-caught)*quality;

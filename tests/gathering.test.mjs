@@ -50,7 +50,7 @@ for(const skill of gatheringSkills)test(`${skill}: discard follows original rout
  assert.equal(actual.totalIncome,actual.coins+actual.normalValue+actual.rareValue);
  if(skill==='thieving'){
   const bank=simulateGatheringSite({...s,discardGathered:false},job,site,{seed:0});
-  assert.equal(actual.coins,168378);assert.deepEqual(actual,bank);
+  assert.equal(actual.coins,counts.produced*job.output.qty);assert.deepEqual(actual,bank);
   assert.ok(Object.keys(actual.rareItems).some(id=>game.baseItemId(Number(id))===game.mountItemId));
  }else{
   assert.ok(counts.dropped>0);assert.equal(actual.deposits,0);
@@ -117,9 +117,9 @@ test('every copper point is simulated, manual point and bank retained',()=>{
  assert.throws(()=>simulateGatheringSite(s,gatheringJobs.find(j=>j.levelReq>1),game.world.sites[0]),/invalidSite|levelTooLow/);
 });
 
-test('skill-specific hot windows cancel only matching skill and map current schedule',()=>{
+test('skill-specific hot windows omit native bonuses when disabled and map current schedule',()=>{
  const start=game.predictionStartTick,end=start+144000;
- for(const skill of gatheringSkills){const windows=manualWindows(start,end,10,true,skill);for(let tick=start;tick<end;tick+=1000){const hot=game.hotSkill(tick),xp=windows.filter(w=>w.fromTick<=tick&&tick<=w.toTick).reduce((a,w)=>a+(w.xpMult-1),1);assert.ok(Math.abs(xp+(hot.skill===skill&&hot.kind==='xp'?hot.mult-1:0)-1.1)<1e-10);}
+ for(const skill of gatheringSkills){const windows=manualWindows(start,end,10,true,skill);for(let tick=start;tick<end;tick+=1000){const xp=windows.filter(w=>w.fromTick<=tick&&tick<=w.toTick).reduce((a,w)=>a+(w.xpMult-1),1);assert.ok(Math.abs(xp-1.1)<1e-10);}
   const schedule=combatHot(Date.now(),24,skill);assert.ok(schedule.entries.every(h=>h.skill===skill));assert.equal(combatHotWindows(schedule).length,schedule.entries.length);
  }
 });

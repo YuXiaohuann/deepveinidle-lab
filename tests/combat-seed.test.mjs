@@ -9,13 +9,13 @@ import {randomSimulationSeed} from '../src/simulation-seed.js';
 import {nativeDay} from './native-day.mjs';
 
 test('runtime seeds reach the original context without changing hot defaults or saved configuration',()=>{
- const state=preset('ranged'),before=JSON.stringify(state);
+ const state=preset('ranged'),before=JSON.stringify(state),windows=createScenario(state).context.windows;
  for(const seed of [0,1,0x80000000,0xffffffff]){
   const scenario=createScenario(state,game.monsters[0],{seed});
   assert.equal(scenario.context.seed,seed);
   assert.equal(scenario.player.id,1);
   assert.equal(scenario.context.secretAt(1000000),0);
-  assert.deepEqual(scenario.context.windows,[]);
+  assert.deepEqual(scenario.context.windows,windows);
  }
  assert.equal(state.manual.hotSetting,'game');
  assert.equal(createScenario(state).context.seed,0);

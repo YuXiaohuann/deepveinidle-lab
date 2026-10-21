@@ -43,16 +43,16 @@ export function applyManualPlayer(p,s){
  for(const kind of ['fed','rooted'])if(s[kind])p.brews[kind]=Number.MAX_SAFE_INTEGER;
  return p;
 }
-// The upstream engine adds hot bonuses to context windows. Cancel them for the
-// complete prediction clock, including initialization and the final tick.
-export function manualWindows(start=game.predictionStartTick,end=start+6000,weeklyXp=0,cancelHot=true,skill='combat',worldRarity=0){
+// Hypothetical engines suppress native hot bonuses. Add the selected game
+// schedule explicitly, including initialization and the final tick.
+export function manualWindows(start=game.predictionStartTick,end=start+6000,weeklyXp=0,skipGameHot=true,skill='combat',worldRarity=0){
  const windows=weeklyXp||worldRarity?[{fromTick:start,toTick:end,xpMult:1+weeklyXp/100,rarityMult:1+worldRarity/100}]:[];
- if(!cancelHot)return windows;
+ if(skipGameHot)return windows;
  for(let tick=start;tick<=end;){
   const hot=game.hotSkill(tick),until=Math.min(end,hot.until-1);
   const xp=hot.skill===skill&&hot.kind==='xp'?hot.mult-1:0;
   const rare=hot.skill===skill&&hot.kind==='rarity'?hot.mult-1:0;
-  if(xp||rare)windows.push({fromTick:tick,toTick:until,xpMult:1-xp,rarityMult:1-rare});
+  if(xp||rare)windows.push({fromTick:tick,toTick:until,xpMult:1+xp,rarityMult:1+rare});
   tick=until+1;
  }
  return windows;

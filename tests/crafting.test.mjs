@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
 import {START_TICK} from '../src/simulation.js';
-import {craftingDefaults,normalizeCrafting,craftingJobs,craftingSkills,craftingPlan,craftingMaterials,materialRequirements,materialBudget,priceItems,craftingPlayer,craftingStats,importCrafting,planKey} from '../src/crafting-model.js';
+import {craftingDefaults,craftingTiers,normalizeCrafting,craftingJobs,craftingSkills,craftingPlan,craftingMaterials,materialRequirements,materialBudget,priceItems,craftingPlayer,craftingStats,importCrafting,planKey} from '../src/crafting-model.js';
 import {createCraftingScenario,simulateCrafting,MAX_CRAFT_TICKS} from '../src/crafting-simulation.js';
 import {combatHot,combatHotWindows} from '../src/combat-hot.js';
 import {setItemPrice,priceDefaults} from '../src/item-prices.js';
@@ -15,7 +15,7 @@ function nativeResult(s,job,tier,count){
  return {player,report,xp:player.skills[job.skill]-xp};
 }
 test('five crafting skills, default tiers, normalization and independent tools',()=>{
- assert.deepEqual(craftingSkills.map(s=>craftingJobs.filter(j=>j.skill===s).length),[8,66,38,8,69]);
+ assert.deepEqual(craftingSkills.map(s=>craftingJobs.filter(j=>j.skill===s).length),[8,66,38,8,74]);
  const d=craftingDefaults();assert.equal(d.tiers[61],0);assert.deepEqual(d.plans,{});
  assert.equal(d.period,'day');
  for(const period of [undefined,null,'bad','day'])assert.equal(normalizeCrafting({period}).period,'day');
@@ -39,7 +39,7 @@ test('materials aggregate across skills, qualities and hidden plans; stock never
 test('quality mapping keeps non-quality ingredients unchanged and uses original recipe outputs',()=>{
  const job=craftingJobs.find(j=>game.recipeInputs(j,4).some((i,n)=>i.itemId===j.inputs[n].itemId));assert.ok(job);
  const mapped=craftingMaterials(job,4,3);for(const input of game.recipeInputs(job,4))assert.equal(mapped[input.itemId],input.qty*3);
- for(const j of craftingJobs.filter(j=>!j.upgrade))for(let tier=0;tier<5;tier++){assert.ok(game.item(game.withRarity(j.output.itemId,tier)));assert.deepEqual(craftingMaterials(j,tier,2),Object.fromEntries(game.recipeInputs(j,tier).map(i=>[i.itemId,i.qty*2])));}
+ for(const j of craftingJobs.filter(j=>!j.upgrade))for(const tier of craftingTiers(j)){assert.equal(game.recipeOutput(j,tier),game.withRarity(j.output.itemId,tier));assert.ok(game.item(game.recipeOutput(j,tier)));assert.deepEqual(craftingMaterials(j,tier,2),Object.fromEntries(game.recipeInputs(j,tier).map(i=>[i.itemId,i.qty*2])));}
 });
 test('budget zero, fallback warnings and quantity/money overflow fail explicitly',()=>{
  const s=craftingDefaults();assert.deepEqual(materialBudget(s,{}),{rows:[],total:0,missing:[]});s.plans={'41:0':1};s.owned={1:2,2:2};
@@ -59,7 +59,7 @@ for(const skill of craftingSkills)test(`${skill}: count-limited engine matches i
 });
 test('every saved crafting recipe and rarity completes at unlocked level with original offline agreement',()=>{
  const s=craftingDefaults();s.hotSetting='off';for(const k of craftingSkills)s.levels[k]=game.maxLevel;
- for(const job of craftingJobs.filter(j=>!j.upgrade))for(let tier=0;tier<5;tier++){
+ for(const job of craftingJobs.filter(j=>!j.upgrade))for(const tier of craftingTiers(job)){
   const actual=simulateCrafting(s,job,tier,3),native=nativeResult(s,job,tier,3);
   assert.equal(actual.complete,true,`${job.id}:${tier}`);assert.equal(actual.completed,3);assert.equal(actual.xp,native.xp,`${job.id}:${tier} XP`);assert.deepEqual(actual.sampleItems,native.report.itemsGained,`${job.id}:${tier} products`);
  }
