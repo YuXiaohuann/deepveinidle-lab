@@ -3,20 +3,19 @@ import * as game from './upstream.js';
 import {collectionDefaults,collectionStorageKey,validateCollection,importCollection,collectionInteger,collectionNumber,collectionPlayers,collectionRows,collectionSkills,priceCollection} from './collection-model.js';
 import {craftingSkills,craftingRooms,craftingMasteries,craftingSlots} from './crafting-model.js';
 import {gatheringSkills,gatheringRooms,gatheringMasteries,gatheringPerks,gatheringSlots,slotItems,gatheringPotions} from './gathering-model.js';
-import {characterImportPanel,requestCharacter,importStatusText} from './import-controls.js';
+import {registerCharacterUpdates,characterImportPanel,importStatusText} from './import-controls.js';
 import {getSnapshot,subscribe,getSaveError,refreshMarket} from './price-service.js';
 import {translatedName,translatedItemName} from './i18n.js';
 import {worldBuffWarningText} from './world-buffs.js';
 import {collectionPlanStorageKey,collectionPlanDefaults,validateCollectionPlan,addCollectionPlan,addCollectionPlans,removeCollectionPlan,setCollectionPlanTarget} from './collection-plan.js';
 import {renderCollectionPlan} from './collection-plan-controls.js';
 import {encodeCollectionPlan,decodeCollectionPlan} from './collection-plan-transfer.js';
-import {collectionAutoImportStorageKey,validateCollectionAutoImport,createCollectionAutoImporter} from './collection-auto-import.js';
 
 let state,language='zh',status=null,marketStatus=null,marketBusy=false,busy=false,saveError=false,loadError=false,error=null,rows=[];
 let query='',routeType='craft',skill='all',tier='all',sort='costPerPoint',page=1,filterError=null;
 const planSort={selections:{key:null,direction:'asc'},materials:{key:null,direction:'asc'}};
 let clipboardBusy=false,clipboardStatus=null,planAutoRemoveCompleted=true;
-let calculationNow=Date.now(),active=false,plan=collectionPlanDefaults(),planLoadError=false,planSaveError=false,autoEnabled=false,autoLoadError=false,autoSaveError=false,autoImporter;
+let calculationNow=Date.now(),active=false,plan=collectionPlanDefaults(),planLoadError=false,planSaveError=false;
 
 const union=(a,b,key)=>[...new Map([...a,...b].map(v=>[key?v[key]:v,v])).values()];
 const skills=collectionSkills,rooms=union(gatheringRooms,craftingRooms,'id'),masteries=union(gatheringMasteries,craftingMasteries,'id'),perks=gatheringPerks,slots=union(gatheringSlots,craftingSlots),potions=gatheringPotions;
@@ -66,8 +65,6 @@ function initialize(){
   }
  }catch{filtersLoadError=true;}
  try{const raw=localStorage.getItem(collectionPlanStorageKey);if(raw)plan=validateCollectionPlan(JSON.parse(raw));}catch{planLoadError=true;}
- try{const raw=localStorage.getItem(collectionAutoImportStorageKey);if(raw)autoEnabled=validateCollectionAutoImport(JSON.parse(raw)).enabled;}catch{autoLoadError=true;}
- autoImporter=createCollectionAutoImporter({run:isCurrent=>importBuild({automatic:true,isCurrent}),onError:e=>{status={error:e.message};updateStatus();},listenFocus:handler=>{window.addEventListener('focus',handler);return ()=>window.removeEventListener('focus',handler);}});
  subscribe(change=>{if(document.getElementById('collection-results')&&(change.storage||state.buyMode==='global'&&change.prices||['ask','bid'].includes(state.buyMode)&&change.market))updateResults();});
 }
 function saveFilters(){
@@ -75,7 +72,7 @@ function saveFilters(){
  try{localStorage.removeItem('dvi-collection-filters-v1');localStorage.setItem(filtersStorageKey,JSON.stringify({version:2,routeType,profiles:filterProfiles}));filtersSaveError=false;filtersLoadError=false;}catch{filtersSaveError=true;}
 }
 function save(){try{localStorage.setItem(collectionStorageKey,JSON.stringify(validateCollection(state)));saveError=false;}catch{saveError=true;}}
-function changed(){autoImporter?.invalidate();calculationNow=Date.now();error=null;save();compute();}
+function changed(){calculationNow=Date.now();error=null;save();compute();}
 function compute(){try{rows=collectionRows(state,{now:calculationNow});}catch(e){rows=[];error=e.message;}updateResults();}
 const options=(entries,value)=>entries.map(([v,label])=>`<option value="${esc(v)}" ${String(v)===String(value)?'selected':''}>${esc(label)}</option>`).join('');
 const input=(path,label,value,max=Number.MAX_SAFE_INTEGER,min=0,step=1)=>`<label class="number-field"><span>${esc(label)}</span><input type="number" data-collection-path="${path}" value="${value}" min="${min}" max="${max}" step="${step}" aria-label="${esc(label)}"></label>`;
@@ -94,10 +91,10 @@ function configuration(){
 }
 export function renderCollection(lang,{isActive=false}={}){
  language=lang;active=isActive;
- if(!isActive){autoImporter?.set({enabled:autoEnabled,active:false});return;}
+ if(!isActive)return;
  const host=document.getElementById('collection-content');if(!host)return;
  initialize();rememberExpanded(host);const openDetails=new Set([...host.querySelectorAll('.config-detail[open]')].map(d=>d.id));
- host.innerHTML=`<aside class="panel gather-config"><div class="panel-heading"><h1 id="collection-title">${text('角色配置','Character build')}</h1><button id="collection-reset" class="text-button" title="${text('保留执行计划与自动导入选项','Keeps the execution plan and auto-import setting')}">${text('清空配置','Reset')}</button></div>${characterImportPanel(language,{id:'collection-import-panel',statusId:'collection-import-status',buttons:[{id:'collection-import',label:text('导入收藏与角色','Import collection & build')}],extra:`<label class="check"><input type="checkbox" id="collection-auto-import" ${autoEnabled?'checked':''}>${text('自动导入（每次聚焦时）','Auto-import (on every focus)')}</label><p class="micro import-status" role="status" id="collection-auto-status"></p>`})}<button id="collection-manual" class="secondary" ${state.initialized?'hidden':''}>${text('手动场景（从零开始）','Manual scenario (start from zero)')}</button><p id="collection-origin" class="micro"></p><p id="collection-buff-warning" class="micro" role="status"></p>${configuration()}<p class="micro">${text('动作估算固定当前属性；药剂与祝福全程有效，不计药剂与祝福费用。不计设备购置、材料自采、交易等待及费用。','Fixed-stat action estimates; boosts stay active throughout. Potion and blessing costs, equipment, self-sourcing, trading time and fees are excluded.')}</p><p id="collection-save" role="status" class="micro"></p></aside>
+ host.innerHTML=`<aside class="panel gather-config"><div class="panel-heading"><h1 id="collection-title">${text('角色配置','Character build')}</h1><button id="collection-reset" class="text-button" title="${text('保留执行计划与自动更新选项','Keeps the execution plan and auto-update settings')}">${text('清空配置','Reset')}</button></div>${characterImportPanel(language,{id:'collection-import-panel',statusId:'collection-import-status',buttons:[{id:'collection-import',label:text('导入收藏与角色','Import collection & build')}]})}<button id="collection-manual" class="secondary" ${state.initialized?'hidden':''}>${text('手动场景（从零开始）','Manual scenario (start from zero)')}</button><p id="collection-origin" class="micro"></p><p id="collection-buff-warning" class="micro" role="status"></p>${configuration()}<p class="micro">${text('动作估算固定当前属性；药剂与祝福全程有效，不计药剂与祝福费用。不计设备购置、材料自采、交易等待及费用。','Fixed-stat action estimates; boosts stay active throughout. Potion and blessing costs, equipment, self-sourcing, trading time and fees are excluded.')}</p><p id="collection-save" role="status" class="micro"></p></aside>
  <div class="collection-information"><section class="panel"><h2>${text('精通性价比','Mastery efficiency')}</h2><p class="micro">${text('奖励来自亲自产出的数量里程碑，买成品不增加进度。各行独立比较，副产物点数不计入。动作估算不含移动、回仓与升级，热门只取所选时刻。','Rewards require your own production milestones. Buying finished items adds no progress. Routes are independent; bonus-item points are excluded. Action estimates exclude travel, deposits and levelling; hot bonuses use the selected instant.')}</p>
  <div class="collection-filters">
  <div class="collection-filter-row"><label>${text('类型','Type')}<select id="collection-type">${options([['gather',text('采集','Gathering')],['craft',text('制造','Crafting')]],routeType)}</select></label><label>${text('材料成本','Material cost')}<select id="collection-buy">${options([['global',text('全局物品价格','Global item prices')],['ask',text('市场卖单','Market sell orders')],['bid',text('市场买单','Market buy orders')],['vendor',text('商人价格','Vendor prices')]],state.buyMode)}</select></label></div>
@@ -105,12 +102,7 @@ export function renderCollection(lang,{isActive=false}={}){
  <div class="collection-filter-row collection-metric-filters">${metricFilters.map(({key,label})=>`<label>${text(...label)}<input id="collection-filter-${key}" type="text" inputmode="decimal" value="${esc(filterValues[key])}" placeholder="${text('不限','Any')}"></label>`).join('')}</div></div>
  <p id="collection-summary" class="micro" role="status"></p><p id="collection-error" role="alert"></p><div class="collection-list-actions"><a id="collection-plan-link" href="#collection-plan"></a><button id="collection-add-filtered" class="text-button" disabled></button></div><div id="collection-results"></div><nav id="collection-pages-bottom" class="collection-pagination" hidden></nav></section><section class="panel" id="collection-plan" aria-label="${text('执行计划','Execution plan')}"></section></div>`;
  for(const id of openDetails){const el=document.getElementById(id);if(el)el.open=true;}
- host.querySelector('#collection-import').onclick=()=>importBuild();
- host.querySelector('#collection-auto-import').onchange=e=>{
-  autoEnabled=e.target.checked;autoLoadError=false;
-  try{localStorage.setItem(collectionAutoImportStorageKey,JSON.stringify({version:1,enabled:autoEnabled}));autoSaveError=false;}catch{autoSaveError=true;}
-  autoImporter.set({enabled:autoEnabled,active});updateStatus();
- };
+ host.querySelector('#collection-import').onclick=()=>collectionUpdater.read({config:true,inventory:true});
  host.querySelector('#collection-manual').onclick=()=>{state.initialized=true;state.bank={};state.pack={};state.edited=true;changed();renderCollection(language,{isActive:true});};
  host.querySelector('#collection-reset').onclick=()=>{state=collectionDefaults();drafts.clear();opened.clear();status=null;loadError=false;changed();renderCollection(language,{isActive:true});};
  host.querySelectorAll('[data-collection-path]').forEach(el=>{
@@ -136,12 +128,11 @@ export function renderCollection(lang,{isActive=false}={}){
  for(const {key}of metricFilters)host.querySelector('#collection-filter-'+key).oninput=e=>{filterValues[key]=e.target.value;page=1;saveFilters();updateResults();};
  host.querySelector('#collection-buy').onchange=e=>{state.buyMode=e.target.value;page=1;save();updateResults();};
  compute();
- autoImporter.set({enabled:autoEnabled,active});
 }
 function updateStatus(){
  const host=document.getElementById('collection-content');if(!host?.querySelector('#collection-save'))return;
  host.querySelector('#collection-import').disabled=busy;
- host.querySelector('#collection-auto-status').textContent=[autoLoadError?text('自动导入设置无法读取，当前关闭。','Auto-import settings could not be read; disabled.'):'',autoSaveError?text('自动导入设置保存失败。','Auto-import settings could not be saved.'):''].filter(Boolean).join(' ');
+
  host.querySelector('#collection-buff-warning').textContent=state.importWarnings.map(w=>w.startsWith('collections.invalid:')?text(`【收藏】存在错误记录，已跳过 ${w.split(':')[1]} 条，仅导入合法记录。`,`[Collection] Invalid records found: skipped ${w.split(':')[1]}; only valid records were imported.`):worldBuffWarningText(language,w)).join(' ')+(state.importWarnings.some(w=>!w.startsWith('collections.invalid:'))?text(' 该提示针对导入时的数据；当前手动配置以表单为准。',' This warning concerns the imported capture; current manual settings are shown in the form.'):'');
  host.querySelector('#collection-import-status').textContent=[importStatusText(language,status,busy&&!marketBusy),marketBusy?text('正在更新市场数据…','Updating market data…'):marketStatus?.error?text('市场更新失败：','Market update failed: ')+(marketErrors[marketStatus.error]?.[language==='zh'?0:1]??marketStatus.error):marketStatus?text('市场数据已更新。','Market data updated.'):''].filter(Boolean).join('\n');
  host.querySelector('#collection-origin').textContent=!state.initialized?message('uninitialized'):state.capturedAt?text('收藏捕获于：','Collection captured: ')+new Date(state.capturedAt).toLocaleString(language==='zh'?'zh-CN':'en')+(state.edited?text(' · 已手动修正',' · Manually adjusted'):''):text('手动场景；未填写的数量为 0。','Manual scenario; unspecified counts are zero.');
@@ -203,18 +194,6 @@ function detail(card,row){
  card.querySelector('.collection-detail').innerHTML=`<h3>${text('材料采购','Material purchases')}</h3><ul>${list(row.materialsPriced)}</ul>`;
 }
 
-async function importBuild({automatic=false,isCurrent=()=>true}={}){
- if(busy||(automatic&&drafts.size))return;
- const previous=state;busy=true;status=null;marketStatus=null;updateStatus();
- try{
-  const response=await requestCharacter('read');
-  if(automatic&&(!isCurrent()||state!==previous||drafts.size))return;
-  if(!response.snapshot)throw Error('noSnapshot');
-  state=importCollection(state,response.snapshot);drafts.clear();loadError=false;status={capturedAt:state.capturedAt};changed();renderCollection(language,{isActive:active});
-  marketBusy=true;updateStatus();
-  try{await refreshMarket();marketStatus={updated:true};}catch(e){marketStatus={error:e.message};}finally{marketBusy=false;}
- }catch(e){if(!automatic||isCurrent())status={error:e.message};}finally{busy=false;updateStatus();}
-}
 function changePlan(action){
  if(planLoadError)return;
  try{plan=validateCollectionPlan(action());savePlan();updateResults();}catch(e){error=e.message;updateStatus();}
@@ -267,3 +246,15 @@ function updatePlan(){
   onTarget:(itemId,target)=>changePlan(()=>setCollectionPlanTarget(plan,itemId,target)),
   onRemove:itemId=>changePlan(()=>removeCollectionPlan(plan,itemId))});
 }
+
+const collectionUpdater=registerCharacterUpdates('collection',{
+ inventory:true,busy:()=>busy||!state,revision:()=>JSON.stringify(state),hasDraft:()=>drafts.size>0||loadError,
+ onBusy:value=>{busy=value;if(value){status=null;marketStatus=null;}updateStatus();},
+ apply:async(snapshot,flags)=>{
+  state=importCollection(state,snapshot,{configuration:flags.config,inventory:flags.inventory});
+  status={capturedAt:snapshot.capturedAt};loadError=false;
+  if(flags.config){drafts.clear();changed();renderCollection(language,{isActive:active});}else{save();updateResults();}
+  if(flags.config){marketBusy=true;updateStatus();try{await refreshMarket();marketStatus={updated:true};}catch(error){marketStatus={error:error.message};}finally{marketBusy=false;}}
+ },
+ onError:error=>{status={error:error.message};updateStatus();},
+});

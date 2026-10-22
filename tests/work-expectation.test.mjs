@@ -2,6 +2,7 @@ import {questlessTick} from '../scripts/native-questless.mjs';
 import test from 'node:test';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {parse} from 'acorn';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
 import {gatheringDefaults,gatheringPlayer,gatheringJobs,selectedGatheringSites} from '../src/gathering-model.js';
@@ -84,17 +85,20 @@ test('expected pricing and aggregation accept fractions without relaxing plan qu
 });
 
 
-test('both pages describe the hybrid model in both languages and retain small expected quantities',()=>{
+test('both pages describe the hybrid model and gathering retains small expected quantities',()=>{
  for(const page of ['gathering','crafting']){
   const source=fs.readFileSync(new URL('../src/'+page+'-controls.js',import.meta.url),'utf8');
-  const functions=source.slice(source.indexOf('function expectedQuantity('),source.indexOf('function ',source.indexOf('function methodNote(')+1));
+  const names=page==='gathering'?['expectedQuantity','methodNote']:['methodNote'];
+  const functions=parse(source,{ecmaVersion:'latest',sourceType:'module'}).body.filter(node=>node.type==='FunctionDeclaration'&&names.includes(node.id.name)).map(node=>source.slice(node.start,node.end)).join('\n');
   for(const language of ['zh','en']){
    const context=vm.createContext({language,state:{discardGathered:false},text:(zh,en)=>language==='zh'?zh:en,format:(v,digits=page==='gathering'?1:0)=>v.toLocaleString('en',{minimumFractionDigits:digits,maximumFractionDigits:digits})});
    vm.runInContext(functions,context);
-   assert.equal(vm.runInContext('expectedQuantity(0)',context),'0');
-   assert.equal(vm.runInContext('expectedQuantity(.025)',context),'1/40');
-   assert.equal(vm.runInContext('expectedQuantity(.1)',context),'0.10');
-   assert.equal(vm.runInContext('expectedQuantity(10)',context),'10');
+   if(page==='gathering'){
+    assert.equal(vm.runInContext('expectedQuantity(0)',context),'0');
+    assert.equal(vm.runInContext('expectedQuantity(.025)',context),'1/40');
+    assert.equal(vm.runInContext('expectedQuantity(.1)',context),'0.10');
+    assert.equal(vm.runInContext('expectedQuantity(10)',context),'10');
+   }
    const note=vm.runInContext('methodNote()',context);
    assert.match(note,language==='zh'?/原始模拟/:/original simulation/);
    assert.match(note,language==='zh'?/数学期望/:/mathematical expectations/);

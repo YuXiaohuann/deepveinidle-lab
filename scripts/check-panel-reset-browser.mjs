@@ -1,10 +1,11 @@
+import {craftingOrdersStorageKey as craftingStorageKey} from '../src/crafting-orders.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright-core';
 import {browserPath} from './release-common.mjs';
 import * as game from '../src/upstream.js';
-import {craftingDefaults,craftingStorageKey} from '../src/crafting-model.js';
+import {craftingDefaults} from '../src/crafting-model.js';
 import {enhancementDefaults,enhancementStorageKey} from '../src/enhancement.js';
 import {priceDefaults,priceStorageKey} from '../src/item-prices.js';
 
@@ -24,7 +25,7 @@ try{
  for(const width of [1280,390])for(const language of ['zh','en']){
   const context=await browser.newContext({viewport:{width,height:900}});
   await context.addInitScript(({craft,enhance,prices,language,craftingStorageKey,enhancementStorageKey,priceStorageKey})=>{
-   const values={[craftingStorageKey]:craft,[enhancementStorageKey]:enhance,[priceStorageKey]:prices,'dvi-simulator-v1':{language}};
+   const values={[craftingStorageKey]:{version:1,build:{...craft,plans:{}},orders:[{id:"reset",name:"Reset order",enabled:true,plans:craft.plans,fees:{fixed:10,percent:2,minute:3}}],currentOrderId:"reset",inventory:{capturedAt:Date.now(),items:craft.owned}},[enhancementStorageKey]:enhance,[priceStorageKey]:prices,'dvi-simulator-v1':{language}};
    for(const [key,value]of Object.entries(values))if(localStorage.getItem(key)===null)localStorage.setItem(key,JSON.stringify(value));
   },{craft,enhance,prices,language,craftingStorageKey,enhancementStorageKey,priceStorageKey});
   const page=await context.newPage();page.on('pageerror',e=>results.errors.push(e.message));
@@ -36,28 +37,15 @@ try{
   const group=await page.locator('#craft-group option').nth(1).getAttribute('value');
   await page.selectOption('#craft-group',group);
   await page.locator('#craft-reset').click();
-  const left=await read(page,craftingStorageKey),planKeys=['plans','owned','tiers','upgradeMigration'];
-  assert.deepEqual(omit(left,planKeys),omit(craftingDefaults(),planKeys));
-  for(const key of planKeys)assert.deepEqual(left[key],craft[key]);
+  const left=await read(page,craftingStorageKey);
+  assert.deepEqual(left.build,craftingDefaults());assert.deepEqual(left.inventory.items,craft.owned);
+  assert.deepEqual(left.orders[0].plans,craft.plans);assert.deepEqual(left.orders[0].fees,{fixed:10,percent:2,minute:3});assert.equal(left.orders[0].enabled,true);
   assert.equal(await page.inputValue('#craft-search'),'Shrimp');assert.equal(await page.inputValue('#craft-group'),group);
   assert.equal(await page.locator('#craft-filled').getAttribute('aria-pressed'),'true');
   assert.equal(await page.locator('[data-craft-rarity="4"]').getAttribute('aria-pressed'),'true');
-  assert.equal(await page.locator('#craft-upgrade-ack').count(),1);
-  const label=language==='zh'?'清空计划':'Clear plan';
-  for(const selector of ['#craft-clear-plans','#craft-clear-owned']){
-   assert.equal(await page.locator(selector).textContent(),label);
-   const beforeClear=await read(page,craftingStorageKey);
-   await page.locator(selector).click();
-   const cleared=await read(page,craftingStorageKey);
-   assert.deepEqual(cleared.plans,{});assert.deepEqual(cleared.owned,{});assert.equal(cleared.upgradeMigration,false);
-   assert.deepEqual(omit(cleared,planKeys),omit(beforeClear,planKeys));
-   assert.deepEqual(await read(page,priceStorageKey),prices);
-   assert.equal(await page.locator('#craft-upgrade-ack').count(),0);
-   await page.reload();assert.deepEqual(await read(page,craftingStorageKey),cleared);
-   if(selector==='#craft-clear-plans'){
-    await page.evaluate(({key,craft})=>localStorage.setItem(key,JSON.stringify(craft)),{key:craftingStorageKey,craft});await page.reload();
-   }
-  }
+  await page.locator('[data-craft-order-enabled="reset"]').uncheck();
+  const cleared=await read(page,craftingStorageKey);assert.equal(cleared.orders[0].enabled,false);assert.deepEqual(cleared.orders[0].plans,craft.plans);assert.deepEqual(cleared.inventory.items,craft.owned);
+  assert.deepEqual(await read(page,priceStorageKey),prices);await page.reload();assert.deepEqual(await read(page,craftingStorageKey),cleared);
   await page.screenshot({path:path.join(directory,`craft-${language}-${width}.png`),fullPage:true});
   await page.goto(base+'/enhance');
   await page.evaluate(async({snapshot,language})=>{const m=await import('/src/enhancement-controls.js');m.applyEnhancementImport(snapshot);m.renderEnhancement(language);},{snapshot,language});
@@ -81,7 +69,7 @@ try{
   const layout=await page.locator('.enhance-equipment .panel-heading').evaluate(el=>{const [title,button]=el.children,a=title.getBoundingClientRect(),b=button.getBoundingClientRect();return {overlap:a.right>b.left,overflow:document.documentElement.scrollWidth>innerWidth,buttonRight:b.right,titleLeft:a.left};});
   assert.equal(layout.overlap,false);assert.equal(layout.overflow,false);
   await page.screenshot({path:path.join(directory,`enhance-${language}-${width}.png`),fullPage:true});
-  results.cases.push({width,language,status:'passed',checks:['craft left isolation','both clear plan buttons','enhance left/right isolation','candidate scope','global prices preserved','reload','layout']});
+  results.cases.push({width,language,status:'passed',checks:['craft left isolation','order deselection preserves recipes and stock','enhance left/right isolation','candidate scope','global prices preserved','reload','layout']});
   await context.close();
  }
  assert.deepEqual(results.errors,[]);console.log(JSON.stringify(results));

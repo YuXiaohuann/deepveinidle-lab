@@ -1,0 +1,37 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createCharacterUpdater,loadCharacterUpdates,validateCharacterUpdates,characterUpdateStorageKey} from '../src/character-auto-import.js';
+const flush=()=>new Promise(resolve=>setImmediate(resolve));
+const memory=()=>{const data=new Map();return {getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,value),data};};
+function setup(extra={}){
+ const applied=[],errors=[],reads=[];let finish,revision=0,draft=false;
+ const updater=createCharacterUpdater({storage:memory(),page:'craft',inventory:true,read:()=>{reads.push(1);return new Promise(resolve=>finish=resolve);},apply:(snapshot,flags)=>applied.push({snapshot,flags}),onError:e=>errors.push(e.message),revision:()=>revision,hasDraft:()=>draft,...extra});
+ return {updater,applied,errors,reads,reply:snapshot=>finish({snapshot}),edit:()=>revision++,draft:value=>draft=value};
+}
+test('defaults, strict validation, old collection choices, per-page isolation and corrupt storage protection',()=>{
+ for(const raw of [null,{version:2,config:false,inventory:false},{version:1,config:1,inventory:false},{version:1,config:false,inventory:true}])assert.throws(()=>validateCharacterUpdates(raw),/invalidAutoImport/);
+ const storage=memory();assert.deepEqual(loadCharacterUpdates(storage,'combat'),{version:1,config:false,inventory:false});assert.deepEqual(loadCharacterUpdates(storage,'craft',true),{version:1,config:false,inventory:true});
+ for(const enabled of [false,true]){storage.setItem('dvi-collection-auto-import-v1',JSON.stringify({version:1,enabled}));assert.deepEqual(loadCharacterUpdates(storage,'collection',true),{version:1,config:enabled,inventory:enabled});}
+ storage.setItem(characterUpdateStorageKey('collection'),'broken');assert.throws(()=>loadCharacterUpdates(storage,'collection',true));assert.equal(loadCharacterUpdates(storage,'craft',true).config,false);
+ const t=setup({storage,page:'collection'});assert.equal(t.updater.settingsError,'load');t.updater.setActive(true);assert.equal(t.reads.length,0);assert.equal(storage.getItem(characterUpdateStorageKey('collection')),'broken');t.updater.setActive(false);t.updater.configure({config:true});assert.equal(t.updater.settingsError,null);assert.equal(JSON.parse(storage.getItem(characterUpdateStorageKey('collection'))).config,true);
+});
+test('entry, completed focus and return read once; redraw, inactive and disabled skip reads',async()=>{
+ const t=setup();t.updater.setActive(true);assert.equal(t.reads.length,1);t.updater.setActive(true);t.updater.trigger();assert.equal(t.reads.length,1);t.reply({capturedAt:1});await flush();assert.deepEqual(t.applied[0].flags,{config:false,inventory:true});
+ t.updater.trigger();t.reply({capturedAt:2});await flush();assert.equal(t.reads.length,2);t.updater.setActive(false);t.updater.trigger();assert.equal(t.reads.length,2);t.updater.setActive(true);t.reply({capturedAt:3});await flush();assert.equal(t.reads.length,3);t.updater.configure({inventory:false});t.updater.trigger();assert.equal(t.reads.length,3);
+});
+test('both channels use one snapshot; changing switches invalidates a pending read and applies only new flags',async()=>{
+ const t=setup();t.updater.configure({config:true});t.updater.setActive(true);assert.equal(t.reads.length,1);t.updater.configure({inventory:false});t.reply({capturedAt:1});await flush();assert.equal(t.applied.length,0);assert.equal(t.reads.length,2);t.reply({capturedAt:2});await flush();assert.deepEqual(t.applied[0].flags,{config:true,inventory:false});
+ t.updater.configure({inventory:true});t.reply({capturedAt:3});await flush();assert.deepEqual(t.applied[1].flags,{config:true,inventory:true});
+});
+test('leaving and returning during a pending read discards the old reply and refreshes the active page',async()=>{
+ const t=setup();t.updater.setActive(true);t.updater.setActive(false);t.updater.setActive(true);t.reply({capturedAt:1});await flush();assert.equal(t.applied.length,0);assert.equal(t.reads.length,2);t.reply({capturedAt:2});await flush();assert.equal(t.applied[0].snapshot.capturedAt,2);
+});
+test('edits and drafts protect state; manual reads share concurrency but work while automatic flags are disabled',async()=>{
+ const t=setup();t.updater.setActive(true);t.edit();t.reply({});await flush();assert.equal(t.applied.length,0);t.draft(true);await t.updater.trigger();assert.equal(t.reads.length,1);t.draft(false);t.updater.configure({inventory:false});t.updater.read({config:true,inventory:true});t.updater.trigger();assert.equal(t.reads.length,2);t.reply({});await flush();assert.equal(t.applied.length,1);
+});
+test('read/apply failures are visible, data remains unchanged and next trigger retries; busy manual page skips automatic requests',async()=>{
+ let busy=true,count=0;const t=setup({busy:()=>busy,apply:()=>{count++;throw Error('invalidSnapshot');}});t.updater.setActive(true);assert.equal(t.reads.length,0);busy=false;t.updater.trigger();t.reply(null);await flush();assert.deepEqual(t.errors,['noSnapshot']);t.updater.trigger();t.reply({});await flush();assert.deepEqual(t.errors,['noSnapshot','invalidSnapshot']);assert.equal(count,1);
+});
+test('settings save failures remain explicit while the in-memory choice is available',()=>{
+ const t=setup({storage:{getItem:()=>null,setItem:()=>{throw Error('quota');}}});t.updater.configure({config:true});assert.equal(t.updater.settingsError,'save');assert.equal(t.updater.options.config,true);
+});

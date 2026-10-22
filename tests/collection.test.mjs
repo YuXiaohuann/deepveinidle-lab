@@ -220,3 +220,18 @@ test('collection import skips invalid records, persists warning and clears it on
  const corrupt=structuredClone(result);corrupt.counts[42341]=1;assert.throws(()=>validateCollection(corrupt),/invalidSnapshot/);
  for(const warning of ['collections.invalid:0','collections.invalid:-1','collections.invalid:1.5','collections.invalid:9007199254740992'])assert.throws(()=>validateCollection({...result,importWarnings:[warning]}),/invalidConfiguration/);
 });
+
+test('configuration and inventory imports are independent; both enabled validate atomically',()=>{
+ const previous=setup();previous.bank={1:8};previous.pack={2:9};previous.counts={40:4};previous.config.levels.smithing=7;
+ const raw=snapshot();raw.player.bank={1:2};raw.player.pack=[{itemId:1,qty:3}];
+ const stock=importCollection(previous,raw,{configuration:false,inventory:true});assert.deepEqual(stock.counts,previous.counts);assert.deepEqual(stock.config,previous.config);assert.deepEqual(stock.bank,{1:2});assert.equal(stock.inventoryCapturedAt,raw.capturedAt);
+ const config=importCollection(previous,{...raw,player:{...raw.player,bank:null,pack:null}},{configuration:true,inventory:false});assert.equal(config.counts[40],9);assert.deepEqual(config.bank,previous.bank);assert.deepEqual(config.pack,previous.pack);
+ const uninitialized=importCollection(collectionDefaults(),{version:2,capturedAt:Date.now(),player:{bank:{},pack:[]}},{configuration:false,inventory:true});assert.equal(uninitialized.initialized,false);
+ assert.throws(()=>importCollection(previous,{...raw,player:{...raw.player,bank:null}}),/incompleteSnapshot/);assert.deepEqual(previous.bank,{1:8});
+ assert.throws(()=>importCollection(stock,{...raw,capturedAt:raw.capturedAt-1},{configuration:false,inventory:true}),/inventoryOutdated/);
+});
+
+test('old combined captures retain their inventory timestamp when loading before split updates',()=>{
+ const original=importCollection(setup(),snapshot()),old=structuredClone(original);delete old.inventoryCapturedAt;
+ assert.equal(validateCollection(old).inventoryCapturedAt,old.capturedAt);
+});

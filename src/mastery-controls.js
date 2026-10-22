@@ -1,4 +1,4 @@
-import {requestCharacter,characterImportPanel,probeCharacter,importStatusText} from './import-controls.js';
+import {registerCharacterUpdates,characterImportPanel,probeCharacter,importStatusText} from './import-controls.js';
 import {masteryValue} from './model.js';
 import {translatedName} from './i18n.js';
 import {masteryTracks,masteryLimit,masteryDefaults,validateMastery,calculateMastery,highestAffordableMastery,readMasterySettings,writeMasterySettings,importMastery} from './mastery.js';
@@ -66,11 +66,14 @@ export function renderMastery(nextLanguage){
   const id=button.closest('[data-mastery-row]').dataset.masteryRow;state.target[id]=button.dataset.masteryAction==='max'?highestAffordableMastery(state,id):Number(state.target[id])+(button.dataset.masteryAction==='plus'?1:-1);
   host.querySelector(`[data-mastery-row="${id}"] [data-mastery-field="target"]`).value=state.target[id];save();updateResults();
  };
- host.querySelector('#mastery-import').onclick=async()=>{
-  if(busy)return;busy=true;renderImportStatus();
-  try{const response=await requestCharacter('read');if(!response.snapshot)throw Error('noSnapshot');applyMasteryImport(response.snapshot);}
-  catch(error){status={error:error.message};}finally{busy=false;renderMastery(language);}
- };
+ host.querySelector('#mastery-import').onclick=()=>masteryUpdater.read({config:true,inventory:false});
  if(!probeStarted){probeStarted=true;probeCharacter().then(()=>{if(!status&&!busy){status={ready:true};renderImportStatus();}}).catch(error=>{if(!status&&!busy){status={error:error.message};renderImportStatus();}});}
  renderImportStatus();updateResults();for(const [id,open]of openDetails){const el=host.querySelector(`#${id}`);if(el)el.open=open;}
 }
+
+const masteryUpdater=registerCharacterUpdates('mastery',{
+ busy:()=>busy,revision:()=>JSON.stringify(state),
+ onBusy:value=>{busy=value;renderImportStatus();},
+ apply:snapshot=>{applyMasteryImport(snapshot);renderMastery(language);},
+ onError:error=>{status={error:error.message};renderImportStatus();},
+});

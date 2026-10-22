@@ -2,7 +2,9 @@
 
 ### 6.1 角色导入组件与 userscript 协议
 
-战斗、采集、制造、强化与精通复用 characterImportPanel：统一 details/summary、import-body、安装链接、按钮与状态节点，参数控制节点标识、按钮及说明；状态为空隐藏，长文本换行。导入区域使用相同高亮容器、金色标题、边框、背景与展开间距，折叠遵循 [语言、布局与持久化](shared.md#22-语言布局与持久化)。
+战斗、采集、制造、强化、精通与收藏复用 characterImportPanel：统一 details/summary、import-body、安装链接、按钮与状态节点，参数控制节点标识、按钮及说明；状态为空隐藏，长文本换行。导入区域使用相同高亮容器、金色标题、边框、背景与展开间距，折叠遵循 [语言、布局与持久化](shared.md#22-语言布局与持久化)。
+
+角色自动更新统一使用 `src/character-auto-import.js` 管理每页两个独立选项、进入／焦点调度、忙碌合并与响应代际；`src/import-controls.js` 负责共用开关、页面激活、输入保护及只读桥接。各页面只提供配置／库存应用适配器，手动导入也复用同一调度；库存解析仍独立于调度，由 `src/character-inventory.js` 供收藏与制造复用。具体规则见[共用角色自动更新](shared.md#导入游戏角色与自动更新)。
 
 连接检测共用单次 probe 请求，各页分别保留状态，统一由 importStatusText 生成连接成功、读取中、捕获时间及缺失/旧版本/读取失败等双语提示。较晚 probe 不覆盖读取中或已有结果；读取期间禁用对应按钮，失败保留原配置。战斗额外保留字段警告。
 
@@ -55,8 +57,9 @@
 | `src/model.js` | 输入规范化、玩家状态适配、配置过滤、结果组合与排序 |
 | `src/simulation.js`、`src/simulation-worker.js` | 原始战斗函数状态适配、可配置时长统计及异步计算 |
 | `src/gathering-model.js`、`src/gathering-simulation.js`、`src/gathering-worker.js`、`src/gathering-controls.js` | 独立采集配置与导入、原始工作逐刻适配、逐点平均、异步进度及页面交互 |
-| `src/crafting-model.js`、`src/crafting-simulation.js`、`src/crafting-worker.js`、`src/crafting-controls.js` | 制造计划与材料预算、原始限次模拟、异步进度与页面交互 |
+| `src/crafting-model.js`、`src/crafting-orders.js`、`src/crafting-simulation.js`、`src/crafting-worker.js`、`src/crafting-controls.js` | 制造角色与多配方订单、独立加工费、执行计划与材料预算、原始限次模拟及页面交互 |
 | `src/work-expectation.js` | 采集／制造共用机会期望账本、品质、烧焦及奖励容量门槛；不改原始过程 |
+| `src/character-inventory.js` | 收藏与制造共用仓库／背包校验、重复堆叠合并与完整物品 ID 库存快照；制造另校验捕获时间 |
 | `src/world-buffs.js` | 战斗、采集与制造共用世界增益窗口校验、捕获时汇总与旧捕获提示 |
 | `src/work-import.js` | 采集与制造共用角色导入校验及字段映射 |
 | `tests/crafting.test.mjs` | 有效配方／品质原始离线对照、烧焦／升级／限次、材料预算、窗口速率与导入回归 |
@@ -70,13 +73,13 @@
 | `src/search-select.js` | 可搜索选择框与键盘交互 |
 | `src/i18n.js` | 上游翻译整合与缺失名称补充 |
 | `src/character-import.user.js` | 角色配置读取与脚本管理器本地存储桥接 |
-| `src/character-import.js`、`src/import-controls.js` | 全部支持字段校验与转换、配置导入及跨页面请求 |
-| `tests/character-import.test.mjs` | 全部字段映射、角色脚本旁听与存储桥接回归 |
+| `src/character-import.js`、`src/import-controls.js`、`src/character-auto-import.js` | 全部支持字段校验与转换、共用角色导入面板、独立配置／库存选项、手动／自动读取调度、页面／输入保护及跨页面请求 |
+| `tests/character-import.test.mjs`、`tests/character-auto-import.test.mjs`、`tests/character-inventory.test.mjs`、`tests/character-auto-import-browser.mjs` | 字段映射、角色脚本桥接、共用配置／库存自动更新、独立库存解析、页面生命周期与输入保护回归 |
 | `src/debug-controls.js`、`tests/debug-controls.test.mjs` | 隐藏调试页、角色配置 JSON 文件下载与战斗／强化两个共用导入入口、文件往返及失败状态验证 |
 | `src/collection-model.js`、`src/collection-controls.js`、`src/collection-simulation.js` | 隐藏收藏页、独立最小进度与角色导入、原始里程碑／奖励、动作期望与全局／API／商人材料采购估值、类型独立筛选保存、材料明细及离线目标事件回归（产出和药剂数量只在离线事件验证中保留） |
-| `src/collection-plan.js`、`src/collection-plan-controls.js`、`src/collection-plan-transfer.js`、`src/collection-auto-import.js` | 独立计划存储、最高目标去重、材料归并、导入仓库与背包抵扣、采购成本展示、计划 JSON／gzip+Base64 剪贴板交换，以及焦点自动导入调度与过期响应隔离 |
+| `src/collection-plan.js`、`src/collection-plan-controls.js`、`src/collection-plan-transfer.js` | 独立计划存储、最高目标去重、材料归并、导入仓库与背包抵扣、采购成本展示、计划 JSON／gzip+Base64 剪贴板交换，以及计划数据维护 |
 | `tests/collection.test.mjs`、`tests/collection-browser.mjs` | 收藏边界、品质／烧焦／被捕、价格缺失与零价、独立目标事件对照、DOM 桥接、类型独立筛选与存储异常恢复、材料采购展开区与窄屏专项 |
-| `tests/collection-plan.test.mjs`、`tests/collection-plan-transfer.test.mjs`、`tests/collection-auto-import.test.mjs`、`tests/collection-plan-browser.mjs` | 计划去重、数量和金额边界、焦点调度、压缩往返、导入并发与存档保留、双语窄屏交互 |
+| `tests/collection-plan.test.mjs`、`tests/collection-plan-transfer.test.mjs`、`tests/collection-plan-browser.mjs` | 计划去重、数量和金额边界、焦点调度、压缩往返、导入并发与存档保留、双语窄屏交互 |
 | `src/mastery.js`、`src/mastery-controls.js` | 独立精通预算、升级成本、配置校验与双语交互 |
 | `src/price-protocol.js`、`src/price-service.js` | 物品价格六项数据的只读快照、固定公开协议、统一设价命令及分类变更通知 |
 | `src/item-prices.js`、`src/item-price-store.js`、`src/market-import.js`、`src/item-price-controls.js`、`src/price-auto-import.js` | 价格模块内部规则、存储、官方价格及挂单总量解析、管理弹窗与自动导入通知 |

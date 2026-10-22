@@ -1,6 +1,6 @@
 {
   "name": "deep-vein-idle-simulator",
-  "version": "1.5.2",
+  "version": "1.6.0-preview.1",
   "private": true,
   "type": "module",
   "scripts": {
