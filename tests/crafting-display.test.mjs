@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import * as game from '../src/upstream.js';
-import {addExpected} from '../src/work-expectation.js';
 import * as model from '../src/crafting-model.js';
+import * as ordersModel from '../src/crafting-orders.js';
 import {valuationPrice} from '../src/item-prices.js';
 const source=fs.readFileSync(new URL('../src/crafting-controls.js',import.meta.url),'utf8');
 function page(language='zh'){
- const context=vm.createContext({...model,game,addExpected,valuationPrice,localStorage:{getItem(){return null;}},translatedName:n=>n,translatedItemName:id=>String(id),getSnapshot:()=>({}),subscribe(){}});
+ const context=vm.createContext({registerCharacterUpdates:()=>({read(){}}),...model,...ordersModel,game,valuationPrice,localStorage:{getItem(){return null;},removeItem(){}},translatedName:n=>n,translatedItemName:id=>String(id),getSnapshot:()=>({}),subscribe(){}});
  vm.runInContext(source.replaceAll('import.meta.url',"'http://localhost/'").replace(/^import .*;\n/gm,'').replace('export function renderCrafting','function renderCrafting'),context);
- vm.runInContext(`language=${JSON.stringify(language)};state.levels.cooking=100;[1,2,3,4].forEach(t=>selectedTiers.add(t));`,context);return context;
+ vm.runInContext(`language=${JSON.stringify(language)};state.levels.cooking=100;orders=[createOrder('test','Test')];currentOrderId='test';[1,2,3,4].forEach(t=>selectedTiers.add(t));`,context);return context;
 }
 test('all five rarities appear independently, with XP and profit first and plan input last',()=>{
  for(const lang of ['zh','en']){
@@ -22,7 +22,7 @@ test('all five rarities appear independently, with XP and profit first and plan 
   assert.ok(headers.indexOf(lang==='zh'?'经验/天':'XP/day')<headers.indexOf(lang==='zh'?'单次材料成本':'Material cost / craft'));
   assert.match(row,lang==='zh'?/ · 普通<\/strong><small>所需等级 1/:/ · Normal<\/strong><small>Level 1/);
   assert.match(headers,/data-craft-sort="levelReq"/);
-  vm.runInContext("state.plans={'61:2':7};filledOnly=true",p);assert.equal(vm.runInContext('visibleJobs()[0].tier',p),2);assert.equal(vm.runInContext('visibleJobs().length',p),1);
+  vm.runInContext("currentOrder().plans={'61:2':7};filledOnly=true",p);assert.equal(vm.runInContext('visibleJobs()[0].tier',p),2);assert.equal(vm.runInContext('visibleJobs().length',p),1);
  }
 });
 test('hour/day toggles scale only cached rate columns and retain per-craft values',()=>{
@@ -75,13 +75,14 @@ test('recipe cost and value details show prices without editable fields',()=>{
  assert.match(row,/-cost/);assert.match(row,/-value/);
 });
 
-test('toolbar orders group, search, rarity, filled button and clear, with no batch UI',()=>{
+test('recipe toolbar retains filters while batch editing belongs to the order panel',()=>{
  const toolbar=source.slice(source.indexOf('<div class="toolbar craft-toolbar">'),source.indexOf('<p id="craft-notice"'));
- const controls=['id="craft-group"','id="craft-search"','${rarityFilters()}','id="craft-filled"','id="craft-clear-plans"'];
+ const controls=['id="craft-group"','id="craft-search"','${rarityFilters()}','id="craft-filled"'];
  for(let i=1;i<controls.length;i++)assert.ok(toolbar.indexOf(controls[i-1])<toolbar.indexOf(controls[i]));
  assert.doesNotMatch(toolbar,/craft-period/);
  assert.match(toolbar,/<button id="craft-filled"[^>]+aria-pressed/);
- assert.doesNotMatch(source,/craft-batch|applyCraftingBatch|data-craft-tier/);
+ assert.doesNotMatch(toolbar,/craft-batch|data-craft-tier/);
+ assert.match(source,/id="craft-batch"/);
 });
 
 test('upgrades stay in the seven-column table without extra recipe notes and keep per-upgrade units',()=>{

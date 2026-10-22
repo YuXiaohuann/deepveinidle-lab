@@ -1,3 +1,5 @@
+import {createCharacterUpdater} from '../src/character-auto-import.js';
+import {readCharacterInventory} from '../src/character-inventory.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -377,22 +379,10 @@ test('userscripts match project preview channels and bridge on preview routes',a
  }
 });
 
-test('crafting import button reads through the userscript DOM bridge',async()=>{
- const source=fs.readFileSync(new URL('../src/crafting-controls.js',import.meta.url),'utf8');
- const handler=source.match(/document\.getElementById\('craft-import'\)\.onclick=(async\(\)=>\{[^\n]+\});/);
- assert.ok(handler,'crafting import button handler exists');
- const doc=new EventTarget(),page=simulatorWorld(doc);
- userscriptWorld(doc,async()=>fixture());
- const state={plans:{'1:0':3},owned:{1:2}};
- const context=vm.createContext({document:{getElementById:()=>button},requestCharacter:page.requestCharacter,state,
-  importBusy:false,importStatus:null,clock:0,language:'zh',active:true,Date,
-  renderImport(){},renderCrafting(){},save(){},schedule(){},
-  importCrafting(previous,snapshot){assert.equal(snapshot.version,2);return {state:previous,capturedAt:snapshot.capturedAt};}});
- const button={};
- vm.runInContext(handler[0],context);
- await button.onclick();
- assert.equal(context.importStatus?.error,undefined);
- assert.ok(context.importStatus?.capturedAt);
- assert.equal(context.state,state);
- assert.equal(context.importBusy,false);
+test('shared character importer reads configuration and inventory once through the userscript DOM bridge',async()=>{
+ const doc=new EventTarget(),page=simulatorWorld(doc);let count=0,inventory,busy=false;
+ userscriptWorld(doc,async()=>{count++;const s=fixture();s.player.bank={1:2};s.player.pack=[{itemId:1,qty:3}];return s;});
+ const errors=[],updater=createCharacterUpdater({storage:{getItem:()=>null,setItem(){}},page:'craft',inventory:true,read:()=>page.requestCharacter('read'),onBusy:value=>busy=value,onError:error=>errors.push(error.message),apply:(snapshot,flags)=>{assert.deepEqual(flags,{config:true,inventory:true});inventory=readCharacterInventory(snapshot);}});
+ updater.configure({inventory:false});updater.setActive(true);await updater.read({config:true,inventory:true});
+ assert.deepEqual(errors,[]);assert.deepEqual(inventory.items,{1:5});assert.equal(busy,false);assert.equal(count,1);
 });

@@ -2,7 +2,7 @@ import {getSnapshot,subscribe} from './price-service.js';
 import {searchSelectMarkup,bindSearchSelect} from './search-select.js';
 import * as game from './upstream.js';
 import {translatedName} from './i18n.js';
-import {requestCharacter,characterImportPanel,probeCharacter,importStatusText} from './import-controls.js';
+import {registerCharacterUpdates,characterImportPanel,probeCharacter,importStatusText} from './import-controls.js';
 import {enhancementStorageKey,enhancementDefaults,enhanceableItems,validateEnhancement,calculateEnhancement,importEnhancement,resolveEnhancementPrices} from './enhancement.js';
 
 let probeStarted=false;
@@ -84,11 +84,7 @@ export function renderEnhancement(nextLanguage){
  document.getElementById('enhance-reset').onclick=()=>{const {guild,level,lectern,mastery}=enhancementDefaults();state={...state,guild,level,lectern,mastery};status=null;save();renderEnhancement(language);};
  document.getElementById('enhance-equipment-reset').onclick=()=>{const {guild,level,lectern,mastery}=state;state={...enhancementDefaults(),guild,level,lectern,mastery};candidates=[];save();renderEnhancement(language);};
  document.getElementById('enhance-candidate')?.addEventListener('change',event=>{const selected=candidates.find(x=>x.id===Number(event.target.value));if(!selected||event.target.value==='')return;state=validateEnhancement({...state,itemId:selected.itemId,tier:selected.tier,current:selected.current,target:Math.max(state.target??0,selected.current)},{allowUnsupportedTarget:true});save();renderEnhancement(language);});
- document.getElementById('enhance-import').onclick=async()=>{
-  if(busy)return;busy=true;renderStatus();
-  try{const response=await requestCharacter('read');if(!response.snapshot)throw Error('noSnapshot');applyEnhancementImport(response.snapshot);}
-  catch(error){status={error:error.message};}finally{busy=false;renderEnhancement(language);}
- };
+ document.getElementById('enhance-import').onclick=()=>enhancementUpdater.read({config:true,inventory:false});
  if(!probeStarted){probeStarted=true;probeCharacter().then(()=>{if(!status&&!busy){status={ready:true};renderStatus();}}).catch(error=>{if(!status&&!busy){status={error:error.message};renderStatus();}});}
  renderStatus();renderResults();for(const [id,open]of openDetails){const el=document.getElementById(id);if(el)el.open=open;}
 }
@@ -99,4 +95,11 @@ subscribe(change=>{
  const priced=previewPrices();
  for(const key of ['shardPrice','scrollPrice','basePrice'])if(state.priceModes[key]==='global'){const el=host.querySelector(`[data-enhance-field="${key}"]`);if(el)el.value=priced[key]??'';}
  renderResults();
+});
+
+const enhancementUpdater=registerCharacterUpdates('enhance',{
+ busy:()=>busy,revision:()=>JSON.stringify(state),
+ onBusy:value=>{busy=value;renderStatus();},
+ apply:snapshot=>{applyEnhancementImport(snapshot);renderEnhancement(language);},
+ onError:error=>{status={error:error.message};renderStatus();},
 });

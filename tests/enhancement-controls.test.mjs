@@ -14,7 +14,7 @@ test('userscript bridge imports enhancement independently, retains state on erro
  let snapshot={guild:{name:"Miners",tag:"MINE"},version:2,capturedAt:Date.now(),player:{skills:{enhancing:game.levelXp(42)},house:{lectern:7},houseFurniture:{lectern:{cell:1,slot:0}},masteries:{enhance:9},equipment:{mount:game.encode(game.withRarity(328,3),7)},bank:{328:3},pack:[],overflow:{}}};
  document.addEventListener('dvi-character-request',event=>{const request=JSON.parse(event.detail);document.dispatchEvent(new CustomEvent('dvi-character-response',{detail:JSON.stringify({source:'dvi-character-script',id:request.id,version:'2.4',snapshot})}));});
  try{
-  const {renderEnhancement}=await import('../src/enhancement-controls.js');renderEnhancement('zh');
+  const {renderEnhancement}=await import('../src/enhancement-controls.js');renderEnhancement('zh');const {setCharacterImportPage}=await import('../src/import-controls.js');setCharacterImportPage('enhance');
   await document.getElementById('enhance-import').onclick();
   let saved=JSON.parse(storage.get(enhancementStorageKey));assert.deepEqual(saved.guild,{name:"Miners",tag:"MINE"});assert.equal(saved.level,42);assert.equal(saved.lectern,7);assert.equal(saved.mastery,9);assert.equal(saved.bank,undefined);assert.equal(saved.candidates,undefined);assert.equal(storage.get('dvi-simulator-v1'),'combat configuration sentinel');assert.match(document.getElementById('enhance-import-status').textContent,/已导入/);assert.match(document.getElementById('enhance-content').innerHTML,/角色物品/);
   const previous=storage.get(enhancementStorageKey);delete snapshot.player.skills;

@@ -7,6 +7,7 @@ import {parse} from 'acorn';
 import * as game from '../src/upstream.js';
 import * as gathering from '../src/gathering-model.js';
 import * as crafting from '../src/crafting-model.js';
+import * as orders from '../src/crafting-orders.js';
 import {createGatheringScenario,simulateGatheringSite,simulateGatheringJob,averageGatheringSites} from '../src/gathering-simulation.js';
 import {createCraftingScenario,simulateCrafting,simulateCraftingWindow} from '../src/crafting-simulation.js';
 import {START_TICK} from '../src/simulation.js';
@@ -88,15 +89,15 @@ test('gathering random-source failure is explicit and does not start a fallback 
 
 function craftScheduler(){
  const h=harness(),source=fs.readFileSync(new URL('../src/crafting-controls.js',import.meta.url),'utf8');
- h.context=vm.createContext({...h.ctx,...crafting,game,localStorage:{getItem:()=>null},subscribe:()=>{},getSnapshot:()=>({})});
+ h.context=vm.createContext({...h.ctx,...crafting,...orders,game,registerCharacterUpdates:()=>({read(){}}),localStorage:{getItem:()=>null,removeItem:()=>{}},subscribe:()=>{},getSnapshot:()=>({})});
  vm.runInContext(source.replaceAll('import.meta.url',"'http://localhost/'").replace(/^import .*;\n/gm,'').replace('export function renderCrafting','function renderCrafting'),h.context);
- vm.runInContext('renderResults=()=>{};active=true;',h.context);h.read=expr=>vm.runInContext(expr,h.context);
+ vm.runInContext("renderResults=()=>{};active=true;orders=[createOrder('test','Test order')];currentOrderId='test';",h.context);h.read=expr=>vm.runInContext(expr,h.context);
  h.complete=worker=>{for(const p of worker.data.plans)worker.onmessage({data:{result:{key:p.key,seed:worker.data.seed},mode:p.mode}});worker.onmessage({data:{done:true}});};return h;
 }
 test('crafting batches retain a round seed and rate cache while new rounds discard old results',()=>{
  const h=craftScheduler();h.context.startSimulation();const first=h.workers[0];assert.equal(first.data.seed,101);h.complete(first);
  assert.equal(h.read('rateCache.size'),5);h.context.startSimulation();assert.equal(h.workers.length,1);
- h.read("state.plans={'61:0':10}");h.context.startSimulation();const second=h.workers[1];assert.equal(second.data.seed,101);assert.equal(second.data.plans.length,1);assert.equal(h.read('rateCache.size'),5);h.complete(second);
+ h.read("orders[0].plans={'61:0':10}");h.context.startSimulation();const second=h.workers[1];assert.equal(second.data.seed,101);assert.equal(second.data.plans.length,1);assert.equal(h.read('rateCache.size'),5);h.complete(second);
  h.context.schedule();assert.equal(h.read('rateCache.size'),0);assert.equal(h.read('cache.size'),0);h.flush();const third=h.workers[2];assert.equal(third.data.seed,102);assert.ok(third.data.plans.some(p=>p.mode==='rate'));assert.ok(third.data.plans.some(p=>!p.mode));
  second.onmessage({data:{result:{key:'stale',seed:101},done:true}});second.onerror();assert.equal(h.read('cache.has("stale")'),false);assert.equal(h.read('workerError'),null);assert.notEqual(third.terminated,true);
 });

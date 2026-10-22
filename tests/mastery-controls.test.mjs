@@ -13,7 +13,7 @@ test('mastery userscript import uses the highlighted sidebar and keeps configura
  let snapshot={version:2,capturedAt:Date.now(),player:{masteries:{xp:7,enhance:3,offline:2},collections:{64:1},forgeLog:{29:1073741823},bank:{64:99}}};let reads=0;
  document.addEventListener('dvi-character-request',event=>{const request=JSON.parse(event.detail);if(request.action==='read')reads++;document.dispatchEvent(new CustomEvent('dvi-character-response',{detail:JSON.stringify({source:'dvi-character-script',id:request.id,version:'2.4',snapshot})}));});
  try{
-  const {renderMastery}=await import('../src/mastery-controls.js');renderMastery('zh');const host=document.getElementById('mastery-content'),get=selector=>host.querySelector(selector);
+  const {renderMastery}=await import('../src/mastery-controls.js');renderMastery('zh');const {setCharacterImportPage}=await import('../src/import-controls.js');setCharacterImportPage('mastery');const host=document.getElementById('mastery-content'),get=selector=>host.querySelector(selector);
   get('#mastery-import-settings').id='mastery-import-settings';get('#mastery-import-settings').open=true;
   assert.match(host.innerHTML,/<aside class="panel config mastery-settings">/);assert.match(host.innerHTML,/class="config-detail character-import"/);assert.match(host.innerHTML,/导入配置/);
   assert.match(host.innerHTML,/class="mastery-rank-controls"><input[^>]+data-mastery-field="target"[^>]*><button data-mastery-action="plus"[^>]*>\+1<\/button><button data-mastery-action="minus"[^>]*>−1<\/button><button data-mastery-action="max"[^>]*>MAX<\/button>/);

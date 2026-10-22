@@ -10,7 +10,7 @@ import {craftingDefaults,craftingPlayer} from '../src/crafting-model.js';
 import {defaults} from '../src/model.js';
 import * as game from '../src/upstream.js';
 
-const directory=path.resolve('.test-artifacts/crafting-options');await fs.mkdir(directory,{recursive:true});
+const directory=path.resolve(process.argv[2]??'.test-artifacts/crafting-options');await fs.mkdir(directory,{recursive:true});
 const socket=net.createServer();socket.listen(0,'127.0.0.1');await once(socket,'listening');const port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
 const server=spawn(process.execPath,['scripts/serve.mjs'],{env:{...process.env,PORT:String(port)},stdio:['ignore','pipe','pipe']});
 const results={cases:[],errors:[]};let browser;
@@ -24,7 +24,7 @@ try{
   const state={...craftingDefaults(),weeklyXp:12.3,hotSetting:'off',plans:{'61:0':3},owned:{20:2}};delete state.ironman;
   const combat=defaults();combat.manual.simulationHours=1;combat.manual.enemySelection='monster-1';
   await context.addInitScript(({state,combat,language,snapshot})=>{
-   if(!localStorage.getItem('dvi-crafting-v1'))localStorage.setItem('dvi-crafting-v1',JSON.stringify(state));
+   if(!localStorage.getItem('dvi-crafting-orders-v1'))localStorage.setItem('dvi-crafting-orders-v1',JSON.stringify({version:1,build:{...state,plans:{}},orders:[{id:'test',name:'Test order',enabled:true,plans:state.plans,fees:{fixed:null,percent:null,minute:null}}],currentOrderId:'test'}));
    if(!localStorage.getItem('dvi-simulator-v1'))localStorage.setItem('dvi-simulator-v1',JSON.stringify({state:combat,language}));
    window.worldSnapshot=snapshot;window.craftRuns=[];const OriginalWorker=Worker;
    window.Worker=class extends OriginalWorker{
@@ -34,7 +34,7 @@ try{
    };
    document.addEventListener('dvi-character-request',event=>{const request=JSON.parse(event.detail);document.dispatchEvent(new CustomEvent('dvi-character-response',{detail:JSON.stringify({source:'dvi-character-script',id:request.id,version:'2.4',...(request.action==='probe'?{ready:true}:{snapshot:window.worldSnapshot})})}));});
   },{state,combat,language,snapshot});
-  const completed=()=>page.waitForFunction(()=>{const run=window.craftRuns.at(-1),saved=JSON.parse(localStorage.getItem('dvi-crafting-v1'));return run?.done&&run.input.weeklyXp===saved.weeklyXp&&run.input.ironman===(saved.ironman??false)&&run.input.skill===saved.skill;});
+  const completed=()=>page.waitForFunction(()=>{const run=window.craftRuns.at(-1),saved=JSON.parse(localStorage.getItem('dvi-crafting-orders-v1')).build;return run?.done&&run.input.weeklyXp===saved.weeklyXp&&run.input.ironman===(saved.ironman??false)&&run.input.skill===saved.skill;});
   await page.goto(`http://127.0.0.1:${port}/craft`);await completed();
   await page.locator('#craft-other').evaluate(element=>element.open=true);
   const xp=page.locator('[data-craft-field="weeklyXp"]'),ironman=page.locator('[data-craft-field="ironman"]');
@@ -58,9 +58,9 @@ try{
   await page.waitForFunction(()=>/数据缺失或无效|Missing or invalid data/.test(document.querySelector('#craft-import-status').textContent));assert.equal(await xp.inputValue(),'0');
   await page.evaluate(()=>window.worldSnapshot.worldBuffs=[]);await page.locator('#craft-import').click();await page.waitForFunction(()=>!/数据缺失或无效|Missing or invalid data/.test(document.querySelector('#craft-import-status').textContent));await completed();
   await xp.fill('10.5');await xp.blur();await page.locator('#craft-reset').click();await completed();assert.equal(await xp.inputValue(),'0');assert.equal(await ironman.isChecked(),false);
-  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-crafting-v1')));assert.deepEqual(saved.plans,state.plans);assert.deepEqual(saved.owned,state.owned);
+  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-crafting-orders-v1')));assert.deepEqual(saved.orders[0].plans,state.plans);assert.deepEqual(saved.build.owned,{});assert.deepEqual(saved.inventory.items,snapshot.player.bank);
   assert.ok(await page.evaluate(()=>window.craftRuns.every(run=>!run.error)));
-  results.cases.push(`${language}/${width}: old storage, full XP import, fractions, ironman, rate/plan invalidation, persistence, skill/language switch, legacy/invalid/empty captures and reset isolation`);await context.close();
+  results.cases.push(`${language}/${width}: new order storage, full XP import, fractions, ironman, rate/plan invalidation, persistence, skill/language switch, legacy/invalid/empty captures and reset isolation`);await context.close();
  }
  assert.deepEqual(results.errors,[]);
 }catch(error){results.errors.push(error.stack??String(error));process.exitCode=1;}

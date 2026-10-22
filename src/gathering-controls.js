@@ -8,7 +8,7 @@ import {MAX_SIMULATION_MINUTES} from './manual-settings.js';
 import {combatHot,combatHotMarkup,rewardAmount} from './combat-hot.js';
 import {randomSimulationSeed} from './simulation-seed.js';
 import {worldBuffWarningText} from './world-buffs.js';
-import {requestCharacter,characterImportPanel,probeCharacter,importStatusText} from './import-controls.js';
+import {registerCharacterUpdates,characterImportPanel,probeCharacter,importStatusText} from './import-controls.js';
 import {gatheringStorageKey,gatheringDefaults,normalizeGathering,gatheringSkills,toolSlots,slotItems,gatheringGear,gatheringPotions,gatheringRooms,gatheringMasteries,gatheringPerks,selectedGatheringJobs,selectedGatheringSites,gatheringStats,gatheringJobStats,importGathering} from './gathering-model.js';
 
 let state=gatheringDefaults(),language='zh',query='',period='day',sort='levelReq',direction='desc',saveOK=true,status=null,busy=false,probeStarted=false,active=false;
@@ -125,7 +125,7 @@ export function renderGathering(nextLanguage,{isActive=active}={}){
  });
  host.querySelectorAll('[data-gather-skill]').forEach(el=>el.onclick=()=>{state.skill=el.dataset.gatherSkill;state.jobSelection='all';if(state.siteSelection!=='nearest')state.siteSelection=0;save();renderGathering(language,{isActive:true});});
  document.getElementById('gather-reset').onclick=()=>{state=gatheringDefaults();period='day';status=null;save();renderGathering(language,{isActive:active});};
- document.getElementById('gather-import').onclick=async()=>{if(busy)return;busy=true;renderStatus();try{const response=await requestCharacter('read');if(!response.snapshot)throw Error('noSnapshot');const imported=importGathering(state,response.snapshot);state=imported.state;status={capturedAt:imported.capturedAt,warnings:imported.warnings};save();}catch(error){status={error:error.message};}finally{busy=false;renderGathering(language,{isActive:active});}};
+ document.getElementById('gather-import').onclick=()=>gatheringUpdater.read({config:true,inventory:false});
  if(!probeStarted){probeStarted=true;probeCharacter().then(()=>{if(!status&&!busy){status={ready:true};renderStatus();}}).catch(error=>{if(!status&&!busy){status={error:error.message};renderStatus();}});}
  if(active)startSimulation();else renderResults();
  const hot=document.getElementById('gather-hot-schedule');try{hot.innerHTML=state.hotSetting==='current'?combatHotMarkup(combatHot(current?.now??Date.now(),state.simulationHours,state.skill),language,esc,skillName(state.skill)):state.hotSetting==='game'?`<p class="micro">${text('沿用游戏内置预测的热门规则。','Uses the in-game predictor hot bonus rules.')}</p>`:'';}catch(error){hot.textContent=errorText(error.message);}
@@ -133,3 +133,10 @@ export function renderGathering(nextLanguage,{isActive=active}={}){
 }
 
 subscribe(change=>{if(change.prices)renderResults();});
+
+const gatheringUpdater=registerCharacterUpdates('gather',{
+ busy:()=>busy,revision:()=>JSON.stringify(state),
+ onBusy:value=>{busy=value;renderStatus();},
+ apply:snapshot=>{const imported=importGathering(state,snapshot);state=imported.state;status={capturedAt:imported.capturedAt,warnings:imported.warnings};save();renderGathering(language,{isActive:active});},
+ onError:error=>{status={error:error.message};renderStatus();},
+});
