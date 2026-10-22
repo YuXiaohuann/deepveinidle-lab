@@ -7,14 +7,12 @@ export const enhanceableItems=[...new Set([...game.equipment,...game.tools].map(
  .filter(id=>game.canEnhance(id)).map(id=>game.item(id));
 const record=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const integer=(v,min,max)=>Number.isSafeInteger(v)&&v>=min&&v<=max;
-export function enhancementDefaults(){return {guild:null,itemId:110,tier:3,current:0,target:7,level:1,mastery:0,protect:true,protectFrom:game.protectionMin,shardPrice:null,scrollPrice:null,basePrice:null,priceModes:{shardPrice:'global',scrollPrice:'global',basePrice:'global'},basePriceItem:null};}
+export function enhancementDefaults(){return {guild:null,itemId:110,tier:3,current:0,target:7,level:1,lectern:0,mastery:0,protect:true,protectFrom:game.protectionMin,shardPrice:null,scrollPrice:null,basePrice:null,priceModes:{shardPrice:'global',scrollPrice:'global',basePrice:'global'},basePriceItem:null};}
 export function validateEnhancement(input,{allowUnsupportedTarget=false}={}){
  if(!record(input))throw Error('invalidConfiguration');
  const s={...input,guild:readGuild(input.guild)};
- // The retired lectern is discarded when loading old settings.
- delete s.lectern;
  if(!enhanceableItems.some(x=>x.id===s.itemId)||!integer(s.tier,0,4)||!game.canEnhance(game.withRarity(s.itemId,s.tier)))throw Error('invalidItem');
- for(const [key,min,max]of [['current',0,game.maxEnhancement],['target',0,game.maxEnhancement],['level',1,game.maxLevel],['mastery',0,game.masteryRankLimit],['protectFrom',game.protectionMin,game.maxEnhancement]])if(!integer(s[key],min,max))throw Error('invalidConfiguration');
+ for(const [key,min,max]of [['current',0,game.maxEnhancement],['target',0,game.maxEnhancement],['level',1,game.maxLevel],['lectern',0,Number.MAX_SAFE_INTEGER],['mastery',0,game.masteryRankLimit],['protectFrom',game.protectionMin,game.maxEnhancement]])if(!integer(s[key],min,max))throw Error('invalidConfiguration');
  if(typeof s.protect!=='boolean')throw Error('invalidConfiguration');
  for(const key of ['shardPrice','scrollPrice','basePrice'])if(s[key]!==null&&(typeof s[key]!=='number'||!Number.isFinite(s[key])||s[key]<0||s[key]>Number.MAX_SAFE_INTEGER))throw Error('invalidPrice');
  if(!record(input.priceModes)||!Object.hasOwn(input,'basePriceItem'))throw Error('invalidPrice');
@@ -29,7 +27,7 @@ export function validateEnhancement(input,{allowUnsupportedTarget=false}={}){
  return s;
 }
 export function enhancementSteps(input){
- const s=validateEnhancement(input),p={skills:{enhancing:game.levelXp(s.level)},masteries:{enhance:s.mastery},brews:{},lastTick:0};
+ const s=validateEnhancement(input),p={skills:{enhancing:game.levelXp(s.level)},house:{lectern:s.lectern},houseFurniture:s.lectern?{lectern:{cell:0,slot:0}}:{},masteries:{enhance:s.mastery},brews:{},lastTick:0};
  return Array.from({length:s.target===s.current?0:s.target},(_,k)=>{
   const id=game.encode(game.withRarity(s.itemId,s.tier),k),chance=game.enhanceChance(p,k),cost=game.enhanceCost(id),protectedStep=s.protect&&k>=s.protectFrom;
   return {from:k,to:k+1,chance,...cost,failTo:protectedStep?k-1:0,protected:protectedStep,xp:game.enhanceXp(p,{windows:[]},0,game.withRarity(s.itemId,s.tier),k)};
@@ -71,14 +69,14 @@ export function decodeEnhancementItem(id){
 export function importEnhancement(current,snapshot){
  if(!record(snapshot)||snapshot.version!==2||!integer(snapshot.capturedAt,1,Number.MAX_SAFE_INTEGER)||snapshot.capturedAt>Date.now()+60000||!record(snapshot.player))throw Error('invalidSnapshot');
  const guild=readGuild(snapshot.guild),p=snapshot.player;
- if(!record(p.skills)||typeof p.skills.enhancing!=='number'||!Number.isFinite(p.skills.enhancing)||p.skills.enhancing<0||!record(p.masteries)||!record(p.equipment)||!record(p.bank)||!Array.isArray(p.pack)||!record(p.overflow))throw Error('incompleteSnapshot');
- const mastery=p.masteries.enhance??0;
- if(!integer(mastery,0,game.masteryRankLimit))throw Error('invalidSnapshot');
+ if(!record(p.skills)||typeof p.skills.enhancing!=='number'||!Number.isFinite(p.skills.enhancing)||p.skills.enhancing<0||!record(p.house)||!record(p.houseFurniture)||!record(p.masteries)||!record(p.equipment)||!record(p.bank)||!Array.isArray(p.pack)||!record(p.overflow))throw Error('incompleteSnapshot');
+ const lectern=p.house.lectern??0,mastery=p.masteries.enhance??0;
+ if(!integer(lectern,0,Number.MAX_SAFE_INTEGER)||!integer(mastery,0,game.masteryRankLimit)||Object.hasOwn(p.houseFurniture,'lectern')&&!record(p.houseFurniture.lectern))throw Error('invalidSnapshot');
  const found=new Map(),add=id=>{if(id===null)return;const item=decodeEnhancementItem(id);if(item)found.set(id,item);};
  Object.values(p.equipment).forEach(add);
  for(const inventory of [p.bank,p.overflow])for(const [id,qty]of Object.entries(inventory)){if(!integer(qty,0,Number.MAX_SAFE_INTEGER))throw Error('invalidSnapshot');if(qty>0)add(Number(id));}
  for(const stack of p.pack){if(!record(stack)||!integer(stack.qty,1,Number.MAX_SAFE_INTEGER))throw Error('invalidSnapshot');add(stack.itemId);}
- const state=validateEnhancement({...current,guild,level:game.level(p.skills.enhancing),mastery});
+ const state=validateEnhancement({...current,guild,level:game.level(p.skills.enhancing),lectern:Object.hasOwn(p.houseFurniture,'lectern')?lectern:0,mastery});
  return {state,candidates:[...found.values()],capturedAt:snapshot.capturedAt};
 }
 

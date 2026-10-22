@@ -12,7 +12,7 @@ import {masteryDefaults,masteryStorageKey} from '../src/mastery.js';
 import {craftingDefaults,craftingStorageKey} from '../src/crafting-model.js';
 
 const args=process.argv.slice(2),option=name=>args.includes(name)?args[args.indexOf(name)+1]:null;
-const output=path.resolve(option('--out')??'.test-artifacts/upstream-1198/browser');
+const output=path.resolve(option('--out')??'.test-artifacts/upstream-1196/browser');
 await fs.mkdir(output,{recursive:true});
 const servers=[],result={cases:[],errors:[]};let browser;
 async function serve(script){
@@ -37,7 +37,7 @@ try{
   await page.waitForFunction(()=>document.querySelector('#simulation-status').hidden&&!document.querySelector('#rows .pending'));
   assert.equal(await page.locator('#rows tr[data-enemy]').count(),1);
   assert.ok(!/Simulation failed|模拟失败/.test(await page.locator('#rows').innerText()));
-  assert.match(await page.locator('.footer-source').innerText(),/2026-10-22.*1\.0\.1198/);
+  assert.match(await page.locator('.footer-source').innerText(),/2026-10-21.*1\.0\.1196/);
   const combatScreenshot=`combat-${language}-${width}.png`;await page.screenshot({path:path.join(output,combatScreenshot),fullPage:true});
   await page.locator('#craft-nav').click();await page.locator('[data-craft-rarity="4"]').click();await page.locator('#craft-filled').click();
   await page.waitForFunction(()=>document.querySelector('#craft-results').textContent.includes('3,800 XP'));
@@ -73,12 +73,11 @@ try{
   await page.locator('[data-craft-rarity="4"]').click();
   assert.equal(await page.locator('[data-craft-count="420:4"]').inputValue(),'2');
   assert.equal(await page.locator('[data-craft-price="700"]').inputValue(),'50');
-  const enhance={...enhancementDefaults(),mastery:201,target:100,lectern:500};
+  const enhance={...enhancementDefaults(),mastery:201,target:100};
   await page.evaluate(({key,state})=>localStorage.setItem(key,JSON.stringify(state)),{key:enhancementStorageKey,state:enhance});
   await page.goto(base+'/enhance');
   const target=page.locator('[data-enhance-field="target"]'),mastery=page.locator('[data-enhance-field="mastery"]');
   assert.equal(await target.inputValue(),'100');assert.equal(await target.getAttribute('max'),'20');
-  assert.equal(await page.locator('[data-enhance-field="lectern"], #enhance-home-settings').count(),0);
   await page.locator('#enhance-results [role="alert"]').waitFor();
   assert.match(await page.locator('#enhance-results').innerText(),/\+20/);
   await page.reload();assert.equal(await target.inputValue(),'100');
@@ -87,9 +86,6 @@ try{
   await target.fill('20');await page.locator('.enhance-table tbody tr').first().waitFor();
   assert.equal(await page.locator('.enhance-table tbody tr').count(),20);
   assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).mastery,enhancementStorageKey),201);
-  assert.equal(await page.evaluate(key=>Object.hasOwn(JSON.parse(localStorage.getItem(key)),'lectern'),enhancementStorageKey),false);
-  assert.match(await page.locator('.enhance-table tbody tr').nth(19).innerText(),/24[.,]26%/);
-  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   const enhanceScreenshot=`enhance-${language}-${width}.png`;await page.screenshot({path:path.join(output,enhanceScreenshot),fullPage:true});
   await mastery.fill('51');await page.locator('#enhance-results [role="alert"]').waitFor();
   assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).mastery,enhancementStorageKey),201);

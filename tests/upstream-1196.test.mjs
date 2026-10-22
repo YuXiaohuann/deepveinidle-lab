@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import * as game from '../src/upstream.js';
 import {craftingDefaults,craftingJobs,craftingTiers,craftingMaterials,normalizeCrafting,craftingPlayer} from '../src/crafting-model.js';
 import {simulateCrafting} from '../src/crafting-simulation.js';
@@ -9,7 +10,9 @@ import {translatedName} from '../src/i18n.js';
 import {createScenario} from '../src/simulation.js';
 
 const fireworks=craftingJobs.filter(j=>Number(j.id)>=420&&Number(j.id)<=424);
-test('1196 effective item and recipe catalogues remain available',()=>{
+test('1196 snapshot has complete effective item and recipe catalogues without overrides',()=>{
+ const manifest=JSON.parse(fs.readFileSync(new URL('../vendor/manifest.json',import.meta.url),'utf8'));
+ assert.equal(manifest.changelogVersion,'1.0.1196');assert.deepEqual(manifest.overrides,[]);
  assert.equal(game.items.length,1327);assert.equal(game.recipes.length,226);
  assert.equal(game.item(397).name,'Moon box');assert.equal(game.vendorPrice(397),10);assert.equal(game.marketFamily(397),'valuables');
  assert.equal(craftingJobs.filter(j=>!j.upgrade).length,177);assert.equal(game.upgradeRecipes.length,17);
