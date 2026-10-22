@@ -10,7 +10,7 @@ const integer=(v,min,max)=>Number.isSafeInteger(v)&&v>=min&&v<=max;
 export function enhancementDefaults(){return {guild:null,itemId:110,tier:3,current:0,target:7,level:1,lectern:0,mastery:0,protect:true,protectFrom:game.protectionMin,shardPrice:null,scrollPrice:null,basePrice:null,priceModes:{shardPrice:'global',scrollPrice:'global',basePrice:'global'},basePriceItem:null};}
 export function validateEnhancement(input,{allowUnsupportedTarget=false}={}){
  if(!record(input))throw Error('invalidConfiguration');
- const s={...input,guild:readGuild(input.guild)};
+ const s={...input,guild:readGuild(input.guild),lectern:Object.hasOwn(input,'lectern')?input.lectern:0};
  if(!enhanceableItems.some(x=>x.id===s.itemId)||!integer(s.tier,0,4)||!game.canEnhance(game.withRarity(s.itemId,s.tier)))throw Error('invalidItem');
  for(const [key,min,max]of [['current',0,game.maxEnhancement],['target',0,game.maxEnhancement],['level',1,game.maxLevel],['lectern',0,Number.MAX_SAFE_INTEGER],['mastery',0,game.masteryRankLimit],['protectFrom',game.protectionMin,game.maxEnhancement]])if(!integer(s[key],min,max))throw Error('invalidConfiguration');
  if(typeof s.protect!=='boolean')throw Error('invalidConfiguration');

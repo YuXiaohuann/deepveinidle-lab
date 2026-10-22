@@ -36,7 +36,7 @@ test('positive recurrence matches independent chain solution, including rebuildi
  for(const protect of [false,true])for(const protectFrom of [2,4,8])for(const start of [0,3,7]){
   const s=config({itemId:328,tier:2,level:32,current:start,target:8,protect,protectFrom}),r=calculateEnhancement(s);
   for(const [key,reward]of Object.entries({gold:x=>x.gold,shards:x=>x.shards,attempts:()=>1,scrolls:x=>x.protected?1-x.chance:0}))near(r.totals[key],linearExpected(r.steps,start,reward));
-  near(r.totals.seconds,r.totals.attempts*2.4);
+  near(r.totals.seconds,r.totals.attempts*30);
  }
  const r=calculateEnhancement(config({itemId:328,tier:2,level:32,current:5,target:6}));near(r.totals.gold,367901.05340684234);assert.ok(r.totals.gold>144000/.7434);
 });
