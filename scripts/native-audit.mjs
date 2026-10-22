@@ -1,5 +1,5 @@
 import {questlessOffline} from './native-questless.mjs';
-// Independently extract the complete 1.0.1196 native engine for compatibility checks.
+// Independently extract the complete 1.0.1198 native engine for compatibility checks.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,7 +14,8 @@ import {gatheringDefaults,gatheringJobs,selectedGatheringSites} from '../src/gat
 import {createGatheringScenario,simulateGatheringSite} from '../src/gathering-simulation.js';
 import {craftingDefaults,craftingTiers,craftingJobs,craftingMaterials,craftingPlayer} from '../src/crafting-model.js';
 import {createCraftingScenario,simulateCrafting} from '../src/crafting-simulation.js';
-import {forecast,tickTime} from '../src/hot-forecast.js';
+import {enhancementDefaults,enhanceableItems,enhancementSteps} from '../src/enhancement.js';
+import {forecast} from '../src/hot-forecast.js';
 
 const manifest=JSON.parse(fs.readFileSync('vendor/manifest.json'));
 const metadata=manifest.overrides[0]??{...manifest,file:'vendor/game-original.js'};
@@ -28,7 +29,7 @@ for(const node of parse(source,{ecmaVersion:'latest',sourceType:'module',ranges:
   const entry={start:d.start,text:node.kind+' '+source.slice(d.start,d.end)+';'};ids.forEach(id=>declarations.set(id,entry));
  }
 }
-const exports={"world":"j","monsters":"Rt","predict":"Jr","startFight":"xi","createContext":"_H","gear":"He","armourMultiplier":"s2","masteryMultiplier":"ba","restock":"iN","offline":"m7","startWork":"Gs","applyUpgrade":"BI","enhanceCost":"Fh","hotSkill":"Zf"};
+const exports={"world":"j","monsters":"At","predict":"Vr","startFight":"Fi","createContext":"XH","gear":"ke","armourMultiplier":"s2","masteryMultiplier":"fa","restock":"iN","offline":"m7","startWork":"Gs","applyUpgrade":"BI","enhanceCost":"Mh","enhanceChance":"i2","enhanceXp":"$I","enhanceTicks":"od","skillPetChance":"yy","hotSkill":"_f"};
 const selected=new Set(),allowed=new Set(['WeakSet','WeakMap','Uint8Array','Uint16Array','Uint32Array','Int32Array','Float64Array','Math','Map','Set','Number','Object','Array','String','Error','Date','Boolean','Infinity','undefined','JSON','RegExp','parseInt','parseFloat']);
 function collect(name){
  const d=declarations.get(name);if(!d)throw Error('Missing native declaration '+name);if(selected.has(d))return;selected.add(d);
@@ -36,7 +37,7 @@ function collect(name){
  for(const dep of new Set(refs))if(declarations.has(dep))collect(dep);else if(!allowed.has(dep))throw Error('Unexpected native dependency '+dep);
 }
 Object.values(exports).forEach(collect);
-const directory=fs.mkdtempSync(path.join(os.tmpdir(),'dvi-1196-audit-'));
+const directory=fs.mkdtempSync(path.join(os.tmpdir(),'dvi-1198-audit-'));
 try{
  const file=path.join(directory,'native.mjs');
  fs.writeFileSync(file,[...selected].sort((a,b)=>a.start-b.start).map(d=>d.text).join('\n')+'\nexport{'+Object.entries(exports).map(([alias,name])=>name+' as '+alias).join(',')+'};');
@@ -94,8 +95,21 @@ try{
  let costs=0;for(const id of [629,630,631,632,633,634,635])for(let tier=0;tier<5;tier++)for(const plus of [0,17,100]){
   const encoded=game.encode(game.withRarity(id,tier),plus);assert.deepEqual(game.enhanceCost(encoded),native.enhanceCost(encoded));costs++;
  }
+ let enhancementCases=0;
+ assert.equal(native.enhanceTicks,50);assert.equal(native.skillPetChance('enhancing'),12.5/3e6);
+ for(const item of enhanceableItems)for(let tier=0;tier<5;tier++)for(const [level,mastery]of [[1,0],[99,201]]){
+  const state={...enhancementDefaults(),itemId:item.id,tier,level,mastery,target:20};
+  const player={skills:{enhancing:game.levelXp(level)},masteries:{enhance:mastery},house:{lectern:999},houseFurniture:{lectern:{cell:0,slot:0}},brews:{},lastTick:0};
+  for(const step of enhancementSteps(state)){
+   const id=game.withRarity(item.id,tier),cost=native.enhanceCost(game.encode(id,step.from));
+   assert.equal(step.chance,native.enhanceChance(player,step.from));
+   assert.equal(step.gold,cost.gold);assert.equal(step.shards,cost.shards);
+   assert.equal(step.xp,native.enhanceXp(player,{windows:[]},0,id,step.from));enhancementCases++;
+  }
+ }
  const schedule=forecast(Date.UTC(2026,9,13));for(const entry of [schedule.current,...schedule.entries])assert.deepEqual(entry,native.hotSkill(entry.from));
- if(process.argv[2])fs.writeFileSync(process.argv[2],JSON.stringify({predictions:count,gearVariants:105,gatheringSites:gatheringCount,craftingCases:craftingCount,upgradeCases:upgradeCount,enhancementCosts:costs,forecastSlots:49})+'\n');
+ if(process.argv[2])fs.writeFileSync(process.argv[2],JSON.stringify({predictions:count,gearVariants:105,gatheringSites:gatheringCount,craftingCases:craftingCount,upgradeCases:upgradeCount,enhancementCosts:costs,enhancementCases,forecastSlots:49})+'\n');
+ console.log(`Enhancing: ${enhancementCases} item/rarity/level/mastery/plus cases matched independent native chance, costs and XP; duration and pet chance matched.`);
  console.log(`Other pages: ${gatheringCount} gathering sites, ${craftingCount} ordinary recipe/quality cases, ${upgradeCount} upgrade/quality cases, ${costs} enhancement costs and 49 forecast slots matched independent native code.`);
- console.log(`Native 1.0.1196 comparison: ${count}/${count} complete 1-hour predictions matched; world geometry, monsters and 105 new-gear variants matched.`);
+ console.log(`Native 1.0.1198 comparison: ${count}/${count} complete 1-hour predictions matched; world geometry, monsters and 105 new-gear variants matched.`);
 }finally{fs.rmSync(directory,{recursive:true});}

@@ -32,7 +32,7 @@ test('1194 enhancement mastery keeps rank costs while capping both probability a
  for(const rank of [0,1,199,200,201,20000]){
   player.masteries.enhance=rank;
   const bonus=Math.min(.5,rank*.0025);
-  assert.ok(Math.abs(game.enhanceChance(player,19)-.2*(1+bonus))<1e-12);
+  assert.ok(Math.abs(game.enhanceChance(player,19)-.22*.95**6*(1+bonus))<1e-12);
   assert.equal(masteryValue('enhance',rank),Number((bonus*100).toFixed(6)));
  }
  assert.ok(game.masteryTotalCost(201)>game.masteryTotalCost(200));
