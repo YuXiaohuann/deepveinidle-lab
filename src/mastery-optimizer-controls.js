@@ -33,7 +33,7 @@ const errors=()=>({
  workerFailed:text('计算进程失败，请重试。','Calculation process failed. Please retry.'),
  changed:text('配置已变化，请重新计算。','Settings changed. Run the search again.'),
  cancelled:text('计算已取消。','Calculation cancelled.'),
- applied:text('方案已应用到下方目标等级。','Plan applied to the target ranks below.'),
+ applied:text('方案已应用到下方目标等级','Plan applied to the target ranks below'),
  applySaveFailed:text('方案已应用，但浏览器存储不可用，无法保存。','Plan applied, but browser storage is unavailable and it could not be saved.'),
  applyFailed:text('方案应用失败，原配置保留。','Could not apply this plan. Existing settings were preserved.'),
 });
