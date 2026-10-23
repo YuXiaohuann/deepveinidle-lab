@@ -61,7 +61,7 @@ try{
   assert.deepEqual(layout,{deltaRight:true,needRight:true,footerAligned:true,overflow:false});
  }}
  await page.selectOption('#language','zh');await page.setViewportSize({width:1440,height:1000});
- await maxhitCard.locator('[data-mastery-field="target"]').fill('0');assert.equal(await maxhitCard.locator('.mastery-current-rank [data-mastery-delta]').textContent(),'−1 级');assert.match(await page.locator('#mastery-issue').textContent(),/不能低于/);
+ await maxhitCard.locator('[data-mastery-field="target"]').fill('0');assert.equal(await maxhitCard.locator('.mastery-current-rank [data-mastery-delta]').textContent(),'−1 级');assert.equal(await page.locator('#mastery-issue').textContent(),'');assert.equal(await maxhitCard.locator('[data-mastery-value="cost"]').textContent(),'-40');
  await maxhitCard.locator('[data-mastery-field="target"]').fill('1');assert.equal(await maxhitCard.locator('[data-mastery-delta]').textContent(),'');
  results.cases.push('current ranks are read-only; signed delta sits beside current rank; next cost and shortage occupy left/right footer corners in both languages and desktop/mobile');
  assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.tagName),'DETAILS');
@@ -93,11 +93,11 @@ try{
  assert.equal(await page.locator('[data-optimizer-copy]').count(),0);
  assert.equal(await page.locator('.optimizer-ranks').count(),0);
  assert.deepEqual(await page.locator('.optimizer-plan').first().locator('dt').allTextContents(),['收入','投入','差异（较原配置）']);
- assert.deepEqual(await ranksInFields('target'),resetPlan.plans[0].ranks);assert.deepEqual(await ranksInFields('current'),masteryDefaults().current);
+ assert.deepEqual(await ranksInFields('target'),resetPlan.plans[0].ranks);assert.deepEqual(await ranksInFields('current'),mastery.current);
  let appliedBuild=await page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-mastery-v1')));
- assert.deepEqual(appliedBuild.target,resetPlan.plans[0].ranks);assert.deepEqual(appliedBuild.current,masteryDefaults().current);assert.equal(appliedBuild.totalPoints,123);
+ assert.deepEqual(appliedBuild.target,resetPlan.plans[0].ranks);assert.deepEqual(appliedBuild.current,mastery.current);assert.equal(appliedBuild.totalPoints,123);
  assert.equal(await page.locator('[data-optimizer-apply="0"]').isDisabled(),true);
- results.cases.push('reset search auto-applies best target ranks with current ranks reset to zero, preserves Combat, and shows only income/investment/difference plus apply controls');
+ results.cases.push('reset search auto-applies best target ranks without changing current ranks, preserves Combat, and shows only income/investment/difference plus apply controls');
  assert.ok(resetPlan.plans.length>1);await page.click('[data-optimizer-apply="1"]');
  assert.deepEqual(await ranksInFields('target'),resetPlan.plans[1].ranks);assert.equal(await page.locator('.optimizer-plan').count(),resetPlan.plans.length);
  await page.evaluate(result=>window.optimizerWorkers.at(-1).onmessage({data:{result}}),resetPlan);assert.deepEqual(await ranksInFields('target'),resetPlan.plans[1].ranks);
@@ -106,7 +106,7 @@ try{
  assert.equal(await page.locator('[data-optimizer-apply="0"]').isEnabled(),true);
  const editedTargets=await ranksInFields('target');await page.selectOption('#language','en');assert.deepEqual(await ranksInFields('target'),editedTargets);await page.selectOption('#language','zh');
  await page.click('[data-optimizer-apply="0"]');assert.deepEqual(await ranksInFields('target'),resetPlan.plans[0].ranks);
- assert.match(await page.locator('#mastery-summary').innerText(),new RegExp(resetPlan.plans[0].cost.toLocaleString('zh-CN')));
+ assert.deepEqual(await page.locator('#mastery-summary .stat strong').allTextContents(),[83,resetPlan.plans[0].cost-40,123-resetPlan.plans[0].cost].map(n=>n.toLocaleString('zh-CN')));
  results.cases.push('applying alternatives updates targets, cost and storage without clearing candidates; editing targets re-enables apply and language redraw never auto-applies again');
  await page.locator('#mastery-optimizer').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(directory,'reset-zh-1440.png')});
  await page.selectOption('#optimizer-allocation-mode','remaining');assert.equal(await page.locator('.optimizer-plan').count(),0);
@@ -201,7 +201,7 @@ try{
  await page.click('#optimizer-start');await importCurrentRanks({maxhit:2,gather:1});assert.match(await page.locator('#optimizer-status').innerText(),/Settings changed/);await importCurrentRanks({maxhit:1,gather:1});
  results.cases.push('one enabled button toggles between start and cancel in Chinese/English, survives redraw, cancels and restarts, ignores late messages and restores start after input changes');
  await page.locator('#mastery-total').fill('');await page.click('#optimizer-start');assert.match(await page.locator('#optimizer-status').innerText(),/integer total points/);await page.locator('#mastery-total').fill('123');
- // Invalid manual targets do not block the independent reset calculation.
+ // Manual target drafts do not block the independent reset calculation.
  await page.locator('[data-mastery-row="maxhit"] [data-mastery-field="target"]').fill('0');await page.click('#optimizer-start');assert.equal(await page.locator('#optimizer-start').textContent(),'Cancel calculation');
  // Changing a target does not invalidate frozen search inputs.
  await page.locator('[data-mastery-row="maxhit"] [data-mastery-field="target"]').fill('2');assert.equal(await page.locator('#optimizer-start').textContent(),'Cancel calculation');
@@ -215,7 +215,7 @@ try{
  await page.evaluate(()=>window.optimizerMode='wait');await page.click('#optimizer-start');await page.click('#optimizer-edit-combat');await page.waitForURL('**/combat');assert.ok(await page.evaluate(()=>window.optimizerWorkers.at(-1).wasTerminated));await page.click('[data-preset="melee"]');await page.click('#mastery-nav');assert.match(await page.locator('#optimizer-scenario').innerText(),/Melee/);assert.equal(await page.locator('.optimizer-plan').count(),0);
  results.cases.push('Worker errors restore controls; leaving cancels; edited Combat build is read on return without overwriting mastery settings');
  await page.click('#combat-nav');await page.click('[data-preset="ranged"]');await page.click('#mastery-nav');await page.locator('#mastery-total').fill('0');await page.selectOption('#optimizer-monster','7');await page.evaluate(()=>window.optimizerMode=undefined);await page.click('#optimizer-start');await page.waitForSelector('.optimizer-plan');assert.match(await page.locator('#optimizer-output').innerText(),/exceeds budget/);
- await page.reload();assert.equal(await page.locator('.optimizer-plan').count(),0);assert.equal(await page.locator('#mastery-total').inputValue(),'0');
+ await page.reload();assert.deepEqual(await ranksInFields('current'),{...masteryDefaults().current,maxhit:1,gather:1});assert.ok(Object.values(await ranksInFields('target')).every(rank=>rank===0));assert.equal(await page.locator('[data-mastery-row="maxhit"] [data-mastery-value="cost"]').textContent(),'-40');assert.equal(await page.locator('.optimizer-plan').count(),0);assert.equal(await page.locator('#mastery-total').inputValue(),'0');
  assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.open),false);await page.locator('#mastery-optimizer>summary').click();
  assert.equal(await page.locator('#optimizer-allocation-mode').inputValue(),'remaining');
  assert.equal(await page.locator('#optimizer-monster').inputValue(),'7');
@@ -223,6 +223,6 @@ try{
  assert.equal(await page.locator('#optimizer-start').textContent(),'开始计算');
  results.cases.push('zero-point search permits an over-budget baseline reference and reload restores manual settings without cached recommendations');
  assert.deepEqual(results.errors,[]);await context.close();
-}catch(error){results.errors.push(error.stack??String(error));process.exitCode=1;}
-finally{if(browser)await browser.close();server?.kill();await fs.writeFile(path.join(directory,'results.json'),JSON.stringify(results,null,2)+'\n');}
+}catch(error){results.errors.push(error.stack??String(error));console.error(error.stack??String(error));process.exitCode=1;}
+finally{await fs.writeFile(path.join(directory,'results.json'),JSON.stringify(results,null,2)+'\n');server?.kill();if(browser)await browser.close();}
 console.log(JSON.stringify(results,null,2));

@@ -43,9 +43,9 @@ test('mastery controls import and apply plans atomically, preserving valid setti
   assert.throws(()=>applyMasteryRecommendation({allocationMode:'unknown',ranks}),/invalidOptimizerMode/);assert.equal(storage.get(masteryStorageKey),beforeApply);
   assert.equal(applyMasteryRecommendation({allocationMode:'remaining',ranks:{...ranks,xp:10}}).saveOK,true);
   updated=JSON.parse(storage.get(masteryStorageKey));assert.equal(updated.current.xp,9);assert.equal(updated.target.xp,10);assert.equal(updated.totalPoints,5336);assert.equal(updated.mode,'limited');
-  applyMasteryRecommendation({allocationMode:'reset',ranks:{...ranks,xp:1}});updated=JSON.parse(storage.get(masteryStorageKey));assert.deepEqual(updated.current,ranks);assert.equal(updated.target.xp,1);assert.equal(updated.totalPoints,5336);assert.equal(updated.mode,'limited');
+  applyMasteryRecommendation({allocationMode:'reset',ranks:{...ranks,xp:1}});updated=JSON.parse(storage.get(masteryStorageKey));assert.deepEqual(updated.current,JSON.parse(beforeApply).current);assert.equal(updated.target.xp,1);assert.equal(updated.totalPoints,5336);assert.equal(updated.mode,'limited');
   const savedBeforeFailure=storage.get(masteryStorageKey);failStorage=true;
-  assert.equal(applyMasteryRecommendation({allocationMode:'remaining',ranks:{...ranks,xp:2}}).saveOK,false);assert.equal(storage.get(masteryStorageKey),savedBeforeFailure);assert.match(get('#mastery-save-note').textContent,/cannot be saved/);assert.match(host.innerHTML,/data-mastery-id="xp" value="2"/);
+  assert.equal(applyMasteryRecommendation({allocationMode:'reset',ranks:{...ranks,xp:2}}).saveOK,false);assert.equal(storage.get(masteryStorageKey),savedBeforeFailure);assert.match(get('#mastery-save-note').textContent,/cannot be saved/);assert.match(host.innerHTML,/data-mastery-id="xp" value="2"/);
 
  }finally{for(const [key,value]of Object.entries(original)){if(value===undefined)delete globalThis[key];else if(key==='localStorage')Object.defineProperty(globalThis,key,value);else globalThis[key]=value;}}
 });

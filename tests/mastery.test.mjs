@@ -20,7 +20,7 @@ test('highest affordable rank respects current investment and competing allocati
  for(const [budget,expected]of [[39,0],[40,1],[81,1],[82,2],[125,2],[126,3]]){s.totalPoints=budget;assert.equal(highestAffordableMastery(s,'xp'),expected);}
  s.current.xp=10;s.target.xp=10;s.totalPoints=549;assert.equal(highestAffordableMastery(s,'xp'),10);s.totalPoints=550;assert.equal(highestAffordableMastery(s,'xp'),11);
  s.target.rare=1;assert.equal(highestAffordableMastery(s,'xp'),10);
- s.totalPoints=529;assert.throws(()=>highestAffordableMastery(s,'xp'),/otherTracksOverBudget/);
+ s.totalPoints=529;assert.equal(highestAffordableMastery(s,'xp'),9);s.totalPoints=39;assert.throws(()=>highestAffordableMastery(s,'xp'),/otherTracksOverBudget/);
  s.totalPoints=Number.MAX_SAFE_INTEGER;assert.equal(highestAffordableMastery(s,'xp'),masteryLimit);
  assert.throws(()=>highestAffordableMastery(s,'unknown'),/unknownMastery/);
 });
@@ -34,7 +34,7 @@ test('over-budget plans remain calculable; mode changes and undo preserve the ba
 test('invalid ranks, total points, and stored configurations fail explicitly',()=>{
  for(const value of ['', ' ',null,undefined,true,NaN,Infinity,-1,1.5,masteryLimit+1]){const s=masteryDefaults();s.target.xp=value;assert.throws(()=>validateMastery(s),/invalidInteger/);}
  for(const value of ['',-1,.5,Infinity,Number.MAX_SAFE_INTEGER+1]){const s=masteryDefaults();s.totalPoints=value;assert.throws(()=>validateMastery(s),/invalidInteger/);}
- const s=masteryDefaults();s.current.xp=1;assert.throws(()=>validateMastery(s),/targetBelowCurrent/);
+ const s=masteryDefaults();s.current.xp=1;assert.equal(validateMastery(s).target.xp,0);
  assert.throws(()=>validateMastery({}),/invalidConfiguration/);
  s.target.xp='2';s.budget='82';assert.equal(validateMastery(s).target.xp,2);
 });
@@ -109,4 +109,11 @@ test('available points derive from total points and current ranks, including leg
  for(const value of ['',-1,.5,Infinity])assert.throws(()=>changeMasteryTotal(s,value),/invalidInteger/);
  const legacy=masteryDefaults();legacy.current.xp=1;legacy.target.xp=1;legacy.budget=100;delete legacy.totalPoints;assert.equal(validateMastery(legacy).totalPoints,140);legacy.totalPoints=null;assert.equal(validateMastery(legacy).budget,100);
  legacy.totalPoints=200;legacy.budget=999;assert.equal(validateMastery(legacy).budget,160);
+});
+
+test('reset targets preserve current ranks, signed costs and budget through storage',()=>{
+ const s=masteryDefaults();s.totalPoints=200;s.current.xp=3;s.target.xp=1;s.target.rare=2;
+ const r=calculateMastery(s);assert.equal(r.currentCost,126);assert.equal(r.targetCost,122);assert.equal(r.spent,-4);assert.equal(r.remaining,78);assert.equal(r.rows.find(row=>row.id==='xp').cost,-86);
+ assert.equal(highestAffordableMastery(s,'xp'),2);assert.equal(highestAffordableMastery(s,'rare'),3);
+ const data=new Map(),storage={getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,value)};writeMasterySettings(storage,s);const restored=readMasterySettings(storage);assert.equal(restored.current.xp,3);assert.equal(restored.target.xp,1);assert.deepEqual(calculateMastery(restored),r);
 });

@@ -56,7 +56,7 @@ function summary(){
  return `${styles[state.style]} · ${text('等级','Level')} ${state.levels[state.style]} · ${text('防御','Defence')} ${state.levels.defence} · ${text('生命','HP')} ${state.levels.hitpoints} · ${text('模拟时间','Simulation time')} ${format(state.manual.simulationHours)} ${text('小时','hours')}\n${text('总精通点','Total mastery points')} ${mastery?.totalPoints??'—'} · ${text('当前投入','Current investment')} ${invested===null?'—':format(invested)} · ${text('本模式可分配点数','Points available in this mode')} ${available===null?'—':format(available)}\n${gear}${issues.length?'\n'+text(`配装提示 ${issues.length} 项，请在战斗页检查（等级不足／流派不匹配等仍按现有规则模拟）。`,`${issues.length} loadout warnings. Review the Combat page; existing simulation rules still apply.`):''}`;
 }
 function isApplied(plan){
- return game.masteries.every(m=>draftNumber(targetRanks?.[m.id])===plan.ranks[m.id]&&(result.allocationMode!=='reset'||draftNumber(mastery?.current?.[m.id])===0));
+ return game.masteries.every(m=>draftNumber(targetRanks?.[m.id])===plan.ranks[m.id]);
 }
 function planMarkup(plan,index){
  const delta=plan.paired?format(plan.paired.mean)+(Math.abs(plan.paired.mean)<=2*plan.paired.se?' · '+text('差异接近波动','Close to variability'):''):result.baseline.overBudget?text('原配置超预算，无法比较','Current plan exceeds budget; unavailable'):text('原配置未完成模拟，无法比较','Current plan did not finish; unavailable');

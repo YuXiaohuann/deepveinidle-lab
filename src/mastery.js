@@ -10,7 +10,7 @@ function integer(value,max){
 export function validateMastery(raw){
  if(!raw||!['limited','unlimited'].includes(raw.mode))throw Error('invalidConfiguration');
  const s={mode:raw.mode,budget:0,totalPoints:raw.totalPoints==null?null:integer(raw.totalPoints,Number.MAX_SAFE_INTEGER),current:{},target:{}};
- for(const m of masteryTracks){s.current[m.id]=integer(raw.current?.[m.id],masteryLimit);s.target[m.id]=integer(raw.target?.[m.id],masteryLimit);if(s.target[m.id]<s.current[m.id])throw Error('targetBelowCurrent');}
+ for(const m of masteryTracks){s.current[m.id]=integer(raw.current?.[m.id],masteryLimit);s.target[m.id]=integer(raw.target?.[m.id],masteryLimit);}
  const currentCost=game.masteriesTotalCost(s.current);
  if(s.totalPoints===null)s.totalPoints=integer(currentCost+integer(raw.budget,Number.MAX_SAFE_INTEGER),Number.MAX_SAFE_INTEGER);
  s.budget=s.totalPoints-currentCost;
@@ -22,10 +22,10 @@ export function calculateMastery(raw){
 }
 export function highestAffordableMastery(raw,id){
  const s=validateMastery(raw);if(!masteryTracks.some(m=>m.id===id))throw Error('unknownMastery');
- const result=calculateMastery(s),row=result.rows.find(m=>m.id===id),available=s.budget-(result.spent-row.cost);
+ const result=calculateMastery(s),row=result.rows.find(m=>m.id===id),available=s.totalPoints-(result.targetCost-game.masteryTotalCost(row.target));
  if(available<0)throw Error('otherTracksOverBudget');
- let low=s.current[id],high=masteryLimit;const base=game.masteryTotalCost(low);
- while(low<high){const mid=Math.ceil((low+high)/2);if(game.masteryTotalCost(mid)-base<=available)low=mid;else high=mid-1;}
+ let low=0,high=masteryLimit;
+ while(low<high){const mid=Math.ceil((low+high)/2);if(game.masteryTotalCost(mid)<=available)low=mid;else high=mid-1;}
  return low;
 }
 

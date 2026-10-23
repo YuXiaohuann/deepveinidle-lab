@@ -22,7 +22,8 @@ export function applyMasteryImport(snapshot){
 }
 export function applyMasteryRecommendation({allocationMode,ranks}){
  if(!['reset','remaining'].includes(allocationMode))throw Error('invalidOptimizerMode');
- const next=validateMastery({...state,current:allocationMode==='reset'?masteryDefaults().current:state.current,target:ranks});
+ const next=validateMastery({...state,target:ranks});
+ if(allocationMode==='remaining'&&masteryTracks.some(m=>next.target[m.id]<next.current[m.id]))throw Error('targetBelowCurrent');
  if(calculateMastery(next).targetCost>next.totalPoints)throw Error('optimizerPlanOverBudget');
  state=next;save();renderMastery(language);return {saveOK};
 }
@@ -49,11 +50,11 @@ function updateResults(){
  for(const row of r.rows){const m=masteryTracks.find(m=>m.id===row.id),tr=host.querySelector(`[data-mastery-row="${row.id}"]`);
   for(const [key,value]of Object.entries({target:bonus(m,row.target),cost:format(row.cost),next:row.nextCost===null?text('已满级','Maximum rank'):text(`下一级：${format(row.nextCost)} 点`,`Next rank: ${format(row.nextCost)} points`)}))tr.querySelector(`[data-mastery-value="${key}"]`).textContent=value;
   tr.querySelector('[data-mastery-status]').textContent=row.nextCost===null?text('已达到等级上限。','Maximum rank reached.'):limited&&r.remaining<0&&row.cost>0?text('当前方案超出预算，请减少目标等级。','This plan exceeds the budget. Reduce target ranks.'):limited&&r.remaining>=0&&r.remaining<row.nextCost?text(`还缺 ${format(row.nextCost-r.remaining)} 点`,`Need ${format(row.nextCost-r.remaining)} points`):'';
-  tr.querySelector('[data-mastery-action="minus"]').disabled=row.target<=row.current;
+  tr.querySelector('[data-mastery-action="minus"]').disabled=row.target<=0;
   tr.querySelector('[data-mastery-action="plus"]').disabled=row.nextCost===null||(limited&&r.remaining<row.nextCost);
   const max=tr.querySelector('[data-mastery-action="max"]');max.hidden=!limited;
-  max.disabled=!limited||safelyAffordable(row.id)<=row.target;
-  tr.querySelector('[data-mastery-field="target"]').min=row.current;
+  const affordable=safelyAffordable(row.id);max.disabled=!limited||affordable===row.target||affordable<0;
+  tr.querySelector('[data-mastery-field="target"]').min=0;
  }
 }
 function safelyAffordable(id){try{return highestAffordableMastery(state,id);}catch(error){if(error.message==='otherTracksOverBudget')return -1;throw error;}}
