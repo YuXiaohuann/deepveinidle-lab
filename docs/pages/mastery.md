@@ -6,7 +6,7 @@
 
 ### 页面与配置
 
-本轮卡片调整为 1.7.0-preview.2 候选，发布与验证见[卡片调整报告](../../reports/mastery-cards-preview-2026-10-23.md)。
+卡片调整已随 1.7.0-preview.2 部署到 Preview，发布与验证见[卡片调整报告](../../reports/mastery-cards-preview-2026-10-23.md)。
 
 角色导入区域提供默认关闭的“自动更新角色配置”，使用[共用角色自动更新](../shared.md#导入游戏角色与自动更新)；更新范围沿用本页手动角色导入，不新增库存自动更新。
 
@@ -31,7 +31,7 @@
 
 ### 计算最优分配方案
 
-1.7.0-preview.1 已部署到 Preview，生产尚未包含；发布状态与证据见[当前状态](../status.md)及[精通分配 Preview 报告](../../reports/mastery-allocation-preview-2026-10-23.md)。
+计算功能自 1.7.0-preview.1 起部署到 Preview，生产尚未包含；发布状态与证据见[当前状态](../status.md)及[精通分配 Preview 报告](../../reports/mastery-allocation-preview-2026-10-23.md)。
 
 #### 入口与配置
 

@@ -8,7 +8,7 @@
 
 ## 精通分配 Preview
 
-- [精通卡片调整与 Preview 发布](mastery-cards-preview-2026-10-23.md)（2026-10-23，1.7.0-preview.2，发布前检查中）
+- [精通卡片调整与 Preview 发布](mastery-cards-preview-2026-10-23.md)（2026-10-23，1.7.0-preview.2 已部署，线上完整验收因统计跨域错误未通过）
 
 - [精通分配调研、实现与 Preview 验证](mastery-allocation-preview-2026-10-23.md)（2026-10-23，最终规则与历史原型证据分开维护）
 
