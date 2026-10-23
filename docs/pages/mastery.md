@@ -29,7 +29,7 @@
 
 ### 计算最优分配方案
 
-当前为 1.7.0-preview.1 候选；发布状态与证据见[当前状态](../status.md)及[精通分配 Preview 报告](../../reports/mastery-allocation-preview-2026-10-23.md)。
+1.7.0-preview.1 已部署到 Preview，生产尚未包含；发布状态与证据见[当前状态](../status.md)及[精通分配 Preview 报告](../../reports/mastery-allocation-preview-2026-10-23.md)。
 
 #### 入口与配置
 

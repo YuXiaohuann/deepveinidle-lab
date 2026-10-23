@@ -1,6 +1,6 @@
 # 精通分配调研、实现与 Preview 验证
 
-日期：2026-10-23。候选版本：1.7.0-preview.1；游戏快照 1.0.1199。当前处于发布前检查阶段，尚未更新 Preview；生产仍为 1.6.0。现行规则见[精通页面](../docs/pages/mastery.md#计算最优分配方案)，部署状态见[当前状态](../docs/status.md)。
+日期：2026-10-23。Preview 版本：1.7.0-preview.1；游戏快照 1.0.1199。已部署到 Preview，生产仍为 1.6.0；线上完整验收因 Cloudflare 统计跨域错误未通过。现行规则见[精通页面](../docs/pages/mastery.md#计算最优分配方案)，部署状态见[当前状态](../docs/status.md)。
 
 ## 范围与实现
 
@@ -18,6 +18,19 @@
 
 ## 本轮发布证据
 
-本轮使用 release:check、release:package、release:verify 三阶段入口；完整日志与截图保存在 `.test-artifacts/release/mastery-preview-20261023-01-*/`。最终候选另运行精通浏览器专项及人工截图审阅。本节将在实际完成后记录结果，当前不声明通过。
+提交：`140cad9`，分支 `codex/mastery-allocation-preview`。仓库没有 Git remote，本轮使用 Cloudflare Pages Direct Upload，Wrangler 4.151.3、`--branch preview`。精确部署 [aaab885e.dvi-lab.pages.dev](https://aaab885e.dvi-lab.pages.dev)，别名 [preview.dvi-lab.pages.dev](https://preview.dvi-lab.pages.dev)。发布包 `/private/tmp/dvi-mastery-preview-20261023-02` 共 75 文件；文档和本地调研均未上传。
+
+| 验证 | 本轮结果与证据 |
+| --- | --- |
+| 完整发布前检查 | `mastery-preview-20261023-02-check/`：479 项测试通过，无失败／取消／跳过；150 脚本、118 文档、676 引用通过。原始计算对照、重复提取及未知摘要拒绝通过。本机 19 路由／73 资源／36 组浏览器通过。 |
+| 打包 | 同轮候选摘要 `16c60ada91b52258c89568693f4dd52d6438e20d2f7049f4bc38df77860e5772`，白名单及逐文件摘要通过；清单位于检查目录 `package.json`。 |
+| 线上完整验收 | `mastery-preview-20261023-02-preview-verify/` 与 `mastery-preview-20261023-02-exact-verify/` 均为 **failed**。两目标各 19 路由／73 资源与包一致，36 组布局／交互及 4 组普通战斗完成断言跑完；最终错误检查各记录 210 条控制台错误，均为注入的 Cloudflare 统计请求 CORS／关联 ERR_FAILED，未忽略。 |
+| 精通浏览器专项 | 本机 `mastery-preview-20261023-01-mastery-local/`、线上 `mastery-preview-20261023-02-mastery-preview/` 各 13 组通过，运行时异常为空；包括两模式真实 Worker、自动应用／备选／保存失败、价格变化保留、取消与迟到隔离、双语和 390px 布局。此专项只收集 pageerror，不能替代完整控制台验收。 |
+
+以上证据目录均位于 `.test-artifacts/release/`，上传日志为 `mastery-preview-20261023-02-deploy.log`。人工审阅了本机专项中文 390px、英文 1440px 结果图，本机矩阵精通中文 1280px、英文 390px及制造中文 1280px，线上专项中文 1440px和英文 390px结果图；未将全部截图称为人工已审阅。
+
+首轮 `mastery-preview-20261023-01-check/` 在制造页 End 滚动断言超时。隔离自动导价后一次专项仍失败，后续增加失败布局诊断并将指针和焦点均移至右栏后再按 End；完整第二轮通过。该调整只涉及验证脚本，不改变应用滚动行为。失败证据及本机探查 `02/03/04-local-probe` 保留，不改写为通过。
+
+Cloudflare `cloudflareinsights.com/cdn-cgi/rum` 的 OPTIONS 探查允许 Preview 来源，但浏览器实际统计请求仍报跨域错误；根因未确认，未修改生产／共享统计配置，未绕过错误检查。后续需修复托管统计请求并重新验收，当前不能认定线上完整发布验收通过。部署后仅更新发布文档，未改变已验收的应用文件或重新打包；最终发布记录另执行静态检查：150 脚本、118 文档、677 引用通过，结果为 `.test-artifacts/release/mastery-preview-20261023-02-record-static.json`；未重复声称执行完整应用验证。
 
 未操作真实账号或真实加点／洗点，不验证市场成交或真实设备长时性能；本轮只发布 Preview，生产通道不变。
