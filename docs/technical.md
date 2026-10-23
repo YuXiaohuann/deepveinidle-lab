@@ -81,7 +81,7 @@
 | `tests/collection.test.mjs`、`tests/collection-browser.mjs` | 收藏边界、品质／烧焦／被捕、价格缺失与零价、独立目标事件对照、DOM 桥接、类型独立筛选与存储异常恢复、材料采购展开区与窄屏专项 |
 | `tests/collection-plan.test.mjs`、`tests/collection-plan-transfer.test.mjs`、`tests/collection-plan-browser.mjs` | 计划去重、数量和金额边界、焦点调度、压缩往返、导入并发与存档保留、双语窄屏交互 |
 | `src/mastery.js`、`src/mastery-controls.js` | 独立精通预算、升级成本、配置校验与双语交互 |
-| `src/mastery-optimizer.js`、`src/mastery-optimizer-worker.js`、`src/mastery-optimizer-controls.js` | 重置／保留当前加点两种预算与等级下限、六维有界搜索、独立种子复核、专用 Worker 与取消、战斗／价格快照、配置失效与价格变化提示、收入／投入／差异精简清单、自动／手动应用到本页目标及保存；重置应用归零当前，保留模式不变，只读战斗配置，不写回其他页面 |
+| `src/mastery-optimizer.js`、`src/mastery-optimizer-worker.js`、`src/mastery-optimizer-controls.js` | 重置／保留当前加点两种预算与等级下限、按目标选择候选策略、收入五维有界搜索与四档搜索宽度、独立种子复核、专用 Worker 与取消、战斗／价格快照、配置失效与价格变化提示、收入／投入／差异精简清单、自动／手动应用到本页目标及保存；两模式应用均保留当前等级，只写目标，只读战斗配置，不写回其他页面 |
 | `tests/mastery-optimizer.test.mjs`、`tests/mastery-optimizer-browser.mjs` | 独立穷举算例、真实模拟对照、预算／缺价／异常与种子隔离，以及真实 Worker、取消、失效和双语窄屏验证 |
 | `src/price-protocol.js`、`src/price-service.js` | 物品价格六项数据的只读快照、固定公开协议、统一设价命令及分类变更通知 |
 | `src/item-prices.js`、`src/item-price-store.js`、`src/market-import.js`、`src/item-price-controls.js`、`src/price-auto-import.js` | 价格模块内部规则、存储、官方价格及挂单总量解析、管理弹窗与自动导入通知 |

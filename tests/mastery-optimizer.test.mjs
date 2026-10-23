@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {game,preset,masteryValue} from '../src/model.js';
+import {game,preset,masteryValue,makePlayer} from '../src/model.js';
 import {simulateMonster} from '../src/simulation.js';
 import {valueRewards} from '../src/item-prices.js';
 import {masteryDefaults} from '../src/mastery.js';
-import {affordableRank,optimizerInput,combatIncomeItems,checkOptimizerPrices,searchMasteryAllocations,optimizeMastery,screeningSeeds,reviewSeeds,sampleStats} from '../src/mastery-optimizer.js';
+import {affordableRank,optimizerInput,combatIncomeItems,checkOptimizerPrices,searchMasteryAllocations,optimizeMastery,screeningSeeds,reviewSeeds,sampleStats,optimizerEfforts,optimizerPolicy,combatIncomeGeneration} from '../src/mastery-optimizer.js';
 const zero=()=>masteryDefaults().current;
 function input(points=123){
  const combat=preset('ranged');combat.manual.simulationHours=1;
@@ -35,7 +35,7 @@ test('bounded search is reproducible, preserves inputs, reclaims old ranks and r
  const current={...zero(),maxhit:400,accuracy:1},before=structuredClone(current),seen=[];
  const options={totalPoints:1000000,current,maxCandidates:240,evaluate:r=>{seen.push({...r});return r.rare+2*r.accuracy;}};
  const a=searchMasteryAllocations(options),b=searchMasteryAllocations({...options,evaluate:r=>r.rare+2*r.accuracy});
- assert.equal(a.exhaustive,false);assert.deepEqual(a,b);assert.ok(a.candidates.length<=240);assert.ok(a.candidates.length>100);
+ assert.equal(a.exhaustive,false);assert.deepEqual(a,b);assert.ok(a.candidates.length<=240);assert.ok(a.candidates.length>1);
  assert.deepEqual(current,before);assert.ok(seen.some(r=>r.rare>200));assert.ok(seen.some(r=>r.maxhit<400));
  assert.equal(new Set(seen.map(r=>JSON.stringify(r))).size,seen.length);
  assert.ok(seen.every(r=>Object.values(r).every(n=>Number.isInteger(n)&&n>=0&&n<=20000)&&game.masteriesTotalCost(r)<=1000000));
@@ -59,7 +59,7 @@ test('remaining-points search never refunds initial investment, even during boun
  const current={...zero(),xp:400,move:20,hp:5,maxhit:900,accuracy:210,rare:300,gather:20,craft:17,offline:3,enhance:201},before=structuredClone(current),seen=[];
  const totalPoints=game.masteriesTotalCost(current)+20000;
  const search=searchMasteryAllocations({totalPoints,current,allocationMode:'remaining',maxCandidates:240,evaluate:r=>{seen.push(r);return r.rare*2+r.accuracy+r.move;}});
- assert.equal(search.exhaustive,false);assert.ok(seen.length>100&&seen.length<=240);
+ assert.equal(search.exhaustive,false);assert.ok(seen.length>1&&seen.length<=240);
  for(const ranks of seen){assert.ok(game.masteriesTotalCost(ranks)<=totalPoints);for(const m of game.masteries)assert.ok(ranks[m.id]>=current[m.id]);for(const id of ['gather','craft','offline','enhance'])assert.equal(ranks[id],current[id]);}
  assert.deepEqual(current,before);
  const capped=Object.fromEntries(game.masteries.map(m=>[m.id,20000]));
@@ -67,12 +67,12 @@ test('remaining-points search never refunds initial investment, even during boun
  assert.equal(full.candidates.length,1);assert.deepEqual(full.candidates[0].ranks,capped);
 });
 test('remaining-points results charge incremental costs and handle no spare points and exact next-rank costs',()=>{
- const raw=input();raw.allocationMode='remaining';raw.current={...zero(),maxhit:1,gather:2,craft:1,offline:3,enhance:5};
- const invested=game.masteriesTotalCost(raw.current),simulate=s=>({deaths:0,endedEarly:false,coins:100+20*s.masteries.maxhit,normalItems:{},rareItems:{}});
+ const raw=input();raw.allocationMode='remaining';raw.current={...zero(),accuracy:1,gather:2,craft:1,offline:3,enhance:5};
+ const invested=game.masteriesTotalCost(raw.current),simulate=s=>({deaths:0,endedEarly:false,coins:100+20*s.masteries.accuracy,normalItems:{},rareItems:{}});
  for(const available of [0,41,42]){
   raw.totalPoints=invested+available;const before=structuredClone(raw),result=optimizeMastery(raw,{simulate});
   assert.equal(result.allocationMode,'remaining');assert.equal(result.availablePoints,available);
-  assert.equal(result.plans[0].ranks.maxhit,available===42?2:1);assert.equal(result.plans[0].additionalCost,available===42?42:0);
+  assert.equal(result.plans[0].ranks.accuracy,available===42?2:1);assert.equal(result.plans[0].additionalCost,available===42?42:0);
   assert.equal(result.plans[0].remaining,available===42?0:available);assert.deepEqual(raw,before);
   if(available===0){assert.equal(result.screened,1);assert.deepEqual(result.plans[0].ranks,raw.current);}
  }
@@ -111,7 +111,7 @@ test('independent review seeds, cache and paired comparisons preserve the declar
  const simulate=(s,m,{seed})=>{calls.push({ranks:{...s.masteries},seed});return {deaths:0,endedEarly:false,coins:100+20*s.masteries.rare+(seed%5),normalItems:{},rareItems:{}};};
  const result=optimizeMastery(raw,{simulate,onProgress:p=>progress.push(p)});
  assert.equal(result.plans[0].ranks.rare,1);assert.equal(result.plans[0].paired.mean,20);assert.equal(result.plans[0].paired.se,0);
- assert.ok(screeningSeeds.every(seed=>!reviewSeeds.includes(seed)));assert.equal(result.screened,7);
+ assert.ok(screeningSeeds.every(seed=>!reviewSeeds.includes(seed)));assert.ok(result.screened<7);assert.ok(calls.every(call=>call.ranks.xp===0));
  assert.equal(new Set(calls.map(c=>JSON.stringify(c))).size,calls.length);assert.equal(result.simulations,calls.length);
  assert.ok(progress.some(p=>p.phase==='search'));assert.ok(progress.some(p=>p.phase==='review'));
  assert.deepEqual(sampleStats([1,2,3]),{mean:2,sd:1,se:1/Math.sqrt(3)});
@@ -137,4 +137,72 @@ test('real upstream simulation matches a separately valued baseline and leaves t
  const raw=input(0),before=structuredClone(raw),result=optimizeMastery(raw);
  const values=reviewSeeds.map(seed=>valueRewards(simulateMonster({...raw.combat,masteries:zero()},game.monsters.find(m=>m.id===7),{seed,now:raw.now}),'custom',raw.prices).totalIncome);
  assert.equal(result.plans[0].stats.mean,sampleStats(values).mean);assert.equal(result.plans[0].paired.mean,0);assert.deepEqual(raw,before);assert.equal(result.screened,1);
+});
+
+test('four search efforts vary generation and stop early on flat objectives',()=>{
+ assert.deepEqual(optimizerEfforts,{fast:60,standard:120,deep:360,comprehensive:720});
+ const counts=[];
+ for(const [effort,maxCandidates]of Object.entries(optimizerEfforts)){
+  const result=searchMasteryAllocations({totalPoints:100000,effort,maxCandidates,evaluate:()=>100});
+  assert.equal(result.stopReason,'stalled');assert.ok(result.candidates.length<maxCandidates);counts.push(result.candidates.length);
+ }
+ assert.ok(counts.every((n,i)=>i===0||n>counts[i-1]));
+});
+test('only the combat-income policy excludes XP and preserves the remaining-mode floor',()=>{
+ const policy=optimizerPolicy('combatIncome');assert.equal(policy.ignoreLevelUpsForGeneration,true);assert.equal(policy.tracks.length,5);assert.ok(!policy.tracks.includes('xp'));
+ for(const goal of ['xp','gatherIncome','enhanceCost',undefined])assert.throws(()=>optimizerPolicy(goal),/unsupportedObjective/);
+ for(const allocationMode of ['reset','remaining'])for(const effort of Object.keys(optimizerEfforts)){
+  const raw=input(5000);raw.current={...zero(),xp:5,gather:2};raw.allocationMode=allocationMode;raw.effort=effort;const calls=[];
+  const result=optimizeMastery(raw,{simulate:(s,m,{seed})=>{calls.push({ranks:s.masteries,seed});return {deaths:0,endedEarly:false,coins:100+s.masteries.rare+s.masteries.accuracy,normalItems:{},rareItems:{}};}});
+  assert.ok(result.screened<=optimizerEfforts[effort]);
+  const expected=allocationMode==='remaining'?5:0;
+  assert.ok(calls.filter(c=>screeningSeeds.includes(c.seed)).every(c=>c.ranks.xp===expected));
+  assert.ok(result.plans.every(p=>p.ranks.xp===expected&&p.ranks.gather===(allocationMode==='remaining'?2:0)));
+  assert.equal(result.baseline.ranks.xp,5);assert.ok(result.plans.every(p=>p.cost<=raw.totalPoints));
+ }
+});
+test('income generation skips initial HP plateaus, keeps floors and crosses the next breakpoint',()=>{
+ const combat=preset('ranged');combat.levels.hitpoints=10;const floor=zero(),before=structuredClone(combat),generation=combatIncomeGeneration(combat,floor);
+ // At rank 0 the preset has 10 HP. +0.5% per rank is rounded down;
+ // the first additional HP arrives at rank 20, not at ranks 1 through 19.
+ assert.equal(generation.canonicalize({...floor,hp:19}).hp,0);
+ assert.equal(generation.nextRank(floor,'hp',1),20);
+ assert.equal(generation.canonicalize({...floor,hp:21}).hp,20);
+ const remaining={...floor,hp:7};const kept=combatIncomeGeneration(combat,remaining);
+ assert.equal(kept.canonicalize(remaining).hp,7);assert.equal(kept.nextRank(remaining,'hp',8),20);
+ assert.deepEqual(combat,before);assert.deepEqual(floor,zero());
+});
+
+test('higher efforts include the lower effort candidate set without duplicate evaluation',()=>{
+ let previous=new Set(),previousReview=new Set(),tier=0;
+ for(const [effort,maxCandidates]of Object.entries(optimizerEfforts)){
+  const calls=[],result=searchMasteryAllocations({totalPoints:100000,effort,maxCandidates,evaluate:r=>{calls.push(JSON.stringify(r));return r.maxhit+2*r.rare+r.accuracy;}});
+  const actual=new Set(calls);assert.equal(actual.size,calls.length);assert.equal(calls.length,result.candidates.length);assert.ok(calls.length<=maxCandidates);
+  for(const key of previous)assert.ok(actual.has(key));previous=actual;
+  const review=new Set(result.reviewCandidates.map(c=>JSON.stringify(c.ranks)));for(const key of previousReview)assert.ok(review.has(key));assert.ok(review.size<=5*++tier);previousReview=review;
+ }
+});
+
+test('damage breakpoints keep the cheapest initial-equivalent rank and generic search can still optimize XP',()=>{
+ const combat=preset('ranged'),floor=zero(),generation=combatIncomeGeneration(combat,floor),first=new Map();
+ for(let n=0;n<=60;n++){
+  const ranks={...floor,maxhit:n},player=makePlayer({...combat,masteries:ranks}).player,hit=game.maxHit(player);
+  if(!first.has(hit))first.set(hit,n);assert.equal(generation.canonicalize(ranks).maxhit,first.get(hit));
+ }
+ const generic=searchMasteryAllocations({totalPoints:40,maxCandidates:60,evaluate:r=>r.xp*1000});
+ assert.equal(generic.candidates[0].ranks.xp,1);
+});
+
+test('independent review cannot lose a lower-effort winner to extra screening candidates',()=>{
+ let income=-Infinity;
+ for(const effort of Object.keys(optimizerEfforts)){
+  const raw=input(5000);raw.effort=effort;const calls=new Set();
+  const result=optimizeMastery(raw,{simulate:(s,m,{seed})=>{
+   const key=JSON.stringify(s.masteries)+':'+seed;assert.ok(!calls.has(key));calls.add(key);
+   const coins=screeningSeeds.includes(seed)?100+5*s.masteries.rare+s.masteries.accuracy:100+5*s.masteries.maxhit+s.masteries.hp;
+   return {deaths:0,endedEarly:false,coins,normalItems:{},rareItems:{}};
+  }});
+  assert.ok(result.plans[0].stats.mean>=income);income=result.plans[0].stats.mean;
+  assert.equal(result.simulations,calls.size);assert.ok(result.screened<=optimizerEfforts[effort]);
+ }
 });

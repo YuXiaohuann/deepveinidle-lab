@@ -47,6 +47,9 @@ try{
   await page.locator('#mastery-total').fill(total);
  };
  await page.goto(`${baseURL}/mastery`);
+ assert.equal(await page.locator('#optimizer-effort').inputValue(),'standard');
+ assert.deepEqual(await page.locator('#optimizer-effort option').evaluateAll(es=>es.map(e=>e.value)),['fast','standard','deep','comprehensive']);
+ assert.deepEqual(await page.locator('#optimizer-effort option').allTextContents(),['快速：最多 60 个配置','标准：最多 120 个配置','深入：最多 360 个配置','全面：最多 720 个配置']);
  assert.equal(await page.locator('[data-mastery-field="current"]').count(),0);
  const maxhitCard=page.locator('[data-mastery-row="maxhit"]');
  assert.equal(await maxhitCard.locator('[data-mastery-current]').textContent(),'1');
@@ -166,7 +169,7 @@ try{
  assert.equal(await page.evaluate(id=>window.optimizerWorkers.at(-1).request.prices[id].price,priceItemId),105);
  await page.evaluate(async id=>{const service=await import('/src/price-service.js');service.setPrice(id,107);},priceItemId);
  assert.equal(await page.locator('#optimizer-start').textContent(),'Cancel calculation');assert.ok(!await page.evaluate(()=>window.optimizerWorkers.at(-1).wasTerminated));
- await page.evaluate(()=>window.optimizerWorkers.at(-1).onmessage({data:{progress:{phase:'search',candidates:3,maxCandidates:240,simulations:6}}}));
+ await page.evaluate(()=>window.optimizerWorkers.at(-1).onmessage({data:{progress:{phase:'search',candidates:3,maxCandidates:120,simulations:6}}}));
  assert.match(await page.locator('#optimizer-status').innerText(),/Searching.*Effective prices changed/);
  await page.evaluate(result=>window.optimizerWorkers.at(-1).onmessage({data:{result}}),remainingPlan);
  assert.match(await page.locator('#optimizer-status').innerText(),/Effective prices changed/);assert.ok(await page.locator('.optimizer-plan').count()>0);
@@ -215,6 +218,11 @@ try{
  await page.evaluate(()=>window.optimizerMode='wait');await page.click('#optimizer-start');await page.click('#optimizer-edit-combat');await page.waitForURL('**/combat');assert.ok(await page.evaluate(()=>window.optimizerWorkers.at(-1).wasTerminated));await page.click('[data-preset="melee"]');await page.click('#mastery-nav');assert.match(await page.locator('#optimizer-scenario').innerText(),/Melee/);assert.equal(await page.locator('.optimizer-plan').count(),0);
  results.cases.push('Worker errors restore controls; leaving cancels; edited Combat build is read on return without overwriting mastery settings');
  await page.click('#combat-nav');await page.click('[data-preset="ranged"]');await page.click('#mastery-nav');await page.locator('#mastery-total').fill('0');await page.selectOption('#optimizer-monster','7');await page.evaluate(()=>window.optimizerMode=undefined);await page.click('#optimizer-start');await page.waitForSelector('.optimizer-plan');assert.match(await page.locator('#optimizer-output').innerText(),/exceeds budget/);
+ for(const effort of ['fast','deep','comprehensive']){
+  await page.selectOption('#optimizer-effort',effort);await page.click('#optimizer-start');await page.waitForSelector('.optimizer-plan');
+  assert.equal(await page.evaluate(()=>window.optimizerWorkers.at(-1).request.effort),effort);assert.equal(await page.evaluate(()=>window.optimizerWorkers.at(-1).result.effort),effort);
+ }
+ results.cases.push('four effort options default to standard and all four travel through the real Worker without changing application rules');
  await page.reload();assert.deepEqual(await ranksInFields('current'),{...masteryDefaults().current,maxhit:1,gather:1});assert.ok(Object.values(await ranksInFields('target')).every(rank=>rank===0));assert.equal(await page.locator('[data-mastery-row="maxhit"] [data-mastery-value="cost"]').textContent(),'-40');assert.equal(await page.locator('.optimizer-plan').count(),0);assert.equal(await page.locator('#mastery-total').inputValue(),'0');
  assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.open),false);await page.locator('#mastery-optimizer>summary').click();
  assert.equal(await page.locator('#optimizer-allocation-mode').inputValue(),'remaining');
