@@ -37,6 +37,10 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 专项单元与发布资源测试：`node --test tests/formulas.test.mjs tests/release-tools.test.mjs`。浏览器专项：`node tests/formulas-browser.mjs`，使用本机 Chrome 和临时回环服务，结果与截图保存在 `.test-artifacts/formulas/`；需要允许本机监听与浏览器进程。其验证公式页面、错误重试、目录、路由、布局和模拟状态保留，不替代完整发布验收。
 
+## 精通最优分配专项
+
+`node --test tests/mastery-optimizer.test.mjs tests/mastery.test.mjs tests/mastery-controls.test.mjs` 覆盖重置／保留模式预算、十项等级下限、独立小预算穷举、跨级取整平台、原始战斗模拟与估值对照、种子／缓存／复核、缺价、死亡和异常；修改共用模拟或价格协议时按影响范围另选 `tests/simulation.test.mjs`、`tests/price-protocol.test.mjs`。`node tests/mastery-optimizer-browser.mjs [输出目录] [目标网址]` 启动本机服务及独立无头 Chrome，验证两种模式的真实优化 Worker、收入／投入／差异精简清单、无复制入口、自动应用最佳与手动应用备选、下方等级／成本／存档同步、应用校验拒绝和保存失败提示、双语桌面／390px、默认折叠、键盘展开、折叠状态跨重绘／完成保留、开始／取消共用按钮及其双语状态、运行中语言切换、应用后重绘不重复应用、模式切换／取消与迟到消息、预算／当前等级失效及价格变化提示与结果保留、目标草稿独立及回到战斗页编辑。另检查怪物等级降序与默认深渊恐魔、两种模式统一开始按钮，以及价格提示跨进度／完成／语言切换保留、重算使用最新价格。保留模式额外检查非战斗精通投入、零余点和当前超预算拒绝。提供目标网址时直接验证该目标，不启动本机服务；默认日志摘要和截图输出至 `.test-artifacts/mastery-optimizer/`，人工审阅截图；需要回环监听和浏览器进程，不连接真实账号。完整日志可用重定向另行保存，不替代发布验收。
+
 ## 赞赏弹窗专项
 
 运行 `node tests/appreciation-browser.mjs`，使用本机 Chrome 和临时回环服务，检查双语桌面／窄屏、各页面入口、弹窗交互、图片失败重试及静态资源交付，以及外部文案随机选择、失败隐藏、超时和关闭／重绘竞态（以请求替身验证，不依赖外部服务可用性）；结果与截图保存在 `.test-artifacts/appreciation/`。需要允许本机监听与浏览器进程，不下载浏览器、不连接支付服务。图片维护于 `src/assets/appreciation.jpg`，按原始字节纳入发行包；替换图片后重跑专项。

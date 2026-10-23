@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {masteryStorageKey,masteryDefaults} from '../src/mastery.js';
 
-test('mastery userscript import uses the highlighted sidebar and keeps configuration on failure',async()=>{
+test('mastery controls import and apply plans atomically, preserving valid settings on failure',async()=>{
  const original={document:globalThis.document,localStorage:Object.getOwnPropertyDescriptor(globalThis,'localStorage'),CustomEvent:globalThis.CustomEvent};
  const elements=new Map(),storage=new Map([['dvi-simulator-v1','combat sentinel']]);let failStorage=false;
  const initial=masteryDefaults();initial.mode='unlimited';initial.budget=500;initial.target.xp=8;storage.set(masteryStorageKey,JSON.stringify(initial));
@@ -13,7 +13,7 @@ test('mastery userscript import uses the highlighted sidebar and keeps configura
  let snapshot={version:2,capturedAt:Date.now(),player:{masteries:{xp:7,enhance:3,offline:2},collections:{64:1},forgeLog:{29:1073741823},bank:{64:99}}};let reads=0;
  document.addEventListener('dvi-character-request',event=>{const request=JSON.parse(event.detail);if(request.action==='read')reads++;document.dispatchEvent(new CustomEvent('dvi-character-response',{detail:JSON.stringify({source:'dvi-character-script',id:request.id,version:'2.4',snapshot})}));});
  try{
-  const {renderMastery}=await import('../src/mastery-controls.js');renderMastery('zh');const {setCharacterImportPage}=await import('../src/import-controls.js');setCharacterImportPage('mastery');const host=document.getElementById('mastery-content'),get=selector=>host.querySelector(selector);
+  const {renderMastery,applyMasteryRecommendation}=await import('../src/mastery-controls.js');renderMastery('zh');const {setCharacterImportPage}=await import('../src/import-controls.js');setCharacterImportPage('mastery');const host=document.getElementById('mastery-content'),get=selector=>host.querySelector(selector);
   get('#mastery-import-settings').id='mastery-import-settings';get('#mastery-import-settings').open=true;
   assert.match(host.innerHTML,/<aside class="panel config mastery-settings">/);assert.match(host.innerHTML,/class="config-detail character-import"/);assert.match(host.innerHTML,/导入配置/);
   assert.match(host.innerHTML,/class="mastery-rank-controls"><input[^>]+data-mastery-field="target"[^>]*><button data-mastery-action="plus"[^>]*>\+1<\/button><button data-mastery-action="minus"[^>]*>−1<\/button><button data-mastery-action="max"[^>]*>MAX<\/button>/);
@@ -36,6 +36,16 @@ test('mastery userscript import uses the highlighted sidebar and keeps configura
   host.onclick({target:{closest:selector=>selector==='#mastery-zero-ranks'?{}:null}});updated=JSON.parse(storage.get(masteryStorageKey));assert.equal(updated.mode,'unlimited');assert.equal(updated.totalPoints,240);assert.ok(Object.values(updated.current).every(n=>n===0));assert.ok(Object.values(updated.target).every(n=>n===0));
   input('mastery-total','20');host.oninput({target:{value:'1',dataset:{masteryField:'current',masteryId:'xp'}}});assert.match(get('#mastery-issue').textContent,/exceed total points by 20/);
   await get('#mastery-import').onclick();updated=JSON.parse(storage.get(masteryStorageKey));assert.equal(updated.mode,'limited');assert.equal(updated.totalPoints,5336);assert.equal(updated.budget,undefined);
+
+  const beforeApply=storage.get(masteryStorageKey),ranks=masteryDefaults().current;
+  assert.throws(()=>applyMasteryRecommendation({allocationMode:'remaining',ranks:{...ranks,xp:8}}),/targetBelowCurrent/);assert.equal(storage.get(masteryStorageKey),beforeApply);
+  assert.throws(()=>applyMasteryRecommendation({allocationMode:'reset',ranks:{...ranks,xp:200}}),/optimizerPlanOverBudget/);assert.equal(storage.get(masteryStorageKey),beforeApply);
+  assert.throws(()=>applyMasteryRecommendation({allocationMode:'unknown',ranks}),/invalidOptimizerMode/);assert.equal(storage.get(masteryStorageKey),beforeApply);
+  assert.equal(applyMasteryRecommendation({allocationMode:'remaining',ranks:{...ranks,xp:10}}).saveOK,true);
+  updated=JSON.parse(storage.get(masteryStorageKey));assert.equal(updated.current.xp,9);assert.equal(updated.target.xp,10);assert.equal(updated.totalPoints,5336);assert.equal(updated.mode,'limited');
+  applyMasteryRecommendation({allocationMode:'reset',ranks:{...ranks,xp:1}});updated=JSON.parse(storage.get(masteryStorageKey));assert.deepEqual(updated.current,ranks);assert.equal(updated.target.xp,1);assert.equal(updated.totalPoints,5336);assert.equal(updated.mode,'limited');
+  const savedBeforeFailure=storage.get(masteryStorageKey);failStorage=true;
+  assert.equal(applyMasteryRecommendation({allocationMode:'remaining',ranks:{...ranks,xp:2}}).saveOK,false);assert.equal(storage.get(masteryStorageKey),savedBeforeFailure);assert.match(get('#mastery-save-note').textContent,/cannot be saved/);assert.match(host.innerHTML,/data-mastery-id="xp" value="2"/);
 
  }finally{for(const [key,value]of Object.entries(original)){if(value===undefined)delete globalThis[key];else if(key==='localStorage')Object.defineProperty(globalThis,key,value);else globalThis[key]=value;}}
 });

@@ -312,3 +312,19 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
 @media(max-width:740px){.header-right{max-width:100%;min-width:0}}
 
 .character-update-options{display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px 12px;min-width:0}.character-import .character-update-options .check{display:inline-flex;align-items:flex-start;gap:5px;min-width:0;max-width:100%;margin:0;line-height:1.5;white-space:normal}.character-update-options .check>span{min-width:0;overflow-wrap:anywhere}.character-update-options input[type=checkbox]{flex:none;width:14px;height:14px;min-height:0;padding:0;margin:1px 0 0}
+
+.mastery-optimizer{padding:18px;margin-bottom:18px;min-width:0}
+.mastery-optimizer>summary{cursor:pointer;font-size:16px;font-weight:650;line-height:1.5}.mastery-optimizer[open]>summary{margin-bottom:12px}
+.mastery-optimizer p{line-height:1.6;overflow-wrap:anywhere}
+.optimizer-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:12px;margin:16px 0}
+.optimizer-fields .number-field{min-width:0;margin:0}.optimizer-fields select{width:100%;min-width:0;min-height:44px}
+#optimizer-scenario{white-space:pre-line}
+.optimizer-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px}.optimizer-actions button{min-height:44px}.optimizer-actions #optimizer-start{width:auto;flex:0 0 auto}
+.optimizer-actions a{color:var(--teal);font-size:13px}
+#optimizer-status{color:var(--gold)}#optimizer-status:empty{display:none}
+.optimizer-plan{border-top:1px solid var(--line);padding:16px 0;min-width:0}
+.optimizer-plan-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}.optimizer-plan-heading h4{flex:1;min-width:0;margin:0}
+.mastery-optimizer .optimizer-plan-heading button{width:auto;flex:0 0 auto;min-height:44px;min-width:76px}.optimizer-plan-heading button:disabled{opacity:.55;cursor:default}
+.optimizer-plan-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:10px 0 0}.optimizer-plan-metrics>div{min-width:0}
+.optimizer-plan-metrics dt{font-size:12px;color:var(--muted)}.optimizer-plan-metrics dd{margin:4px 0 0;font-size:14px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;line-height:1.5}
+@media(max-width:740px){.optimizer-plan-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.optimizer-plan-metrics>div:last-child{grid-column:1/-1}}

@@ -42,6 +42,8 @@ pnpm release:verify --evidence .test-artifacts/release/candidate-check --package
 
 视觉或功能变更仍须执行相关页面专项与人工截图审阅，并在本轮发布报告单独记录；基础矩阵不能证明全部交互或视觉正确，工具保存截图不等于人工审阅完成。
 
+基础浏览器矩阵使用隔离的默认价格存档，关闭自动导价，避免外部市场响应触发重绘而干扰键盘、滚动和布局断言；自动导价及价格变化由对应专项验证。
+
 本机预览将 `/`、`/combat`、`/gather`、`/craft`、`/enhance`、`/mastery`、`/forecast`、`/formulas`、`/collection`、`/debug` 及各页面尾斜线形式映射到同一 `index.html`。Cloudflare Pages 的 `_redirects` 使用 200 代理到 `/`；不能代理到 `/index.html`，否则规范化跳转可能丢失页面路径。
 
 HTML 一致性检查仅允许已知 analytics loader、Cloudflare Web／Pages Analytics 边界注释及标签间空白。HTTP 与浏览器错误不得忽略；线上失败不改写发布前已通过的结果，正式版准备也不等于部署成功。

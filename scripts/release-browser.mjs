@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {chromium} from 'playwright-core';
 import {pages,json,browserPath} from './release-common.mjs';
 import {game,preset} from '../src/model.js';
+import {priceDefaults} from '../src/item-prices.js';
 
 export async function verifyBrowser(base,version,directory){
  const executablePath=await browserPath(),browser=await chromium.launch({headless:true,executablePath});
@@ -13,7 +14,8 @@ export async function verifyBrowser(base,version,directory){
  page.on('pageerror',e=>results.errors.push({type:'pageerror',message:e.message}));
  page.on('console',m=>{if(['error','warning'].includes(m.type()))results.errors.push({type:m.type(),message:m.text()});});
  const state=preset('ranged');state.manual.simulationHours=1;
- await context.addInitScript(({state})=>{localStorage.setItem('dvi-simulator-v1',JSON.stringify({language:'zh',state}));},{state});
+ const prices=priceDefaults();prices.preferences.autoImport=false;
+ await context.addInitScript(({state,prices})=>{localStorage.setItem('dvi-simulator-v1',JSON.stringify({language:'zh',state}));localStorage.setItem('dvi-item-prices-v1',JSON.stringify(prices));},{state,prices});
  const screenshots=path.join(directory,'screenshots');await fs.mkdir(screenshots,{recursive:true});
  const settle=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
  try{
@@ -49,7 +51,7 @@ export async function verifyBrowser(base,version,directory){
      assert.equal(await right.evaluate(e=>e.scrollTop),0,'Left keyboard scroll affected right column');
      await left.evaluate(e=>e.scrollTop=e.scrollHeight);await left.hover();await page.mouse.wheel(0,1000);await settle();
      assert.equal(await right.evaluate(e=>e.scrollTop),0,'Wheel boundary affected right column');assert.equal(await page.evaluate(()=>scrollY),0,'Wheel boundary moved desktop body');
-     await right.focus();await page.keyboard.press('End');
+     await right.hover();await right.focus();await page.keyboard.press('End');
      await page.waitForFunction(id=>{const e=document.querySelector(`[data-scroll-column="${id}-information"]`);return Math.abs(e.scrollTop-Math.max(0,e.scrollHeight-e.clientHeight))<=1;},id);
      assert.ok(await page.locator('.project-footer').evaluate(e=>e.getBoundingClientRect().bottom<=innerHeight+1),'Footer is not reachable');
      // Switching away/back and redrawing language must retain column positions.
@@ -71,6 +73,6 @@ export async function verifyBrowser(base,version,directory){
   }
   assert.equal(results.cases.length,pages.length*4);assert.deepEqual(results.errors,[],'Browser warnings/errors');
   return {cases:results.cases.length,combatTargets:game.monsters.length,browser:results.browser,executablePath};
- }catch(error){results.failure=error.message;await page.screenshot({path:path.join(directory,'browser-failure.png'),fullPage:true}).catch(e=>results.errors.push({type:'screenshot',message:e.message}));throw error;}
+ }catch(error){results.failure=error.message;results.failureLayout=await page.evaluate(()=>({active:document.activeElement?.outerHTML.slice(0,300),columns:[...document.querySelectorAll('[data-scroll-column]')].filter(e=>!e.closest('[hidden]')).map(e=>({column:e.dataset.scrollColumn,top:e.scrollTop,height:e.scrollHeight,client:e.clientHeight}))})).catch(()=>null);await page.screenshot({path:path.join(directory,'browser-failure.png'),fullPage:true}).catch(e=>results.errors.push({type:'screenshot',message:e.message}));throw error;}
  finally{await json(path.join(directory,'browser.json'),results);await browser.close();}
 }
