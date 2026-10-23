@@ -85,7 +85,7 @@ function paint(){
  output.innerHTML=result.plans.map(planMarkup).join('');
 }
 export function renderMasteryOptimizer(nextLanguage,nextMastery,options={}){
- language=nextLanguage;mastery=structuredClone(nextMastery);targetRanks=options.target;onApply=options.onApply;invalidateMasteryOptimizer();
+ language=nextLanguage;mastery=structuredClone(nextMastery);targetRanks=options.target;onApply=options.onApply;
  const root=host();if(!root)return;
  root.innerHTML=`<summary>${text('计算最优分配方案','Calculate optimal allocation')}</summary><p class="micro simulation-caveat">${text('计算结果仅针对所选目标，应用于其他目标时效果可能更差。结果仅供参考，请自行评估分配方案。','Results apply only to the selected target and may perform worse for other targets. Use them as a reference and assess the allocation yourself.')}</p><div class="optimizer-fields"><label class="number-field"><span>${text('计算模式','Calculation mode')}</span><select id="optimizer-allocation-mode"><option value="reset" ${allocationMode==='reset'?'selected':''}>${allocationLabel('reset')}</option><option value="remaining" ${allocationMode==='remaining'?'selected':''}>${allocationLabel('remaining')}</option></select></label><label class="number-field"><span>${text('优化目标','Optimization goal')}</span><select id="optimizer-goal"><option value="combatIncome">${text('战斗收入最高','Highest combat income')}</option><option disabled>${text('采集收入最高（暂未支持）','Highest gathering income (not yet available)')}</option><option disabled>${text('经验获取最多（暂未支持）','Most XP (not yet available)')}</option><option disabled>${text('强化成本最低（暂未支持）','Lowest enhancement cost (not yet available)')}</option></select></label><label class="number-field"><span>${text('目标怪物','Target monster')}</span><select id="optimizer-monster">${optimizerMonsters.map(m=>`<option value="${m.id}" ${m.id===monsterId?'selected':''}>${esc(name(m.name))} · ${m.level}</option>`).join('')}</select></label><label class="number-field"><span>${text('搜索次数','Search allowance')}</span><select id="optimizer-effort"><option value="standard" ${effort==='standard'?'selected':''}>${text('标准：最多 240 个配置','Standard: up to 240 configurations')}</option><option value="deep" ${effort==='deep'?'selected':''}>${text('深入：最多 720 个配置','Deep: up to 720 configurations')}</option></select></label></div><p id="optimizer-scenario" class="micro"></p><p class="micro">${text('使用战斗页当前配装与模拟时长，开始时冻结价格、增益与配置。收入为金币＋掉落估值，未扣食物药水；宠物按现有规则估值为 0。','Uses the current Combat build and duration. Prices, buffs and settings are captured at start. Income is coins + valued drops, before food and potion costs; pets are valued at zero.')}</p><div class="optimizer-actions"><button id="optimizer-start" class="secondary">${text('开始计算','Start calculation')}</button><a id="optimizer-edit-combat" href="/combat">${text('前往战斗页编辑配装','Edit build on Combat page')}</a></div><p id="optimizer-status" role="status" aria-live="polite"></p><div id="optimizer-output"></div>`;
  root.querySelector('#optimizer-scenario').textContent=summary();
@@ -97,7 +97,7 @@ export function renderMasteryOptimizer(nextLanguage,nextMastery,options={}){
  root.querySelector('#optimizer-allocation-mode').onchange=e=>{allocationMode=e.target.value;clear('changed');renderMasteryOptimizer(language,mastery,{target:targetRanks,onApply});};
  root.querySelector('#optimizer-goal').onchange=()=>{clear();paint();};
 
- paint();
+ invalidateMasteryOptimizer();paint();
 }
 function start(){
  clear();

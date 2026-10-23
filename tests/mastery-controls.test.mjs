@@ -31,10 +31,10 @@ test('mastery controls import and apply plans atomically, preserving valid setti
   input('mastery-total','120');let updated=JSON.parse(storage.get(masteryStorageKey));assert.equal(updated.totalPoints,120);assert.equal(updated.budget,undefined);assert.match(get('#mastery-summary').innerHTML,/>120<\/strong>/);
   input('mastery-total','');assert.match(get('#mastery-issue').textContent,/cannot be blank/);assert.equal(JSON.parse(storage.get(masteryStorageKey)).totalPoints,120);
   input('mastery-total','240');assert.match(get('#mastery-summary').innerHTML,/>240<\/strong>/);
-  host.oninput({target:{value:'2',dataset:{masteryField:'current',masteryId:'xp'}}});assert.match(get('#mastery-summary').innerHTML,/>158<\/strong>/);
+  host.oninput({target:{value:'2',dataset:{masteryField:'current',masteryId:'xp'}}});assert.match(get('#mastery-summary').innerHTML,/>240<\/strong>/);assert.equal(JSON.parse(storage.get(masteryStorageKey)).current.xp,0);assert.doesNotMatch(host.innerHTML,/data-mastery-field="current"/);assert.match(host.innerHTML,/data-mastery-current="xp"/);
   get('#mastery-mode').onchange({target:{value:'unlimited'}});
   host.onclick({target:{closest:selector=>selector==='#mastery-zero-ranks'?{}:null}});updated=JSON.parse(storage.get(masteryStorageKey));assert.equal(updated.mode,'unlimited');assert.equal(updated.totalPoints,240);assert.ok(Object.values(updated.current).every(n=>n===0));assert.ok(Object.values(updated.target).every(n=>n===0));
-  input('mastery-total','20');host.oninput({target:{value:'1',dataset:{masteryField:'current',masteryId:'xp'}}});assert.match(get('#mastery-issue').textContent,/exceed total points by 20/);
+  get('#mastery-mode').onchange({target:{value:'limited'}});input('mastery-total','20');host.oninput({target:{value:'1',dataset:{masteryField:'target',masteryId:'xp'}}});assert.match(get('#mastery-issue').textContent,/Over budget by 20/);
   await get('#mastery-import').onclick();updated=JSON.parse(storage.get(masteryStorageKey));assert.equal(updated.mode,'limited');assert.equal(updated.totalPoints,5336);assert.equal(updated.budget,undefined);
 
   const beforeApply=storage.get(masteryStorageKey),ranks=masteryDefaults().current;

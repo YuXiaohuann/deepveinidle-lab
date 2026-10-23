@@ -40,8 +40,30 @@ try{
   };
  },{combat,mastery,prices});
  const page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>results.errors.push(e.message));
- const ranksInFields=kind=>page.locator(`[data-mastery-field="${kind}"]`).evaluateAll(inputs=>Object.fromEntries(inputs.map(input=>[input.dataset.masteryId,Number(input.value)])));
+ const ranksInFields=kind=>kind==='current'?page.locator('[data-mastery-current]').evaluateAll(elements=>Object.fromEntries(elements.map(el=>[el.dataset.masteryCurrent,Number(el.textContent.replaceAll(',',''))]))):page.locator(`[data-mastery-field="${kind}"]`).evaluateAll(inputs=>Object.fromEntries(inputs.map(input=>[input.dataset.masteryId,Number(input.value)])));
+ const importCurrentRanks=async ranks=>{
+  const total=await page.locator('#mastery-total').inputValue();
+  await page.evaluate(async ranks=>{const {applyMasteryImport,renderMastery}=await import('/src/mastery-controls.js');applyMasteryImport({version:2,capturedAt:Date.now(),player:{masteries:ranks,collections:{},forgeLog:{29:1073741823}}});renderMastery(document.documentElement.lang==='zh-CN'?'zh':'en');},ranks);
+  await page.locator('#mastery-total').fill(total);
+ };
  await page.goto(`${baseURL}/mastery`);
+ assert.equal(await page.locator('[data-mastery-field="current"]').count(),0);
+ const maxhitCard=page.locator('[data-mastery-row="maxhit"]');
+ assert.equal(await maxhitCard.locator('[data-mastery-current]').textContent(),'1');
+ await maxhitCard.locator('[data-mastery-field="target"]').fill('2');
+ assert.equal(await maxhitCard.locator('.mastery-current-rank [data-mastery-delta]').textContent(),'+1 级');
+ assert.equal(await maxhitCard.locator('.mastery-card-footer [data-mastery-value="next"]').textContent(),'下一级：44 点');
+ assert.equal(await maxhitCard.locator('.mastery-card-footer [data-mastery-status]').textContent(),'还缺 3 点');
+ for(const lang of ['zh','en']){await page.selectOption('#language',lang);for(const width of [1440,390]){
+  await page.setViewportSize({width,height:1000});
+  await maxhitCard.screenshot({path:path.join(directory,`card-${lang}-${width}.png`)});
+  const layout=await maxhitCard.evaluate(el=>{const current=el.querySelector('[data-mastery-current]').getBoundingClientRect(),delta=el.querySelector('[data-mastery-delta]').getBoundingClientRect(),next=el.querySelector('[data-mastery-value="next"]').getBoundingClientRect(),need=el.querySelector('[data-mastery-status]').getBoundingClientRect();return {deltaRight:delta.left>=current.right,needRight:need.left>next.left,footerAligned:Math.abs(need.bottom-next.bottom)<1,overflow:document.documentElement.scrollWidth>innerWidth};});
+  assert.deepEqual(layout,{deltaRight:true,needRight:true,footerAligned:true,overflow:false});
+ }}
+ await page.selectOption('#language','zh');await page.setViewportSize({width:1440,height:1000});
+ await maxhitCard.locator('[data-mastery-field="target"]').fill('0');assert.equal(await maxhitCard.locator('.mastery-current-rank [data-mastery-delta]').textContent(),'−1 级');assert.match(await page.locator('#mastery-issue').textContent(),/不能低于/);
+ await maxhitCard.locator('[data-mastery-field="target"]').fill('1');assert.equal(await maxhitCard.locator('[data-mastery-delta]').textContent(),'');
+ results.cases.push('current ranks are read-only; signed delta sits beside current rank; next cost and shortage occupy left/right footer corners in both languages and desktop/mobile');
  assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.tagName),'DETAILS');
  assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.open),false);
  await page.locator('#mastery-optimizer>summary').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.open),true);
@@ -92,8 +114,7 @@ try{
  await page.click('#optimizer-start');await page.waitForSelector('.optimizer-plan');assert.equal(await page.locator('[data-optimizer-apply="0"]').isDisabled(),true);
  assert.deepEqual(await ranksInFields('target'),await page.evaluate(()=>window.optimizerWorkers.at(-1).result.plans[0].ranks));
  assert.doesNotMatch(await page.locator('#optimizer-status').innerText(),/应用失败|unavailable/);
- await page.locator('[data-mastery-row="maxhit"] [data-mastery-field="current"]').fill('1');
- await page.locator('[data-mastery-row="gather"] [data-mastery-field="current"]').fill('1');
+ await importCurrentRanks({maxhit:1,gather:1});
  assert.match(await page.locator('#optimizer-scenario').innerText(),/当前投入 80 · 本模式可分配点数 43/);
  const remainingSaved=await page.evaluate(()=>localStorage.getItem('dvi-mastery-v1'));
  await page.click('#optimizer-start');await page.waitForSelector('.optimizer-plan');
@@ -177,7 +198,7 @@ try{
  await page.locator('#mastery-total').fill('123');await page.selectOption('#optimizer-allocation-mode','reset');await page.evaluate(()=>window.optimizerMode='wait');
  results.cases.push('switching allocation mode cancels and isolates stale results; over-budget existing ranks block remaining mode; no-spare search returns unchanged current allocation');
  await page.click('#optimizer-start');await page.locator('#mastery-total').fill('124');assert.ok(await page.evaluate(()=>window.optimizerWorkers.at(-1).wasTerminated));assert.match(await page.locator('#optimizer-status').innerText(),/Settings changed/);
- await page.click('#optimizer-start');await page.locator('[data-mastery-row="maxhit"] [data-mastery-field="current"]').fill('2');assert.match(await page.locator('#optimizer-status').innerText(),/Settings changed/);await page.locator('[data-mastery-row="maxhit"] [data-mastery-field="current"]').fill('1');
+ await page.click('#optimizer-start');await importCurrentRanks({maxhit:2,gather:1});assert.match(await page.locator('#optimizer-status').innerText(),/Settings changed/);await importCurrentRanks({maxhit:1,gather:1});
  results.cases.push('one enabled button toggles between start and cancel in Chinese/English, survives redraw, cancels and restarts, ignores late messages and restores start after input changes');
  await page.locator('#mastery-total').fill('');await page.click('#optimizer-start');assert.match(await page.locator('#optimizer-status').innerText(),/integer total points/);await page.locator('#mastery-total').fill('123');
  // Invalid manual targets do not block the independent reset calculation.
