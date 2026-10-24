@@ -20,7 +20,7 @@ test('known routes retain their URLs; unknown history entries are replaced with 
   }else{
    assert.equal(section,'combat');
    assert.equal(replacements.length,1);
-   assert.equal(replacements[0][2],'/combat#anchor');
+   assert.equal(replacements[0][2],'/combat?unused=1#anchor');
   }
  }
  await checkRedirects(root.pathname);
@@ -46,7 +46,7 @@ test('local HTTP server redirects unknown paths and preserves pages, assets and 
  for(const route of ['/missing','/missing/nested/?unused=1','/src/missing.js']){
   const response=await fetch(base+route,{redirect:'manual'});
   assert.equal(response.status,302,route);
-  assert.equal(response.headers.get('location'),'/combat');
+  assert.equal(response.headers.get('location'),'/combat'+new URL(route,base).search);
   const followed=await fetch(base+route);
   assert.equal(new URL(followed.url).pathname,'/combat');
   assert.equal(followed.status,200);

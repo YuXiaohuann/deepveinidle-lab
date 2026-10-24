@@ -56,7 +56,7 @@ test('symbolic application paths and extra package files cannot pass verificatio
 test('HTTP checks verify all routes, content and asset hashes and reject route/version-page substitution',async t=>{
  const {root}=await fixture(t);let mode='valid';
  const server=http.createServer(async(req,res)=>{
-  if(req.url.startsWith('/release-unknown-page')){res.writeHead(mode==='unknown-fallback'?200:302,{Location:'/combat'});res.end();return;}
+  if(req.url.startsWith('/release-unknown-page')){res.writeHead(mode==='unknown-fallback'?200:302,{Location:'/combat'+new URL(req.url,'http://localhost').search});res.end();return;}
   if(mode==='redirect'&&req.url==='/combat'){res.writeHead(302,{Location:'/'});res.end();return;}
   const file=routes.includes(req.url)?'index.html':req.url.slice(1);let body=await fs.readFile(path.join(root,file));
   if(mode==='corrupt'&&file==='src/app.js')body=Buffer.from('wrong');if(mode==='html'&&file==='index.html')body=Buffer.from('<html>wrong</html>');

@@ -70,7 +70,7 @@ function updateSorting(){
 function sectionForPath(){
  const path=location.pathname.replace(/\/$/,'');
  if(['collection','formulas','craft','mastery','gather','debug','forecast','enhance','combat'].includes(path.slice(1)))return path.slice(1);
- if(path!=='')history.replaceState(null,'','/combat'+location.hash);
+ if(path!=='')history.replaceState(null,'','/combat'+location.search+location.hash);
  return 'combat';
 }
 function showSection(section){

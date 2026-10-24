@@ -21,7 +21,7 @@ export async function verifyHttp(base,root,manifest){
  for(const route of unknownPaths){
   const response=await fetch(new URL(route,url),{redirect:'manual',signal:AbortSignal.timeout(30000)});
   assert.equal(response.status,302,`${route}: expected unknown-path redirect`);
-  assert.equal(new URL(response.headers.get('location'),url).href,new URL('/combat',url).href,`${route}: unexpected redirect target`);
+  assert.equal(new URL(response.headers.get('location'),url).href,new URL('/combat'+new URL(route,url).search,url).href,`${route}: unexpected redirect target`);
   await response.arrayBuffer();
  }
  const assets=manifest.filter(f=>!['index.html','_redirects'].includes(f.path));
