@@ -17,10 +17,17 @@ export async function verifyHttp(base,root,manifest){
   return response;
  }
  for(const route of routes){const response=await fetchPath(route);assert.match(response.headers.get('content-type')??'',/text\/html/);assert.equal(normalizeHostedHtml(await response.text()),normalizeHostedHtml(html),`${route}: unexpected HTML content`);}
+ const unknownPaths=['/release-unknown-page','/release-unknown-page/nested/','/release-unknown-page?unused=1'];
+ for(const route of unknownPaths){
+  const response=await fetch(new URL(route,url),{redirect:'manual',signal:AbortSignal.timeout(30000)});
+  assert.equal(response.status,302,`${route}: expected unknown-path redirect`);
+  assert.equal(new URL(response.headers.get('location'),url).href,new URL('/combat',url).href,`${route}: unexpected redirect target`);
+  await response.arrayBuffer();
+ }
  const assets=manifest.filter(f=>!['index.html','_redirects'].includes(f.path));
  // Limited batches avoid flooding the production origin; all resources are verified.
  for(let i=0;i<assets.length;i+=6){const results=await Promise.allSettled(assets.slice(i,i+6).map(async file=>{
   const response=await fetchPath('/'+file.path);const data=Buffer.from(await response.arrayBuffer());assert.equal(data.length,file.bytes,`${file.path}: byte length mismatch`);assert.equal(sha256(data),file.sha256,`${file.path}: SHA-256 mismatch`);
  }));for(const result of results)if(result.status==='rejected')throw result.reason;}
- return {base:url.origin,routes:routes.length,assets:assets.length,html:'exact except Cloudflare analytics loader',redirects:'verified by route behavior'};
+ return {base:url.origin,routes:routes.length,assets:assets.length,html:'exact except Cloudflare analytics loader',redirects:unknownPaths.length};
 }

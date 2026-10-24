@@ -20,6 +20,15 @@ export async function verifyBrowser(base,version,directory){
  const settle=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
  try{
   await page.goto(new URL('/combat',base).href,{waitUntil:'networkidle'});
+  for(const route of ['/release-unknown-page','/release-unknown-page/nested/?unused=1']){
+   await page.goto(new URL(route,base).href,{waitUntil:'networkidle'});
+   assert.equal(page.url(),new URL('/combat',base).href);
+   await page.locator('#combat-section').waitFor({state:'visible'});
+  }
+  await page.evaluate(()=>{history.pushState(null,'','/release-unknown-history?unused=1');window.dispatchEvent(new PopStateEvent('popstate'));});
+  assert.equal(page.url(),new URL('/combat',base).href);
+  await page.locator('#combat-section').waitFor({state:'visible'});
+  results.redirects=3;
   for(const width of [1280,390])for(const language of ['zh','en']){
    await page.setViewportSize({width,height:900});await page.selectOption('#language',language);
    for(const id of pages){

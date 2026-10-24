@@ -16,3 +16,8 @@
 /formulas/ / 200
 /collection / 200
 /collection/ / 200
+/ / 200
+/index.html /index.html 200
+/src/* /src/:splat 200
+/vendor/* /vendor/:splat 200
+/* /combat 302

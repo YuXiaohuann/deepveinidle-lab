@@ -107,8 +107,11 @@ export async function checkDocs(root){
 }
 export async function checkRedirects(root){
  const lines=(await fs.readFile(path.join(root,'_redirects'),'utf8')).trim().split(/\r?\n/).filter(l=>l.trim()&&!l.trim().startsWith('#'));
- assert.equal(lines.length,routes.length-1,'Unexpected route rules');
+ const preserved=['/ / 200','/index.html /index.html 200','/src/* /src/:splat 200','/vendor/* /vendor/:splat 200'];
+ assert.equal(lines.length,routes.length+preserved.length,'Unexpected route rules');
+ for(const rule of preserved)assert.ok(lines.some(l=>l.trim().split(/\s+/).join(' ')===rule),`Missing asset preservation rule: ${rule}`);
  for(const route of routes.slice(1))assert.ok(lines.some(l=>l.trim().split(/\s+/).join(' ')===`${route} / 200`),`Missing route rule: ${route}`);
+ assert.equal(lines.at(-1).trim().split(/\s+/).join(' '),'/* /combat 302','Missing final unknown-path redirect');
 }
 export function sameFiles(actual,expected){assert.deepEqual(actual,expected,'Package file list or content changed');}
 export async function assertReceipt(root,evidence){

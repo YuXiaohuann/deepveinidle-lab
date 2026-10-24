@@ -44,7 +44,7 @@ pnpm release:verify --evidence .test-artifacts/release/candidate-check --package
 
 基础浏览器矩阵使用隔离的默认价格存档，关闭自动导价，避免外部市场响应触发重绘而干扰键盘、滚动和布局断言；自动导价及价格变化由对应专项验证。
 
-本机预览将 `/`、`/combat`、`/gather`、`/craft`、`/enhance`、`/mastery`、`/forecast`、`/formulas`、`/collection`、`/debug` 及各页面尾斜线形式映射到同一 `index.html`。Cloudflare Pages 的 `_redirects` 使用 200 代理到 `/`；不能代理到 `/index.html`，否则规范化跳转可能丢失页面路径。
+本机预览将 `/`、`/combat`、`/gather`、`/craft`、`/enhance`、`/mastery`、`/forecast`、`/formulas`、`/collection`、`/debug` 及各页面尾斜线形式映射到同一 `index.html`。未知路径通过 302 重定向到 `/combat`（托管规则放在已知路由、首页与静态资源保留规则之后；Cloudflare 重定向优先于静态文件）；HTTP 验收检查单层、多层及带查询参数的未知路径，浏览器验收检查最终地址及历史导航兜底。Cloudflare Pages 的 `_redirects` 对已知路由使用 200 代理到 `/`；不能代理到 `/index.html`，否则规范化跳转可能丢失页面路径。
 
 HTML 一致性检查仅允许已知 analytics loader、Cloudflare Web／Pages Analytics 边界注释及标签间空白。HTTP 与浏览器错误不得忽略；线上失败不改写发布前已通过的结果，正式版准备也不等于部署成功。
 

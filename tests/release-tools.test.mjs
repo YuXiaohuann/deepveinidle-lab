@@ -12,7 +12,7 @@ import {verifyHttp,normalizeHostedHtml} from '../scripts/release-http.mjs';
 async function fixture(t){
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'dvi-release-test-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
  for(const dir of ['src','vendor','tests','scripts','docs','reports','.test-artifacts/evidence'])await fs.mkdir(path.join(root,dir),{recursive:true});
- for(const [name,text]of Object.entries({'index.html':'<!doctype html><html><body><div id="app">Loading</div><script type="module" src="/src/app.js"></script></body></html>','_redirects':routes.slice(1).map(r=>`${r} / 200`).join('\n'),'src/app.js':'console.log("app");','vendor/game-original.js':'// source','package.json':JSON.stringify({version:'9.0.0',devDependencies:{}}),'pnpm-lock.yaml':'lock','.gitattributes':'vendor/game-original.js whitespace=-blank-at-eol','.gitignore':'.test-artifacts/','README.md':'# Readme\n\n[Docs](docs/topic.md#内容)','DESIGN.md':'# Design','AGENTS.md':'# Agents','docs/topic.md':'# 内容'}))await fs.writeFile(path.join(root,name),text);
+ for(const [name,text]of Object.entries({'index.html':'<!doctype html><html><body><div id="app">Loading</div><script type="module" src="/src/app.js"></script></body></html>','_redirects':[...routes.slice(1).map(r=>`${r} / 200`),'/ / 200','/index.html /index.html 200','/src/* /src/:splat 200','/vendor/* /vendor/:splat 200','/* /combat 302'].join('\n'),'src/app.js':'console.log("app");','vendor/game-original.js':'// source','package.json':JSON.stringify({version:'9.0.0',devDependencies:{}}),'pnpm-lock.yaml':'lock','.gitattributes':'vendor/game-original.js whitespace=-blank-at-eol','.gitignore':'.test-artifacts/','README.md':'# Readme\n\n[Docs](docs/topic.md#内容)','DESIGN.md':'# Design','AGENTS.md':'# Agents','docs/topic.md':'# 内容'}))await fs.writeFile(path.join(root,name),text);
  const evidence=path.join(root,'.test-artifacts/evidence'),receipt={status:'passed',version:'9.0.0',inputs:await inputs(root),steps:['static','tests','native','extraction','local'].map(name=>({name,status:'passed'}))};await json(path.join(evidence,'check.json'),receipt);
  return {root,evidence,receipt};
 }
@@ -56,6 +56,7 @@ test('symbolic application paths and extra package files cannot pass verificatio
 test('HTTP checks verify all routes, content and asset hashes and reject route/version-page substitution',async t=>{
  const {root}=await fixture(t);let mode='valid';
  const server=http.createServer(async(req,res)=>{
+  if(req.url.startsWith('/release-unknown-page')){res.writeHead(mode==='unknown-fallback'?200:302,{Location:'/combat'});res.end();return;}
   if(mode==='redirect'&&req.url==='/combat'){res.writeHead(302,{Location:'/'});res.end();return;}
   const file=routes.includes(req.url)?'index.html':req.url.slice(1);let body=await fs.readFile(path.join(root,file));
   if(mode==='corrupt'&&file==='src/app.js')body=Buffer.from('wrong');if(mode==='html'&&file==='index.html')body=Buffer.from('<html>wrong</html>');
@@ -63,7 +64,7 @@ test('HTTP checks verify all routes, content and asset hashes and reject route/v
  });server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>new Promise(resolve=>server.close(resolve)));
  const base=`http://127.0.0.1:${server.address().port}`,manifest=await packageFiles(root);
  const result=await verifyHttp(base,root,manifest);assert.equal(result.routes,routes.length);assert.equal(result.assets,2);
- for(const [value,error]of [['redirect',/route path changed/],['corrupt',/byte length mismatch|SHA-256 mismatch/],['html',/unexpected HTML content/]]){mode=value;await assert.rejects(verifyHttp(base,root,manifest),error);}
+ for(const [value,error]of [['redirect',/route path changed/],['unknown-fallback',/expected unknown-path redirect/],['corrupt',/byte length mismatch|SHA-256 mismatch/],['html',/unexpected HTML content/]]){mode=value;await assert.rejects(verifyHttp(base,root,manifest),error);}
 });
 test('only known analytics injection and inter-tag whitespace are normalized',()=>{
  const base='<html><body>Content</body></html>';const injected='<html>\n<body>Content<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v123" data-cf-beacon="{}"></script></body></html>';
