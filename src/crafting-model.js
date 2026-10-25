@@ -19,7 +19,7 @@ export const craftingTiers=job=>Array.from({length:5},(_,tier)=>tier).filter(tie
 export const planKey=(jobId,tier)=>`${jobId}:${tier}`;
 export const validQuantity=value=>Number.isSafeInteger(value)&&value>=0;
 export const safeAdd=(a,b)=>{const value=a+b;if(!Number.isSafeInteger(value)||value<0)throw Error('quantityOverflow');return value;};
-export const safeMultiply=(a,b)=>{const value=a*b;if(!Number.isSafeInteger(value)||value<0)throw Error('quantityOverflow');return value;};
+const safeMultiply=(a,b)=>{const value=a*b;if(!Number.isSafeInteger(value)||value<0)throw Error('quantityOverflow');return value;};
 const integer=(v,min,max)=>Number.isFinite(Number(v))?Math.min(max,Math.max(min,Math.floor(Number(v)))):min;
 export function craftingDefaults(){return {
  period:'day',skill:'cooking',levels:Object.fromEntries(craftingSkills.map(k=>[k,1])),gear:Object.fromEntries(craftingSlots.map(k=>[k,{id:0,tier:0,plus:0}])),

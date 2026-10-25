@@ -3,7 +3,7 @@ import {normalize,makePlayer} from './model.js';
 import {simulateMonster} from './simulation.js';
 import {valueRewards,validPrice} from './item-prices.js';
 
-export const optimizerTracks=['xp','move','hp','maxhit','accuracy','rare'];
+const optimizerTracks=['xp','move','hp','maxhit','accuracy','rare'];
 export const optimizerEfforts={fast:60,standard:120,deep:360,comprehensive:720};
 const searchSettings={
  fast:{beam:1,directions:2,donors:1,starts:2,pairs:false,patience:1,flatStages:2},
@@ -184,7 +184,7 @@ export function optimizeMastery(raw,{simulate=simulateMonster,onProgress=()=>{}}
   const result=simulate({...input.combat,masteries:{...ranks}},input.monster,{seed,now:input.now});simulations++;
   let value=null;
   if(result.deaths===0&&!result.endedEarly){
-   const valued=valueRewards(result,'custom',input.prices);
+   const valued=valueRewards(result,input.prices);
    if(valued.missingPrices.length)throw Error('missingOptimizerPrices');
    if(!Number.isFinite(valued.totalIncome)||valued.totalIncome<0)throw Error('invalidOptimizerIncome');value=valued.totalIncome;
   }

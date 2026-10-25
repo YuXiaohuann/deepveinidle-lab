@@ -6,7 +6,6 @@ import {validateSimulationSeed} from './simulation-seed.js';
 import {createCombatExpectation} from './combat-expectation.js';
 export const HOUR_TICKS=3600000/game.tickMs;
 export {DAY_TICKS};
-export const TRIALS=1;
 export const START_TICK=game.predictionStartTick;
 const add=(obj,key,amount=1)=>{obj[key]=(obj[key]??0)+amount;};
 

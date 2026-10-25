@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
 import {priceDefaults,normalizePriceState,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes,valueItems,valueRewards,valuationPrice,valueCombatRewards} from '../src/item-prices.js';
 import {normalizeManual} from '../src/manual-settings.js';
-import {normalizeGathering,importGathering} from '../src/gathering-model.js';
+import {normalizeGathering} from '../src/gathering-model.js';
 import {enhancementDefaults,validateEnhancement,resolveEnhancementPrices,calculateEnhancement} from '../src/enhancement.js';
 const at=Date.now()-1000;
 test('pets retain quantities but never contribute prices or missing-price warnings',()=>{
@@ -88,10 +88,10 @@ test('quotes and imported prices cannot move backwards, including fallback',()=>
 });
 test('valuation uses exact quantities and IDs, propagates missing prices and rejects overflow',()=>{
  const prices={1:{price:10},1001:{price:0}};
- assert.deepEqual(valueItems({1:2,1001:3},'custom',prices),{value:20,partial:20,missing:[]});
- assert.deepEqual(valueItems({1:2,1001:3,2:4},'custom',prices),{value:20+4*game.vendorPrice(2),partial:20+4*game.vendorPrice(2),missing:[2]});
- const result={coins:7,normalItems:{1:2},rareItems:{1001:3}};assert.equal(valueRewards(result,'custom',prices).totalIncome,27);assert.equal(valueRewards({...result,rareItems:{2:3}},'custom',prices).totalIncome,7+20+3*game.vendorPrice(2));assert.equal(valueRewards(result,'quantity',prices).totalIncome,27);
- assert.throws(()=>valueItems({1:2},'custom',{1:{price:Number.MAX_SAFE_INTEGER}}),/priceOverflow/);
+ assert.deepEqual(valueItems({1:2,1001:3},prices),{value:20,partial:20,missing:[]});
+ assert.deepEqual(valueItems({1:2,1001:3,2:4},prices),{value:20+4*game.vendorPrice(2),partial:20+4*game.vendorPrice(2),missing:[2]});
+ const result={coins:7,normalItems:{1:2},rareItems:{1001:3}};assert.equal(valueRewards(result,prices).totalIncome,27);assert.equal(valueRewards({...result,rareItems:{2:3}},prices).totalIncome,7+20+3*game.vendorPrice(2));
+ assert.throws(()=>valueItems({1:2},{1:{price:Number.MAX_SAFE_INTEGER}}),/priceOverflow/);
 });
 test('valuation modes default independently of old toggles',()=>{
  assert.equal(normalizeManual({vendorValues:true}).valuationMode,'custom');assert.equal(normalizeManual({vendorValues:false}).valuationMode,'custom');assert.equal(normalizeManual({valuationMode:'custom'}).vendorValues,true);

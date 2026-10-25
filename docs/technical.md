@@ -76,7 +76,8 @@
 | `src/character-import.js`、`src/import-controls.js`、`src/character-auto-import.js` | 全部支持字段校验与转换、共用角色导入面板、独立配置／库存选项、手动／自动读取调度、页面／输入保护及跨页面请求 |
 | `tests/character-import.test.mjs`、`tests/character-auto-import.test.mjs`、`tests/character-inventory.test.mjs`、`tests/character-auto-import-browser.mjs` | 字段映射、角色脚本桥接、共用配置／库存自动更新、独立库存解析、页面生命周期与输入保护回归 |
 | `src/debug-controls.js`、`tests/debug-controls.test.mjs` | 隐藏调试页、角色配置 JSON 文件下载与战斗／强化两个共用导入入口、文件往返及失败状态验证 |
-| `src/collection-model.js`、`src/collection-controls.js`、`src/collection-simulation.js` | 隐藏收藏页、独立最小进度与角色导入、原始里程碑／奖励、动作期望与全局／API／商人材料采购估值、类型独立筛选保存、材料明细及离线目标事件回归（产出和药剂数量只在离线事件验证中保留） |
+| `src/collection-model.js`、`src/collection-controls.js` | 隐藏收藏页、独立最小进度与角色导入、原始里程碑／奖励、动作期望与全局／API／商人材料采购估值、类型独立筛选保存及材料明细 |
+| `tests/helpers/collection-simulation.mjs` | 收藏离线目标事件回归；实际产出与药剂数量只用于独立事件验证，不随应用发布 |
 | `src/collection-plan.js`、`src/collection-plan-controls.js`、`src/collection-plan-transfer.js` | 独立计划存储、最高目标去重、材料归并、导入仓库与背包抵扣、采购成本展示、计划 JSON／gzip+Base64 剪贴板交换，以及计划数据维护 |
 | `tests/collection.test.mjs`、`tests/collection-browser.mjs` | 收藏边界、品质／烧焦／被捕、价格缺失与零价、独立目标事件对照、DOM 桥接、类型独立筛选与存储异常恢复、材料采购展开区与窄屏专项 |
 | `tests/collection-plan.test.mjs`、`tests/collection-plan-transfer.test.mjs`、`tests/collection-plan-browser.mjs` | 计划去重、数量和金额边界、焦点调度、压缩往返、导入并发与存档保留、双语窄屏交互 |

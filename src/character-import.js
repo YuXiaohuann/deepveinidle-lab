@@ -2,7 +2,7 @@ import {readGuild} from './guild.js';
 import {readWorldBuffs,worldBuffWarningText} from './world-buffs.js';
 import {game,defaults,normalize,slots,skills,foods,gearDetails} from './model.js';
 import {combatRooms,combatMasteries,combatPerks,combatPotions} from './combat-options.js';
-export const importTypes=[['skills','技能','Skills'],['equipment','装备','Equipment'],['food','食物','Food'],['potions','药水','Potions'],['home','家园','Home'],['masteries','精通','Masteries'],['guild','公会与祝福','Guild & blessing'],['supplies','补给','Supplies'],['perks','特权','Perks']];
+const importTypes=[['skills','技能','Skills'],['equipment','装备','Equipment'],['food','食物','Food'],['potions','药水','Potions'],['home','家园','Home'],['masteries','精通','Masteries'],['guild','公会与祝福','Guild & blessing'],['supplies','补给','Supplies'],['perks','特权','Perks']];
 export function importWarningText(language,warnings=[]){
  const zh=language==='zh',categories=new Set(warnings.filter(item=>item!=='guild: worldBuffs.upgrade').map(item=>item.split(': ')[0])),lines=[];
  if(categories.has('food')){

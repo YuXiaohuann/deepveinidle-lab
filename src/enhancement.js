@@ -35,7 +35,7 @@ export function enhancementSteps(input){
 }
 // Solve the absorption equations using positive adjacent differences. This
 // avoids subtracting large expectations or pivoting a nearly singular matrix.
-export function expectedCost(steps,start,cost){
+function expectedCost(steps,start,cost){
  let prefix=0;const differences=[];
  for(const step of steps){
   const k=step.from,c=cost(step),rollback=step.protected?(differences[k-1]??0):prefix;
@@ -80,7 +80,7 @@ export function importEnhancement(current,snapshot){
  return {state,candidates:[...found.values()],capturedAt:snapshot.capturedAt};
 }
 
-export const enhancementPriceItems={shardPrice:208,scrollPrice:359};
+const enhancementPriceItems={shardPrice:208,scrollPrice:359};
 export function resolveEnhancementPrices(input,prices={}){
  const s=validateEnhancement(input),baseId=game.encode(game.withRarity(s.itemId,s.tier),s.current);
  for(const key of ['shardPrice','scrollPrice','basePrice']){

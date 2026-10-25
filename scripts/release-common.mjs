@@ -20,7 +20,7 @@ export async function filesIn(root,relative=''){
  }
  return files;
 }
-export async function digestFiles(root,names){
+async function digestFiles(root,names){
  const files=[];
  for(const name of names.sort()){
   assert.ok(!(await fs.lstat(path.join(root,name))).isSymbolicLink(),`Symbolic link is not allowed: ${name}`);
@@ -82,7 +82,7 @@ export function tapSummary(log){
  for(const key of ['fail','cancelled','skipped','todo'])assert.equal(summary[key],0,`TAP ${key} is nonzero`);
  return summary;
 }
-export function slug(text){return text.toLowerCase().replace(/[^\p{L}\p{N}_\s-]/gu,'').replace(/ /g,'-');}
+function slug(text){return text.toLowerCase().replace(/[^\p{L}\p{N}_\s-]/gu,'').replace(/ /g,'-');}
 export function markdownAnchors(text){
  const anchors=new Set([...text.matchAll(/<a id="([^"]+)"/g)].map(m=>m[1])),counts=new Map();
  for(const m of text.matchAll(/^#+ (.+)$/gm)){const key=slug(m[1]),count=counts.get(key)??0;anchors.add(key+(count?'-'+count:''));counts.set(key,count+1);}

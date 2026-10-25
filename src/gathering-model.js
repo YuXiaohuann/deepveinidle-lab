@@ -16,7 +16,7 @@ export const gatheringPerks=game.perks.filter(p=>['pockets','quick','hands'].inc
 const integer=(v,min,max,fallback=min)=>Number.isFinite(Number(v))?Math.min(max,Math.max(min,Math.floor(Number(v)))):fallback;
 export const slotItems=slot=>slot==='amulet'?game.equipment.filter(g=>g.slot===slot):game.tools.filter(g=>g.slot===slot);
 export const gatheringGear=(slot,id)=>slot==='amulet'?game.gear(id):game.tool(id);
-export const sitesForJob=job=>game.world.sites.filter(s=>s.jobIds.includes(job.id));
+const sitesForJob=job=>game.world.sites.filter(s=>s.jobIds.includes(job.id));
 export function gatheringDefaults(){return {
  skill:'mining',levels:Object.fromEntries(gatheringSkills.map(k=>[k,1])),
  gear:Object.fromEntries(gatheringSlots.map(k=>[k,{id:0,tier:0,plus:0}])),

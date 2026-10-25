@@ -1,9 +1,9 @@
-import * as game from './upstream.js';
-import {collectionWorkConfig,collectionTarget,collectionRoutes,pointsForProduction,collectionWindows} from './collection-model.js';
-import {gatheringSkills} from './gathering-model.js';
-import {createCraftingScenario,MAX_CRAFT_TICKS} from './crafting-simulation.js';
-import {createGatheringScenario} from './gathering-simulation.js';
-import {START_TICK,simulationTick} from './simulation.js';
+import * as game from '../../src/upstream.js';
+import {collectionWorkConfig,collectionTarget,collectionRoutes,pointsForProduction,collectionWindows} from '../../src/collection-model.js';
+import {gatheringSkills} from '../../src/gathering-model.js';
+import {createCraftingScenario,MAX_CRAFT_TICKS} from '../../src/crafting-simulation.js';
+import {createGatheringScenario} from '../../src/gathering-simulation.js';
+import {START_TICK,simulationTick} from '../../src/simulation.js';
 
 export function simulateCollection(state,id,jobId,{target:goal,seed=0,maxTicks=MAX_CRAFT_TICKS,now=Date.now(),onProgress=()=>{}}={}){
  if(!Number.isSafeInteger(maxTicks)||maxTicks<1||maxTicks>MAX_CRAFT_TICKS)throw Error('invalidDuration');

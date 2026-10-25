@@ -119,7 +119,7 @@ export function valuationPrice(id,prices={}){
  const vendor=prices.getItem?prices.getItem(id).vendorPrice:game.canSell(id)?game.vendorPrice(id):null;
  return {price:price??vendor??0,fallback:price===null};
 }
-export function valueItems(items,mode,prices={}){
+export function valueItems(items,prices={}){
  let partial=0;const missing=[];
  for(const [key,qty]of Object.entries(items)){
   if(!Number.isFinite(qty)||qty<0)throw Error('invalidDropQuantity');if(!qty)continue;
@@ -129,18 +129,18 @@ export function valueItems(items,mode,prices={}){
  if(!Number.isFinite(partial)||partial>Number.MAX_SAFE_INTEGER)throw Error('priceOverflow');
  return {value:partial,partial,missing};
 }
-export function valueRewards(result,mode,prices={}){
+export function valueRewards(result,prices={}){
  if(!result)return result;
- const normal=valueItems(result.normalItems,mode,prices),rare=valueItems(result.rareItems,mode,prices);
+ const normal=valueItems(result.normalItems,prices),rare=valueItems(result.rareItems,prices);
  const totalIncome=normal.value===null||rare.value===null?null:result.coins+normal.value+rare.value;
  if(totalIncome!==null&&(!Number.isFinite(totalIncome)||totalIncome>Number.MAX_SAFE_INTEGER))throw Error('priceOverflow');
  return {...result,normalValue:normal.value,rareValue:rare.value,totalIncome,normalMissingPrices:normal.missing,rareMissingPrices:rare.missing,missingPrices:[...normal.missing,...rare.missing]};
 }
 
 export function valueCombatRewards(result,prices={}){
- const valued=valueRewards(result,'custom',prices);if(!valued)return valued;
- const food=valueItems(result.foodItems??{},'custom',prices);
- const potions=valueItems(result.potionItems??{},'custom',prices);
+ const valued=valueRewards(result,prices);if(!valued)return valued;
+ const food=valueItems(result.foodItems??{},prices);
+ const potions=valueItems(result.potionItems??{},prices);
  const consumableCost=food.value+potions.value;
  if(!Number.isFinite(consumableCost)||consumableCost>Number.MAX_SAFE_INTEGER)throw Error('priceOverflow');
  const profit=valued.totalIncome-consumableCost;

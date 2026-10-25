@@ -31,7 +31,7 @@ export async function refreshMarketPrices(preferences=priceState().preferences,{
 }
 
 export const priceAutoImportTimeKey='dvi-price-auto-import-at-v1';
-export const priceAutoImportInterval=5*60*1000;
+const priceAutoImportInterval=5*60*1000;
 export async function importAutomaticPrices(now=Date.now()){
  const claim=()=>{
   initialize();

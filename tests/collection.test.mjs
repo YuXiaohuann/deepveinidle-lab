@@ -5,7 +5,7 @@ import {collectionWorkConfig,collectionDefaults,validateCollection,collectionTar
 import {priceDefaults} from '../src/item-prices.js';
 import {createScenario,simulationTick,START_TICK} from '../src/simulation.js';
 import {createCraftingScenario} from '../src/crafting-simulation.js';
-import {simulateCollection,collectionPotionItems} from '../src/collection-simulation.js';
+import {simulateCollection,collectionPotionItems} from './helpers/collection-simulation.mjs';
 import {craftingSlots,craftingSkills} from '../src/crafting-model.js';
 import {gatheringSlots,gatheringSkills,gatheringPlayer} from '../src/gathering-model.js';
 import {createPriceSnapshot} from '../src/price-protocol.js';

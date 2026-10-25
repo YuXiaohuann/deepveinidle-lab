@@ -65,7 +65,7 @@ function view(enabled,result,error=false){
  const c=vm.createContext({compactNumber,state:{manual:{vendorValues:enabled}},hourly:new Map(result?[['m',result]]:[]),simulationError:error,valuedResult:r=>r,language:'zh',game:{tickMs:600},t:k=>k,formatRate:(n,metric='count')=>['coins','attempts'].includes(metric)?String(Math.round(n)):n.toFixed(1),formatAmount:String,esc:String,lootDetails:()=>'<span>item quantity</span>'});
  vm.runInContext(code,c);return c;
 }
-test('valuation preference defaults off, persists and renders bilingual controls',()=>{
+test('global valuation is canonical and obsolete controls stay absent in both languages',()=>{
  assert.equal(defaults().manual.vendorValues,true);
  assert.equal(normalize({manual:{}}).manual.vendorValues,true);
  const state=defaults();state.manual.vendorValues=true;state.manual.valuationMode='vendor';state.guild={name:"SakuraSpring",tag:"SAKI"};
@@ -91,7 +91,7 @@ test('headers and pending and failed rows follow the visible column count',()=>{
  assert.match(view(enabled,null,true).hourlyCells({key:'m'}),/<summary>!<\/summary><div>depot: !<\/div>/);
  }
 });
-test('quantities and vendor values render separately with optional highlighted income',()=>{
+test('quantities and globally valued amounts render separately with highlighted income',()=>{
  const result={homeBank:2,kills:1,attacks:7,xp:2,coins:3,normal:4,rare:5,normalValue:40,rareValue:50,totalIncome:93,profit:80,foodCost:10,potionCost:3,consumableCost:13,food:6,normalItems:{},rareItems:{},bySkill:{},elapsedTicks:1,movingTicks:0,restocks:0};
  for(const enabled of [false,true]){
  const html=view(enabled,result).hourlyCells({key:'m'});
@@ -105,7 +105,7 @@ test('quantities and vendor values render separately with optional highlighted i
  }
 });
 
-test('valuation control is public regardless of guild and is preserved on configuration import',()=>{
+test('removed valuation controls stay absent regardless of guild and configuration import',()=>{
  const state=defaults();state.manual.vendorValues=true;state.manual.valuationMode='vendor';
  const render=state=>manualControls(state,{language:'zh',number:()=>'',options:()=>'',esc:String,name:String});
  for(const guild of [null,undefined,{name:'Other',tag:'SAKI'},{name:'SakuraSpring',tag:'OTHER'},{name:'sakuraspring',tag:'SAKI'},{name:'SakuraSpring',tag:'SAKI'}]){

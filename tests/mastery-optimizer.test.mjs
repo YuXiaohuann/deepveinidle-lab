@@ -135,7 +135,7 @@ test('review can reject a screening winner and an unsafe baseline has no paired 
 });
 test('real upstream simulation matches a separately valued baseline and leaves the input untouched',()=>{
  const raw=input(0),before=structuredClone(raw),result=optimizeMastery(raw);
- const values=reviewSeeds.map(seed=>valueRewards(simulateMonster({...raw.combat,masteries:zero()},game.monsters.find(m=>m.id===7),{seed,now:raw.now}),'custom',raw.prices).totalIncome);
+ const values=reviewSeeds.map(seed=>valueRewards(simulateMonster({...raw.combat,masteries:zero()},game.monsters.find(m=>m.id===7),{seed,now:raw.now}),raw.prices).totalIncome);
  assert.equal(result.plans[0].stats.mean,sampleStats(values).mean);assert.equal(result.plans[0].paired.mean,0);assert.deepEqual(raw,before);assert.equal(result.screened,1);
 });
 

@@ -16,7 +16,7 @@
 
 保留 `vendor/game-original.js` 的 1.0.1186 基础快照，新增完整公开补充资源 `vendor/game-combat-1187.js`，来源为 https://deepveinidle.com/assets/index-B2257EY9.js，SHA-256 为 `36604ce12e1e9ab34998974f7b7354238e5e8b09e4a3ae579333f1959edbef24`。
 
-`scripts/combat-update.mjs` 集中记录已审阅替换及依赖绑定。提取器将原样声明放入独立作用域，显式绑定基础引擎的等价依赖；原基础声明仍保留供逐字审计。manifest 同时记录两份来源、声明摘要与绑定，不标记为全量升级。`src/upstream.js` 由提取器生成，未手工修改。
+`reports/combat-update-mapping-2026-10-13.mjs`（原 `scripts/combat-update.mjs`，现归档为历史证据） 集中记录已审阅替换及依赖绑定。提取器将原样声明放入独立作用域，显式绑定基础引擎的等价依赖；原基础声明仍保留供逐字审计。manifest 同时记录两份来源、声明摘要与绑定，不标记为全量升级。`src/upstream.js` 由提取器生成，未手工修改。
 
 局部绑定特意保留原制造配方及工作取料函数；装备／物品的品质集合另纳入新装备编号，物品原基础定义保留，仅加入新物品。地图地形、碰撞、仓库、战斗区域和采集点位置与新版深比较一致；工作站可用配方编号因制造更新变化，仍保留基础版本。
 

@@ -15,8 +15,8 @@ test('old configurations keep defaults; all new manual settings survive normaliz
  assert.deepEqual(normalize(s).manual,s.manual);
 });
 test('legacy progress and exact XP are ignored; configured levels remain editable',()=>{
- const s=preset('ranged');s.manual.progress.ranged=99;s.manual.xp.ranged=game.levelXp(100)+123;
- const n=normalize(s);assert.equal(n.levels.ranged,85);assert.equal(n.manual.progress.ranged,0);assert.equal(n.manual.xp.ranged,-1);
+ const s=preset('ranged');s.manual.progress={ranged:99};s.manual.xp={ranged:game.levelXp(100)+123};
+ const n=normalize(s);assert.equal(n.levels.ranged,85);assert.equal(n.manual.progress,undefined);assert.equal(n.manual.xp,undefined);
  assert.equal(makePlayer(s).player.skills.ranged,game.levelXp(85));
  assert.deepEqual(simulateMonster(s,game.monsters[0]),simulateMonster(preset('ranged'),game.monsters[0]));
 });
@@ -34,7 +34,8 @@ test('food carry limits, perks and fountain-only mode remain configurable',()=>{
  s.manual.foodRule=3;assert.equal(simulateMonster(s,game.monsters.at(-1)).food,0);
 });
 test('legacy buff expiry and home overrides reset to permanent buffs and configured home levels',()=>{
- const s=preset('ranged');s.brews.warrior=0;s.manual.brewMinutes.warrior=.01;s.fed=true;s.rooted=true;s.manual.fedMinutes=.01;s.manual.rootedMinutes=.01;s.manual.blessing=true;s.manual.blessingMinutes=.01;s.house.target=20;s.manual.placed.target=false;s.manual.upgradeMinutes.target=.02;
+ const s=preset('ranged');s.brews.warrior=0;s.manual.brewMinutes={warrior:.01};s.fed=true;s.rooted=true;s.manual.fedMinutes=.01;s.manual.rootedMinutes=.01;s.manual.blessing=true;s.manual.blessingMinutes=.01;s.house.target=20;s.manual.placed={target:false};s.manual.upgradeMinutes={target:.02};
+ const normalized=normalize(s);for(const key of ['brewMinutes','fedMinutes','rootedMinutes','blessingMinutes','placed','upgradeMinutes'])assert.equal(Object.hasOwn(normalized.manual,key),false,key);
  const {player:p,context}=createScenario(s);assert.ok(p.houseFurniture.target);assert.deepEqual(p.houseUpgrades,{});
  for(const kind of ['warrior','fed','rooted','blessing'])assert.equal(p.brews[kind],Number.MAX_SAFE_INTEGER);
  game.tick(p,context,START_TICK+6000,[]);assert.equal(p.house.target,20);assert.ok(game.brewScale(p,'warrior')>0);
@@ -55,7 +56,7 @@ test('disabled hot bonuses stay zero at every tick across a full hot cycle',()=>
  assert.ok(seen.has('xp'));assert.ok(seen.has('rarity'));
 });
 test('full manual scenario matches native predictor across 20 monsters without a snapshot',()=>{
- const s=preset('ranged');s.manual.playerId=54321;s.manual.seed=813;s.manual.weeklyXp=30;s.manual.guildXp=11;s.manual.blessing=true;s.manual.progress.ranged=75.1;s.manual.perks.pockets=1;s.manual.foodPerTrip=-2;s.manual.windows=[{start:0,minutes:60,xp:45,rare:25}];s.brews.haste=1;s.manual.brewMinutes.haste=20;s.manual.actualInventory=true;s.manual.bank=[{id:64,tier:0,plus:0,qty:5000}];s.manual.upgradeMinutes.target=10;
+ const s=preset('ranged');s.manual.playerId=54321;s.manual.seed=813;s.manual.weeklyXp=30;s.manual.guildXp=11;s.manual.blessing=true;s.manual.progress={ranged:75.1};s.manual.perks.pockets=1;s.manual.foodPerTrip=-2;s.manual.windows=[{start:0,minutes:60,xp:45,rare:25}];s.brews.haste=1;s.manual.brewMinutes={haste:20};s.manual.actualInventory=true;s.manual.bank=[{id:64,tier:0,plus:0,qty:5000}];s.manual.upgradeMinutes={target:10};
  const before=JSON.stringify(s);
  for(const monster of game.monsters){const {player,context}=createScenario(s,monster),zone=game.world.zones.find(z=>z.monsterId===monster.id),expected=nativeDay(player,context,p=>game.startFight(p,context,zone.id)),actual=simulateMonster(s,monster);assert.equal(actual.xp,expected.xpPerHour,monster.name);assert.equal(actual.deaths,expected.deaths);assert.deepEqual(actual.bySkill,expected.bySkill);}
  assert.equal(JSON.stringify(s),before);
@@ -66,7 +67,7 @@ test('mixed equipment toggle preserves cross-style choices',()=>{
 
 test('removed inventory and event overrides cannot affect manual simulation',()=>{
  const s=preset('ranged');Object.assign(s.manual,{actualInventory:true,bank:[{id:999,tier:4,plus:0,qty:1}],pack:[{id:64,qty:999}],overflow:[{id:64,qty:10}],unlimitedBank:false,bankSlotsBought:900,windows:[{start:0,minutes:999,xp:999,rare:999}],hotMode:2,hotMinutes:0});s.homeBank=0;
- const n=normalize(s);assert.equal(n.homeBank,0);assert.equal(n.manual.actualInventory,false);assert.equal(n.manual.unlimitedBank,true);assert.equal(n.manual.bankSlotsBought,0);assert.deepEqual(n.manual.bank,[]);assert.deepEqual(n.manual.pack,[]);assert.deepEqual(n.manual.overflow,[]);assert.deepEqual(n.manual.windows,[]);assert.equal(n.manual.hotMode,1);
+ const n=normalize(s);assert.equal(n.homeBank,0);assert.equal(n.manual.actualInventory,undefined);assert.equal(n.manual.unlimitedBank,true);assert.equal(n.manual.bankSlotsBought,0);for(const key of ['bank','pack','overflow','windows','hotMode','hotMinutes','brewMinutes','blessingMinutes','fedMinutes','rootedMinutes','placed','upgradeMinutes'])assert.equal(Object.hasOwn(n.manual,key),false,key);
  for(const monster of game.monsters)assert.deepEqual(simulateMonster(s,monster),simulateMonster(preset('ranged'),monster),monster.name);
 });
 test('removed snapshot inputs fail explicitly',()=>{
