@@ -1,8 +1,8 @@
 import * as game from './upstream.js';
-import {gatheringPlayer,selectedGatheringSites} from './gathering-model.js';
+import {gatheringPlayer,gatheringPotions,selectedGatheringSites} from './gathering-model.js';
 import {simulationTicks,combatHot,combatHotWindows} from './combat-hot.js';
 import {manualWindows} from './manual-settings.js';
-import {dropValue,START_TICK,simulationTick} from './simulation.js';
+import {dropValue,START_TICK,HOUR_TICKS,simulationTick} from './simulation.js';
 import {validateSimulationSeed} from './simulation-seed.js';
 import {beforeWork,workQualities,expectedWorkRewards,addExpected} from './work-expectation.js';
 const add=(items,id,qty)=>{items[id]=(items[id]??0)+qty;};
@@ -24,7 +24,8 @@ export function simulateGatheringSite(raw,job,site,options={}){
  p.offlineCapTicks=durationTicks*2;
  if(!game.startWork(p,context,site.id,job.id,discardGathered?'drop':'bank',null))throw Error('invalidRoute');
  const initialXp=p.skills[job.skill];
- const result={siteId:site.id,x:site.x,y:site.y,homeBank:bank.id,durationTicks,normalItems:{},rareItems:{},sampleItems:{},startLevel:game.level(initialXp),endedEarly:false,...Object.fromEntries(metrics.map(k=>[k,0]))};
+ const potionItems=Object.fromEntries(gatheringPotions.filter(b=>(p.brews[b.kind]??0)>0).map(b=>[game.withRarity(b.itemId,p.brewTier[b.kind]??0),durationTicks/HOUR_TICKS]));
+ const result={siteId:site.id,x:site.x,y:site.y,homeBank:bank.id,durationTicks,normalItems:{},rareItems:{},sampleItems:{},potionItems,startLevel:game.level(initialXp),endedEarly:false,...Object.fromEntries(metrics.map(k=>[k,0]))};
  result.seed=context.seed;
  // Only the main product and recipe bonus are discarded. Keep their current
  // pack segment separate from stored goods and non-discardable rewards.

@@ -2,12 +2,13 @@ import {questlessOffline} from '../scripts/native-questless.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
-import {gatheringDefaults,gatheringJobs,gatheringSkills,normalizeGathering,gatheringPlayer,selectedGatheringSites,gatheringStats,importGathering} from '../src/gathering-model.js';
+import {gatheringDefaults,gatheringPotions,gatheringJobs,gatheringSkills,normalizeGathering,gatheringPlayer,selectedGatheringSites,gatheringStats,importGathering} from '../src/gathering-model.js';
 import {createGatheringScenario,simulateGatheringSite,simulateGatheringJob} from '../src/gathering-simulation.js';
 import {combatHot,combatHotWindows} from '../src/combat-hot.js';
 import {manualWindows} from '../src/manual-settings.js';
 import {nativeDay} from './native-day.mjs';
 import {questlessTick} from '../scripts/native-questless.mjs';
+import {valueCombatRewards} from '../src/item-prices.js';
 const jobFor=skill=>gatheringJobs.find(j=>j.skill===skill);
 
 test('discard setting defaults safely, persists as a boolean and resets on character import',()=>{
@@ -202,4 +203,19 @@ for(const job of gatheringJobs)for(const homeBank of [0,1,2])test(`${job.skill} 
  const native=nativeDay(scenario.player,scenario.context,p=>game.startWork(p,scenario.context,site.id,job.id,'bank',null),scenario.durationTicks);
  const actual=simulateGatheringJob(state,job);
  assert.equal(actual.sites.length,1);assert.equal(actual.homeBank,homeBank||1);assert.equal(actual.xp,native.bySkill[job.skill]??0);assert.deepEqual(actual.sampleItems,native.itemsGained);
+});
+
+test('gathering potion costs use enabled qualities and selected hours, with profit and repricing',()=>{
+ const state={...gatheringDefaults(),simulationHours:1/60,blessing:true},job=jobFor('mining');
+ assert.deepEqual(simulateGatheringJob(state,job).potionItems,{});
+ state.brews.gatherer=0;state.brews.hunter=4;
+ const raw=simulateGatheringJob(state,job),gatherer=game.withRarity(gatheringPotions.find(b=>b.kind==='gatherer').itemId,0),hunter=game.withRarity(gatheringPotions.find(b=>b.kind==='hunter').itemId,4);
+ assert.deepEqual(raw.potionItems,{[gatherer]:1/60,[hunter]:1/60});
+ const prices=Object.fromEntries([...Object.keys(raw.normalItems),...Object.keys(raw.rareItems)].map(id=>[id,{price:0}]));
+ prices[gatherer]={price:6000};prices[hunter]={price:12000};
+ const valued=valueCombatRewards(raw,prices);
+ assert.equal(valued.potionCost,300);assert.equal(valued.profit,valued.totalIncome-300);assert.ok(valued.profit<0);assert.deepEqual(valued.potionMissingPrices,[]);
+ const repriced=valueCombatRewards(raw,{...prices,[gatherer]:{price:0}});assert.equal(repriced.potionCost,200);assert.equal(repriced.profit,valued.profit+100);
+ const missing=valueCombatRewards(raw,{});assert.deepEqual(missing.potionMissingPrices.map(Number).sort((a,b)=>a-b),[gatherer,hunter].sort((a,b)=>a-b));
+ state.simulationHours=1;const hourly=simulateGatheringJob(state,job);assert.deepEqual(hourly.potionItems,{[gatherer]:1,[hunter]:1});
 });
