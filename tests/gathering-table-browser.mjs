@@ -40,7 +40,7 @@ try{
  const xpDetail=page.locator(`#gather-${sample.jobId}-xp`);await xpDetail.locator('summary').click();
  const singleXp=(sample.xp/sample.completed).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
  assert.equal(await xpDetail.locator('.loot-line span').last().innerText(),singleXp);
- const daily=['任务','经验/天','收入/天','利润/天','移动占比','采集次数/天','金币/天','主要产物/天','额外掉落/天','药剂/天'];
+ const daily=['任务','经验/天','收入/天','利润/天','移动占比','采集次数/天','金币/天','主要产物/天','额外掉落/天','消耗品/天'];
  assert.deepEqual(await headers(),daily);await checkRows();
  assert.equal(await page.locator('#gather-results .enemies-heading h2 span').count(),0);
  assert.ok(await page.locator('#gather-results .gather-table tbody tr').evaluateAll(rows=>rows.every(row=>[...row.cells].flatMap((cell,i)=>cell.classList.contains('column-highlight')?[i]:[]).join(',')==='0,1,2,3')));
@@ -58,7 +58,7 @@ try{
  await page.selectOption('#gather-period','total');assert.deepEqual(await headers(),daily.map(label=>label.replace('/天','')));const total=await countText();assert.ok(Number(total.replaceAll(',',''))>Number(hourly.replaceAll(',','')));
  await page.selectOption('#gather-period','day');assert.equal(await countText(),total);
  await page.locator('#gather-search').fill('no-such-task');await checkRows();assert.equal(await page.locator('#gather-results .empty-results').getAttribute('colspan'),'10');await page.locator('#gather-search').fill('');
- await page.selectOption('#language','en');assert.deepEqual(await headers(),['Task','XP/day','Income/day','Profit/day','Moving share','Gathering/day','Coins/day','Main items/day','Extra drops/day','Potions/day']);assert.equal(await page.locator(`#${id}`).getAttribute('open'),'');
+ await page.selectOption('#language','en');assert.deepEqual(await headers(),['Task','XP/day','Income/day','Profit/day','Moving share','Gathering/day','Coins/day','Main items/day','Extra drops/day','Consumables/day']);assert.equal(await page.locator(`#${id}`).getAttribute('open'),'');
  await page.selectOption('#gather-period','hour');assert.ok((await headers())[1].endsWith('/h'));await page.selectOption('#gather-period','total');assert.equal((await headers())[1],'XP');await page.selectOption('#gather-period','day');
  assert.equal(await page.evaluate(()=>window.gatherRuns.length),runs);
  results.cases.push('three bilingual period headers, scaled gather counts, empty results and expanded state survive redraw without new Workers');

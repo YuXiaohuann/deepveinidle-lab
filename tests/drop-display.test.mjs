@@ -158,6 +158,7 @@ test('combat controls omit reward period and bilingual headers label daily count
   assert.equal((html.match(/<th /g)||[]).length,10);
   assert.equal((html.match(language==='zh'?/\/天/g:/\/day/g)||[]).length,8);
   assert.ok(html.includes(language==='zh'?'击杀次数/天 <span':'Kills/day <span'));
+  assert.ok(html.includes(language==='zh'?'消耗品/天 <span':'Consumables/day <span'));
  }
  assert.doesNotMatch(source,/\$\('#period'\)|periodOptions/);
 });
