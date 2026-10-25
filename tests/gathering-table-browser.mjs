@@ -26,12 +26,16 @@ try{
    constructor(url,options){super(url,options);if(String(url).includes('gathering-worker.js')){this.run={results:[]};window.gatherRuns.push(this.run);this.addEventListener('message',({data})=>{if(data.result)this.run.results.push(data.result);if(data.done)this.run.done=true;});}}
    postMessage(data,...rest){if(this.run){this.run.mode=window.tableMode;if(window.tableMode==='wait')return;if(window.tableMode==='error'){setTimeout(()=>this.onmessage({data:{error:'invalidRoute',done:true}}),0);return;}}return super.postMessage(data,...rest);}
   };
- },{...gatheringDefaults(),hotSetting:'off'});
+ },{...gatheringDefaults(),siteSelection:3,hotSetting:'off'});
  const page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',error=>results.errors.push(error.message));
- await page.goto(`http://127.0.0.1:${port}/gather`);await page.waitForFunction(()=>window.gatherRuns.at(-1)?.done);
+ await page.goto(`http://127.0.0.1:${port}/gather`);
+ assert.equal(await page.locator('[data-gather-field="siteSelection"]').count(),0);
+ assert.doesNotMatch(await page.locator('#gather-content').innerText(),/所有采集点平均|实际随机选择|Average of all sites|selects sites randomly/);
+ await page.waitForFunction(()=>window.gatherRuns.at(-1)?.done);
  const headers=()=>page.locator('#gather-results .gather-table th button').allTextContents().then(items=>items.map(item=>item.replace(/\s*[↑↓↕]/g,'').trim()));
  const checkRows=async(count=8)=>assert.ok(await page.locator('#gather-results .gather-table tbody tr').evaluateAll((rows,count)=>rows.every(row=>[...row.cells].reduce((sum,cell)=>sum+cell.colSpan,0)===count),count));
  const sample=await page.evaluate(()=>window.gatherRuns.at(-1).results[0]);
+ assert.equal(sample.sites.length,1);assert.equal(sample.sites[0].siteId,1);assert.equal(sample.homeBank,1);
  const xpDetail=page.locator(`#gather-${sample.jobId}-xp`);await xpDetail.locator('summary').click();
  const singleXp=(sample.xp/sample.completed).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
  assert.equal(await xpDetail.locator('.loot-line span').last().innerText(),singleXp);

@@ -10,7 +10,7 @@ import {parse} from 'acorn';
 import {analyze} from 'eslint-scope';
 import {game,preset} from '../src/model.js';
 import {createScenario,START_TICK} from '../src/simulation.js';
-import {gatheringDefaults,gatheringJobs,selectedGatheringSites} from '../src/gathering-model.js';
+import {gatheringDefaults,gatheringJobs} from '../src/gathering-model.js';
 import {createGatheringScenario,simulateGatheringSite} from '../src/gathering-simulation.js';
 import {craftingDefaults,craftingTiers,craftingJobs,craftingMaterials,craftingPlayer} from '../src/crafting-model.js';
 import {createCraftingScenario,simulateCrafting} from '../src/crafting-simulation.js';
@@ -68,7 +68,7 @@ try{
  let gatheringCount=0;
  for(const job of gatheringJobs){
   const state=gatheringDefaults();state.skill=job.skill;state.levels[job.skill]=99;state.simulationHours=1;state.hotSetting='off';
-  for(const site of selectedGatheringSites(state,job)){
+  for(const site of game.world.sites.filter(site=>site.jobIds.includes(job.id))){
    const scenario=createGatheringScenario(state,job,site,{seed:314}),actual=simulateGatheringSite(state,job,site,{seed:314});
    let player;native.predict(scenario.player,scenario.context,p=>{player=p;return false;});player.offlineCapTicks=12000;
    assert.ok(native.startWork(player,scenario.context,site.id,job.id,'bank',null));

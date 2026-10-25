@@ -14,9 +14,8 @@ export function createGatheringScenario(raw,job,site,{now=Date.now(),seed=0}={})
  const durationTicks=simulationTicks(s.simulationHours);
  const context={...game.createContext(game.world,validateSimulationSeed(seed)),hypothetical:true,windows:manualWindows(START_TICK,START_TICK+durationTicks,s.weeklyXp,s.hotSetting!=='game',job.skill,s.worldRarity)};
  if(s.hotSetting==='current')context.windows.push(...combatHotWindows(combatHot(now,s.simulationHours,job.skill)));
- const bank=s.homeBank?game.world.bankById.get(s.homeBank):game.homeBank(context,site);
+ const bank=game.world.bankById.get(p.homeBank);
  if(!bank)throw Error('unreachable');
- p.homeBank=bank.id;p.x=bank.x;p.y=bank.y;
  return {player:p,context,durationTicks,bank,discardGathered:s.discardGathered};
 }
 export function simulateGatheringSite(raw,job,site,options={}){
@@ -65,21 +64,11 @@ export function simulateGatheringSite(raw,job,site,options={}){
  result.normalValue=dropValue(result.normalItems);result.rareValue=dropValue(result.rareItems);result.totalIncome=result.coins+result.normalValue+result.rareValue;
  return result;
 }
-export function averageGatheringSites(results,expectedCount=results.length){
- if(!results.length||results.length!==expectedCount)throw Error('incompleteSites');
- const durationTicks=results[0].durationTicks;
- if(results.some(r=>r.error||r.durationTicks!==durationTicks)||new Set(results.map(r=>r.siteId)).size!==results.length)throw Error('incompleteSites');
- if(results.some(r=>r.seed!==results[0].seed))throw Error('inconsistentSeeds');
- const result={seed:results[0].seed,durationTicks,siteCount:results.length,sites:results,normalItems:{},rareItems:{},endedEarly:results.some(r=>r.endedEarly),startLevel:results[0].startLevel,endLevelMin:Math.min(...results.map(r=>r.endLevel)),endLevelMax:Math.max(...results.map(r=>r.endLevel))};
- for(const key of metrics){if(results.some(r=>!Number.isFinite(r[key])||r[key]<0))throw Error('invalidResult');result[key]=results.reduce((sum,r)=>sum+r[key],0)/results.length;}
- for(const key of ['normalItems','rareItems'])for(const r of results)for(const [id,qty]of Object.entries(r[key])){if(!Number.isFinite(qty)||qty<0)throw Error('invalidResult');add(result[key],id,qty/results.length);}
- result.movingRatio=result.elapsedTicks?result.movingTicks/result.elapsedTicks:null;
- result.normalValue=dropValue(result.normalItems);result.rareValue=dropValue(result.rareItems);result.totalIncome=result.coins+result.normalValue+result.rareValue;
- return result;
-}
 export function simulateGatheringJob(raw,job,{onSite=()=>{},...options}={}){
- const sites=selectedGatheringSites(raw,job);if(!sites.length)throw Error('noSites');
- const results=[];
- for(const site of sites){try{const r=simulateGatheringSite(raw,job,site,options);results.push(r);onSite(r);}catch(error){onSite({siteId:site.id,x:site.x,y:site.y,error:String(error.message??error)});throw error;}}
- return {key:`job-${job.id}`,jobId:job.id,...averageGatheringSites(results,sites.length)};
+ const [site]=selectedGatheringSites(raw,job);if(!site)throw Error('noSites');
+ let result;
+ try{result=simulateGatheringSite(raw,job,site,options);}
+ catch(error){onSite({siteId:site.id,x:site.x,y:site.y,error:String(error.message??error)});throw error;}
+ onSite(result);
+ return {key:`job-${job.id}`,jobId:job.id,...result,sites:[result],movingRatio:result.elapsedTicks?result.movingTicks/result.elapsedTicks:null};
 }

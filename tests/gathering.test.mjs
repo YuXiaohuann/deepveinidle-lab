@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
 import {gatheringDefaults,gatheringJobs,gatheringSkills,normalizeGathering,gatheringPlayer,selectedGatheringSites,gatheringStats,importGathering} from '../src/gathering-model.js';
-import {createGatheringScenario,simulateGatheringSite,simulateGatheringJob,averageGatheringSites} from '../src/gathering-simulation.js';
+import {createGatheringScenario,simulateGatheringSite,simulateGatheringJob} from '../src/gathering-simulation.js';
 import {combatHot,combatHotWindows} from '../src/combat-hot.js';
 import {manualWindows} from '../src/manual-settings.js';
 import {nativeDay} from './native-day.mjs';
@@ -67,35 +67,24 @@ for(const skill of gatheringSkills)test(`${skill}: discard follows original rout
  }
 });
 
-test('discard preserves the pre-full segment and averages retained values across every point',()=>{
+test('discard preserves the pre-full segment and retained values at the nearest point',()=>{
  const s={...gatheringDefaults(),discardGathered:true,simulationHours:1/60,hotSetting:'off'},job=jobFor('mining');
  const short=simulateGatheringSite(s,job,selectedGatheringSites(s,job)[0]);
  assert.ok(short.completed<28);assert.ok(Math.abs(short.normal-short.completed)<1e-9);
- const average=simulateGatheringJob({...s,simulationHours:1},job);
- assert.equal(average.siteCount,selectedGatheringSites(s,job).length);
- assert.equal(average.normal,average.sites.reduce((sum,r)=>sum+r.normal,0)/average.siteCount);
- assert.ok(Math.abs(average.normal-Object.values(average.normalItems).reduce((a,b)=>a+b,0))<1e-9);
+ const result=simulateGatheringJob({...s,simulationHours:1},job);
+ assert.equal(result.sites.length,selectedGatheringSites(s,job).length);
+ assert.equal(result.normal,result.sites[0].normal);
+ assert.ok(Math.abs(result.normal-Object.values(result.normalItems).reduce((a,b)=>a+b,0))<1e-9);
 });
 
 test('gathering scope, normalization, tools and independent skill settings',()=>{
  assert.deepEqual(gatheringSkills.map(s=>gatheringJobs.filter(j=>j.skill===s).length),[8,8,6,8]);
- const d=gatheringDefaults();assert.equal(d.simulationHours,24);assert.equal(d.siteSelection,0);
+ const d=gatheringDefaults();assert.equal(d.simulationHours,24);assert.equal('siteSelection' in d,false);
  const s=normalizeGathering({...d,skill:'fishing',jobSelection:1,siteSelection:1,gear:{rod:{id:89,tier:4,plus:10}},levels:{mining:85,fishing:40},perks:{quick:100}});
- assert.equal(s.jobSelection,'all');assert.equal(s.siteSelection,0);assert.equal(s.levels.mining,85);assert.equal(s.levels.fishing,40);assert.equal(s.perks.quick,10);
+ assert.equal(s.jobSelection,'all');assert.equal('siteSelection' in s,false);assert.equal(s.levels.mining,85);assert.equal(s.levels.fishing,40);assert.equal(s.perks.quick,10);
  const p=gatheringPlayer(s).player;assert.equal(p.equipment.rod,game.encode(game.withRarity(89,4),10));assert.equal(p.skills.fishing,game.levelXp(40));assert.equal(p.eatAt,0);assert.deepEqual(p.bank,{});
  assert.ok(gatheringStats(s).toolBonus>0);assert.equal(gatheringStats(s).capacity,28);
  assert.equal(normalizeGathering({...d,simulationHours:0,hotSetting:'bad'}).hotSetting,'game');
-});
-
-test('all point average uses actual counts, fractions, item quality and elapsed ratios',()=>{
- const row=(id,qty,xp,elapsed,moving)=>({siteId:id,durationTicks:6000,startLevel:1,endLevel:2,endedEarly:false,completed:qty,attempts:qty,caught:0,stunnedTicks:0,xp,coins:3,normal:qty,rare:1,elapsedTicks:elapsed,workingTicks:elapsed-moving,movingTicks:moving,deposits:1,normalItems:{1:qty},rareItems:{100:1}});
- const a=averageGatheringSites([row(1,2,10,100,20),row(2,5,30,200,10)]);
- assert.equal(a.completed,3.5);assert.equal(a.xp,20);assert.equal(a.normalItems[1],3.5);assert.equal(a.rareItems[100],1);assert.equal(a.coins,3);assert.equal(a.movingRatio,.1);
- assert.equal(a.totalIncome,a.coins+a.normalValue+a.rareValue);
- assert.throws(()=>averageGatheringSites([row(1,1,1,1,1)],2),/incompleteSites/);
- assert.throws(()=>averageGatheringSites([row(1,1,1,1,1),row(1,1,1,1,1)]),/incompleteSites/);
- const zero=averageGatheringSites([row(1,0,0,0,0)]);assert.equal(zero.movingRatio,null);
- const bad=row(1,1,1,1,1);bad.xp=NaN;assert.throws(()=>averageGatheringSites([bad]),/invalidResult/);
 });
 
 for(const skill of gatheringSkills)test(`${skill}: adapter matches independent original offline reports, upgrades and banking`,()=>{
@@ -109,11 +98,14 @@ for(const skill of gatheringSkills)test(`${skill}: adapter matches independent o
  if(skill!=='thieving')assert.ok(actual.deposits>0);else{assert.ok(actual.caught>0);assert.equal(actual.attempts,actual.completed+actual.caught);assert.ok(actual.stunnedTicks>0);assert.equal(actual.normal,0);}
 });
 
-test('every copper point is simulated, manual point and bank retained',()=>{
+test('each task simulates only the nearest point and ignores legacy site selections',()=>{
  const s={...gatheringDefaults(),simulationHours:1/60},job=jobFor('mining');let count=0;
- const r=simulateGatheringJob(s,job,{onSite:()=>count++});assert.equal(count,3);assert.equal(r.siteCount,3);assert.equal(r.completed,r.sites.reduce((sum,p)=>sum+p.completed,0)/3);
- const selected={...s,jobSelection:job.id,siteSelection:r.sites[0].siteId,homeBank:2};
- const one=simulateGatheringJob(selected,job);assert.equal(one.siteCount,1);assert.equal(one.sites[0].homeBank,2);
+ const r=simulateGatheringJob(s,job,{onSite:()=>count++});assert.equal(count,1);assert.equal(r.sites.length,1);assert.equal(r.completed,r.sites[0].completed);
+ for(const siteSelection of [0,1,2,3,'nearest','bad',null]){
+  const legacy={...s,jobSelection:job.id,siteSelection,homeBank:2};
+  assert.equal('siteSelection' in normalizeGathering(legacy),false);
+  assert.deepEqual(simulateGatheringJob(legacy,job),simulateGatheringJob({...legacy,siteSelection:undefined},job));
+ }
  assert.throws(()=>simulateGatheringSite(s,gatheringJobs.find(j=>j.levelReq>1),game.world.sites[0]),/invalidSite|levelTooLow/);
 });
 
@@ -128,14 +120,14 @@ test('configuration import maps gathering fields and restores simulation default
  const d=gatheringDefaults(),p=gatheringPlayer(d).player;p.skills.mining=game.levelXp(85)+10;p.equipment.pickaxe=game.encode(game.withRarity(84,3),5);p.brews.gatherer=p.lastTick+100;p.brewTier.gatherer=2;p.perks.hands=8;p.masteries.gather=7;
  const snapshot={version:2,capturedAt:Date.now(),player:p,worldTick:p.lastTick,worldBuffs:[]};
  const r=importGathering({...d,simulationHours:1,jobSelection:1,siteSelection:1},snapshot);
- assert.equal(r.state.levels.mining,85);assert.deepEqual(r.state.gear.pickaxe,{id:84,tier:3,plus:5});assert.equal(r.state.brews.gatherer,2);assert.equal(r.state.perks.hands,8);assert.equal(r.state.masteries.gather,7);assert.equal(r.state.simulationHours,24);assert.equal(r.state.siteSelection,0);assert.equal(r.state.jobSelection,'all');
+ assert.equal(r.state.levels.mining,85);assert.deepEqual(r.state.gear.pickaxe,{id:84,tier:3,plus:5});assert.equal(r.state.brews.gatherer,2);assert.equal(r.state.perks.hands,8);assert.equal(r.state.masteries.gather,7);assert.equal(r.state.simulationHours,24);assert.equal('siteSelection' in r.state,false);assert.equal(r.state.jobSelection,'all');
  p.skills.mining='bad';const partial=importGathering({...d,levels:{...d.levels,mining:90}},snapshot);assert.equal(partial.state.levels.mining,90);assert.ok(partial.warnings.includes('skills.mining'));
  assert.throws(()=>importGathering(d,{...snapshot,version:1}),/invalidSnapshot/);
 });
 
 for(const skill of gatheringSkills)for(const discardGathered of [false,true])test(`${skill} ${discardGathered?'drop':'bank'}: every task and point matches original offline inventory and XP`,()=>{
  const s=gatheringDefaults();s.skill=skill;s.discardGathered=discardGathered;s.levels[skill]=100;s.simulationHours=1;s.hotSetting='off';s.gear[{mining:'pickaxe',fishing:'rod',woodcutting:'axe',thieving:'gloves'}[skill]]={id:{mining:84,fishing:89,woodcutting:94,thieving:327}[skill],tier:4,plus:5};s.gear.amulet={id:186,tier:4,plus:5};s.brews.hunter=4;s.masteries.rare=100;
- for(const job of gatheringJobs.filter(j=>j.skill===skill))for(const site of selectedGatheringSites(s,job)){
+ for(const job of gatheringJobs.filter(j=>j.skill===skill))for(const site of game.world.sites.filter(site=>site.jobIds.includes(job.id))){
   const scenario=createGatheringScenario(s,job,site);let p;game.predict(scenario.player,scenario.context,prepared=>{p=prepared;return false;});p.offlineCapTicks=scenario.durationTicks*2;
   assert.ok(game.startWork(p,scenario.context,site.id,job.id,discardGathered?'drop':'bank',null));
   const initialXp=p.skills[skill],gained={};for(let tick=game.predictionChunkTicks;tick<=scenario.durationTicks;tick+=game.predictionChunkTicks){const report=questlessOffline(game,p,scenario.context,game.predictionStartTick+tick);for(const [id,qty]of Object.entries(report.itemsGained))gained[id]=(gained[id]??0)+qty;}
@@ -149,15 +141,15 @@ for(const skill of gatheringSkills)for(const discardGathered of [false,true])tes
 test('nearest strategy preserves original point order and uses the prediction depot start',()=>{
  const d=gatheringDefaults(),job=jobFor('mining');
  const automatic={...d,siteSelection:'nearest',simulationHours:1/60};
- assert.equal(normalizeGathering(automatic).siteSelection,'nearest');
+ assert.equal('siteSelection' in normalizeGathering(automatic),false);
  assert.equal(selectedGatheringSites(automatic,job)[0].id,1);
  assert.equal(selectedGatheringSites({...automatic,homeBank:1},job)[0].id,1);
  const second=selectedGatheringSites({...automatic,homeBank:2},job);assert.equal(second.length,1);
  const theft=jobFor('thieving');assert.equal(selectedGatheringSites({...automatic,skill:'thieving',homeBank:2},theft)[0].id,84);
  assert.equal(game.nearestWorkSite({world:{sites:[{id:3,x:1,y:0,jobIds:[1]},{id:2,x:0,y:1,jobIds:[1]}]}},1,0,0),3);
- const result=simulateGatheringJob(automatic,job);assert.equal(result.siteCount,1);assert.equal(result.sites[0].siteId,1);
- assert.equal(normalizeGathering({...automatic,jobSelection:job.id}).siteSelection,'nearest');
- assert.equal(normalizeGathering({...automatic,siteSelection:'bad'}).siteSelection,0);
+ const result=simulateGatheringJob(automatic,job);assert.equal(result.sites.length,1);assert.equal(result.sites[0].siteId,1);
+ assert.equal('siteSelection' in normalizeGathering({...automatic,jobSelection:job.id}),false);
+ assert.equal('siteSelection' in normalizeGathering({...automatic,siteSelection:'bad'}),false);
 });
 
 test('gathering output names translate base items independently of all quality prefixes',async()=>{
@@ -197,4 +189,17 @@ test('combined luck adds rarity modifiers before multiplying equipment luck',()=
  s.brews.hunter=0;s.blessing=true;s.house.shrine=10;s.masteries.rare=10;
  assert.ok(Math.abs(gatheringStats(s).luckBonus-1.9)<1e-12);
  s.hotSetting='current';assert.ok(Math.abs(gatheringStats(s).luckBonus-1.9)<1e-12);
+});
+
+for(const job of gatheringJobs)for(const homeBank of [0,1,2])test(`${job.skill} job ${job.id}, depot ${homeBank}: selection and simulation share the original initialized start`,()=>{
+ const state={...gatheringDefaults(),skill:job.skill,homeBank,simulationHours:1/60};state.levels[job.skill]=99;
+ const {player}=gatheringPlayer(state),context=game.createContext(game.world,0);let prepared;
+ game.predict(player,context,p=>{prepared=p;return false;});
+ const [site]=selectedGatheringSites(state,job);
+ assert.equal(site.id,game.nearestWorkSite(context,job.id,prepared.x,prepared.y));
+ const scenario=createGatheringScenario(state,job,site);
+ assert.equal(scenario.player.x,player.x);assert.equal(scenario.player.y,player.y);assert.equal(scenario.bank.id,homeBank||1);
+ const native=nativeDay(scenario.player,scenario.context,p=>game.startWork(p,scenario.context,site.id,job.id,'bank',null),scenario.durationTicks);
+ const actual=simulateGatheringJob(state,job);
+ assert.equal(actual.sites.length,1);assert.equal(actual.homeBank,homeBank||1);assert.equal(actual.xp,native.bySkill[job.skill]??0);assert.deepEqual(actual.sampleItems,native.itemsGained);
 });

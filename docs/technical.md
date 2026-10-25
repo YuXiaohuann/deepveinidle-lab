@@ -56,14 +56,14 @@
 | `src/upstream.js` | 生成的原始声明与语义导出，禁止手工修改 |
 | `src/model.js` | 输入规范化、玩家状态适配、配置过滤、结果组合与排序 |
 | `src/simulation.js`、`src/simulation-worker.js` | 原始战斗函数状态适配、可配置时长统计及异步计算 |
-| `src/gathering-model.js`、`src/gathering-simulation.js`、`src/gathering-worker.js`、`src/gathering-controls.js` | 独立采集配置与导入、原始工作逐刻适配、逐点平均、异步进度及页面交互 |
+| `src/gathering-model.js`、`src/gathering-simulation.js`、`src/gathering-worker.js`、`src/gathering-controls.js` | 独立采集配置与导入、原始工作逐刻适配、最近点选择、异步进度及页面交互 |
 | `src/crafting-model.js`、`src/crafting-orders.js`、`src/crafting-simulation.js`、`src/crafting-worker.js`、`src/crafting-controls.js` | 制造角色与多配方订单、独立加工费、执行计划与材料预算、原始限次模拟及页面交互 |
 | `src/work-expectation.js` | 采集／制造共用机会期望账本、品质、烧焦及奖励容量门槛；不改原始过程 |
 | `src/character-inventory.js` | 收藏与制造共用仓库／背包校验、重复堆叠合并与完整物品 ID 库存快照；制造另校验捕获时间 |
 | `src/world-buffs.js` | 战斗、采集与制造共用世界增益窗口校验、捕获时汇总与旧捕获提示 |
 | `src/work-import.js` | 采集与制造共用角色导入校验及字段映射 |
 | `tests/crafting.test.mjs` | 有效配方／品质原始离线对照、烧焦／升级／限次、材料预算、窗口速率与导入回归 |
-| `tests/gathering.test.mjs` | 全点平均人工算例、四技能全部任务／点位原始离线对照、配置与导入回归 |
+| `tests/gathering.test.mjs` | 最近点及起点一致性、四技能全部任务／点位原始离线对照、配置与导入回归 |
 | `src/enhancement.js`、`src/enhancement-controls.js` | 强化专用校验、导入、解析期望与独立页面交互 |
 | `src/hot-forecast.js`、`src/forecast-filters.js`、`src/forecast-controls.js` | 热门日程计算、多选筛选规范化与独立本地存储、预报页面交互 |
 | `src/appreciation-controls.js`、`src/assets/appreciation.jpg` | 共用赞赏弹窗及原始赞赏图片；复用物品价格弹窗样式与交互约定 |

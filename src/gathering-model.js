@@ -23,7 +23,7 @@ export function gatheringDefaults(){return {
  brews:Object.fromEntries(gatheringPotions.map(p=>[p.kind,-1])),
  house:Object.fromEntries(gatheringRooms.map(r=>[r.id,0])),masteries:Object.fromEntries(gatheringMasteries.map(m=>[m.id,0])),
  perks:Object.fromEntries(gatheringPerks.map(p=>[p.id,0])),guild:null,guildXp:0,weeklyXp:0,worldRarity:0,blessing:false,ironman:false,homeBank:0,discardGathered:false,
- jobSelection:'all',siteSelection:0,simulationHours:24,customSimulation:false,hotSetting:'game',vendorValues:true,valuationMode:'custom',
+ jobSelection:'all',simulationHours:24,customSimulation:false,hotSetting:'game',vendorValues:true,valuationMode:'custom',
 };}
 export function normalizeGathering(raw){
  const s=gatheringDefaults();if(!raw||typeof raw!=='object')return s;
@@ -39,19 +39,15 @@ export function normalizeGathering(raw){
  s.discardGathered=raw.discardGathered===true;
  s.guild=readGuild(raw.guild);
  const job=gatheringJobs.find(j=>j.id===Number(raw.jobSelection)&&j.skill===s.skill);
- s.jobSelection=job?job.id:'all';s.siteSelection=raw.siteSelection==='nearest'?'nearest':job&&sitesForJob(job).some(p=>p.id===Number(raw.siteSelection))?Number(raw.siteSelection):0;
+ s.jobSelection=job?job.id:'all';
  return s;
 }
 export function selectedGatheringJobs(raw){const s=normalizeGathering(raw);return gatheringJobs.filter(j=>j.skill===s.skill&&(s.jobSelection==='all'||j.id===s.jobSelection));}
 export function selectedGatheringSites(raw,job){
- const s=normalizeGathering(raw),all=sitesForJob(job);
- if(s.siteSelection==='nearest'){
-  const {player}=gatheringPlayer(s),context=game.createContext(game.world,0);let prepared;
-  game.predict(player,context,p=>{prepared=p;return false;});
-  const id=game.nearestWorkSite(context,job.id,prepared.x,prepared.y);
-  return all.filter(p=>p.id===id);
- }
- return s.jobSelection===job.id&&s.siteSelection?all.filter(p=>p.id===s.siteSelection):all;
+ const {player}=gatheringPlayer(raw),context=game.createContext(game.world,0);let prepared;
+ game.predict(player,context,p=>{prepared=p;return false;});
+ const id=game.nearestWorkSite(context,job.id,prepared.x,prepared.y);
+ return sitesForJob(job).filter(p=>p.id===id);
 }
 // The combat scenario owns the common manual character initialization. Override
 // only gathering-specific skills, equipment and buffs before predictor cloning.
@@ -73,5 +69,5 @@ export function gatheringStats(raw){const {state:s,player:p}=gatheringPlayer(raw
 }
 export function gatheringJobStats(raw,job){const {player:p}=gatheringPlayer(raw),chance=game.workChance(job,p);return {chance,seconds:game.tickMs/1000/chance,caught:game.caughtChance(job,p)};}
 export function importGathering(current,snapshot){
- return importWorkConfig(current,snapshot,{skills:gatheringSkills,slots:gatheringSlots,potions:gatheringPotions,rooms:gatheringRooms,masteries:gatheringMasteries,perks:gatheringPerks,normalize:normalizeGathering,gear:gatheringGear,reset:{jobSelection:'all',siteSelection:0,simulationHours:24,customSimulation:false,hotSetting:'game',vendorValues:true,valuationMode:'custom',discardGathered:false}});
+ return importWorkConfig(current,snapshot,{skills:gatheringSkills,slots:gatheringSlots,potions:gatheringPotions,rooms:gatheringRooms,masteries:gatheringMasteries,perks:gatheringPerks,normalize:normalizeGathering,gear:gatheringGear,reset:{jobSelection:'all',simulationHours:24,customSimulation:false,hotSetting:'game',vendorValues:true,valuationMode:'custom',discardGathered:false}});
 }

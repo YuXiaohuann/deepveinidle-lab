@@ -8,7 +8,7 @@ import * as game from '../src/upstream.js';
 import * as gathering from '../src/gathering-model.js';
 import * as crafting from '../src/crafting-model.js';
 import * as orders from '../src/crafting-orders.js';
-import {createGatheringScenario,simulateGatheringSite,simulateGatheringJob,averageGatheringSites} from '../src/gathering-simulation.js';
+import {createGatheringScenario,simulateGatheringSite,simulateGatheringJob} from '../src/gathering-simulation.js';
 import {createCraftingScenario,simulateCrafting,simulateCraftingWindow} from '../src/crafting-simulation.js';
 import {START_TICK} from '../src/simulation.js';
 import {nativeDay} from './native-day.mjs';
@@ -33,10 +33,9 @@ test('gathering seeded results reproduce and match original offline reports in a
  }
 });
 
-test('all gathering sites share the round seed and mismatched seeds cannot be averaged',()=>{
+test('nearest gathering site uses the round seed',()=>{
  const state=gathering.gatheringDefaults();state.simulationHours=1/60;const job=gathering.gatheringJobs[0];
- const r=simulateGatheringJob(state,job,{seed:42});assert.equal(r.seed,42);assert.ok(r.sites.length>1);assert.ok(r.sites.every(s=>s.seed===42));
- assert.throws(()=>averageGatheringSites(r.sites.map((s,i)=>({...s,seed:i}))),/inconsistentSeeds/);
+ const r=simulateGatheringJob(state,job,{seed:42});assert.equal(r.seed,42);assert.equal(r.sites.length,1);assert.ok(r.sites.every(s=>s.seed===42));
  assert.throws(()=>createGatheringScenario(state,job,gathering.selectedGatheringSites(state,job)[0],{seed:-1}),/Invalid simulation seed/);
 });
 
