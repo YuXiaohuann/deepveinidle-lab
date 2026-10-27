@@ -53,7 +53,7 @@ test('zero target cost, blank prices and explicit zero pricing stay distinct',()
 test('invalid configuration fails explicitly',()=>{
  for(const patch of [{current:7,target:6},{level:null},{current:1.5},{target:101},{lectern:-1},{mastery:.5},{protectFrom:1},{protect:'true'},{shardPrice:NaN},{scrollPrice:-1},{itemId:64}])assert.throws(()=>calculateEnhancement(config(patch)));
 });
-test('market tax includes gold, materials, scrolls and base item, with explicit pricing required',()=>{
+test('profit margin covers enhancement costs and adds the base at cost, with explicit pricing required',()=>{
  const r=calculateEnhancement(config({target:3,protect:true,shardPrice:10,scrollPrice:20,basePrice:120}));
  // For +0 to +3: costs at +2 are divided by .88; protected failure
  // repeats +1 (chance .94), whose failure also repeats +0;
@@ -62,13 +62,13 @@ test('market tax includes gold, materials, scrolls and base item, with explicit 
  const gold=100+goldStep1+(300+.12*goldStep1)/.88;
  const shards=3+shardStep1+(9+.12*shardStep1)/.88;
  const scrolls=.12/.88;
- near(r.taxedGold,(gold+shards*10+scrolls*20+120)*1.03);
- assert.equal(calculateEnhancement(config({shardPrice:10})).taxedGold,null);
- assert.equal(calculateEnhancement(config({basePrice:0})).taxedGold,null);
- assert.equal(calculateEnhancement(config({protect:true,shardPrice:10,basePrice:0})).taxedGold,null);
- const free=calculateEnhancement(config({shardPrice:0,basePrice:0}));near(free.taxedGold,free.totals.gold*1.03);
- near(calculateEnhancement(config({current:5,target:5,basePrice:120})).taxedGold,123.6);
- assert.equal(calculateEnhancement(config({current:5,target:5,basePrice:0})).taxedGold,0);
+ near(r.expectedFee,(gold+shards*10+scrolls*20)/.97+120);
+ assert.equal(calculateEnhancement(config({shardPrice:10})).expectedFee,null);
+ assert.equal(calculateEnhancement(config({basePrice:0})).expectedFee,null);
+ assert.equal(calculateEnhancement(config({protect:true,shardPrice:10,basePrice:0})).expectedFee,null);
+ const free=calculateEnhancement(config({shardPrice:0,basePrice:0}));near(free.expectedFee,free.totals.gold/.97);
+ near(calculateEnhancement(config({current:5,target:5,basePrice:120})).expectedFee,120);
+ assert.equal(calculateEnhancement(config({current:5,target:5,basePrice:0})).expectedFee,0);
 });
 test('import captures enhancement-only fields and deduplicates worn and inventory candidates',()=>{
  const s=config({shardPrice:3}),r=importEnhancement(s,snapshot());assert.equal(r.state.level,32);assert.equal(r.state.lectern,12);assert.equal(r.state.mastery,3);assert.equal(r.state.shardPrice,3);assert.equal(r.candidates.length,4);assert.deepEqual(r.candidates[0],{itemId:328,tier:2,current:5,id:game.encode(game.withRarity(328,2),5)});assert.deepEqual(s,config({shardPrice:3}));
@@ -110,4 +110,29 @@ test('all seven upgrade-only items use their native 95/99 crafting tier for cost
    assert.deepEqual(decodeEnhancementItem(game.encode(game.withRarity(id,tier),17)),{itemId:id,tier,current:17,id:game.encode(game.withRarity(id,tier),17)});
   }
  }
+});
+
+test('profit margin defaults for old saves, validates explicit inputs, and preserves raw costs',()=>{
+ const old=config({shardPrice:10,scrollPrice:20,basePrice:120});delete old.profitRate;
+ assert.equal(validateEnhancement(old).profitRate,3);
+ const baseline=calculateEnhancement({...old,profitRate:0});
+ assert.equal(baseline.expectedFee,baseline.purchaseTotal);
+ for(const profitRate of [3,12.5,99.9]){
+  const result=calculateEnhancement({...old,profitRate});
+  near((result.expectedFee-result.purchaseTotal)/(result.expectedFee-old.basePrice),profitRate/100);
+  assert.deepEqual(result.totals,baseline.totals);
+ }
+ for(const profitRate of [null,undefined,-1,100,101,Infinity,NaN,'3'])assert.throws(()=>validateEnhancement({...old,profitRate}),/invalidProfitRate/);
+ assert.equal(validateEnhancement(JSON.parse(JSON.stringify({...old,profitRate:12.5}))).profitRate,12.5);
+ assert.equal(importEnhancement({...old,profitRate:12.5},snapshot()).state.profitRate,12.5);
+});
+
+test('base price is added at cost and never earns profit; missing base leaves enhancement cost intact',()=>{
+ const s=config({shardPrice:10,scrollPrice:20,basePrice:100,profitRate:20});
+ const result=calculateEnhancement(s),withoutBase=calculateEnhancement({...s,basePrice:0});
+ near(result.expectedFee-withoutBase.expectedFee,100);
+ near(result.expectedFee,result.pricedGold/.8+100);
+ const missingBase=calculateEnhancement({...s,basePrice:null});
+ assert.equal(missingBase.pricedGold,result.pricedGold);assert.equal(missingBase.expectedFee,null);
+ assert.equal(calculateEnhancement({...s,current:5,target:5}).expectedFee,100);
 });

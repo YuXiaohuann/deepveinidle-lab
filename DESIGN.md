@@ -19,7 +19,7 @@
 | 战斗配置、模拟、利润与世界首领估算 | [战斗页面](docs/pages/combat.md) |
 | 采集配置、最近点与统计 | [采集页面](docs/pages/gathering.md) |
 | 制造订单、加工费、执行计划与材料预算 | [制造页面](docs/pages/crafting.md) |
-| 强化概率与期望成本 | [强化页面](docs/pages/enhancement.md) |
+| 强化概率、投入与收费测算 | [强化页面](docs/pages/enhancement.md) |
 | 收藏精通点获取性价比（隐藏 URL） | [收藏页面](docs/pages/collection.md) |
 | 精通点数、升级成本与最优分配搜索 | [精通页面](docs/pages/mastery.md) |
 | 热门日程与筛选 | [预报页面](docs/pages/forecast.md) |
