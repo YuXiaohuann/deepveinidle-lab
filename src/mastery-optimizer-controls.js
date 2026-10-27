@@ -4,7 +4,7 @@ import {getSnapshot,subscribe} from './price-service.js';
 import {combatIncomeItems,optimizerInput,checkOptimizerPrices,optimizerEfforts} from './mastery-optimizer.js';
 
 const optimizerMonsters=[...game.monsters].sort((a,b)=>b.level-a.level);
-let language='zh',mastery=null,getCombat=()=>null,monsterId=7,effort='standard',allocationMode='remaining';
+let language='zh',mastery=null,getCombat=()=>null,monsterId=7,effort='standard',allocationMode='reset';
 let worker=null,generation=0,result=null,progress=null,notice=null,fingerprint=null,pricesChanged=false;
 let targetRanks=null,onApply=null,applying=false;
 const text=(zh,en)=>language==='zh'?zh:en;

@@ -72,7 +72,7 @@ try{
  await page.locator('#mastery-optimizer>summary').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.open),true);
  results.cases.push('optimizer is a native details panel, collapsed on first load and expandable by keyboard');
  assert.equal(await page.locator('#optimizer-goal option:disabled').count(),3);
- assert.equal(await page.getByLabel('计算模式').inputValue(),'remaining');
+ assert.equal(await page.getByLabel('计算模式').inputValue(),'reset');
  await page.selectOption('#optimizer-allocation-mode','reset');
  assert.equal(await page.locator('#optimizer-monster').inputValue(),'7');
  assert.match(await page.locator('#optimizer-monster option:checked').innerText(),/深渊恐魔/);
@@ -225,7 +225,7 @@ try{
  results.cases.push('four effort options default to standard and all four travel through the real Worker without changing application rules');
  await page.reload();assert.deepEqual(await ranksInFields('current'),{...masteryDefaults().current,maxhit:1,gather:1});assert.ok(Object.values(await ranksInFields('target')).every(rank=>rank===0));assert.equal(await page.locator('[data-mastery-row="maxhit"] [data-mastery-value="cost"]').textContent(),'-40');assert.equal(await page.locator('.optimizer-plan').count(),0);assert.equal(await page.locator('#mastery-total').inputValue(),'0');
  assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.open),false);await page.locator('#mastery-optimizer>summary').click();
- assert.equal(await page.locator('#optimizer-allocation-mode').inputValue(),'remaining');
+ assert.equal(await page.locator('#optimizer-allocation-mode').inputValue(),'reset');
  assert.equal(await page.locator('#optimizer-monster').inputValue(),'7');
  await page.selectOption('#optimizer-monster','6');await page.selectOption('#language','zh');assert.equal(await page.locator('#optimizer-monster').inputValue(),'6');
  assert.equal(await page.locator('#optimizer-start').textContent(),'开始计算');
