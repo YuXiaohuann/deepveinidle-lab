@@ -60,8 +60,16 @@ export async function verifyBrowser(base,version,directory){
      assert.equal(await right.evaluate(e=>e.scrollTop),0,'Left keyboard scroll affected right column');
      await left.evaluate(e=>e.scrollTop=e.scrollHeight);await left.hover();await page.mouse.wheel(0,1000);await settle();
      assert.equal(await right.evaluate(e=>e.scrollTop),0,'Wheel boundary affected right column');assert.equal(await page.evaluate(()=>scrollY),0,'Wheel boundary moved desktop body');
-     await right.hover();await right.focus();await page.keyboard.press('End');
-     await page.waitForFunction(id=>{const e=document.querySelector(`[data-scroll-column="${id}-information"]`);return Math.abs(e.scrollTop-Math.max(0,e.scrollHeight-e.clientHeight))<=1;},id);
+     await right.hover();await right.focus();
+     // Import status can add a line after End. Retry only for changed geometry.
+     let atBottom=false;
+     for(let attempt=0;attempt<3&&!atBottom;attempt++){
+      const size=await right.evaluate(e=>({height:e.scrollHeight,client:e.clientHeight}));
+      await page.keyboard.press('End');
+      await page.waitForFunction(({id,size})=>{const e=document.querySelector(`[data-scroll-column="${id}-information"]`);return Math.abs(e.scrollTop-Math.max(0,e.scrollHeight-e.clientHeight))<=1||e.scrollHeight!==size.height||e.clientHeight!==size.client;},{id,size});
+      atBottom=await right.evaluate(e=>Math.abs(e.scrollTop-Math.max(0,e.scrollHeight-e.clientHeight))<=1);
+     }
+     assert.ok(atBottom,`${id}: keyboard End did not reach the column bottom`);
      assert.ok(await page.locator('.project-footer').evaluate(e=>e.getBoundingClientRect().bottom<=innerHeight+1),'Footer is not reachable');
      // Switching away/back and redrawing language must retain column positions.
      await right.evaluate(e=>e.scrollTop=Math.min(120,(e.scrollHeight-e.clientHeight)/2));await settle();
