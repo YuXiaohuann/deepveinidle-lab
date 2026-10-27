@@ -1,5 +1,5 @@
 import {questlessOffline} from './native-questless.mjs';
-// Independently extract the complete 1.0.1199 native engine for compatibility checks.
+// Independently extract the complete 1.0.1203 native engine for compatibility checks.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -29,15 +29,15 @@ for(const node of parse(source,{ecmaVersion:'latest',sourceType:'module',ranges:
   const entry={start:d.start,text:node.kind+' '+source.slice(d.start,d.end)+';'};ids.forEach(id=>declarations.set(id,entry));
  }
 }
-const exports={"world":"j","monsters":"Rt","predict":"Jr","startFight":"xi","createContext":"_H","gear":"He","armourMultiplier":"s2","masteryMultiplier":"ba","restock":"rN","offline":"f7","startWork":"Gs","applyUpgrade":"LI","enhanceCost":"Fh","enhanceChance":"r2","enhanceXp":"CI","enhanceTicks":"od","skillPetChance":"yy","hotSkill":"Zf"};
-const selected=new Set(),allowed=new Set(['WeakSet','WeakMap','Uint8Array','Uint16Array','Uint32Array','Int32Array','Float64Array','Math','Map','Set','Number','Object','Array','String','Error','Date','Boolean','Infinity','undefined','JSON','RegExp','parseInt','parseFloat']);
+const exports={"world":"N","monsters":"qt","predict":"Oh","startFight":"cr","createContext":"AY","gear":"Pe","armourMultiplier":"w2","masteryMultiplier":"Ra","restock":"RL","offline":"DE","startWork":"Ss","applyUpgrade":"hL","enhanceCost":"uu","enhanceChance":"k2","enhanceXp":"eL","enhanceTicks":"Fs","skillPetChance":"wS","hotSkill":"Pg"};
+const selected=new Set(),allowed=new Set(['WeakSet','WeakMap','Uint8Array','Uint16Array','Uint32Array','Int16Array','Int32Array','Float64Array','Math','Map','Set','Number','Object','Array','String','Error','Date','Boolean','Infinity','undefined','JSON','RegExp','parseInt','parseFloat']);
 function collect(name){
  const d=declarations.get(name);if(!d)throw Error('Missing native declaration '+name);if(selected.has(d))return;selected.add(d);
  const refs=analyze(parse(d.text,{ecmaVersion:'latest',sourceType:'module',ranges:true}),{ecmaVersion:2024,sourceType:'module'}).globalScope.through.map(r=>r.identifier.name);
  for(const dep of new Set(refs))if(declarations.has(dep))collect(dep);else if(!allowed.has(dep))throw Error('Unexpected native dependency '+dep);
 }
 Object.values(exports).forEach(collect);
-const directory=fs.mkdtempSync(path.join(os.tmpdir(),'dvi-1199-audit-'));
+const directory=fs.mkdtempSync(path.join(os.tmpdir(),'dvi-1203-audit-'));
 try{
  const file=path.join(directory,'native.mjs');
  fs.writeFileSync(file,[...selected].sort((a,b)=>a.start-b.start).map(d=>d.text).join('\n')+'\nexport{'+Object.entries(exports).map(([alias,name])=>name+' as '+alias).join(',')+'};');
@@ -96,7 +96,7 @@ try{
   const encoded=game.encode(game.withRarity(id,tier),plus);assert.deepEqual(game.enhanceCost(encoded),native.enhanceCost(encoded));costs++;
  }
  let enhancementCases=0;
- assert.equal(native.enhanceTicks,50);assert.equal(native.skillPetChance('enhancing'),12.5/3e6);
+ assert.equal(native.enhanceTicks,4);assert.equal(native.skillPetChance('enhancing'),1/3e6);
  for(const item of enhanceableItems)for(let tier=0;tier<5;tier++)for(const [level,mastery,lectern]of [[1,0,0],[99,201,7]]){
   const state={...enhancementDefaults(),itemId:item.id,tier,level,mastery,lectern,target:20};
   const player={skills:{enhancing:game.levelXp(level)},masteries:{enhance:mastery},house:{lectern},houseFurniture:lectern?{lectern:{cell:0,slot:0}}:{},brews:{},lastTick:0};
@@ -111,5 +111,5 @@ try{
  if(process.argv[2])fs.writeFileSync(process.argv[2],JSON.stringify({predictions:count,gearVariants:105,gatheringSites:gatheringCount,craftingCases:craftingCount,upgradeCases:upgradeCount,enhancementCosts:costs,enhancementCases,forecastSlots:49})+'\n');
  console.log(`Enhancing: ${enhancementCases} item/rarity/level/mastery/plus cases matched independent native chance, costs and XP; duration and pet chance matched.`);
  console.log(`Other pages: ${gatheringCount} gathering sites, ${craftingCount} ordinary recipe/quality cases, ${upgradeCount} upgrade/quality cases, ${costs} enhancement costs and 49 forecast slots matched independent native code.`);
- console.log(`Native 1.0.1199 comparison: ${count}/${count} complete 1-hour predictions matched; world geometry, monsters and 105 new-gear variants matched.`);
+ console.log(`Native 1.0.1203 comparison: ${count}/${count} complete 1-hour predictions matched; world geometry, monsters and 105 new-gear variants matched.`);
 }finally{fs.rmSync(directory,{recursive:true});}

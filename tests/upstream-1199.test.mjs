@@ -5,9 +5,9 @@ import * as game from'../src/upstream.js';
 import {enhancementDefaults,enhanceableItems,validateEnhancement,enhancementSteps,calculateEnhancement,importEnhancement} from'../src/enhancement.js';
 const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-12,`${a} != ${b}`);
 
-test('1199 reviewed full snapshot restores lectern and client boss definitions',()=>{
+test('1203 reviewed full snapshot retains lectern and client boss definitions',()=>{
  const m=JSON.parse(fs.readFileSync(new URL('../vendor/manifest.json',import.meta.url)));
- assert.equal(m.changelogVersion,'1.0.1199');assert.equal(m.sha256,'f7fb9a6b608d353de6a107c68ed99c990642f99260d41676073385285c9489a6');assert.deepEqual(m.overrides,[]);
+ assert.equal(m.changelogVersion,'1.0.1203');assert.equal(m.sha256,'4fda6390ffba7e98bb7149f99cce4322a1f2e8338be70f34a28e405977a3caf1');assert.deepEqual(m.overrides,[]);
  assert.notEqual(game.rooms.find(r=>r.id==='lectern').retired,true);
  assert.deepEqual(game.bosses.map(b=>b.exclusive.chance),[1/500,1/500,1/500]);
 });
@@ -18,13 +18,13 @@ test('1199 restored base floor and placed lectern multiplier match independent v
  }
  assert.equal(enhancementSteps({...enhancementDefaults(),target:20})[19].chance,.2);
 });
-test('1199 every equipment rarity restores uniform shards and XP but keeps 30 second attempts',()=>{
+test('1203 every equipment rarity retains uniform shards and XP with 2.4 second attempts',()=>{
  for(const item of enhanceableItems)for(const [tier,mult]of [1,1.5,3,8,25].entries()){
   const state={...enhancementDefaults(),itemId:item.id,tier,target:4};
   for(const step of enhancementSteps(state)){assert.equal(step.shards,3*(step.from+1));assert.equal(step.xp,Math.round(20*(step.from+1)*mult));}
-  const result=calculateEnhancement(state);assert.equal(result.totals.seconds,result.totals.attempts*30);
+  const result=calculateEnhancement(state);assert.equal(result.totals.seconds,result.totals.attempts*2.4);
  }
- assert.equal(game.enhanceTicks*game.tickMs,30000);assert.equal(game.skillPetChance('enhancing'),12.5/3e6);assert.equal(game.skillPetChance('mining'),1/3e6);
+ assert.equal(game.enhanceTicks*game.tickMs,2400);assert.equal(game.skillPetChance('enhancing'),1/3e6);assert.equal(game.skillPetChance('mining'),1/3e6);
 });
 test('1199 missing lectern in 1198 saves defaults to zero without replacing explicit invalid values',()=>{
  const legacy={...enhancementDefaults(),mastery:201,target:20,shardPrice:123};delete legacy.lectern;

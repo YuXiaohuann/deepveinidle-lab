@@ -13,7 +13,7 @@ import {masteryDefaults,masteryStorageKey} from '../src/mastery.js';
 import {craftingDefaults} from '../src/crafting-model.js';
 
 const args=process.argv.slice(2),option=name=>args.includes(name)?args[args.indexOf(name)+1]:null;
-const output=path.resolve(option('--out')??'.test-artifacts/upstream-1199/browser');
+const output=path.resolve(option('--out')??'.test-artifacts/upstream-1203/browser');
 await fs.mkdir(output,{recursive:true});
 const servers=[],result={cases:[],errors:[]};let browser;
 async function serve(script){
@@ -38,7 +38,7 @@ try{
   await page.waitForFunction(()=>document.querySelector('#simulation-status').hidden&&!document.querySelector('#rows .pending'));
   assert.equal(await page.locator('#rows tr[data-enemy]').count(),1);
   assert.ok(!/Simulation failed|模拟失败/.test(await page.locator('#rows').innerText()));
-  assert.match(await page.locator('.footer-source').innerText(),/2026-10-22.*1\.0\.1199/);
+  assert.match(await page.locator('.footer-source').innerText(),/2026-10-27.*1\.0\.1203/);
   const combatScreenshot=`combat-${language}-${width}.png`;await page.screenshot({path:path.join(output,combatScreenshot),fullPage:true});
   await page.locator('#craft-nav').click();await page.locator('[data-craft-rarity="4"]').click();await page.locator('#craft-filled').click();
   await page.locator('[data-craft-order-row="upstream"]').waitFor();assert.match(await page.locator('.craft-table').innerText(),/1,900/);
@@ -105,12 +105,14 @@ try{
   await page.reload();assert.equal(await page.locator('[data-enhance-field="current"]').inputValue(),'100');assert.equal(await target.inputValue(),'100');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   const highScreenshot=`enhance-existing-${language}-${width}.png`;await page.screenshot({path:path.join(output,highScreenshot),fullPage:true});
+  await page.locator('#enhance-home-settings').evaluate(el=>el.open=true);await page.locator('#enhance-mastery-settings').evaluate(el=>el.open=true);
+  await page.locator('[data-enhance-field="current"]').fill('0');await page.locator('[data-enhance-field="current"]').dispatchEvent('change');await target.fill('1');await lectern.fill('0');await mastery.fill('0');
+  assert.equal(await page.locator('.enhance-inputs .stat').nth(4).locator('strong').innerText(),language==='zh'?'2.4 秒':'2.4 s');
   const masteryState=masteryDefaults();masteryState.totalPoints=100000;masteryState.current.enhance=201;masteryState.target.enhance=201;
   await page.evaluate(({key,state})=>localStorage.setItem(key,JSON.stringify(state)),{key:masteryStorageKey,state:masteryState});
   await page.goto(base+'/mastery');
   const card=page.locator('[data-mastery-row="enhance"]');
-  assert.equal(await card.locator('[data-mastery-field="current"]').inputValue(),'201');
-  assert.equal(await card.locator('[data-mastery-value="current"]').innerText(),'+50%');
+  assert.equal(await card.locator('[data-mastery-current="enhance"]').innerText(),'201');
   assert.equal(await card.locator('[data-mastery-value="target"]').innerText(),'+50%');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   const masteryScreenshot=`mastery-${language}-${width}.png`;await page.screenshot({path:path.join(output,masteryScreenshot),fullPage:true});

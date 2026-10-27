@@ -25,7 +25,7 @@ pnpm install --frozen-lockfile
 node scripts/extract.mjs
 ```
 
-当前完整公开资源位于 `vendor/game-original.js`，来源、摘要、语义导出及声明摘要记录于 `vendor/manifest.json`；当前生成模块完整来自已核验的 1.0.1199，无混合版本或局部替换；`vendor/game-combat-1187.js` 和 `reports/combat-update-mapping-2026-10-13.mjs` 局部映射仅保留为此前战斗阶段的证据，不再被当前提取器使用。`vendor/game-combat-update.js` 保留为历史局部更新的原始证据。禁止手工修改生成文件 `src/upstream.js`；更新原始资源须遵循 [上游更新流程](technical.md#64-上游更新流程)，完成映射审阅、重新提取及回归验证。
+当前完整公开资源位于 `vendor/game-original.js`，来源、摘要、语义导出及声明摘要记录于 `vendor/manifest.json`；当前生成模块完整来自已核验的 1.0.1203，无混合版本或局部替换；`vendor/game-combat-1187.js` 和 `reports/combat-update-mapping-2026-10-13.mjs` 局部映射仅保留为此前战斗阶段的证据，不再被当前提取器使用。`vendor/game-combat-update.js` 保留为历史局部更新的原始证据。禁止手工修改生成文件 `src/upstream.js`；更新原始资源须遵循 [上游更新流程](technical.md#64-上游更新流程)，完成映射审阅、重新提取及回归验证。
 
 本机服务有意不开放 `docs/`、`reports/` 与 `AGENTS.md`；文档通过仓库或本地编辑器阅读。README 与 DESIGN 仍可直接访问，但其拆分文档链接不属于网页预览服务范围。无需为文档整理扩大服务器访问范围。
 
@@ -73,11 +73,11 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 ## 上游版本适配专项
 
-`node --test tests/upstream-1199.test.mjs tests/upstream-1196.test.mjs tests/upstream-1194.test.mjs tests/enhancement.test.mjs tests/mastery.test.mjs` 验证书台恢复、1198 缺字段配置迁移、统一碎片／经验及保留 30 秒尝试，以及烟花有效品质／定价／收藏排除、升级收藏、预测初始化以及强化目标 +20、既有 +100 编码／导入保留、精通 +50% 封顶及锻造录 +15 计点边界／15,662 总上限。
+`node --test tests/upstream-1203.test.mjs tests/upstream-1199.test.mjs tests/upstream-1196.test.mjs tests/upstream-1194.test.mjs tests/enhancement.test.mjs tests/mastery.test.mjs` 验证书台恢复、1198 缺字段配置迁移、统一碎片／经验、2.4 秒尝试与宠物机会恢复、深渊之眼商人特殊售价及等级缓存边界，以及烟花有效品质／定价／收藏排除、升级收藏、预测初始化以及强化目标 +20、既有 +100 编码／导入保留、精通 +50% 封顶及锻造录 +15 计点边界／15,662 总上限。
 
 `node --test tests/upstream-1190.test.mjs` 覆盖迁移战斗区域、自动及两个指定仓库、巨像六件五品质材料、保存兼容与任务自动领奖隔离。独立离线对照使用 `scripts/native-questless.mjs` 按日边界分段保持空任务，以数学日／周编号独立于应用适配函数核验。
 
-`node tests/upstream-browser.mjs --out .test-artifacts/upstream-1199/browser` 检查双语桌面／390px 战斗完成、来源版本、巨像材料／经验与库存计划刷新保存，书台恢复／保存与缺字段迁移、强化成功率、新旧目标与高强化存档、精通加成封顶、烟花有效品质／火药定价／计划保存，以及合成消息下的直接捕获（不提供 Worker／Blob API）；需要本机监听和 Chrome。指定 `--url https://dvi-lab.pages.dev --out <证据目录>` 时检查该实际目标四组页面，不把本地角色捕获专项当作生产测试。截图和机器结果落盘，仍需人工审阅。
+`node tests/upstream-browser.mjs --out .test-artifacts/upstream-1203/browser` 检查双语桌面／390px 战斗完成、来源版本、巨像材料／经验与库存计划刷新保存，书台恢复／保存与缺字段迁移、强化成功率、新旧目标与高强化存档、精通加成封顶、烟花有效品质／火药定价／计划保存，以及合成消息下的直接捕获（不提供 Worker／Blob API）；需要本机监听和 Chrome。指定 `--url https://dvi-lab.pages.dev --out <证据目录>` 时检查该实际目标四组页面，不把本地角色捕获专项当作生产测试。截图和机器结果落盘，仍需人工审阅。
 
 ## 采集与制造表格专项
 
