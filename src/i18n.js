@@ -2,6 +2,7 @@ import {game} from './model.js';
 // Missing upstream terms only: game translations always take precedence.
 export const fallbackTranslations={
 "Upgrades":"升级",
+"Pure coal":"纯净煤矿",
 "Pickaxe":"镐","Fishing rod":"鱼竿","Axe":"斧",
 "Pan":"平底锅","Hammer":"锤","Knife":"刀","Mortar":"研钵","Needle":"针"};
 export const dictionary={...fallbackTranslations,...game.uiTranslations,...game.worldTranslations,...game.translations,...game.homeTranslations};

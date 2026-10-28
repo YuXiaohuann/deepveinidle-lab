@@ -79,7 +79,7 @@ test('discard preserves the pre-full segment and retained values at the nearest 
 });
 
 test('gathering scope, normalization, tools and independent skill settings',()=>{
- assert.deepEqual(gatheringSkills.map(s=>gatheringJobs.filter(j=>j.skill===s).length),[8,8,6,8]);
+ assert.deepEqual(gatheringSkills.map(s=>gatheringJobs.filter(j=>j.skill===s).length),[9,8,6,8]);
  const d=gatheringDefaults();assert.equal(d.simulationHours,24);assert.equal('siteSelection' in d,false);
  const s=normalizeGathering({...d,skill:'fishing',jobSelection:1,siteSelection:1,gear:{rod:{id:89,tier:4,plus:10}},levels:{mining:85,fishing:40},perks:{quick:100}});
  assert.equal(s.jobSelection,'all');assert.equal('siteSelection' in s,false);assert.equal(s.levels.mining,85);assert.equal(s.levels.fishing,40);assert.equal(s.perks.quick,10);

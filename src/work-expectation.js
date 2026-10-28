@@ -16,7 +16,8 @@ export function beforeWork(player,job,tick){
  return {burn:game.burnChance(job,player),pack:job.bonus?player.pack.map(i=>({...i})):null};
 }
 
-export function workQualities(player,context,job,tick){
+export function workQualities(player,context,job,tick,{bonus=false}={}){
+ if(job.plain&&!bonus)return [1];
  const equipped=player.equipment[toolSlots[job.skill]];
  const luck=(equipped==null?0:game.toolLuck(equipped))+game.equipmentLuck(player.equipment);
  const multiplier=(1+luck)*game.combine(game.windowModifiers(context.windows,tick).rarityMult,game.brewRarityMultiplier(player),game.hotRarityMultiplier(tick,job.skill,context.hypothetical),game.houseRarityMultiplier(player),game.masteryMultiplier(player.masteries,'rare'));
@@ -42,7 +43,7 @@ export function expectedWorkRewards(items,player,context,job,tick,before,produce
   if(remaining)throw Error('missingWorkMaterials');
  }
  if(produced.itemId!==game.coinItemId)game.addPack(atBonus,produced.itemId,produced.qty??1);
- const qualities=game.itemSupportsRarity(job.bonus.itemId)?workQualities(player,context,job,tick):[1];
+ const qualities=game.itemSupportsRarity(job.bonus.itemId)?workQualities(player,context,job,tick,{bonus:true}):[1];
  qualities.forEach((p,tier)=>{
   const quality=game.bonusMinimumUncommon(job.bonus.itemId)?Math.max(1,tier):tier;
   const id=game.itemSupportsRarity(job.bonus.itemId)?game.withRarity(job.bonus.itemId,quality):job.bonus.itemId;
