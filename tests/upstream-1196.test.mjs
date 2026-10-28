@@ -10,7 +10,7 @@ import {createScenario} from '../src/simulation.js';
 
 const fireworks=craftingJobs.filter(j=>Number(j.id)>=420&&Number(j.id)<=424);
 test('1196 effective item and recipe catalogues remain available',()=>{
- assert.equal(game.items.length,1327);assert.equal(game.recipes.length,226);
+ assert.equal(game.items.length,1327);assert.equal(game.recipes.length,227);
  assert.equal(game.item(397).name,'Moon box');assert.equal(game.vendorPrice(397),10);assert.equal(game.marketFamily(397),'valuables');
  assert.equal(craftingJobs.filter(j=>!j.upgrade).length,177);assert.equal(game.upgradeRecipes.length,17);
 });
