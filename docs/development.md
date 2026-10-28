@@ -8,7 +8,7 @@
 node scripts/serve.mjs
 ```
 
-打开 [本机页面](http://127.0.0.1:4173)。服务仅监听本机，可通过 `PORT` 环境变量修改端口；支持 `/combat`、`/gather`、`/craft`、`/enhance`、`/mastery`、`/forecast`、`/formulas`、隐藏收藏页 `/collection` 和调试页 `/debug`。调试页仅提供角色配置 JSON 导出、战斗／强化配置文件导入；完整角色快照捕获、导入、导出与模拟已在当前版本移除。
+打开 [本机页面](http://127.0.0.1:4173)。服务仅监听本机，可通过 `PORT` 环境变量修改端口；支持 `/combat`、`/gather`、`/craft`、`/enhance`、`/mastery`、`/forecast`、`/formulas` 和调试页 `/debug`。调试页仅提供角色配置 JSON 导出、战斗／强化配置文件导入；完整角色快照捕获、导入、导出与模拟已在当前版本移除。
 
 运行测试（功能修改默认仅选相关测试，完整测试用于发布前验证）：
 
@@ -16,7 +16,7 @@ node scripts/serve.mjs
 node --test tests/*.test.mjs
 ```
 
-物品价格协议与命令测试为 `tests/price-protocol.test.mjs`、`tests/price-service.test.mjs`，官方接口解析见 `tests/market-import.test.mjs`。运行 `node tests/price-refactor-browser.mjs` 验证六项数据、全市场挂单总量、收藏四选项及默认全局价、强化方案覆盖与清空，以及价格消费者页面导航；输出位于 `.test-artifacts/price-refactor/protocol/`。沿用市场价格、收藏及收藏计划浏览器专项，需要本机端口和 Chrome 进程权限，不能替代完整发布验收。协议见[物品价格模块](modules/item-prices.md)。
+物品价格协议与命令测试为 `tests/price-protocol.test.mjs`、`tests/price-service.test.mjs`，官方接口解析见 `tests/market-import.test.mjs`。运行 `node tests/price-refactor-browser.mjs` 验证六项数据、全市场挂单总量、强化方案覆盖与清空，以及价格消费者页面导航；输出位于 `.test-artifacts/price-refactor/protocol/`。沿用市场价格浏览器专项，需要本机端口和 Chrome 进程权限，不能替代完整发布验收。协议见[物品价格模块](modules/item-prices.md)。
 
 重新提取原始计算代码时，安装开发依赖后执行：
 
@@ -73,7 +73,7 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 ## 上游版本适配专项
 
-`node --test tests/upstream-1204.test.mjs tests/upstream-1203.test.mjs tests/upstream-1199.test.mjs tests/upstream-1196.test.mjs tests/upstream-1194.test.mjs tests/enhancement.test.mjs tests/mastery.test.mjs` 验证纯净煤矿任务／固定普通主产物／额外奖励品质与收藏可达性、书台恢复、1198 缺字段配置迁移、统一碎片／经验、2.4 秒尝试与宠物机会恢复、深渊之眼商人特殊售价及等级缓存边界，以及烟花有效品质／定价／收藏排除、升级收藏、预测初始化以及强化目标 +20、既有 +100 编码／导入保留、精通 +50% 封顶及锻造录 +15 计点边界／15,662 总上限。
+`node --test tests/upstream-1204.test.mjs tests/upstream-1203.test.mjs tests/upstream-1199.test.mjs tests/upstream-1196.test.mjs tests/upstream-1194.test.mjs tests/enhancement.test.mjs tests/mastery.test.mjs` 验证纯净煤矿任务／固定普通主产物／额外奖励品质、书台恢复、1198 缺字段配置迁移、统一碎片／经验、2.4 秒尝试与宠物机会恢复、深渊之眼商人特殊售价及等级缓存边界，以及烟花有效品质／定价／收藏排除、升级收藏、预测初始化以及强化目标 +20、既有 +100 编码／导入保留、精通 +50% 封顶及锻造录 +15 计点边界／15,662 总上限。
 
 `node --test tests/upstream-1190.test.mjs` 覆盖迁移战斗区域、自动及两个指定仓库、巨像六件五品质材料、保存兼容与任务自动领奖隔离。独立离线对照使用 `scripts/native-questless.mjs` 按日边界分段保持空任务，以数学日／周编号独立于应用适配函数核验。
 
@@ -87,14 +87,8 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 `node --test tests/crafting-orders.test.mjs tests/crafting.test.mjs tests/crafting-display.test.mjs` 验证订单数量、批量操作、三项加工费、材料合并和独立模拟。`node tests/crafting-orders-browser.mjs [输出目录] [目标网址]` 使用本机服务和独立 Chrome，覆盖独立订单管理面板、无订单自动建单、默认勾选及空单状态保存、多配方订单、自动加入、隐藏项批量修改、整单选择、复制／删除、真实 Worker 按订单计费、库存一次抵扣、存档恢复与坏存档保护，以及双语桌面／390px。提供目标网址时不启动本机服务，直接验证该站点。默认输出 `.test-artifacts/crafting-orders/orders/`，截图须审阅；不连接游戏账号，不替代发布验收。制造表格及配置导入专项已使用新版订单存档，历史 `dvi-crafting-v1` 不作为新版输入。
 
-制造库存专项：`node --test tests/character-inventory.test.mjs tests/crafting-orders.test.mjs tests/collection.test.mjs tests/collection-plan.test.mjs tests/character-import.test.mjs`；`node tests/crafting-inventory-browser.mjs [输出目录]` 验证进入／聚焦自动读取、只读仓库与背包合计、未知库存、失败／倒退保留、切页迟到隔离、角色导入原子更新、缓存及双语桌面／390px。默认输出 `.test-artifacts/crafting-inventory/`，使用受控角色桥接与真实制造 Worker，不连接游戏账号。
-
-## 收藏页专项
-
-`node --test tests/collection.test.mjs tests/i18n.test.mjs` 验证收藏目标、价格、奖励、原始事件和名称翻译。`node tests/collection-browser.mjs --out .test-artifacts/collection/local` 运行本机专项，`--url https://dvi-lab.pages.dev --out <目录>` 验证指定线上目标；结果包含目标 URL、按类型独立筛选／保存与错误恢复、分页及批量加入、仅材料采购展开区、受控桥接／报价、双语桌面与320／390／740px筛选截图。需要本机监听及Chrome；实际账号与成交不在验证范围，页面设计和边界见[收藏页面](pages/collection.md)。
-
-执行计划与自动导入专项：`node --test tests/collection-plan.test.mjs tests/collection-plan-transfer.test.mjs`；`node tests/collection-plan-browser.mjs --out .test-artifacts/collection/plan-auto-local` 检查最高目标去重、材料归并、保存／导入保留、仓库与背包合计、计划 JSON／压缩剪贴板往返、每次焦点触发和无定时轮询、并发与过期响应，以及自动移除、材料备齐高亮、排序与双语桌面／320／390／768px布局。支持 `--url <目标地址>`；自动导入使用受控桥接及浏览器时钟，不连接真实账号。本地待发布规则应使用本机目标核验，不以生产旧版本结果替代。
+制造库存专项：`node --test tests/character-inventory.test.mjs tests/crafting-orders.test.mjs tests/character-import.test.mjs`；`node tests/crafting-inventory-browser.mjs [输出目录]` 验证进入／聚焦自动读取、只读仓库与背包合计、未知库存、失败／倒退保留、切页迟到隔离、角色导入原子更新、缓存及双语桌面／390px。默认输出 `.test-artifacts/crafting-inventory/`，使用受控角色桥接与真实制造 Worker，不连接游戏账号。
 
 ## 共用角色自动更新专项
 
-`node --test tests/character-auto-import.test.mjs tests/character-inventory.test.mjs tests/character-import.test.mjs tests/collection.test.mjs tests/collection-plan.test.mjs tests/crafting-orders.test.mjs tests/crafting-display.test.mjs` 验证配置／库存独立导入、偏好迁移与坏存档保护、生命周期和并发；`node tests/character-auto-import-browser.mjs [输出目录]` 使用独立 Chrome 和本机服务验证六页配置开关、两页库存开关、每页保存、焦点合并、重绘稳定、配置／库存隔离及双语桌面／390px。默认输出 `.test-artifacts/character-auto-import/browser/`，角色与市场均用受控响应，不连接游戏账号；配合制造库存专项和收藏计划专项回归，不替代发布验收。
+`node --test tests/character-auto-import.test.mjs tests/character-inventory.test.mjs tests/character-import.test.mjs tests/crafting-orders.test.mjs tests/crafting-display.test.mjs` 验证配置／库存独立导入、偏好与坏存档保护、生命周期和并发；`node tests/character-auto-import-browser.mjs [输出目录]` 使用独立 Chrome 和本机服务验证五页配置开关、制造库存开关、每页保存、焦点合并、重绘稳定、配置／库存隔离及双语桌面／390px。默认输出 `.test-artifacts/character-auto-import/browser/`，角色与市场均用受控响应，不连接游戏账号；配合制造库存专项回归，不替代发布验收。

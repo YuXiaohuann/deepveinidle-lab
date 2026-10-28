@@ -4,7 +4,6 @@ import * as game from '../src/upstream.js';
 import {defaults,normalize,masteryValue} from '../src/model.js';
 import {importCharacter} from '../src/character-import.js';
 import {craftingJobs} from '../src/crafting-model.js';
-import {collectionRoutes} from '../src/collection-model.js';
 import {enhancementDefaults,validateEnhancement,calculateEnhancement,decodeEnhancementItem,importEnhancement} from '../src/enhancement.js';
 import {masteryDefaults,importMastery} from '../src/mastery.js';
 
@@ -53,6 +52,6 @@ test('1194 forge points stop at +15, retain higher bits and reach 15,662 at full
 test('1194 candidates use effective upstream lists and exclude unreleased food and recipes',()=>{
  for(let id=69;id<=85;id++)assert.ok(!craftingJobs.some(j=>j.id===id));
  for(const id of [45,53,54,55,71,77,78]){
-  assert.ok(!game.items.some(i=>i.id===id));assert.deepEqual(collectionRoutes(id),[]);
+  assert.ok(!game.items.some(i=>i.id===id));
  }
 });

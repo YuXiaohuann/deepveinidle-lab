@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import {spawn} from 'node:child_process';
 import assert from 'node:assert/strict';
 
-export const pages=['combat','gather','craft','enhance','mastery','forecast','formulas','debug','collection'];
+export const pages=['combat','gather','craft','enhance','mastery','forecast','formulas','debug'];
 export const routes=['/',...pages.flatMap(p=>['/'+p,'/'+p+'/'])];
 export const sha256=data=>crypto.createHash('sha256').update(data).digest('hex');
 export async function json(file,value){await fs.writeFile(file,JSON.stringify(value,null,2)+'\n');}

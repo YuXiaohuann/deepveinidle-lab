@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
 import {craftingDefaults,craftingJobs,craftingTiers,craftingMaterials,normalizeCrafting,craftingPlayer} from '../src/crafting-model.js';
 import {simulateCrafting} from '../src/crafting-simulation.js';
-import {collectionIds,collectionRoutes,importCollection,collectionDefaults} from '../src/collection-model.js';
 import {validItemId,itemFamily,priceDefaults,setItemPrice,valuationPrice} from '../src/item-prices.js';
 import {translatedName} from '../src/i18n.js';
 import {createScenario} from '../src/simulation.js';
@@ -47,15 +46,12 @@ test('1196 rockets support pricing and translations; powder has no invented mark
  prices=setItemPrice(prices,700,50);assert.equal(valuationPrice(700,prices.prices).price,50);
  assert.equal(translatedName('Fireworks','zh'),'烟花');
 });
-test('1196 fireworks stay out of collection candidates and points, including imported counts',()=>{
+test('1196 fireworks stay out of native collection catalogue and points',()=>{
  for(const id of [701,702,703,704,705]){
-  assert.equal(game.collectionExcluded(id),true);assert.deepEqual(collectionRoutes(id),[]);
-  for(let tier=0;tier<5;tier++)assert.equal(collectionIds.includes(game.withRarity(id,tier)),false);
+  assert.equal(game.collectionExcluded(id),true);
+  assert.equal(game.collectionItems.has(id),false);
  }
  assert.equal(game.masteryEarnedPoints({collections:{701:10000000},forgeLog:{}}),0);
- const {player}=craftingPlayer(craftingDefaults());Object.assign(player,{collections:{701:999,64:10},bank:{700:4,701:8},pack:[]});
- const state=importCollection(collectionDefaults(),{version:2,capturedAt:Date.now(),player,worldBuffsVersion:1,worldTick:player.lastTick,worldBuffs:[]});
- assert.equal(state.counts[701],undefined);assert.equal(state.counts[64],10);assert.equal(state.bank[700],4);assert.equal(state.bank[701],8);
 });
 test('1196 upgraded endgame equipment counts at its rarity without enhancement encoding',()=>{
  const job=game.upgradeRecipes.find(j=>j.to.includes(629));assert.ok(job);

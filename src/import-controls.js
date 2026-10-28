@@ -40,7 +40,7 @@ export function importStatusText(language,status,busy=false){
  return label+new Date(status.capturedAt).toLocaleString(zh?'zh-CN':'en');
 }
 
-const panelPages={'character-import-settings':'combat','gather-import-settings':'gather','craft-import-settings':'craft','enhance-import-settings':'enhance','mastery-import-settings':'mastery','collection-import-panel':'collection'};
+const panelPages={'character-import-settings':'combat','gather-import-settings':'gather','craft-import-settings':'craft','enhance-import-settings':'enhance','mastery-import-settings':'mastery'};
 const updaters=new Map(),drafts=new Set();let activeImportPage=null;
 function settingsText(language,error){return error?(language==='zh'?(error==='load'?'自动更新设置无法读取，已停止自动更新。':'自动更新设置保存失败。'):(error==='load'?'Auto-update settings could not be read; automatic updates are disabled.':'Auto-update settings could not be saved.')):'';}
 export function registerCharacterUpdates(page,adapter){
@@ -59,7 +59,7 @@ export function setCharacterImportPage(page){
 }
 function characterUpdateOptions(page,language){
  const updater=updaters.get(page);if(!updater)return '';
- const flags=updater.options,kinds=['config',...(['collection','craft'].includes(page)?['inventory']:[])];
+ const flags=updater.options,kinds=['config',...(page==='craft'?['inventory']:[])];
  const options=kinds.map(kind=>`<label class="check"><input type="checkbox" data-character-update="${kind}" data-character-page="${page}" ${flags[kind]?'checked':''}><span>${language==='zh'?(kind==='config'?'自动更新角色配置':'自动更新角色库存'):(kind==='config'?'Automatically update character configuration':'Automatically update character inventory')}</span></label>`).join('');
  return `<div class="character-update-options">${options}</div><p class="micro import-status" data-character-settings-status="${page}" data-language="${language}" role="status">${settingsText(language,updater.settingsError)}</p>`;
 }
@@ -81,5 +81,5 @@ globalThis.addEventListener?.('focus',()=>updaters.get(activeImportPage)?.trigge
 
 document.addEventListener('click',event=>{
  const id=event.target.closest?.('button')?.id??'';
- if(belongsToImportPage(event)&&/reset|zero-ranks|revert|collection-manual/.test(id)){drafts.delete(activeImportPage);updaters.get(activeImportPage)?.invalidate();}
+ if(belongsToImportPage(event)&&/reset|zero-ranks|revert/.test(id)){drafts.delete(activeImportPage);updaters.get(activeImportPage)?.invalidate();}
 });

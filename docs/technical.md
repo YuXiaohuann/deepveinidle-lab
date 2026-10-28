@@ -2,9 +2,9 @@
 
 ### 6.1 角色导入组件与 userscript 协议
 
-战斗、采集、制造、强化、精通与收藏复用 characterImportPanel：统一 details/summary、import-body、安装链接、按钮与状态节点，参数控制节点标识、按钮及说明；状态为空隐藏，长文本换行。导入区域使用相同高亮容器、金色标题、边框、背景与展开间距，折叠遵循 [语言、布局与持久化](shared.md#22-语言布局与持久化)。
+战斗、采集、制造、强化、精通复用 characterImportPanel：统一 details/summary、import-body、安装链接、按钮与状态节点，参数控制节点标识、按钮及说明；状态为空隐藏，长文本换行。导入区域使用相同高亮容器、金色标题、边框、背景与展开间距，折叠遵循 [语言、布局与持久化](shared.md#22-语言布局与持久化)。
 
-角色自动更新统一使用 `src/character-auto-import.js` 管理每页两个独立选项、进入／焦点调度、忙碌合并与响应代际；`src/import-controls.js` 负责共用开关、页面激活、输入保护及只读桥接。各页面只提供配置／库存应用适配器，手动导入也复用同一调度；库存解析仍独立于调度，由 `src/character-inventory.js` 供收藏与制造复用。具体规则见[共用角色自动更新](shared.md#导入游戏角色与自动更新)。
+角色自动更新统一使用 `src/character-auto-import.js` 管理每页两个独立选项、进入／焦点调度、忙碌合并与响应代际；`src/import-controls.js` 负责共用开关、页面激活、输入保护及只读桥接。各页面只提供配置／库存应用适配器，手动导入也复用同一调度；库存解析仍独立于调度，由 `src/character-inventory.js` 供制造使用。具体规则见[共用角色自动更新](shared.md#导入游戏角色与自动更新)。
 
 连接检测共用单次 probe 请求，各页分别保留状态，统一由 importStatusText 生成连接成功、读取中、捕获时间及缺失/旧版本/读取失败等双语提示。较晚 probe 不覆盖读取中或已有结果；读取期间禁用对应按钮，失败保留原配置。战斗额外保留字段警告。
 
@@ -25,12 +25,12 @@
 
 页面统一使用 `src/price-service.js` 的公开读写协议，纯数据快照由 `src/price-protocol.js` 定义；协议、六项数据及页面选价见[物品价格模块](modules/item-prices.md)。内部存储与行情解析不作为页面访问协议。
 
-实验室 `src/market-import.js` 直接 GET 官方公开 API，将完整物品 ID、最低卖价、最高买价和生成时间适配为现有行情模型；不发送凭据，不使用代理或 userscript 桥接。`src/item-price-store.js`统一执行行情验证与防倒退，收藏角色导入仅更新官方报价缓存，价格面板及打开或聚焦网站时按 5 分钟间隔判断的后台自动导入按最新锁定状态应用有效价格；各入口共享并发网络请求，自动导入由 `src/price-auto-import.js` 展示完成通知，启用选项、时间戳去重与存档保护由价格存储模块负责；双语市场错误文案由市场适配模块共用。接口校验、缓存兼容、分类导入和失败规则见 [全局物品价格](shared.md#24-全局物品价格)。2.7.0 删除 `marketBook`／`marketBooks`／`marketDepth` 专用解析、`dvi-market-request/response` 桥接、`dvi-market-quotes-v1` GM 存储读写及市场提示。旧角色脚本的角色桥接仍兼容，但移除游戏侧市场捕获须更新脚本并刷新游戏。
+实验室 `src/market-import.js` 直接 GET 官方公开 API，将完整物品 ID、最低卖价、最高买价和生成时间适配为现有行情模型；不发送凭据，不使用代理或 userscript 桥接。`src/item-price-store.js`统一执行行情验证与防倒退，价格面板及打开或聚焦网站时按 5 分钟间隔判断的后台自动导入按最新锁定状态应用有效价格；各入口共享并发网络请求，自动导入由 `src/price-auto-import.js` 展示完成通知，启用选项、时间戳去重与存档保护由价格存储模块负责；双语市场错误文案由市场适配模块共用。接口校验、缓存兼容、分类导入和失败规则见 [全局物品价格](shared.md#24-全局物品价格)。2.7.0 删除 `marketBook`／`marketBooks`／`marketDepth` 专用解析、`dvi-market-request/response` 桥接、`dvi-market-quotes-v1` GM 存储读写及市场提示。旧角色脚本的角色桥接仍兼容，但移除游戏侧市场捕获须更新脚本并刷新游戏。
 
 #### 角色捕获与保存
 
 - 在 userscript 内直接解析同源 `/ws` 的字符串消息、裁剪必要字段并维护本连接的角色、公会及世界窗口状态；不使用捕获 Worker、Blob URL、消息 ACK、积压队列或启动超时，不额外下载代码、不发送游戏指令。非法 JSON 和无关消息忽略；角色结构不兼容时停止捕获并明确提示刷新。
-- 角色保留所有导入消费者所需字段，包括强化的 bank/pack/overflow、收藏计划库存的 bank/pack 和精通的 collections/forgeLog；世界窗口保留 rarityMult，快照保留 `worldBuffsVersion: 1` 完整捕获能力标记。同帧最多更新一次角色状态。战斗与采集按捕获时点汇总全部有效窗口的经验与稀有度，全程用于模拟，共用世界窗口校验和汇总；旧快照缺能力标记时清零两项并明确提示更新脚本及重新捕获。制造共用完整世界窗口校验与经验汇总，不导入无效的世界稀有度；旧捕获经验清零并明确提示。角色桥接 2.4、数据协议 2 与存储键保持兼容。
+- 角色保留所有导入消费者所需字段，包括强化的 bank/pack/overflow、精通的 collections/forgeLog；世界窗口保留 rarityMult，快照保留 `worldBuffsVersion: 1` 完整捕获能力标记。同帧最多更新一次角色状态。战斗与采集按捕获时点汇总全部有效窗口的经验与稀有度，全程用于模拟，共用世界窗口校验和汇总；旧快照缺能力标记时清零两项并明确提示更新脚本及重新捕获。制造共用完整世界窗口校验与经验汇总，不导入无效的世界稀有度；旧捕获经验清零并明确提示。角色桥接 2.4、数据协议 2 与存储键保持兼容。
 - 仅维护一份待保存的最新快照，空闲后合并 100ms 再保存；持续更新不延长已安排的等待。最多一个 GM 写入进行中，慢存储期间替换待保存快照，不排队保存中间状态。新连接清空捕获状态及待保存快照，等待已开始的旧写入完成后再保存新连接数据，旧写入结果不改变新连接提示；当前连接保存失败停止捕获并显示错误。
 - 成功提示仅在每连接首次保存成功后显示 5 秒；隐藏时停止全 DOM 观察。页面退出清理计时器与观察器并停止捕获，不保证关闭前最后一次异步保存完成。
 - 验收覆盖全部导入字段、同帧聚合、市场消息不触发保存／提示和市场桥接缺失、持续更新及慢存储合并、跨连接隔离、解析／保存失败与退出清理，以及不提供 Worker 时仍正常捕获。浏览器专项使用合成消息和模拟 GM 存储；实际脚本管理器安装、真实游戏及长时性能需单独验证，不由专项测试推断。
@@ -59,7 +59,7 @@
 | `src/gathering-model.js`、`src/gathering-simulation.js`、`src/gathering-worker.js`、`src/gathering-controls.js` | 独立采集配置与导入、原始工作逐刻适配、最近点选择、异步进度及页面交互 |
 | `src/crafting-model.js`、`src/crafting-orders.js`、`src/crafting-simulation.js`、`src/crafting-worker.js`、`src/crafting-controls.js` | 制造角色与多配方订单、独立加工费、执行计划与材料预算、原始限次模拟及页面交互 |
 | `src/work-expectation.js` | 采集／制造共用机会期望、品质、烧焦及奖励容量门槛；支持直接写入目标期望账本，使用最小背包状态调用原始容量校验，不改原始过程 |
-| `src/character-inventory.js` | 收藏与制造共用仓库／背包校验、重复堆叠合并与完整物品 ID 库存快照；制造另校验捕获时间 |
+| `src/character-inventory.js` | 制造使用的共用仓库／背包校验、重复堆叠合并与完整物品 ID 库存快照；制造另校验捕获时间 |
 | `src/world-buffs.js` | 战斗、采集与制造共用世界增益窗口校验、捕获时汇总与旧捕获提示 |
 | `src/work-import.js` | 采集与制造共用角色导入校验及字段映射 |
 | `tests/crafting.test.mjs` | 有效配方／品质原始离线对照、烧焦／升级／限次、材料预算、窗口速率与导入回归 |
@@ -77,11 +77,6 @@
 | `src/character-import.js`、`src/import-controls.js`、`src/character-auto-import.js` | 全部支持字段校验与转换、共用角色导入面板、独立配置／库存选项、手动／自动读取调度、页面／输入保护及跨页面请求 |
 | `tests/character-import.test.mjs`、`tests/character-auto-import.test.mjs`、`tests/character-inventory.test.mjs`、`tests/character-auto-import-browser.mjs` | 字段映射、角色脚本桥接、共用配置／库存自动更新、独立库存解析、页面生命周期与输入保护回归 |
 | `src/debug-controls.js`、`tests/debug-controls.test.mjs` | 隐藏调试页、角色配置 JSON 文件下载与战斗／强化两个共用导入入口、文件往返及失败状态验证 |
-| `src/collection-model.js`、`src/collection-controls.js` | 隐藏收藏页、独立最小进度与角色导入、原始里程碑／奖励、动作期望与全局／API／商人材料采购估值、类型独立筛选保存及材料明细 |
-| `tests/helpers/collection-simulation.mjs` | 收藏离线目标事件回归；实际产出与药剂数量只用于独立事件验证，不随应用发布 |
-| `src/collection-plan.js`、`src/collection-plan-controls.js`、`src/collection-plan-transfer.js` | 独立计划存储、最高目标去重、材料归并、导入仓库与背包抵扣、采购成本展示、计划 JSON／gzip+Base64 剪贴板交换，以及计划数据维护 |
-| `tests/collection.test.mjs`、`tests/collection-browser.mjs` | 收藏边界、品质／烧焦／被捕、价格缺失与零价、独立目标事件对照、DOM 桥接、类型独立筛选与存储异常恢复、材料采购展开区与窄屏专项 |
-| `tests/collection-plan.test.mjs`、`tests/collection-plan-transfer.test.mjs`、`tests/collection-plan-browser.mjs` | 计划去重、数量和金额边界、焦点调度、压缩往返、导入并发与存档保留、双语窄屏交互 |
 | `src/mastery.js`、`src/mastery-controls.js` | 独立精通预算、升级成本、配置校验与双语交互 |
 | `src/mastery-optimizer.js`、`src/mastery-optimizer-worker.js`、`src/mastery-optimizer-controls.js` | 重置／保留当前加点两种预算与等级下限、按目标选择候选策略、战斗五维／采集四维有界搜索与四档搜索宽度、收入／品质加权精通点数计分、独立种子复核、专用 Worker 与取消、战斗／采集配装及价格快照、固定 24 小时、配置失效与价格变化提示、收入或精通产出评分／投入／差异精简清单、自动／手动应用到本页目标及保存；两模式应用均保留当前等级，只写目标，只读战斗及采集配置，不写回其他页面 |
 | `tests/mastery-optimizer.test.mjs`、`tests/mastery-optimizer-browser.mjs` | 独立穷举算例、真实模拟对照、预算／缺价／异常与种子隔离，以及真实 Worker、取消、失效和双语窄屏验证 |
@@ -97,7 +92,7 @@
 
 ### 预测与手动角色适配
 
-使用原始有效物品／配方导出 `items`／`recipes`（当前快照 `ps`／`Fo`），不导出未开放烹饪总表；烟花品质与产物分别复用 `recipeRarity`／`recipeOutput`，收藏排除复用 `collectionExcluded`。具体行为与验收分别见[制造](pages/crafting.md)和[收藏](pages/collection.md)。
+使用原始有效物品／配方导出 `items`／`recipes`（当前快照 `ps`／`Fo`），不导出未开放烹饪总表；烟花品质与产物分别复用 `recipeRarity`／`recipeOutput`；精通收藏计点继续复用原始收藏目录及排除规则。收藏页移除后，不再公开仅该页使用的 `collectionThresholds` 和 `potionDurationTicks` 语义导出；原始计算闭包需要的内部声明继续由提取器保留。具体行为与验收见[制造](pages/crafting.md)和[精通](pages/mastery.md)。
 
 新版预测负责清背包、平移药剂剩余时间并初始化空日／周任务。合成角色每刻同步日／周编号并保持空任务；订单、农场为空。hypothetical 上下文禁用内置热门，实验室用正向窗口表达[三个热门模式](pages/combat.md#336-模拟配置)，工作品质期望传递相同标志，防止重复计入。
 

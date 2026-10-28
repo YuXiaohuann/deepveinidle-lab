@@ -8,12 +8,11 @@ function setup(extra={}){
  const updater=createCharacterUpdater({storage:memory(),page:'craft',inventory:true,read:()=>{reads.push(1);return new Promise(resolve=>finish=resolve);},apply:(snapshot,flags)=>applied.push({snapshot,flags}),onError:e=>errors.push(e.message),revision:()=>revision,hasDraft:()=>draft,...extra});
  return {updater,applied,errors,reads,reply:snapshot=>finish({snapshot}),edit:()=>revision++,draft:value=>draft=value};
 }
-test('defaults, strict validation, old collection choices, per-page isolation and corrupt storage protection',()=>{
+test('defaults, strict validation, per-page isolation and corrupt storage protection',()=>{
  for(const raw of [null,{version:2,config:false,inventory:false},{version:1,config:1,inventory:false},{version:1,config:false,inventory:true}])assert.throws(()=>validateCharacterUpdates(raw),/invalidAutoImport/);
  const storage=memory();assert.deepEqual(loadCharacterUpdates(storage,'combat'),{version:1,config:false,inventory:false});assert.deepEqual(loadCharacterUpdates(storage,'craft',true),{version:1,config:false,inventory:true});
- for(const enabled of [false,true]){storage.setItem('dvi-collection-auto-import-v1',JSON.stringify({version:1,enabled}));assert.deepEqual(loadCharacterUpdates(storage,'collection',true),{version:1,config:enabled,inventory:enabled});}
- storage.setItem(characterUpdateStorageKey('collection'),'broken');assert.throws(()=>loadCharacterUpdates(storage,'collection',true));assert.equal(loadCharacterUpdates(storage,'craft',true).config,false);
- const t=setup({storage,page:'collection'});assert.equal(t.updater.settingsError,'load');t.updater.setActive(true);assert.equal(t.reads.length,0);assert.equal(storage.getItem(characterUpdateStorageKey('collection')),'broken');t.updater.setActive(false);t.updater.configure({config:true});assert.equal(t.updater.settingsError,null);assert.equal(JSON.parse(storage.getItem(characterUpdateStorageKey('collection'))).config,true);
+ storage.setItem(characterUpdateStorageKey('combat'),'broken');assert.throws(()=>loadCharacterUpdates(storage,'combat',true));assert.equal(loadCharacterUpdates(storage,'craft',true).config,false);
+ const t=setup({storage,page:'combat'});assert.equal(t.updater.settingsError,'load');t.updater.setActive(true);assert.equal(t.reads.length,0);assert.equal(storage.getItem(characterUpdateStorageKey('combat')),'broken');t.updater.setActive(false);t.updater.configure({config:true});assert.equal(t.updater.settingsError,null);assert.equal(JSON.parse(storage.getItem(characterUpdateStorageKey('combat'))).config,true);
 });
 test('entry, completed focus and return read once; redraw, inactive and disabled skip reads',async()=>{
  const t=setup();t.updater.setActive(true);assert.equal(t.reads.length,1);t.updater.setActive(true);t.updater.trigger();assert.equal(t.reads.length,1);t.reply({capturedAt:1});await flush();assert.deepEqual(t.applied[0].flags,{config:false,inventory:true});

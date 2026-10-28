@@ -26,5 +26,4 @@ export function setPreferences(preferences){
 }
 export function resetPreferences(){setPreferences(priceDefaults().preferences);}
 export function importPrices(preferences=getPreferences()){return refreshMarketPrices(preferences).then(({stats})=>({stats}));}
-export function refreshMarket(){return refreshMarketPrices(undefined,{quotesOnly:true}).then(()=>undefined);}
 export async function importAutomatically(){const result=await importAutomaticPrices();return result?{stats:result.stats}:null;}

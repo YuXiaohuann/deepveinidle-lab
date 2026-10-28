@@ -6,10 +6,6 @@ export function validateCharacterUpdates(raw,{inventory=false}={}){
 export function loadCharacterUpdates(storage,page,inventory=false){
  const raw=storage.getItem(characterUpdateStorageKey(page));
  if(raw!==null)return validateCharacterUpdates(JSON.parse(raw),{inventory});
- if(page==='collection'){
-  const old=storage.getItem('dvi-collection-auto-import-v1');
-  if(old!==null){const saved=JSON.parse(old);if(saved?.version!==1||typeof saved.enabled!=='boolean')throw Error('invalidAutoImport');return {version:1,config:saved.enabled,inventory:saved.enabled};}
- }
  return {version:1,config:false,inventory};
 }
 

@@ -4,7 +4,6 @@ import * as game from '../src/upstream.js';
 import {gatheringDefaults,gatheringJobs,gatheringPlayer,normalizeGathering,selectedGatheringSites} from '../src/gathering-model.js';
 import {simulateGatheringJob} from '../src/gathering-simulation.js';
 import {workQualities} from '../src/work-expectation.js';
-import {collectionDefaults,estimateCollection} from '../src/collection-model.js';
 import {translatedName} from '../src/i18n.js';
 const coal=gatheringJobs.find(j=>j.id===5),pure=gatheringJobs.find(j=>j.id===344);
 const config=()=>{const s=gatheringDefaults();s.levels.mining=99;s.simulationHours=1;s.hotSetting='off';s.worldRarity=100;s.masteries.rare=200;s.gear.pickaxe={id:game.tools.find(t=>t.slot==='pickaxe').itemId,tier:4,plus:20};return s;};
@@ -29,11 +28,4 @@ test('1204 plain affects main quality only, retaining bonus rarity and ordinary 
   assert.ok(!Object.keys(result.sampleItems).some(id=>game.baseItemId(Number(id))===5&&Number(id)!==5));
   assert.ok(Object.entries(result.rareItems).some(([id,qty])=>game.baseItemId(Number(id))===100&&game.itemTier(Number(id))>0&&qty>0));
  }
-});
-
-test('1204 pure coal collection route can reach common targets only',()=>{
- const state={...collectionDefaults(),initialized:true};state.config.levels.mining=99;
- assert.equal(estimateCollection(state,5,pure).status,'ok');
- assert.equal(estimateCollection(state,game.withRarity(5,1),pure).status,'unreachable');
- assert.equal(estimateCollection(state,game.withRarity(5,1),coal).status,'ok');
 });

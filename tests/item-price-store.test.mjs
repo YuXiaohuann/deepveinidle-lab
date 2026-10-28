@@ -66,15 +66,6 @@ test('market refresh rejects a full snapshot older than current quotes without w
  });}finally{globalThis.fetch=oldFetch;}
 });
 
-test('quote-only refresh ignores preferences and leaves effective prices and locks unchanged',async()=>{
- const oldFetch=globalThis.fetch;
- globalThis.fetch=async()=>({ok:true,json:async()=>({game:'Deep Vein Idle',generatedAt:new Date().toISOString(),refreshSeconds:60,items:{1:{lowestSell:3,highestBuy:2}}})});
- try{await withStore({getItem:()=>null,setItem:()=>{}},async store=>{
-  const current=setItemPrice(priceDefaults(),1,77);current.preferences.categories.ore='vendor';store.updatePrices(current);
-  await store.refreshMarketPrices(undefined,{quotesOnly:true});assert.deepEqual(store.priceState().prices,current.prices);assert.deepEqual(store.priceState().preferences,current.preferences);assert.equal(store.priceState().quotes[1].ask.value,3);
- });}finally{globalThis.fetch=oldFetch;}
-});
-
 test('automatic import respects the five-minute boundary across reloads using asks and current locks',async()=>{
  const values=new Map(),storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};
  const oldFetch=globalThis.fetch;let requests=0;

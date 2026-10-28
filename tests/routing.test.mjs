@@ -11,7 +11,7 @@ const root=new URL('../',import.meta.url);
 test('known routes retain their URLs; unknown history entries are replaced with combat',async()=>{
  const source=await fs.readFile(new URL('../src/app.js',import.meta.url),'utf8');
  const resolver=source.slice(source.indexOf('function sectionForPath(){'),source.indexOf('function showSection('));
- for(const pathname of [...routes,'/missing','/missing/nested/','/COMBAT','/combat//']){
+ for(const pathname of [...routes,'/collection','/collection/','/missing','/missing/nested/','/COMBAT','/combat//']){
   const replacements=[];
   const section=vm.runInNewContext(resolver+'sectionForPath()',{location:{pathname,search:'?unused=1',hash:'#anchor'},history:{replaceState:(...args)=>replacements.push(args)}});
   if(routes.includes(pathname)){
@@ -43,7 +43,7 @@ test('local HTTP server redirects unknown paths and preserves pages, assets and 
   assert.match(response.headers.get('content-type'),/text\/html/);
   await response.arrayBuffer();
  }
- for(const route of ['/missing','/missing/nested/?unused=1','/src/missing.js']){
+ for(const route of ['/collection','/collection/?unused=1','/missing','/missing/nested/?unused=1','/src/missing.js']){
   const response=await fetch(base+route,{redirect:'manual'});
   assert.equal(response.status,302,route);
   assert.equal(response.headers.get('location'),'/combat'+new URL(route,base).search);

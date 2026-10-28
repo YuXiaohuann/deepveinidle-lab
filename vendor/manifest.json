@@ -48,7 +48,6 @@
     "magicDefenceScale": "BS",
     "maxEnhancement": "Ft",
     "potions": "IO",
-    "potionDurationTicks": "Tm",
     "recipes": "Fo",
     "translations": "Vj",
     "worldTranslations": "m7",
@@ -61,7 +60,6 @@
     "masteryTotalCost": "HB",
     "masteriesTotalCost": "bi",
     "masteryEarnedPoints": "dl",
-    "collectionThresholds": "oh",
     "collectionPoints": "$I",
     "collectionItems": "Oi",
     "combatTick": "qT",
@@ -1882,12 +1880,6 @@
       "start": 179248,
       "end": 179253,
       "sha256": "fa5ef70c60ae13b716111bda2e3823b19f507d2d1b424846f917a7a07cf3e870"
-    },
-    {
-      "name": "Tm",
-      "start": 179254,
-      "end": 179260,
-      "sha256": "da2c8e546a032ece977b1a26baf13d436df0567766b319c25e307a9a13aa14e4"
     },
     {
       "name": "Cg",

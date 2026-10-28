@@ -14,7 +14,7 @@ export function updatePrices(next){initialize();const previous=state,previousErr
 export function subscribePrices(listener){listeners.add(listener);return ()=>listeners.delete(listener);}
 
 let marketRequest;
-export async function refreshMarketPrices(preferences=priceState().preferences,{quotesOnly=false}={}){
+export async function refreshMarketPrices(preferences=priceState().preferences){
  const selected=structuredClone(preferences);
  marketRequest??=requestMarket().finally(()=>{marketRequest=null;});
  const response=await marketRequest;
@@ -24,7 +24,6 @@ export async function refreshMarketPrices(preferences=priceState().preferences,{
  const latest=Math.max(0,...Object.values(priceState().quotes).flatMap(q=>Object.values(q).map(side=>side.capturedAt)));
  const incoming=Math.max(...Object.values(parsed.quotes).flatMap(q=>Object.values(q).map(side=>side.capturedAt)));
  if(incoming<latest)throw Error('marketStale');
- if(quotesOnly){updatePrices({...priceState(),quotes:parsed.quotes});return {state:priceState()};}
  const result=importItemPrices(priceState(),response.snapshot,selected);
  updatePrices({...result.state,quotes:parsed.quotes});
  return result;
