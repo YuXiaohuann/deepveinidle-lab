@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright-core';
 import {browserPath} from './release-common.mjs';
-import {enhancementDefaults,enhancementStorageKey} from '../src/enhancement.js';
+import {calculateEnhancement,enhancementDefaults,enhancementStorageKey} from '../src/enhancement.js';
 import * as game from '../src/upstream.js';
 const directory=path.resolve(process.argv[2]??'.test-artifacts/enhancement-distribution');
 const base=process.argv[3]??'http://127.0.0.1:4173';
@@ -28,7 +28,11 @@ try{
   assert.equal(await page.locator('#enhance-q99, #enhance-fee-q99').count(),0);
   assert.equal(await page.locator('.enhance-costs').count(),0);
   const profitPrefix=language==='zh'?'利润：':'Profit: ';
-  const expectedProfits=['17,705',...[951800,1204700,1634600].map(cost=>Math.ceil(cost/.97-cost).toLocaleString('en',{maximumFractionDigits:0}))].map(value=>profitPrefix+value);
+  const costs=[calculateEnhancement(settings).pricedGold,951800,1204700,1634600];
+  const money=value=>Math.ceil(value).toLocaleString('en',{maximumFractionDigits:0});
+  const fees=basePrice=>costs.map(cost=>money((cost+basePrice)/.97));
+  const profits=basePrice=>costs.map(cost=>profitPrefix+money((cost+basePrice)/.97-(cost+basePrice)));
+  const expectedProfits=profits(0);
   assert.deepEqual(await page.locator('.enhance-fees').nth(1).locator('small').allTextContents(),expectedProfits);
   assert.deepEqual(await page.locator('.enhance-fees').first().locator('strong').allTextContents(),['572,433','951,800','1,204,700','1,634,600']);
   assert.equal(await page.getByRole('heading',{name:language==='zh'?'平均强化投入':'Average enhancement inputs',exact:true}).count(),1);
@@ -58,21 +62,23 @@ try{
   await profit.fill('3');
   await page.waitForFunction(()=>document.querySelector('#enhance-fee-q95 strong')?.textContent==='1,685,155');
   await page.locator('[data-enhance-field="basePrice"]').fill('100');
-  await page.waitForFunction(()=>document.querySelector('#enhance-fee-q95 strong')?.textContent==='1,685,255');
+  await page.waitForFunction(()=>document.querySelector('#enhance-fee-q95 strong')?.textContent==='1,685,258');
   // Rapid edits must leave the final price reflected in all quantiles.
   await page.locator('[data-enhance-field="basePrice"]').fill('200');
   await page.locator('[data-enhance-field="basePrice"]').fill('300');
-  await page.waitForFunction(()=>document.querySelector('#enhance-fee-q95 strong')?.textContent==='1,685,455');
+  await page.waitForFunction(()=>document.querySelector('#enhance-fee-q95 strong')?.textContent==='1,685,464');
   assert.deepEqual(await page.locator('.enhance-fees').first().locator('strong').allTextContents(),rawCosts);
-  assert.deepEqual(await page.locator('.enhance-fees').nth(1).locator('small').allTextContents(),expectedProfits);
+  assert.deepEqual(await page.locator('.enhance-fees').nth(1).locator('strong').allTextContents(),fees(300));
+  assert.deepEqual(await page.locator('.enhance-fees').nth(1).locator('small').allTextContents(),profits(300));
   await page.locator('[data-enhance-field="basePrice"]').fill('1000000000000.1');
-  await page.waitForFunction(()=>document.querySelector('#enhance-fee-q95 strong')?.textContent==='1,000,001,685,155');
-  assert.deepEqual(await page.locator('.enhance-fees').nth(1).locator('small').allTextContents(),expectedProfits);
+  await page.waitForFunction(()=>document.querySelector('#enhance-fee-q95 strong')?.textContent==='1,030,929,520,207');
+  assert.deepEqual(await page.locator('.enhance-fees').nth(1).locator('strong').allTextContents(),fees(1000000000000.1));
+  assert.deepEqual(await page.locator('.enhance-fees').nth(1).locator('small').allTextContents(),profits(1000000000000.1));
   await page.locator('[data-enhance-field="basePrice"]').fill('');
   await page.waitForFunction(()=>/未完整定价|Incomplete pricing/.test(document.querySelector('#enhance-fee-q95 strong')?.textContent));
   await page.waitForFunction(()=>document.querySelector('#enhance-q95 strong')?.textContent==='1,634,600');
   assert.deepEqual(await page.locator('.enhance-fees').first().locator('strong').allTextContents(),rawCosts);
-  assert.deepEqual(await page.locator('.enhance-fees').nth(1).locator('small').allTextContents(),expectedProfits);
+  assert.deepEqual(await page.locator('.enhance-fees').nth(1).locator('small').allTextContents(),Array(4).fill(profitPrefix+(language==='zh'?'未完整定价':'Incomplete pricing')));
   assert.equal(await page.locator('.enhance-fees').nth(1).locator('.stat').filter({hasText:/未完整定价|Incomplete pricing/}).count(),4);
   await page.locator('[data-enhance-field="basePrice"]').fill('300');
   await page.locator('[data-enhance-field="target"]').fill('20');
@@ -89,7 +95,15 @@ try{
   await page.waitForFunction(()=>document.querySelector('#enhance-fee-q95 strong')?.textContent==='2,372');
   assert.deepEqual(await page.locator('.enhance-fees').first().locator('strong').allTextContents(),Array(4).fill('2,301'));
   assert.deepEqual(await page.locator('.enhance-fees').nth(1).locator('small').allTextContents(),Array(4).fill(profitPrefix+'72'));
-  checks.push({width,language,passed:true,panelOrder:true,inputLayout:true,profitMargin:true,sameRow:true,saveRestore:true,resetIsolation:true,rawCostsIndependent:true,missingBaseIsolated:true,eightCards:true,profitNotes:true,noValuationPanel:true,integerAmounts:true});await context.close();
+  await page.locator('[data-enhance-field="target"]').fill('0');
+  await page.locator('[data-enhance-field="basePrice"]').fill('100');
+  await page.waitForFunction(()=>document.querySelector('#enhance-fee-q95 strong')?.textContent==='104');
+  assert.deepEqual(await page.locator('.enhance-fees').first().locator('strong').allTextContents(),Array(4).fill('0'));
+  assert.deepEqual(await page.locator('.enhance-fees').nth(1).locator('strong').allTextContents(),Array(4).fill('104'));
+  assert.deepEqual(await page.locator('.enhance-fees').nth(1).locator('small').allTextContents(),Array(4).fill(profitPrefix+'4'));
+  assert.match(await page.locator('#enhance-results').textContent(),language==='zh'?/强化成本与底装购置费合计/:/combined enhancement cost and base item purchase price/);
+  await page.screenshot({path:path.join(directory,`${language}-${width}-base-profit.png`),fullPage:true});
+  checks.push({width,language,passed:true,baseEarnsProfit:true,reachedTargetBaseProfit:true,panelOrder:true,inputLayout:true,profitMargin:true,sameRow:true,saveRestore:true,resetIsolation:true,rawCostsIndependent:true,missingBaseIsolated:true,eightCards:true,profitNotes:true,noValuationPanel:true,integerAmounts:true});await context.close();
  }
  // Simulate an already queued reply from a terminated Worker, and a genuine
  // Worker failure. Neither may leave stale prices or a perpetual spinner.

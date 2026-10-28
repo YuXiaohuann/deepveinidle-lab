@@ -60,7 +60,7 @@ export function calculateEnhancement(input){
  const missingPrices=['shards','scrolls'].filter(key=>totals[key]>0&&s[key==='shards'?'shardPrice':'scrollPrice']===null);
  const pricedGold=missingPrices.length?null:totals.gold+totals.shards*(s.shardPrice??0)+totals.scrolls*(s.scrollPrice??0);
  const purchaseTotal=pricedGold!==null&&s.basePrice!==null?pricedGold+s.basePrice:null;
- const expectedFee=purchaseTotal===null?null:enhancementFee(pricedGold,s.profitRate)+s.basePrice;
+ const expectedFee=enhancementFee(purchaseTotal,s.profitRate);
  if([totals.seconds,pricedGold,purchaseTotal,expectedFee].some(v=>v!==null&&!Number.isFinite(v)))throw Error('unreliableCalculation');
  return {steps,totals,missingPrices,pricedGold,purchaseTotal,expectedFee};
 }

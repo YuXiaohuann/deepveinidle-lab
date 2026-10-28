@@ -53,7 +53,7 @@ test('zero target cost, blank prices and explicit zero pricing stay distinct',()
 test('invalid configuration fails explicitly',()=>{
  for(const patch of [{current:7,target:6},{level:null},{current:1.5},{target:101},{lectern:-1},{mastery:.5},{protectFrom:1},{protect:'true'},{shardPrice:NaN},{scrollPrice:-1},{itemId:64}])assert.throws(()=>calculateEnhancement(config(patch)));
 });
-test('profit margin covers enhancement costs and adds the base at cost, with explicit pricing required',()=>{
+test('profit margin covers enhancement and base costs, with explicit pricing required',()=>{
  const r=calculateEnhancement(config({target:3,protect:true,shardPrice:10,scrollPrice:20,basePrice:120}));
  // For +0 to +3: costs at +2 are divided by .88; protected failure
  // repeats +1 (chance .94), whose failure also repeats +0;
@@ -62,12 +62,12 @@ test('profit margin covers enhancement costs and adds the base at cost, with exp
  const gold=100+goldStep1+(300+.12*goldStep1)/.88;
  const shards=3+shardStep1+(9+.12*shardStep1)/.88;
  const scrolls=.12/.88;
- near(r.expectedFee,(gold+shards*10+scrolls*20)/.97+120);
+ near(r.expectedFee,(gold+shards*10+scrolls*20+120)/.97);
  assert.equal(calculateEnhancement(config({shardPrice:10})).expectedFee,null);
  assert.equal(calculateEnhancement(config({basePrice:0})).expectedFee,null);
  assert.equal(calculateEnhancement(config({protect:true,shardPrice:10,basePrice:0})).expectedFee,null);
  const free=calculateEnhancement(config({shardPrice:0,basePrice:0}));near(free.expectedFee,free.totals.gold/.97);
- near(calculateEnhancement(config({current:5,target:5,basePrice:120})).expectedFee,120);
+ near(calculateEnhancement(config({current:5,target:5,basePrice:120})).expectedFee,120/.97);
  assert.equal(calculateEnhancement(config({current:5,target:5,basePrice:0})).expectedFee,0);
 });
 test('import captures enhancement-only fields and deduplicates worn and inventory candidates',()=>{
@@ -119,7 +119,7 @@ test('profit margin defaults for old saves, validates explicit inputs, and prese
  assert.equal(baseline.expectedFee,baseline.purchaseTotal);
  for(const profitRate of [3,12.5,99.9]){
   const result=calculateEnhancement({...old,profitRate});
-  near((result.expectedFee-result.purchaseTotal)/(result.expectedFee-old.basePrice),profitRate/100);
+  near((result.expectedFee-result.purchaseTotal)/result.expectedFee,profitRate/100);
   assert.deepEqual(result.totals,baseline.totals);
  }
  for(const profitRate of [null,undefined,-1,100,101,Infinity,NaN,'3'])assert.throws(()=>validateEnhancement({...old,profitRate}),/invalidProfitRate/);
@@ -127,12 +127,12 @@ test('profit margin defaults for old saves, validates explicit inputs, and prese
  assert.equal(importEnhancement({...old,profitRate:12.5},snapshot()).state.profitRate,12.5);
 });
 
-test('base price is added at cost and never earns profit; missing base leaves enhancement cost intact',()=>{
+test('base price earns profit; missing base leaves enhancement cost intact',()=>{
  const s=config({shardPrice:10,scrollPrice:20,basePrice:100,profitRate:20});
  const result=calculateEnhancement(s),withoutBase=calculateEnhancement({...s,basePrice:0});
- near(result.expectedFee-withoutBase.expectedFee,100);
- near(result.expectedFee,result.pricedGold/.8+100);
+ near(result.expectedFee-withoutBase.expectedFee,125);
+ near(result.expectedFee,(result.pricedGold+100)/.8);
  const missingBase=calculateEnhancement({...s,basePrice:null});
  assert.equal(missingBase.pricedGold,result.pricedGold);assert.equal(missingBase.expectedFee,null);
- assert.equal(calculateEnhancement({...s,current:5,target:5}).expectedFee,100);
+ assert.equal(calculateEnhancement({...s,current:5,target:5}).expectedFee,125);
 });
