@@ -257,7 +257,7 @@ try{
   await page.click('#optimizer-start');await page.waitForSelector('.optimizer-plan');
   const actual=await page.evaluate(()=>window.optimizerWorkers.at(-1).result);
   assert.equal(actual.objective,objective);assert.equal(actual.hours,24);
-  assert.equal(await page.locator('.optimizer-plan dt').first().textContent(),objective.endsWith('Collection')?'精通点数':'收入');
+  assert.equal(await page.locator('.optimizer-plan dt').first().textContent(),objective.endsWith('Collection')?'精通产出评分':'收入');
   assert.deepEqual(await ranksInFields('target'),actual.plans[0].ranks);
   for(const language of ['en','zh']){
    await page.selectOption('#language',language);assert.equal(await page.locator('#optimizer-goal').inputValue(),objective);
