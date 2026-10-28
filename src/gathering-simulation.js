@@ -19,6 +19,9 @@ export function createGatheringScenario(raw,job,site,{now=Date.now(),seed=0}={})
  return {player:p,context,durationTicks,bank,discardGathered:s.discardGathered};
 }
 export function simulateGatheringSite(raw,job,site,options={}){
+ const rewardMode=options.rewardMode??'all',collectSamples=options.collectSamples!==false;
+ if(!['all','income','collection'].includes(rewardMode))throw Error('invalidRewardMode');
+ const income=rewardMode!=='collection',collection=rewardMode!=='income';
  const scenario=createGatheringScenario(raw,job,site,options),{context,durationTicks,bank,discardGathered}=scenario;
  let p;game.predict(scenario.player,context,prepared=>{p=prepared;return false;});
  p.offlineCapTicks=durationTicks*2;
@@ -35,6 +38,12 @@ export function simulateGatheringSite(raw,job,site,options={}){
   for(const [id,qty]of Object.entries(pendingBonus))addExpected(result.rareItems,id,qty);
   pendingNormal={};pendingBonus={};
  };
+ // Consume the same mathematical expectations as the Gathering page directly;
+ // optimizer goals need one ledger and no separate sampled-drop trace.
+ const writeReward=(id,qty)=>{
+  if(collection)addExpected(result.collectionItems,id,qty);
+  if(income)addExpected(discardGathered&&job.bonus&&game.baseItemId(id)===game.baseItemId(job.bonus.itemId)?pendingBonus:result.rareItems,id,qty);
+ };
  for(let tick=1;tick<=durationTicks;tick++){
   if(p.activity==='walking')result.movingTicks++;
   if(p.activity==='working'){if(START_TICK+tick<p.stunUntil)result.stunnedTicks++;else result.workingTicks++;}
@@ -44,27 +53,23 @@ export function simulateGatheringSite(raw,job,site,options={}){
    if(produced.itemId===game.coinItemId)result.coins+=job.output.qty;
    else workQualities(p,context,job,at).forEach((prob,tier)=>{
     const id=game.withRarity(job.output.itemId,tier),qty=job.output.qty*prob;
-    addExpected(result.collectionItems,id,qty);
-    addExpected(discardGathered?pendingNormal:result.normalItems,id,qty);
+    if(collection)addExpected(result.collectionItems,id,qty);
+    if(income)addExpected(discardGathered?pendingNormal:result.normalItems,id,qty);
    });
-   const collectionRewards={};expectedWorkRewards(collectionRewards,p,context,job,at,before,produced);
-   for(const [id,qty]of Object.entries(collectionRewards))addExpected(result.collectionItems,id,qty);
-   if(discardGathered){
-    for(const [id,qty]of Object.entries(collectionRewards))addExpected(job.bonus&&game.baseItemId(Number(id))===game.baseItemId(job.bonus.itemId)?pendingBonus:result.rareItems,id,qty);
-   }else for(const [id,qty]of Object.entries(collectionRewards))addExpected(result.rareItems,id,qty);
+   expectedWorkRewards(writeReward,p,context,job,at,before,produced);
   }
   for(const e of events){
-   if(e.kind==='produced'){result.completed++;result.attempts++;add(result.sampleItems,e.itemId,e.qty??1);}
+   if(e.kind==='produced'){result.completed++;result.attempts++;if(collectSamples)add(result.sampleItems,e.itemId,e.qty??1);}
    if(e.kind==='caught'){result.caught++;result.attempts++;}
-   if(e.kind==='deposited'){result.deposits++;if(discardGathered)retainPending();}
-   if(e.kind==='dropped'&&discardGathered){pendingNormal={};pendingBonus={};}
-   if(['bonus','pet','mount','voidshard','box'].includes(e.kind)){const id=e.kind==='box'?(e.itemId??game.lootBoxItemId):e.itemId;if(!Number.isSafeInteger(id))throw Error('invalidReward');add(result.sampleItems,id,e.qty??1);if(e.kind==='box'){addExpected(result.rareItems,id,e.qty??1);addExpected(result.collectionItems,id,e.qty??1);}}
+   if(e.kind==='deposited'){result.deposits++;if(discardGathered&&income)retainPending();}
+   if(e.kind==='dropped'&&discardGathered&&income){pendingNormal={};pendingBonus={};}
+   if(['bonus','pet','mount','voidshard','box'].includes(e.kind)){const id=e.kind==='box'?(e.itemId??game.lootBoxItemId):e.itemId;if(!Number.isSafeInteger(id))throw Error('invalidReward');if(collectSamples)add(result.sampleItems,id,e.qty??1);if(e.kind==='box'){if(income)addExpected(result.rareItems,id,e.qty??1);if(collection)addExpected(result.collectionItems,id,e.qty??1);}}
    if(e.kind==='routeStopped'&&!['done'].includes(e.reason))throw Error(`routeStopped:${e.reason}`);
   }
   result.elapsedTicks=tick;
   if(tick%game.predictionChunkTicks===0&&p.route===null){result.endedEarly=true;break;}
  }
- if(discardGathered)retainPending();
+ if(discardGathered&&income)retainPending();
  result.normal=Object.values(result.normalItems).reduce((a,b)=>a+b,0);result.rare=Object.values(result.rareItems).reduce((a,b)=>a+b,0);
  result.xp=p.skills[job.skill]-initialXp;result.endLevel=game.level(p.skills[job.skill]);
  result.normalValue=dropValue(result.normalItems);result.rareValue=dropValue(result.rareItems);result.totalIncome=result.coins+result.normalValue+result.rareValue;

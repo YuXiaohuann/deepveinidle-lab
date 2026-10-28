@@ -219,3 +219,25 @@ test('gathering potion costs use enabled qualities and selected hours, with prof
  const missing=valueCombatRewards(raw,{});assert.deepEqual(missing.potionMissingPrices.map(Number).sort((a,b)=>a-b),[gatherer,hunter].sort((a,b)=>a-b));
  state.simulationHours=1;const hourly=simulateGatheringJob(state,job);assert.deepEqual(hourly.potionItems,{[gatherer]:1,[hunter]:1});
 });
+
+test('optimizer reward modes use the Gathering page expectations without sampled-drop ledgers',()=>{
+ const closeItems=(actual,expected)=>{
+  assert.deepEqual(Object.keys(actual).sort(),Object.keys(expected).sort());
+  for(const id of Object.keys(expected))assert.ok(Math.abs(actual[id]-expected[id])<=1e-9*Math.max(1,expected[id]),`${id}: ${actual[id]} != ${expected[id]}`);
+ };
+ for(const job of gatheringJobs)for(const discardGathered of [false,true]){
+  const state=gatheringDefaults();state.skill=job.skill;state.levels[job.skill]=100;state.simulationHours=1/60;state.hotSetting='off';state.discardGathered=discardGathered;
+  const options={seed:1426429260,now:Date.UTC(2026,9,28)};
+  const page=simulateGatheringJob(state,job,options);
+  const income=simulateGatheringJob(state,job,{...options,rewardMode:'income',collectSamples:false});
+  const collection=simulateGatheringJob(state,job,{...options,rewardMode:'collection',collectSamples:false});
+  for(const result of [income,collection]){
+   for(const metric of ['completed','attempts','caught','xp','coins','movingTicks','deposits','endLevel','endedEarly'])assert.equal(result[metric],page[metric],`${job.id}: ${metric}`);
+   assert.deepEqual(result.sampleItems,{});
+  }
+  closeItems(income.normalItems,page.normalItems);closeItems(income.rareItems,page.rareItems);assert.deepEqual(income.collectionItems,{});
+  closeItems(collection.collectionItems,page.collectionItems);assert.deepEqual(collection.normalItems,{});assert.deepEqual(collection.rareItems,{});
+ }
+ const state=gatheringDefaults(),job=jobFor('mining');
+ assert.throws(()=>simulateGatheringJob(state,job,{rewardMode:'unknown'}),/invalidRewardMode/);
+});

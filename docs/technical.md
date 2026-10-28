@@ -58,7 +58,7 @@
 | `src/simulation.js`、`src/simulation-worker.js` | 原始战斗函数状态适配、可配置时长统计及异步计算 |
 | `src/gathering-model.js`、`src/gathering-simulation.js`、`src/gathering-worker.js`、`src/gathering-controls.js` | 独立采集配置与导入、原始工作逐刻适配、最近点选择、异步进度及页面交互 |
 | `src/crafting-model.js`、`src/crafting-orders.js`、`src/crafting-simulation.js`、`src/crafting-worker.js`、`src/crafting-controls.js` | 制造角色与多配方订单、独立加工费、执行计划与材料预算、原始限次模拟及页面交互 |
-| `src/work-expectation.js` | 采集／制造共用机会期望账本、品质、烧焦及奖励容量门槛；不改原始过程 |
+| `src/work-expectation.js` | 采集／制造共用机会期望、品质、烧焦及奖励容量门槛；支持直接写入目标期望账本，使用最小背包状态调用原始容量校验，不改原始过程 |
 | `src/character-inventory.js` | 收藏与制造共用仓库／背包校验、重复堆叠合并与完整物品 ID 库存快照；制造另校验捕获时间 |
 | `src/world-buffs.js` | 战斗、采集与制造共用世界增益窗口校验、捕获时汇总与旧捕获提示 |
 | `src/work-import.js` | 采集与制造共用角色导入校验及字段映射 |

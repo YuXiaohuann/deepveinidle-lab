@@ -275,7 +275,8 @@ test('all optimizer goals freeze 24 hours regardless of source duration without 
   const raw=objective.startsWith('gather')?gatheringInput(objective,0):{...input(0),objective};
   const source=objective.startsWith('gather')?raw.gathering:raw.combat.manual;
   source.simulationHours=hours;source.customSimulation=true;const before=structuredClone(raw);
-  const result=optimizeMastery(raw,{simulate:state=>{
+  const result=optimizeMastery(raw,{simulate:(state,target,options)=>{
+   if(objective.startsWith('gather')){assert.equal(options.collectSamples,false);assert.equal(options.rewardMode,objective==='gatherCollection'?'collection':'income');}
    const settings=objective.startsWith('gather')?state:state.manual;
    assert.equal(settings.simulationHours,24);assert.equal(settings.customSimulation,false);
    return {deaths:0,endedEarly:false,coins:10,normalItems:{},rareItems:{}};

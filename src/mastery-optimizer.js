@@ -223,7 +223,7 @@ export function optimizeMastery(raw,{simulate,onProgress=()=>{}}={}){
  const progress=(phase,candidates)=>onProgress({phase,candidates,maxCandidates,simulations,excluded});
  function trial(ranks,seed){
   const id=`${key(ranks)}:${seed}`;if(cache.has(id))return cache.get(id);
-  const result=run({...(policy.gathering?input.gathering:input.combat),masteries:{...ranks}},policy.gathering?input.job:input.monster,{seed,now:input.now});simulations++;
+  const result=run({...(policy.gathering?input.gathering:input.combat),masteries:{...ranks}},policy.gathering?input.job:input.monster,{seed,now:input.now,...(policy.gathering?{rewardMode:policy.collection?'collection':'income',collectSamples:false}:{})});simulations++;
   let value=null;
   if((policy.gathering||result.deaths===0)&&!result.endedEarly){
    if(policy.collection)value=collectionScore(result);

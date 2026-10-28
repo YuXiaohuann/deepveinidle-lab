@@ -24,19 +24,22 @@ export function workQualities(player,context,job,tick,{bonus=false}={}){
  return rarityProbabilities(multiplier);
 }
 
-export function expectedWorkRewards(items,player,context,job,tick,before,produced){
+// Accept an existing ledger or a direct writer for goal-specific statistics.
+export function expectedWorkRewards(target,player,context,job,tick,before,produced){
  if(!produced)return; // Burns and catches return before every reward check.
+ const write=typeof target==='function'?target:(id,qty)=>addExpected(target,id,qty);
  if(!player.ironman){
   const chance=game.mountChance(1/game.workChance(job,player));
-  rarityProbabilities(1+game.equipmentLuck(player.equipment),game.mountRarityThresholds).forEach((p,tier)=>addExpected(items,game.withRarity(game.mountItemId,tier),chance*p));
+  rarityProbabilities(1+game.equipmentLuck(player.equipment),game.mountRarityThresholds).forEach((p,tier)=>write(game.withRarity(game.mountItemId,tier),chance*p));
  }
  const pet=game.skillPet(job.skill);
- if(pet)addExpected(items,pet.itemId,game.skillPetChance(job.skill));
+ if(pet)write(pet.itemId,game.skillPetChance(job.skill));
  if(!job.bonus)return;
  if(!before?.pack)throw Error('missingWorkState');
- const atBonus={...player,pack:before.pack.map(i=>({...i}))};
+ // addPack only reads pack and perks.pockets; retain its original capacity rule.
+ const atBonus={perks:player.perks,pack:before.pack.map(i=>({...i}))};
  // Reconstruct the exact pack after material consumption and the sampled main
-// product, before bonus/pet insertion. Mounts and boxes go directly to storage.
+ // product, before bonus/pet insertion. Mounts and boxes go directly to storage.
  for(const input of game.recipeInputs(job,player.workRarity)){
   let remaining=input.qty;
   for(let i=atBonus.pack.length-1;i>=0&&remaining>0;i--){const item=atBonus.pack[i];if(item.itemId!==input.itemId)continue;const n=Math.min(item.qty,remaining);remaining-=n;item.qty-=n;if(item.qty===0)atBonus.pack.splice(i,1);}
@@ -47,8 +50,8 @@ export function expectedWorkRewards(items,player,context,job,tick,before,produce
  qualities.forEach((p,tier)=>{
   const quality=game.bonusMinimumUncommon(job.bonus.itemId)?Math.max(1,tier):tier;
   const id=game.itemSupportsRarity(job.bonus.itemId)?game.withRarity(job.bonus.itemId,quality):job.bonus.itemId;
-  const candidate={...atBonus,pack:atBonus.pack.map(i=>({...i}))};
-  if(game.addPack(candidate,id,1))addExpected(items,id,job.bonus.chance*p);
+  const candidate={perks:atBonus.perks,pack:atBonus.pack.map(i=>({...i}))};
+  if(game.addPack(candidate,id,1))write(id,job.bonus.chance*p);
  });
 }
 
