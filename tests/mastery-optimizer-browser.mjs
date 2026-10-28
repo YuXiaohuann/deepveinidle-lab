@@ -63,12 +63,25 @@ try{
  for(const lang of ['zh','en']){await page.selectOption('#language',lang);for(const width of [1440,390]){
   await page.setViewportSize({width,height:1000});
   await maxhitCard.screenshot({path:path.join(directory,`card-${lang}-${width}.png`)});
+  const labels=()=>page.locator('#mastery-summary .stat span').allTextContents(),values=()=>page.locator('#mastery-summary .stat strong').allTextContents();
+  assert.deepEqual(await labels(),lang==='zh'?['总点数','方案已用','剩余点数']:['Total points','Points used by plan','Remaining points']);
+  assert.deepEqual(await values(),['123','82','41']);
+  await page.locator('#mastery-summary').screenshot({path:path.join(directory,`summary-${lang}-${width}-limited.png`)});
+  await page.selectOption('#mastery-mode','unlimited');
+  assert.deepEqual(await labels(),lang==='zh'?['总点数','方案已分配','点数差额']:['Total points','Points allocated by plan','Points difference']);
+  assert.deepEqual(await values(),['123','82','-41']);
+  await page.locator('#mastery-total').fill('82');assert.deepEqual(await values(),['82','82','0']);
+  await page.locator('#mastery-total').fill('81');assert.deepEqual(await values(),['81','82','+1']);
+  await page.locator('#mastery-summary').screenshot({path:path.join(directory,`summary-${lang}-${width}-unlimited.png`)});
+  await page.selectOption('#mastery-mode','limited');assert.deepEqual(await values(),['81','82','-1']);
+  await page.locator('#mastery-total').fill('123');
   const layout=await maxhitCard.evaluate(el=>{const current=el.querySelector('[data-mastery-current]').getBoundingClientRect(),delta=el.querySelector('[data-mastery-delta]').getBoundingClientRect(),next=el.querySelector('[data-mastery-value="next"]').getBoundingClientRect(),need=el.querySelector('[data-mastery-status]').getBoundingClientRect();return {deltaRight:delta.left>=current.right,needRight:need.left>next.left,footerAligned:Math.abs(need.bottom-next.bottom)<1,overflow:document.documentElement.scrollWidth>innerWidth};});
   assert.deepEqual(layout,{deltaRight:true,needRight:true,footerAligned:true,overflow:false});
  }}
  await page.selectOption('#language','zh');await page.setViewportSize({width:1440,height:1000});
  await maxhitCard.locator('[data-mastery-field="target"]').fill('0');assert.equal(await maxhitCard.locator('.mastery-current-rank [data-mastery-delta]').textContent(),'−1 级');assert.equal(await page.locator('#mastery-issue').textContent(),'');assert.equal(await maxhitCard.locator('[data-mastery-value="cost"]').textContent(),'-40');
  await maxhitCard.locator('[data-mastery-field="target"]').fill('1');assert.equal(await maxhitCard.locator('[data-mastery-delta]').textContent(),'');
+ results.cases.push('summary cards show total and full target investment in both modes; signed difference covers surplus, balance and deficit in both languages and desktop/mobile');
  results.cases.push('current ranks are read-only; signed delta sits beside current rank; next cost and shortage occupy left/right footer corners in both languages and desktop/mobile');
  assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.tagName),'DETAILS');
  assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.open),false);
@@ -112,7 +125,7 @@ try{
  assert.equal(await page.locator('[data-optimizer-apply="0"]').isEnabled(),true);
  const editedTargets=await ranksInFields('target');await page.selectOption('#language','en');assert.deepEqual(await ranksInFields('target'),editedTargets);await page.selectOption('#language','zh');
  await page.click('[data-optimizer-apply="0"]');assert.deepEqual(await ranksInFields('target'),resetPlan.plans[0].ranks);
- assert.deepEqual(await page.locator('#mastery-summary .stat strong').allTextContents(),[83,resetPlan.plans[0].cost-40,123-resetPlan.plans[0].cost].map(n=>n.toLocaleString('zh-CN')));
+ assert.deepEqual(await page.locator('#mastery-summary .stat strong').allTextContents(),[123,resetPlan.plans[0].cost,123-resetPlan.plans[0].cost].map(n=>n.toLocaleString('zh-CN')));
  results.cases.push('applying alternatives updates targets, cost and storage without clearing candidates; editing targets re-enables apply and language redraw never auto-applies again');
  await page.locator('#mastery-optimizer').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(directory,'reset-zh-1440.png')});
  await page.selectOption('#optimizer-allocation-mode','remaining');assert.equal(await page.locator('.optimizer-plan').count(),0);

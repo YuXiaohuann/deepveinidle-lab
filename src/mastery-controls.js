@@ -45,8 +45,9 @@ function updateResults(){
   host.querySelectorAll('[data-mastery-value]').forEach(el=>el.textContent='—');host.querySelectorAll('[data-mastery-status]').forEach(el=>el.textContent='');host.querySelectorAll('[data-mastery-action]').forEach(el=>el.disabled=true);return;
  }
  host.querySelector('#mastery-issue').textContent=r.budget<0?text(`当前已分配等级超出总点数，缺少 ${format(-r.budget)} 点。`,`Current ranks exceed total points by ${format(-r.budget)} points.`):limited&&r.remaining<0?text(`超出预算，缺少 ${format(-r.remaining)} 点。`,`Over budget by ${format(-r.remaining)} points.`):'';
- const cards=limited?[[text('本次可用点数','Available points'),r.budget],[text('本次已分配点数','Points allocated for this upgrade'),r.spent],[text('剩余点数','Remaining points'),r.remaining]]:[[text('本次所需点数','Upgrade points needed'),r.spent],[text('当前已投入','Current investment'),r.currentCost],[text('目标总投入（从零）','Target investment (from zero)'),r.targetCost]];
- host.querySelector('#mastery-summary').innerHTML=cards.map(([label,value])=>`<div class="stat"><span>${label}</span><strong>${format(Number(value))}</strong></div>`).join('');
+ const total=Number(state.totalPoints);
+ const cards=limited?[[text('总点数','Total points'),total],[text('方案已用','Points used by plan'),r.targetCost],[text('剩余点数','Remaining points'),r.remaining]]:[[text('总点数','Total points'),total],[text('方案已分配','Points allocated by plan'),r.targetCost],[text('点数差额','Points difference'),r.targetCost-total,true]];
+ host.querySelector('#mastery-summary').innerHTML=cards.map(([label,value,signed])=>`<div class="stat"><span>${label}</span><strong>${signed&&value>0?'+':''}${format(value)}</strong></div>`).join('');
  for(const row of r.rows){const m=masteryTracks.find(m=>m.id===row.id),tr=host.querySelector(`[data-mastery-row="${row.id}"]`);
   for(const [key,value]of Object.entries({target:bonus(m,row.target),cost:format(row.cost),next:row.nextCost===null?text('已满级','Maximum rank'):text(`下一级：${format(row.nextCost)} 点`,`Next rank: ${format(row.nextCost)} points`)}))tr.querySelector(`[data-mastery-value="${key}"]`).textContent=value;
   const note=tr.querySelector('[data-mastery-status]'),shortage=limited&&row.nextCost!==null&&r.remaining>=0&&r.remaining<row.nextCost;

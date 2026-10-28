@@ -20,7 +20,7 @@ test('mastery controls import and apply plans atomically, preserving valid setti
   await get('#mastery-import').onclick();assert.equal(reads,1);const saved=JSON.parse(storage.get(masteryStorageKey));assert.equal(saved.current.xp,7);assert.equal(saved.current.enhance,3);assert.equal(saved.current.offline,2);assert.equal(saved.current.rare,0);assert.deepEqual(saved.current,saved.target);assert.equal(saved.mode,'limited');assert.match(host.innerHTML,/id="mastery-total" type="number"[^>]+value="5337"/);assert.match(host.innerHTML,/<option value="limited" selected>/);assert.equal(saved.totalPoints,5337);assert.equal(saved.budget,undefined);assert.match(get('#mastery-summary').innerHTML,/>4,807<\/strong>/);assert.equal(saved.bank,undefined);assert.equal(saved.capturedAt,undefined);assert.equal(storage.get('dvi-simulator-v1'),'combat sentinel');assert.match(get('#mastery-import-status').textContent,/已导入/);assert.equal(get('#mastery-import-settings').open,true);
   const previous=storage.get(masteryStorageKey);snapshot.player.masteries.xp=-1;await get('#mastery-import').onclick();assert.equal(storage.get(masteryStorageKey),previous);assert.match(get('#mastery-import-status').textContent,/已有配置保留/);
   snapshot=null;await get('#mastery-import').onclick();assert.match(get('#mastery-import-status').textContent,/没有角色数据/);renderMastery('en');assert.match(get('#mastery-import-status').textContent,/No character data/);assert.equal(get('#mastery-import-settings').open,true);
-  snapshot={version:2,capturedAt:Date.now(),player:{masteries:{xp:9},collections:{},forgeLog:{29:1073741823}}};failStorage=true;await get('#mastery-import').onclick();assert.equal(storage.get(masteryStorageKey),previous);assert.match(get('#mastery-save-note').textContent,/cannot be saved/);assert.match(get('#mastery-import-status').textContent,/Imported/);assert.match(host.innerHTML,/value="9"/);assert.match(get('#mastery-summary').innerHTML,/>0<\/strong>/);
+  snapshot={version:2,capturedAt:Date.now(),player:{masteries:{xp:9},collections:{},forgeLog:{29:1073741823}}};failStorage=true;await get('#mastery-import').onclick();assert.equal(storage.get(masteryStorageKey),previous);assert.match(get('#mastery-save-note').textContent,/cannot be saved/);assert.match(get('#mastery-import-status').textContent,/Imported/);assert.match(host.innerHTML,/value="9"/);assert.match(get('#mastery-summary').innerHTML,/>5,336<\/strong>/);assert.match(get('#mastery-summary').innerHTML,/>432<\/strong>/);assert.match(get('#mastery-summary').innerHTML,/>4,904<\/strong>/);
 
   failStorage=false;host.onclick({target:{closest:selector=>selector==='#mastery-reset'?{}:null}});
   assert.ok(host.innerHTML.indexOf('id="mastery-mode"')<host.innerHTML.indexOf('id="mastery-total"'));
@@ -44,6 +44,17 @@ test('mastery controls import and apply plans atomically, preserving valid setti
   assert.equal(applyMasteryRecommendation({allocationMode:'remaining',ranks:{...ranks,xp:10}}).saveOK,true);
   updated=JSON.parse(storage.get(masteryStorageKey));assert.equal(updated.current.xp,9);assert.equal(updated.target.xp,10);assert.equal(updated.totalPoints,5336);assert.equal(updated.mode,'limited');
   applyMasteryRecommendation({allocationMode:'reset',ranks:{...ranks,xp:1}});updated=JSON.parse(storage.get(masteryStorageKey));assert.deepEqual(updated.current,JSON.parse(beforeApply).current);assert.equal(updated.target.xp,1);assert.equal(updated.totalPoints,5336);assert.equal(updated.mode,'limited');
+  const summary=()=>[...get('#mastery-summary').innerHTML.matchAll(/<span>(.*?)<\/span><strong>(.*?)<\/strong>/g)].map(([,label,value])=>[label,value]);
+  renderMastery('zh');
+  assert.deepEqual(summary(),[['总点数','5,336'],['方案已用','40'],['剩余点数','5,296']]);
+  get('#mastery-mode').onchange({target:{value:'unlimited'}});
+  assert.deepEqual(summary(),[['总点数','5,336'],['方案已分配','40'],['点数差额','-5,296']]);
+  input('mastery-total','40');assert.deepEqual(summary(),[['总点数','40'],['方案已分配','40'],['点数差额','0']]);
+  input('mastery-total','39');assert.deepEqual(summary(),[['总点数','39'],['方案已分配','40'],['点数差额','+1']]);
+  renderMastery('en');assert.deepEqual(summary(),[['Total points','39'],['Points allocated by plan','40'],['Points difference','+1']]);
+  get('#mastery-mode').onchange({target:{value:'limited'}});
+  assert.deepEqual(summary(),[['Total points','39'],['Points used by plan','40'],['Remaining points','-1']]);
+  input('mastery-total','5336');
   const savedBeforeFailure=storage.get(masteryStorageKey);failStorage=true;
   assert.equal(applyMasteryRecommendation({allocationMode:'reset',ranks:{...ranks,xp:2}}).saveOK,false);assert.equal(storage.get(masteryStorageKey),savedBeforeFailure);assert.match(get('#mastery-save-note').textContent,/cannot be saved/);assert.match(host.innerHTML,/data-mastery-id="xp" value="2"/);
 
