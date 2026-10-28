@@ -8,6 +8,7 @@ import {chromium} from 'playwright-core';
 import {browserPath} from '../scripts/release-common.mjs';
 import {preset,game} from '../src/model.js';
 import {priceDefaults} from '../src/item-prices.js';
+import {gatheringDefaults} from '../src/gathering-model.js';
 import {masteryDefaults} from '../src/mastery.js';
 import {combatIncomeItems} from '../src/mastery-optimizer.js';
 
@@ -24,12 +25,14 @@ try{
  browser=await chromium.launch({headless:true,executablePath:await browserPath()});
  const context=await browser.newContext({viewport:{width:1440,height:1100}});
  const combat=preset('ranged');combat.manual.simulationHours=1;combat.manual.enemySelection='monster-7';combat.manual.hotSetting='off';
+ const gathering=gatheringDefaults();gathering.simulationHours=1/60;gathering.hotSetting='off';
  const mastery=masteryDefaults();mastery.totalPoints=123;mastery.current.maxhit=1;mastery.target.maxhit=1;
  const prices=priceDefaults();prices.preferences.autoImport=false;
  const ids=combatIncomeItems(combat,game.monsters.find(m=>m.id===7));
  for(const id of ids)prices.prices[id]={price:100,locked:true,source:'manual',updatedAt:Date.now(),quoteCapturedAt:null};
- await context.addInitScript(({combat,mastery,prices})=>{
+ await context.addInitScript(({combat,mastery,prices,gathering})=>{
   if(!localStorage.getItem('dvi-simulator-v1'))localStorage.setItem('dvi-simulator-v1',JSON.stringify({language:'zh',state:combat}));
+  if(!localStorage.getItem('dvi-gathering-v1'))localStorage.setItem('dvi-gathering-v1',JSON.stringify(gathering));
   if(!localStorage.getItem('dvi-mastery-v1'))localStorage.setItem('dvi-mastery-v1',JSON.stringify(mastery));
   if(!localStorage.getItem('dvi-item-prices-v1'))localStorage.setItem('dvi-item-prices-v1',JSON.stringify(prices));
   window.optimizerWorkers=[];const OriginalWorker=Worker;
@@ -38,7 +41,7 @@ try{
    postMessage(data,...rest){if(this.optimizer){this.request=structuredClone(data);if(window.optimizerMode==='wait')return;if(window.optimizerMode==='error'){setTimeout(()=>this.onmessage({data:{error:'controlled failure'}}),0);return;}}return super.postMessage(data,...rest);}
    terminate(){this.wasTerminated=true;return super.terminate();}
   };
- },{combat,mastery,prices});
+ },{combat,mastery,prices,gathering});
  const page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>results.errors.push(e.message));
  const ranksInFields=kind=>kind==='current'?page.locator('[data-mastery-current]').evaluateAll(elements=>Object.fromEntries(elements.map(el=>[el.dataset.masteryCurrent,Number(el.textContent.replaceAll(',',''))]))):page.locator(`[data-mastery-field="${kind}"]`).evaluateAll(inputs=>Object.fromEntries(inputs.map(input=>[input.dataset.masteryId,Number(input.value)])));
  const importCurrentRanks=async ranks=>{
@@ -71,7 +74,7 @@ try{
  assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.open),false);
  await page.locator('#mastery-optimizer>summary').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.open),true);
  results.cases.push('optimizer is a native details panel, collapsed on first load and expandable by keyboard');
- assert.equal(await page.locator('#optimizer-goal option:disabled').count(),3);
+ assert.equal(await page.locator('#optimizer-goal option:disabled').count(),2);
  assert.equal(await page.getByLabel('计算模式').inputValue(),'reset');
  await page.selectOption('#optimizer-allocation-mode','reset');
  assert.equal(await page.locator('#optimizer-monster').inputValue(),'7');
@@ -91,7 +94,7 @@ try{
  assert.ok(await page.locator('.optimizer-plan').count()>=1);
  assert.ok(await page.evaluate(()=>window.optimizerWorkers.at(-1).wasTerminated));
  const resetPlan=await page.evaluate(()=>window.optimizerWorkers.at(-1).result);
- assert.ok(resetPlan.plans[0].cost<=123);assert.equal(resetPlan.hours,1);assert.equal(resetPlan.monsterId,7);assert.ok(resetPlan.reviewSeeds.every(seed=>!resetPlan.screeningSeeds.includes(seed)));
+ assert.ok(resetPlan.plans[0].cost<=123);assert.equal(resetPlan.hours,24);assert.equal(resetPlan.monsterId,7);assert.ok(resetPlan.reviewSeeds.every(seed=>!resetPlan.screeningSeeds.includes(seed)));
  assert.equal(await page.locator('#optimizer-output button').count(),resetPlan.plans.length);
  assert.equal(await page.locator('[data-optimizer-copy]').count(),0);
  assert.equal(await page.locator('.optimizer-ranks').count(),0);
@@ -152,7 +155,7 @@ try{
   await page.setViewportSize({width,height:1100});await page.selectOption('#language',language);
   assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.open),true);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-  assert.equal(await page.locator('#optimizer-goal option:disabled').count(),3);
+  assert.equal(await page.locator('#optimizer-goal option:disabled').count(),2);
   assert.equal(await page.locator('#optimizer-allocation-mode').inputValue(),'remaining');
   assert.equal(await page.getByLabel(language==='zh'?'计算模式':'Calculation mode').count(),1);
   assert.equal(await page.locator('#optimizer-output button').count(),remainingPlan.plans.length);
@@ -230,6 +233,45 @@ try{
  await page.selectOption('#optimizer-monster','6');await page.selectOption('#language','zh');assert.equal(await page.locator('#optimizer-monster').inputValue(),'6');
  assert.equal(await page.locator('#optimizer-start').textContent(),'开始计算');
  results.cases.push('zero-point search permits an over-budget baseline reference and reload restores manual settings without cached recommendations');
+
+ // The three new goals run through the real Worker and share application rules.
+ await page.locator('#mastery-total').fill('123');
+ const sourceBefore=await page.evaluate(()=>({combat:localStorage.getItem('dvi-simulator-v1'),gather:localStorage.getItem('dvi-gathering-v1')}));
+ for(const objective of ['combatCollection','gatherCollection','gatherIncome']){
+  await page.selectOption('#optimizer-goal',objective);
+  const gathering=objective.startsWith('gather');
+  assert.equal(await page.locator('#optimizer-monster').count(),gathering?0:1);
+  if(gathering){
+   const job=await page.evaluate(async()=>{const {gatheringJobs}=await import('/src/gathering-model.js');return gatheringJobs.find(j=>j.skill==='mining'&&j.levelReq===1).id;});
+   await page.selectOption('#optimizer-job',String(job));
+   assert.equal(await page.locator('#optimizer-edit-combat').getAttribute('href'),'/gather');
+  }else await page.selectOption('#optimizer-monster','7');
+  if(objective==='gatherIncome')await page.evaluate(async()=>{
+   const {optimizerInput,optimizerIncomeItems}=await import('/src/mastery-optimizer.js');
+   const {getGatheringConfig}=await import('/src/gathering-controls.js');
+   const {masteryDefaults}=await import('/src/mastery.js');const {setPrice}=await import('/src/price-service.js');
+   const jobId=Number(document.querySelector('#optimizer-job').value);
+   const input=optimizerInput({objective:'gatherIncome',gathering:getGatheringConfig(),jobId,totalPoints:0,current:masteryDefaults().current,effort:'fast',now:Date.now()});
+   for(const id of optimizerIncomeItems(input))setPrice(id,100);
+  });
+  await page.click('#optimizer-start');await page.waitForSelector('.optimizer-plan');
+  const actual=await page.evaluate(()=>window.optimizerWorkers.at(-1).result);
+  assert.equal(actual.objective,objective);assert.equal(actual.hours,24);
+  assert.equal(await page.locator('.optimizer-plan dt').first().textContent(),objective.endsWith('Collection')?'精通点数':'收入');
+  assert.deepEqual(await ranksInFields('target'),actual.plans[0].ranks);
+  for(const language of ['en','zh']){
+   await page.selectOption('#language',language);assert.equal(await page.locator('#optimizer-goal').inputValue(),objective);
+   await page.setViewportSize({width:390,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+   await page.locator('#mastery-optimizer').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(directory,`${objective}-${language}-390.png`)});
+  }
+  await page.setViewportSize({width:1440,height:1000});
+ }
+ assert.deepEqual(await page.evaluate(()=>({combat:localStorage.getItem('dvi-simulator-v1'),gather:localStorage.getItem('dvi-gathering-v1')})),sourceBefore);
+ results.cases.push('three new objectives use real Workers, correct configuration and metrics, preserve source pages and apply only target ranks; bilingual mobile redraw keeps the selected goal');
+ await page.selectOption('#optimizer-goal','gatherCollection');await page.evaluate(()=>window.optimizerMode='wait');await page.click('#optimizer-start');
+ await page.selectOption('#optimizer-goal','combatCollection');assert.ok(await page.evaluate(()=>window.optimizerWorkers.at(-1).wasTerminated));assert.equal(await page.locator('.optimizer-plan').count(),0);
+ await page.selectOption('#optimizer-goal','gatherCollection');await page.click('#optimizer-start');await page.click('#optimizer-edit-combat');await page.waitForURL('**/gather');assert.ok(await page.evaluate(()=>window.optimizerWorkers.at(-1).wasTerminated));
+ results.cases.push('changing objective cancels the previous Worker; gathering edit link opens the Gathering page and cancels running calculation');
  assert.deepEqual(results.errors,[]);await context.close();
 }catch(error){results.errors.push(error.stack??String(error));console.error(error.stack??String(error));process.exitCode=1;}
 finally{await fs.writeFile(path.join(directory,'results.json'),JSON.stringify(results,null,2)+'\n');server?.kill();if(browser)await browser.close();}

@@ -25,7 +25,7 @@ export function simulateGatheringSite(raw,job,site,options={}){
  if(!game.startWork(p,context,site.id,job.id,discardGathered?'drop':'bank',null))throw Error('invalidRoute');
  const initialXp=p.skills[job.skill];
  const potionItems=Object.fromEntries(gatheringPotions.filter(b=>(p.brews[b.kind]??0)>0).map(b=>[game.withRarity(b.itemId,p.brewTier[b.kind]??0),durationTicks/HOUR_TICKS]));
- const result={siteId:site.id,x:site.x,y:site.y,homeBank:bank.id,durationTicks,normalItems:{},rareItems:{},sampleItems:{},potionItems,startLevel:game.level(initialXp),endedEarly:false,...Object.fromEntries(metrics.map(k=>[k,0]))};
+ const result={siteId:site.id,x:site.x,y:site.y,homeBank:bank.id,durationTicks,normalItems:{},rareItems:{},collectionItems:{},sampleItems:{},potionItems,startLevel:game.level(initialXp),endedEarly:false,...Object.fromEntries(metrics.map(k=>[k,0]))};
  result.seed=context.seed;
  // Only the main product and recipe bonus are discarded. Keep their current
  // pack segment separate from stored goods and non-discardable rewards.
@@ -42,18 +42,23 @@ export function simulateGatheringSite(raw,job,site,options={}){
   const produced=events.find(e=>e.kind==='produced');
   if(produced){
    if(produced.itemId===game.coinItemId)result.coins+=job.output.qty;
-   else workQualities(p,context,job,at).forEach((prob,tier)=>addExpected(discardGathered?pendingNormal:result.normalItems,game.withRarity(job.output.itemId,tier),job.output.qty*prob));
+   else workQualities(p,context,job,at).forEach((prob,tier)=>{
+    const id=game.withRarity(job.output.itemId,tier),qty=job.output.qty*prob;
+    addExpected(result.collectionItems,id,qty);
+    addExpected(discardGathered?pendingNormal:result.normalItems,id,qty);
+   });
+   const collectionRewards={};expectedWorkRewards(collectionRewards,p,context,job,at,before,produced);
+   for(const [id,qty]of Object.entries(collectionRewards))addExpected(result.collectionItems,id,qty);
    if(discardGathered){
-    const rewards={};expectedWorkRewards(rewards,p,context,job,at,before,produced);
-    for(const [id,qty]of Object.entries(rewards))addExpected(job.bonus&&game.baseItemId(Number(id))===game.baseItemId(job.bonus.itemId)?pendingBonus:result.rareItems,id,qty);
-   }else expectedWorkRewards(result.rareItems,p,context,job,at,before,produced);
+    for(const [id,qty]of Object.entries(collectionRewards))addExpected(job.bonus&&game.baseItemId(Number(id))===game.baseItemId(job.bonus.itemId)?pendingBonus:result.rareItems,id,qty);
+   }else for(const [id,qty]of Object.entries(collectionRewards))addExpected(result.rareItems,id,qty);
   }
   for(const e of events){
    if(e.kind==='produced'){result.completed++;result.attempts++;add(result.sampleItems,e.itemId,e.qty??1);}
    if(e.kind==='caught'){result.caught++;result.attempts++;}
    if(e.kind==='deposited'){result.deposits++;if(discardGathered)retainPending();}
    if(e.kind==='dropped'&&discardGathered){pendingNormal={};pendingBonus={};}
-   if(['bonus','pet','mount','voidshard','box'].includes(e.kind)){const id=e.kind==='box'?(e.itemId??game.lootBoxItemId):e.itemId;if(!Number.isSafeInteger(id))throw Error('invalidReward');add(result.sampleItems,id,e.qty??1);if(e.kind==='box')addExpected(result.rareItems,id,e.qty??1);}
+   if(['bonus','pet','mount','voidshard','box'].includes(e.kind)){const id=e.kind==='box'?(e.itemId??game.lootBoxItemId):e.itemId;if(!Number.isSafeInteger(id))throw Error('invalidReward');add(result.sampleItems,id,e.qty??1);if(e.kind==='box'){addExpected(result.rareItems,id,e.qty??1);addExpected(result.collectionItems,id,e.qty??1);}}
    if(e.kind==='routeStopped'&&!['done'].includes(e.reason))throw Error(`routeStopped:${e.reason}`);
   }
   result.elapsedTicks=tick;

@@ -1,10 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {game,preset,masteryValue,makePlayer} from '../src/model.js';
+import {gatheringDefaults,gatheringJobs} from '../src/gathering-model.js';
+import {simulateGatheringJob} from '../src/gathering-simulation.js';
 import {simulateMonster} from '../src/simulation.js';
 import {valueRewards} from '../src/item-prices.js';
 import {masteryDefaults} from '../src/mastery.js';
-import {affordableRank,optimizerInput,combatIncomeItems,checkOptimizerPrices,searchMasteryAllocations,optimizeMastery,screeningSeeds,reviewSeeds,sampleStats,optimizerEfforts,optimizerPolicy,combatIncomeGeneration} from '../src/mastery-optimizer.js';
+import {affordableRank,optimizerInput,combatIncomeItems,checkOptimizerPrices,searchMasteryAllocations,optimizeMastery,screeningSeeds,reviewSeeds,sampleStats,optimizerEfforts,optimizerPolicy,combatIncomeGeneration,optimizerIncomeItems,collectionScore} from '../src/mastery-optimizer.js';
 const zero=()=>masteryDefaults().current;
 function input(points=123){
  const combat=preset('ranged');combat.manual.simulationHours=1;
@@ -91,7 +93,7 @@ test('keeping current ranks remains a reviewed option when screening favors upgr
 });
 test('validation rejects unsupported goals and bad budgets, ranks and scenarios',()=>{
  const base=input();for(const totalPoints of [-1,.5,NaN,Infinity,Number.MAX_SAFE_INTEGER+1,'40'])assert.throws(()=>optimizerInput({...base,totalPoints}));
- for(const objective of ['gatherIncome','xp','enhanceCost',undefined])assert.throws(()=>optimizerInput({...base,objective}),/unsupportedObjective/);
+ for(const objective of ['unknown','xp','enhanceCost',undefined])assert.throws(()=>optimizerInput({...base,objective}),/unsupportedObjective/);
  for(const rank of [-1,.1,20001,null,'1'])assert.throws(()=>optimizerInput({...base,current:{...zero(),xp:rank}}),/invalidOptimizerRanks/);
  assert.throws(()=>optimizerInput({...base,combat:null}),/invalidOptimizerScenario/);
  assert.throws(()=>optimizerInput({...base,monsterId:-1}),/invalidOptimizerMonster/);
@@ -135,7 +137,7 @@ test('review can reject a screening winner and an unsafe baseline has no paired 
 });
 test('real upstream simulation matches a separately valued baseline and leaves the input untouched',()=>{
  const raw=input(0),before=structuredClone(raw),result=optimizeMastery(raw);
- const values=reviewSeeds.map(seed=>valueRewards(simulateMonster({...raw.combat,masteries:zero()},game.monsters.find(m=>m.id===7),{seed,now:raw.now}),raw.prices).totalIncome);
+ const values=reviewSeeds.map(seed=>valueRewards(simulateMonster({...optimizerInput(raw).combat,masteries:zero()},game.monsters.find(m=>m.id===7),{seed,now:raw.now}),raw.prices).totalIncome);
  assert.equal(result.plans[0].stats.mean,sampleStats(values).mean);assert.equal(result.plans[0].paired.mean,0);assert.deepEqual(raw,before);assert.equal(result.screened,1);
 });
 
@@ -148,9 +150,9 @@ test('four search efforts vary generation and stop early on flat objectives',()=
  }
  assert.ok(counts.every((n,i)=>i===0||n>counts[i-1]));
 });
-test('only the combat-income policy excludes XP and preserves the remaining-mode floor',()=>{
+test('combat-income generation excludes XP and preserves the remaining-mode floor',()=>{
  const policy=optimizerPolicy('combatIncome');assert.equal(policy.ignoreLevelUpsForGeneration,true);assert.equal(policy.tracks.length,5);assert.ok(!policy.tracks.includes('xp'));
- for(const goal of ['xp','gatherIncome','enhanceCost',undefined])assert.throws(()=>optimizerPolicy(goal),/unsupportedObjective/);
+ for(const goal of ['xp','unknown','enhanceCost',undefined])assert.throws(()=>optimizerPolicy(goal),/unsupportedObjective/);
  for(const allocationMode of ['reset','remaining'])for(const effort of Object.keys(optimizerEfforts)){
   const raw=input(5000);raw.current={...zero(),xp:5,gather:2};raw.allocationMode=allocationMode;raw.effort=effort;const calls=[];
   const result=optimizeMastery(raw,{simulate:(s,m,{seed})=>{calls.push({ranks:s.masteries,seed});return {deaths:0,endedEarly:false,coins:100+s.masteries.rare+s.masteries.accuracy,normalItems:{},rareItems:{}};}});
@@ -204,5 +206,80 @@ test('independent review cannot lose a lower-effort winner to extra screening ca
   }});
   assert.ok(result.plans[0].stats.mean>=income);income=result.plans[0].stats.mean;
   assert.equal(result.simulations,calls.size);assert.ok(result.screened<=optimizerEfforts[effort]);
+ }
+});
+
+function gatheringInput(objective='gatherIncome',points=40){
+ const gathering=gatheringDefaults();gathering.simulationHours=1/60;gathering.hotSetting='off';
+ const job=gatheringJobs.find(j=>j.skill==='mining'&&j.levelReq===1);
+ const raw={objective,totalPoints:points,current:zero(),effort:'fast',jobId:job.id,gathering,now:1792713600000};
+ const input=optimizerInput(raw);return {...raw,prices:Object.fromEntries(optimizerIncomeItems(input).map(id=>[id,{price:100}]))};
+}
+test('collection scoring follows first milestone quality weights and ignores coins, pets and excluded items',()=>{
+ const drop=game.monsters.find(m=>m.id===7).drop;
+ const items=Object.fromEntries([0,1,2,3,4].map(tier=>[game.withRarity(drop,tier),2]));
+ assert.equal(collectionScore({normalItems:items,rareItems:{[game.combatPetItem(7)]:10000},coins:999999}),288);
+ assert.equal(collectionScore({collectionItems:items,normalItems:{},rareItems:{}}),288);
+ assert.throws(()=>collectionScore({normalItems:{[drop]:NaN}}),/invalidOptimizerCollection/);
+});
+test('both collection objectives rank weighted output without consulting prices in both allocation modes',()=>{
+ for(const objective of ['combatCollection','gatherCollection'])for(const allocationMode of ['reset','remaining']){
+  const raw=objective==='combatCollection'?{...input(82),objective}:gatheringInput(objective,82);
+  raw.allocationMode=allocationMode;raw.current.enhance=1;raw.prices={};
+  const drop=objective==='combatCollection'?game.monsters.find(m=>m.id===7).drop:gatheringJobs.find(j=>j.id===raw.jobId).output.itemId;
+  const result=optimizeMastery(raw,{simulate:s=>({deaths:0,endedEarly:false,coins:999999-s.masteries.rare*1000,normalItems:{[drop]:100,[game.withRarity(drop,4)]:s.masteries.rare},rareItems:{}})});
+  assert.equal(result.plans[0].ranks.rare,allocationMode==='reset'?2:1);
+  assert.equal(result.plans[0].stats.mean,allocationMode==='reset'?300:200);
+  for(const plan of result.plans){assert.ok(plan.cost<=raw.totalPoints);assert.equal(plan.ranks.enhance,allocationMode==='reset'?0:1);}
+ }
+});
+test('gather income validates tasks and all possible prices, and includes XP in its independent policy',()=>{
+ const raw=gatheringInput(),input=optimizerInput(raw);
+ assert.deepEqual(optimizerPolicy(raw.objective).tracks,['gather','move','rare','xp']);
+ const missing=optimizerIncomeItems(input)[0];delete raw.prices[missing];assert.throws(()=>checkOptimizerPrices(input,raw.prices),/missingOptimizerPrices/);
+ raw.prices[missing]={price:0};assert.doesNotThrow(()=>checkOptimizerPrices(input,raw.prices));
+ assert.throws(()=>optimizerInput({...raw,jobId:-1}),/invalidOptimizerJob/);
+ const high=gatheringJobs.find(j=>j.levelReq>1);assert.throws(()=>optimizerInput({...raw,jobId:high.id}),/levelTooLow/);
+ assert.throws(()=>optimizerInput({...raw,gathering:null}),/invalidOptimizerGathering/);
+ const result=optimizeMastery(raw,{simulate:s=>({endedEarly:false,coins:10+s.masteries.xp*20,normalItems:{},rareItems:{}})});
+ assert.equal(result.plans[0].ranks.xp,1);
+});
+test('real gathering objectives match independent full-duration simulation and preserve frozen input',()=>{
+ for(const objective of ['gatherIncome','gatherCollection']){
+  const raw=gatheringInput(objective,0),before=structuredClone(raw),result=optimizeMastery(raw);
+  const job=gatheringJobs.find(j=>j.id===raw.jobId);
+  const values=reviewSeeds.map(seed=>{const sample=simulateGatheringJob({...optimizerInput(raw).gathering,masteries:zero()},job,{seed,now:raw.now});
+   return objective==='gatherIncome'?valueRewards(sample,raw.prices).totalIncome:Object.entries(sample.collectionItems).reduce((sum,[id,qty])=>sum+(game.isPet(Number(id))||game.collectionExcluded(Number(id))?0:qty*[1,3,10,30,100][game.itemTier(Number(id))]),0);
+  });
+  assert.equal(result.plans[0].stats.mean,sampleStats(values).mean);assert.deepEqual(raw,before);
+ }
+});
+
+test('discarded gathering production remains in collection totals while income only retains carried goods',()=>{
+ const raw=gatheringInput('gatherCollection'),job=gatheringJobs.find(j=>j.id===raw.jobId);
+ raw.gathering.simulationHours=1;
+ const sample=simulateGatheringJob({...raw.gathering,discardGathered:true},job,{seed:reviewSeeds[0],now:raw.now});
+ const main=items=>Object.entries(items).filter(([id])=>game.baseItemId(Number(id))===job.output.itemId).reduce((sum,[,qty])=>sum+qty,0);
+ assert.ok(Math.abs(main(sample.collectionItems)-sample.completed*job.output.qty)<1e-8);
+ assert.ok(main(sample.collectionItems)>main(sample.normalItems));
+});
+test('plain products require only normal price; non-ironman mount qualities remain covered',()=>{
+ const raw=gatheringInput(),job=gatheringJobs.find(j=>j.plain);assert.ok(job);
+ raw.jobId=job.id;raw.gathering.levels[job.skill]=game.maxLevel;
+ const ids=optimizerIncomeItems(optimizerInput(raw));assert.ok(ids.includes(job.output.itemId));
+ for(let tier=1;tier<=4;tier++){assert.ok(!ids.includes(game.withRarity(job.output.itemId,tier)));assert.ok(ids.includes(game.withRarity(game.mountItemId,tier)));}
+});
+
+test('all optimizer goals freeze 24 hours regardless of source duration without mutating it',()=>{
+ for(const objective of ['combatIncome','combatCollection','gatherIncome','gatherCollection'])for(const hours of [1/60,1,72]){
+  const raw=objective.startsWith('gather')?gatheringInput(objective,0):{...input(0),objective};
+  const source=objective.startsWith('gather')?raw.gathering:raw.combat.manual;
+  source.simulationHours=hours;source.customSimulation=true;const before=structuredClone(raw);
+  const result=optimizeMastery(raw,{simulate:state=>{
+   const settings=objective.startsWith('gather')?state:state.manual;
+   assert.equal(settings.simulationHours,24);assert.equal(settings.customSimulation,false);
+   return {deaths:0,endedEarly:false,coins:10,normalItems:{},rareItems:{}};
+  }});
+  assert.equal(result.hours,24);assert.deepEqual(raw,before);
  }
 });

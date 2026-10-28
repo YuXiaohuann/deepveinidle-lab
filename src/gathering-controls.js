@@ -13,6 +13,7 @@ import {gatheringStorageKey,gatheringDefaults,normalizeGathering,gatheringSkills
 
 let state=gatheringDefaults(),language='zh',query='',period='day',sort='levelReq',direction='desc',saveOK=true,status=null,busy=false,probeStarted=false,active=false;
 let worker=null,timer=null,signature='',current=null;
+export const getGatheringConfig=()=>structuredClone(state);
 const detailState=new Map();
 try{const saved=localStorage.getItem(gatheringStorageKey);if(saved)state=normalizeGathering(JSON.parse(saved));}catch{status={error:'savedGatheringInvalid'};}
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
