@@ -7,7 +7,7 @@ const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-12,`${a} != ${b}`);
 
 test('1203 reviewed full snapshot retains lectern and client boss definitions',()=>{
  const m=JSON.parse(fs.readFileSync(new URL('../vendor/manifest.json',import.meta.url)));
- assert.equal(m.changelogVersion,'1.0.1204');assert.equal(m.sha256,'37840e4f3fd11aeb8ff7671fb24232e6b4020076bde0e6bbae426aa1938662af');assert.deepEqual(m.overrides,[]);
+ assert.equal(m.changelogVersion,'1.0.1205');assert.equal(m.sha256,'6a2edd98093a204d24f41ef2f26e1ee2260fd027931213287471b1b131d84282');assert.deepEqual(m.overrides,[]);
  assert.notEqual(game.rooms.find(r=>r.id==='lectern').retired,true);
  assert.deepEqual(game.bosses.map(b=>b.exclusive.chance),[1/500,1/500,1/500]);
 });

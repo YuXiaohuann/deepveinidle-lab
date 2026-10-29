@@ -14,7 +14,7 @@ import {masteryDefaults,masteryStorageKey} from '../src/mastery.js';
 import {craftingDefaults} from '../src/crafting-model.js';
 
 const args=process.argv.slice(2),option=name=>args.includes(name)?args[args.indexOf(name)+1]:null;
-const output=path.resolve(option('--out')??'.test-artifacts/upstream-1204/browser');
+const output=path.resolve(option('--out')??'.test-artifacts/upstream-1205/browser');
 await fs.mkdir(output,{recursive:true});
 const servers=[],result={cases:[],errors:[]};let browser;
 async function serve(script){
@@ -31,6 +31,7 @@ try{
   const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(20000);
   page.on('pageerror',error=>result.errors.push(error.message));
   const state=preset('ranged');state.manual.simulationHours=1;state.manual.enemySelection='monster-11';state.manual.hotSetting='off';
+  state.gear.amulet={id:357,tier:4,plus:17};
   const craft=craftingDefaults();craft.skill='smithing';craft.levels.smithing=99;craft.levels.crafting=99;craft.plans={'upgrade-271:4':2};craft.owned={4044:6,4114:1,4252:1};
   await context.addInitScript(({state,craft,key,language})=>{
    if(!localStorage.getItem('dvi-simulator-v1'))localStorage.setItem('dvi-simulator-v1',JSON.stringify({language,state}));if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify({version:1,build:{...craft,plans:{}},orders:[{id:"upstream",name:"Upstream order",enabled:true,plans:craft.plans,fees:{fixed:null,percent:null,minute:null}}],currentOrderId:"upstream",inventory:{capturedAt:Date.now(),items:craft.owned}}));
@@ -39,8 +40,26 @@ try{
   await page.waitForFunction(()=>document.querySelector('#simulation-status').hidden&&!document.querySelector('#rows .pending'));
   assert.equal(await page.locator('#rows tr[data-enemy]').count(),1);
   assert.ok(!/Simulation failed|模拟失败/.test(await page.locator('#rows').innerText()));
-  assert.match(await page.locator('.footer-source').innerText(),/2026-10-28.*1\.0\.1204/);
+  assert.match(await page.locator('.footer-source').innerText(),/2026-10-28.*1\.0\.1205/);
+  const amuletNote=/总等级|total level/i;
+  assert.doesNotMatch(await page.locator('#issues').innerText(),amuletNote);
+  assert.equal(await page.locator('#issues .issue-box').count(),0);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await page.reload();assert.doesNotMatch(await page.locator('#issues').innerText(),amuletNote);
+  assert.equal(await page.locator('#issues .issue-box').count(),0);
+  await page.waitForFunction(()=>document.querySelector('#simulation-status').hidden&&!document.querySelector('#rows .pending'));
   const combatScreenshot=`combat-${language}-${width}.png`;await page.screenshot({path:path.join(output,combatScreenshot),fullPage:true});
+  if(args.includes('--combat-only')){
+   await page.goto(base+'/mastery');
+   assert.doesNotMatch(await page.locator('#optimizer-scenario').textContent(),/配装提示|loadout warnings/);
+   await page.evaluate(()=>{const saved=JSON.parse(localStorage.getItem('dvi-simulator-v1'));saved.state.levels.ranged=1;localStorage.setItem('dvi-simulator-v1',JSON.stringify(saved));});
+   await page.goto(base+'/combat');
+   assert.match(await page.locator('#issues').innerText(),language==='zh'?/等级不足，仍计入/:/Level too low; included/);
+   assert.doesNotMatch(await page.locator('#issues').innerText(),amuletNote);
+   await page.goto(base+'/mastery');
+   assert.match(await page.locator('#optimizer-scenario').textContent(),language==='zh'?/配装提示/:/loadout warnings/);
+   result.cases.push({language,width,status:'passed',screenshots:[combatScreenshot]});await context.close();continue;
+  }
   const gather=gatheringDefaults();gather.levels.mining=99;gather.jobSelection=344;gather.simulationHours=1;gather.hotSetting='off';gather.worldRarity=100;
   await page.evaluate(({key,gather})=>localStorage.setItem(key,JSON.stringify(gather)),{key:gatheringStorageKey,gather});
   await page.goto(base+'/gather');
@@ -129,7 +148,7 @@ try{
   const masteryScreenshot=`mastery-${language}-${width}.png`;await page.screenshot({path:path.join(output,masteryScreenshot),fullPage:true});
   result.cases.push({language,width,status:'passed',screenshots:[gatherScreenshot,combatScreenshot,craftScreenshot,fireworksScreenshot,enhanceScreenshot,highScreenshot,masteryScreenshot],requirements});await context.close();
  }
- if(!option('--url')){
+ if(!option('--url')&&!args.includes('--combat-only')){
   const captureBase=await serve('scripts/check-capture-browser.mjs'),page=await browser.newPage();await page.goto(captureBase);
   await page.waitForFunction(()=>{const text=document.querySelector('#results').textContent;return text.includes('"PASS"')||text.includes('"error"');},{},{timeout:20000});
   result.capture=JSON.parse(await page.locator('#results').textContent());assert.ok(result.capture.passed.includes('PASS'),JSON.stringify(result.capture));

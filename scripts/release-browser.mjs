@@ -55,7 +55,10 @@ export async function verifyBrowser(base,version,directory){
      await left.locator('details').evaluateAll(es=>es.forEach(e=>e.open=true));await settle();
      await left.evaluate(e=>e.scrollTop=0);await right.evaluate(e=>e.scrollTop=0);
      const scrollable=await left.evaluate(e=>e.scrollHeight>e.clientHeight);
-     await left.focus();await page.keyboard.press('PageDown');
+     await left.focus();
+     if(scrollable)await left.evaluate(e=>{e.dataset.releaseKeyEnded='false';e.addEventListener('scrollend',()=>{e.dataset.releaseKeyEnded='true';},{once:true});});
+     await page.keyboard.press('PageDown');
+     if(scrollable){await page.waitForFunction(id=>document.querySelector(`[data-scroll-column="${id}-config"]`).dataset.releaseKeyEnded==='true',id);await left.evaluate(e=>{delete e.dataset.releaseKeyEnded;});}
      if(scrollable)await page.waitForFunction(id=>document.querySelector(`[data-scroll-column="${id}-config"]`).scrollTop>0,id);
      assert.equal(await right.evaluate(e=>e.scrollTop),0,'Left keyboard scroll affected right column');
      await left.evaluate(e=>e.scrollTop=e.scrollHeight);await left.hover();await page.mouse.wheel(0,1000);await settle();
@@ -65,14 +68,25 @@ export async function verifyBrowser(base,version,directory){
      let atBottom=false;
      for(let attempt=0;attempt<3&&!atBottom;attempt++){
       const size=await right.evaluate(e=>({height:e.scrollHeight,client:e.clientHeight}));
+      const needsScroll=await right.evaluate(e=>Math.abs(e.scrollTop-Math.max(0,e.scrollHeight-e.clientHeight))>1);
+      if(needsScroll)await right.evaluate(e=>{e.dataset.releaseKeyEnded='false';e.addEventListener('scrollend',()=>{e.dataset.releaseKeyEnded='true';},{once:true});});
       await page.keyboard.press('End');
+      if(needsScroll){await page.waitForFunction(id=>document.querySelector(`[data-scroll-column="${id}-information"]`).dataset.releaseKeyEnded==='true',id);await right.evaluate(e=>{delete e.dataset.releaseKeyEnded;});}
       await page.waitForFunction(({id,size})=>{const e=document.querySelector(`[data-scroll-column="${id}-information"]`);return Math.abs(e.scrollTop-Math.max(0,e.scrollHeight-e.clientHeight))<=1||e.scrollHeight!==size.height||e.clientHeight!==size.client;},{id,size});
       atBottom=await right.evaluate(e=>Math.abs(e.scrollTop-Math.max(0,e.scrollHeight-e.clientHeight))<=1);
      }
      assert.ok(atBottom,`${id}: keyboard End did not reach the column bottom`);
      assert.ok(await page.locator('.project-footer').evaluate(e=>e.getBoundingClientRect().bottom<=innerHeight+1),'Footer is not reachable');
      // Switching away/back and redrawing language must retain column positions.
-     await right.evaluate(e=>e.scrollTop=Math.min(120,(e.scrollHeight-e.clientHeight)/2));await settle();
+     const requestedTop=await right.evaluate(e=>{
+      const target=Math.min(120,(e.scrollHeight-e.clientHeight)/2);
+      e.dataset.releaseScrollEnded=String(Math.abs(e.scrollTop-target)<=1);
+      e.addEventListener('scrollend',()=>{e.dataset.releaseScrollEnded='true';},{once:true});
+      e.scrollTop=target;return target;
+     });
+     // Wait for the native input animation to end, not a transient target crossing.
+     await page.waitForFunction(({id,target})=>{const e=document.querySelector(`[data-scroll-column="${id}-information"]`);return e.dataset.releaseScrollEnded==='true'&&Math.abs(e.scrollTop-target)<=1;},{id,target:requestedTop});
+     await right.evaluate(e=>{delete e.dataset.releaseScrollEnded;});await settle();
      const before=await right.evaluate(e=>e.scrollTop);const other=id==='combat'?'enhance':'combat';
      await page.locator(`#${other}-nav`).click();await page.locator(`#${id}-nav`).click();await settle();
      assert.ok(Math.abs(await right.evaluate(e=>e.scrollTop)-before)<=1,`Page switch lost scroll position: ${id}, before ${before}, after ${await right.evaluate(e=>e.scrollTop)}`);

@@ -1,5 +1,5 @@
 import {questlessOffline} from './native-questless.mjs';
-// Independently extract the complete 1.0.1204 native engine for compatibility checks.
+// Independently extract the complete 1.0.1205 native engine for compatibility checks.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -29,7 +29,7 @@ for(const node of parse(source,{ecmaVersion:'latest',sourceType:'module',ranges:
   const entry={start:d.start,text:node.kind+' '+source.slice(d.start,d.end)+';'};ids.forEach(id=>declarations.set(id,entry));
  }
 }
-const exports={"world":"N","monsters":"qt","predict":"yh","startFight":"ar","createContext":"AY","gear":"je","armourMultiplier":"w0","masteryMultiplier":"Ra","restock":"IL","offline":"EE","startWork":"Ss","applyUpgrade":"bL","enhanceCost":"mu","enhanceChance":"k0","enhanceXp":"dL","enhanceTicks":"Fs","skillPetChance":"wS","hotSkill":"Ng"};
+const exports={"world":"N","monsters":"Bt","predict":"zh","startFight":"ur","createContext":"_Y","gear":"We","armourMultiplier":"D0","masteryMultiplier":"Ma","restock":"y9","offline":"F8","startWork":"Ys","applyUpgrade":"a9","enhanceCost":"Hu","enhanceChance":"E0","enhanceXp":"EL","enhanceTicks":"$s","skillPetChance":"CS","hotSkill":"ob"};
 const selected=new Set(),allowed=new Set(['WeakSet','WeakMap','Uint8Array','Uint16Array','Uint32Array','Int16Array','Int32Array','Float64Array','Math','Map','Set','Number','Object','Array','String','Error','Date','Boolean','Infinity','undefined','JSON','RegExp','parseInt','parseFloat']);
 function collect(name){
  const d=declarations.get(name);if(!d)throw Error('Missing native declaration '+name);if(selected.has(d))return;selected.add(d);
@@ -37,7 +37,7 @@ function collect(name){
  for(const dep of new Set(refs))if(declarations.has(dep))collect(dep);else if(!allowed.has(dep))throw Error('Unexpected native dependency '+dep);
 }
 Object.values(exports).forEach(collect);
-const directory=fs.mkdtempSync(path.join(os.tmpdir(),'dvi-1204-audit-'));
+const directory=fs.mkdtempSync(path.join(os.tmpdir(),'dvi-1205-audit-'));
 try{
  const file=path.join(directory,'native.mjs');
  fs.writeFileSync(file,[...selected].sort((a,b)=>a.start-b.start).map(d=>d.text).join('\n')+'\nexport{'+Object.entries(exports).map(([alias,name])=>name+' as '+alias).join(',')+'};');
@@ -111,5 +111,5 @@ try{
  if(process.argv[2])fs.writeFileSync(process.argv[2],JSON.stringify({predictions:count,gearVariants:105,gatheringSites:gatheringCount,craftingCases:craftingCount,upgradeCases:upgradeCount,enhancementCosts:costs,enhancementCases,forecastSlots:49})+'\n');
  console.log(`Enhancing: ${enhancementCases} item/rarity/level/mastery/plus cases matched independent native chance, costs and XP; duration and pet chance matched.`);
  console.log(`Other pages: ${gatheringCount} gathering sites, ${craftingCount} ordinary recipe/quality cases, ${upgradeCount} upgrade/quality cases, ${costs} enhancement costs and 49 forecast slots matched independent native code.`);
- console.log(`Native 1.0.1204 comparison: ${count}/${count} complete 1-hour predictions matched; world geometry, monsters and 105 new-gear variants matched.`);
+ console.log(`Native 1.0.1205 comparison: ${count}/${count} complete 1-hour predictions matched; world geometry, monsters and 105 new-gear variants matched.`);
 }finally{fs.rmSync(directory,{recursive:true});}
