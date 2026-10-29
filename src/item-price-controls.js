@@ -1,17 +1,15 @@
 import {getItem} from './price-service.js';
 import * as game from './upstream.js';
 import {translatedName} from './i18n.js';
-import {priceDefaults,marketFamilies,priceCategories,itemCategory,hasPriceImports,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices} from './item-prices.js';
+import {priceDefaults,priceCategories,itemCategory,hasPriceImports,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices} from './item-prices.js';
 import {priceState,priceSaveError,updatePrices,subscribePrices,refreshMarketPrices,setPricePreferences} from './item-price-store.js';
 import {marketErrors} from './market-import.js';
 
 let editing=false;
-let language='zh',dialog,selected=new Set(),busy=false,status=null,marketError=null,query='',family='all',tier='all',plus=0,filter='all';
-const labels={ore:'矿石',bars:'金属锭',fish:'鱼',wood:'木材',food:'食物',crops:'作物',potions:'药水',weapons:'武器',armour:'护甲',jewellery:'饰品',tools:'工具',mounts:'坐骑',materials:'材料',valuables:'贵重品',gems:'宝石'};
+let language='zh',dialog,selected=new Set(),busy=false,status=null,marketError=null,query='',categoryFilter='all',tier='all',plus=0,filter='all';
 const text=(zh,en)=>language==='zh'?zh:en;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const rarity=()=>text(['普通','罕见','稀有','史诗','传说'],['Normal','Uncommon','Rare','Epic','Legendary']);
-const familyName=f=>text(labels[f.key],f.label);
 const opts=(arr,value)=>arr.map(([v,label])=>`<option value="${v}" ${String(v)===String(value)?'selected':''}>${esc(label)}</option>`).join('');
 const number=v=>v.toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:6});
 const date=v=>new Date(v).toLocaleString(language==='zh'?'zh-CN':'en');
@@ -36,19 +34,23 @@ function message(){
 function refreshStatus(){
  const el=dialog.querySelector('#price-status');el.textContent=message();el.className='micro import-status'+(statusError()?' price-market-warning':'');el.setAttribute('role',statusError()?'alert':'status');
 }
-function hasFilters(){return family!=='all'||query.trim()!==''||tier!=='all'||plus>0||filter!=='all';}
+function hasFilters(){return categoryFilter!=='all'||query.trim()!==''||tier!=='all'||plus!==0||filter!=='all';}
 function candidates(){
  if(!hasFilters())return [];
- const s=priceState(),ids=new Set(game.items.filter(i=>i.id===game.baseItemId(i.id)&&itemFamily(i.id)&&game.canSell(i.id)).map(i=>i.id));
+ const s=priceState(),q=query.trim().toLowerCase(),level=plus??0,ids=new Set(game.items.filter(i=>i.id===game.baseItemId(i.id)&&itemFamily(i.id)&&game.canSell(i.id)).map(i=>i.id));
  for(const key of [...Object.keys(s.prices),...Object.keys(s.quotes)])ids.add(Number(key));
  for(const id of [...ids]){
   const base=game.baseItemId(id);for(const t of tier==='all'?[0,1,2,3,4]:[Number(tier)]){
-   const encoded=game.encode(game.withRarity(base,t),plus);if(validItemId(encoded)&&(!plus||game.canEnhance(encoded)))ids.add(encoded);
+   const encoded=game.encode(game.withRarity(base,t),level);if(validItemId(encoded)&&(level===0||game.canEnhance(encoded)))ids.add(encoded);
   }
  }
  return [...ids].filter(id=>{
-  const base=game.item(game.baseItemId(id)),p=s.prices[id],q=query.trim().toLowerCase();
-  return (family==='all'||itemFamily(id)===family)&&(tier==='all'||game.itemTier(id)===Number(tier))&&(!plus||Math.floor(id/game.encode(0,1))===plus)&&(!q||`${base.name} ${translatedName(base.name,'zh')} ${id}`.toLowerCase().includes(q))&&(filter==='all'||filter==='priced'&&p?.price!==null&&p?.price!==undefined||filter==='locked'&&p?.locked);
+  const base=game.item(game.baseItemId(id)),p=s.prices[id];
+  if(categoryFilter!=='all'&&itemCategory(id)!==categoryFilter)return false;
+  if(tier!=='all'&&game.itemTier(id)!==Number(tier))return false;
+  if(plus!==null&&Math.floor(id/game.encode(0,1))!==plus)return false;
+  if(filter==='locked'&&!p?.locked||filter==='unpriced'&&p?.price!=null)return false;
+  return !q||`${base.name} ${translatedName(base.name,'zh')} ${id}`.toLowerCase().includes(q);
  }).sort((a,b)=>game.baseItemId(a)-game.baseItemId(b)||a-b);
 }
 const quoteText=q=>!q?text('未读取','Not read'):`${q.invalid?text('异常','Invalid'):q.value===null?text('无报价','No quote'):number(q.value)}`;
@@ -76,7 +78,7 @@ function render(){if(!dialog?.open||editing)return;
  </div></details>
 
 ${saved?`<p class="issue-box" role="alert">${esc((errors[saved]??[saved,saved])[language==='zh'?0:1])}</p>`:''}
- <div class="price-filters"><label>${text('分类','Category')}<select id="price-family">${opts([['all',text('全部','All')],...marketFamilies.map(f=>[f.key,familyName(f)])],family)}</select></label><label>${text('搜索','Search')}<input id="price-search" type="search" value="${esc(query)}" placeholder="${text('名称或物品编号','Name or item ID')}"></label><label>${text("稀有度",'Rarity')}<select id="price-tier">${opts([['all',text('全部','All')],...rarity().map((v,i)=>[i,v])],tier)}</select></label><label>${text('强化（0 为全部）','Enhancement (0 = all)')}<input id="price-plus" type="number" min="0" max="${game.maxEnhancement}" step="1" value="${plus}"></label><label>${text('状态','Status')}<select id="price-filter">${opts([['all',text('全部','All')],['priced',text('已定价','Priced')],['locked',text('已锁定','Locked')]],filter)}</select></label></div>
+ <div class="price-filters"><label>${text('分类','Category')}<select id="price-family">${opts([['all',text('全部','All')],...priceCategories.map(category=>[category.key,text(category.zh,category.en)])],categoryFilter)}</select></label><label>${text('搜索','Search')}<input id="price-search" type="search" value="${esc(query)}" placeholder="${text('名称或物品编号','Name or item ID')}"></label><label>${text("稀有度",'Rarity')}<select id="price-tier">${opts([['all',text('全部','All')],...rarity().map((v,i)=>[i,v])],tier)}</select></label><label>${text('强化','Enhancement')}<input id="price-plus" type="number" min="0" max="${game.maxEnhancement}" step="1" value="${plus??''}" placeholder="${text('全部','All')}"></label><label>${text('状态','Status')}<select id="price-filter">${opts([['all',text('全部','All')],['locked',text('已锁定','Locked')],['unpriced',text('未定价','Unpriced')]],filter)}</select></label></div>
  <div class="price-actions"><label class="check"><input id="price-select-all" type="checkbox" ${!rows.length?'disabled':''} ${rows.length&&rows.every(id=>selected.has(id))?'checked':''}>${text('全选当前筛选结果','Select all filtered items')} (${rows.length})</label><span>${text('已选','Selected')} ${selected.size}</span><button id="price-bulk-lock" class="secondary" ${!selected.size?'disabled':''}>${text('批量锁定','Lock selected')}</button><button id="price-bulk-unlock" class="secondary" ${!selected.size?'disabled':''}>${text('批量解锁','Unlock selected')}</button><button id="price-clear" class="secondary" ${busy||!Object.values(s.prices).some(p=>!p.locked&&p.price!==null)?'disabled':''}>${text('清空价格','Clear prices')}</button></div>
  <div class="price-list table-scroll"><table><thead><tr>${['',text('物品','Item'),text('有效单价','Effective unit price'),text('锁定','Locked'),text('商人价格','Vendor price'),text('最低卖单价','Lowest ask'),text('在售数量','Quantity for sale'),text('最高买单价','Highest bid'),text('求购数量','Quantity wanted')].map(v=>`<th>${v}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.map(row).join(''):`<tr><td colspan="9" class="${hasFilters()?'':'price-filter-prompt'}">${hasFilters()?text('没有匹配物品','No matching items'):text('物品数量较多，请先设置筛选条件','Many items to display; set a filter first')}</td></tr>`}</tbody></table></div>`;
  dialog.querySelector('#price-close').onclick=()=>dialog.close();
@@ -86,7 +88,7 @@ ${saved?`<p class="issue-box" role="alert">${esc((errors[saved]??[saved,saved])[
  dialog.querySelector('#price-import-reset').onclick=()=>{status=null;setPricePreferences(priceDefaults().preferences);dialog.querySelector('#price-import-reset')?.focus();};
  for(const el of dialog.querySelectorAll('[data-price-category]'))el.onchange=()=>{if(!el.checked)return;const preferences=structuredClone(priceState().preferences);preferences.categories[el.dataset.priceCategory]=el.value===''?null:el.value;preferences.reviewCategories=preferences.reviewCategories.filter(key=>key!==el.dataset.priceCategory);status=null;setPricePreferences(preferences);dialog.querySelector(`[data-price-category="${el.dataset.priceCategory}"]:checked`)?.focus();};
  for(const el of dialog.querySelectorAll('[data-price-fallback]'))el.onchange=()=>{const preferences=structuredClone(priceState().preferences);preferences.vendorFallback[el.dataset.priceFallback]=el.checked;status=null;setPricePreferences(preferences);dialog.querySelector(`[data-price-fallback="${el.dataset.priceFallback}"]`)?.focus();};
- const filters=[['price-family',v=>family=v],['price-search',v=>query=v],['price-tier',v=>tier=v],['price-plus',v=>plus=Math.min(game.maxEnhancement,Math.max(0,Math.floor(Number(v)||0)))],['price-filter',v=>filter=v]];
+ const filters=[['price-family',v=>categoryFilter=v],['price-search',v=>query=v],['price-tier',v=>tier=v],['price-plus',v=>plus=v===''?null:Math.min(game.maxEnhancement,Math.max(0,Math.floor(Number(v)||0)))],['price-filter',v=>filter=v]];
  for(const [id,assign]of filters){const el=dialog.querySelector('#'+id);el.onchange=()=>{assign(el.value);selected.clear();render();dialog.querySelector('#'+id)?.focus();};}
  for(const el of dialog.querySelectorAll('[data-price-select]'))el.onchange=()=>{const id=Number(el.dataset.priceSelect);el.checked?selected.add(id):selected.delete(id);render();};
  dialog.querySelector('#price-select-all').onchange=e=>{selected=e.target.checked?new Set(rows):new Set();render();};

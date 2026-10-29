@@ -16,18 +16,18 @@ function harness(requestMarket,priceInputs=[]){
  const controls=new Map(),element=()=>({focus(){},setAttribute(key,value){this[key]=value;},scrollTop:0,textContent:''});
  const dialog={open:false,innerHTML:'',showModal(){this.open=true;},setAttribute(){},addEventListener(){},querySelector(selector){if(!controls.has(selector))controls.set(selector,element());return controls.get(selector);},querySelectorAll(selector){return selector==='[data-price-value]'?priceInputs:[];}};
  const button={};const document={createElement:()=>dialog,body:{append(){}},getElementById:()=>button};let current=state,subscriber;
- const ctx=vm.createContext({marketErrors,priceDefaults:defaultPrices,getItem:id=>createPriceSnapshot(current).getItem(id),game,marketFamilies:game.marketFamilies,priceCategories,itemCategory,hasPriceImports,translatedName:s=>s,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes,document,Date,Set,Number,Object,String,structuredClone,marketPricesUrl:"https://deepveinidle.com/api/market/prices.json",requestAnimationFrame:fn=>frames.push(fn),requestMarket,priceState:()=>current,priceSaveError:()=>null,setPricePreferences:preferences=>{current=applyPricePreferences(current,preferences);subscriber?.();},updatePrices:next=>{current=next;subscriber?.();},subscribePrices:fn=>subscriber=fn});
+ const ctx=vm.createContext({marketErrors,priceDefaults:defaultPrices,getItem:id=>createPriceSnapshot(current).getItem(id),game,priceCategories,itemCategory,hasPriceImports,translatedName:s=>s,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes,document,Date,Set,Number,Object,String,structuredClone,marketPricesUrl:"https://deepveinidle.com/api/market/prices.json",requestAnimationFrame:fn=>frames.push(fn),requestMarket,priceState:()=>current,priceSaveError:()=>null,setPricePreferences:preferences=>{current=applyPricePreferences(current,preferences);subscriber?.();},updatePrices:next=>{current=next;subscriber?.();},subscribePrices:fn=>subscriber=fn});
  vm.runInContext(refreshSource,ctx);vm.runInContext(source,ctx);ctx.mountItemPrices('zh');return {dialog,button,controls,ctx,nextFrame(){for(const fn of frames.splice(0))fn();},runFrames(){while(frames.length)this.nextFrame();}};
 }
 function changeFilter(h,key,value){const el=h.controls.get('#price-'+key);el.value=value;el.onchange();}
 test('price list includes all legal rarities without quotes and generates enhancements only on selection',()=>{
  const h=harness(async()=>{throw Error('noMarketData');});h.ctx.updatePrices(priceDefaults());h.button.onclick();
- changeFilter(h,'family','weapons');
+ changeFilter(h,'family','equipment');
  const ids=()=>[...h.dialog.innerHTML.matchAll(/data-price-value="(\d+)"/g)].map(match=>Number(match[1]));
  for(const id of [110,1110,2110,3110,4110])assert.ok(ids().includes(id),`missing rarity ${id}`);
  assert.equal(ids().includes(5110),false);assert.ok(ids().every(id=>id<game.encode(0,1)));
  h.ctx.updatePrices(setItemPrice(h.ctx.priceState(),50110,10));
- assert.ok(ids().includes(50110));assert.equal(ids().includes(51110),false);
+ assert.equal(ids().includes(50110),false);changeFilter(h,'plus','');assert.ok(ids().includes(50110));assert.equal(ids().includes(51110),false);
  const plus=h.controls.get('#price-plus');plus.value='1';plus.onchange();
  for(const id of [10110,11110,12110,13110,14110])assert.ok(ids().includes(id),`missing enhanced rarity ${id}`);
  assert.ok(ids().every(id=>Math.floor(id/game.encode(0,1))===1));
@@ -87,7 +87,7 @@ test('category radios place vendor price immediately before skip in both languag
 test('manual edits lock immediately, including zero and blank; invalid edits preserve state and users can unlock',()=>{
  const input={dataset:{priceValue:'1'},value:'42',valueAsNumber:42,validity:{badInput:false},nextElementSibling:{textContent:''},setAttribute(){},removeAttribute(){}};
  const h=harness(async()=>{throw Error('noMarketData');},[input]);h.button.onclick();
- changeFilter(h,'family','ore');
+ changeFilter(h,'family','resources');
  for(const [value,number,expected]of [['42',42,42],['0',0,0],['',NaN,null]]){
   input.value=value;input.valueAsNumber=number;input.oninput();
   assert.equal(h.ctx.priceState().prices[1].price,expected);assert.equal(h.ctx.priceState().prices[1].locked,true);
@@ -144,7 +144,7 @@ test('import summary keeps four main counts and appends only nonzero exceptional
 test('quote errors survive clear and valid manual edits; invalid input updates the same accessible status',async()=>{
  const input={dataset:{priceValue:'1'},value:'42',valueAsNumber:42,validity:{badInput:false},nextElementSibling:{textContent:''},setAttribute(){},removeAttribute(){}};
  const h=harness(async()=>{throw Error('marketTimeout');},[input]);h.button.onclick();await h.controls.get('#price-import').onclick();
- changeFilter(h,'family','ore');
+ changeFilter(h,'family','resources');
  input.oninput();assert.match(h.controls.get('#price-status').textContent,/官方市场价格请求超时/);assert.equal(h.controls.get('#price-status').role,'alert');
  h.ctx.confirm=()=>true;h.controls.get('#price-clear').onclick();assert.match(h.ctx.message(),/官方市场价格请求超时/);
  vm.runInContext('marketError=null',h.ctx);input.value='-1';input.valueAsNumber=-1;input.oninput();assert.match(h.controls.get('#price-status').textContent,/单价必须为空/);assert.equal(h.controls.get('#price-status').role,'alert');
@@ -157,17 +157,18 @@ test('unfiltered dialog hides saved prices and quotes and disables selection in 
  for(const [language,prompt]of [['zh','物品数量较多，请先设置筛选条件'],['en','Many items to display; set a filter first']]){
   h.ctx.mountItemPrices(language);assert.ok(h.dialog.innerHTML.includes(prompt));assert.equal(h.ctx.candidates().length,0);assert.doesNotMatch(h.dialog.innerHTML,/data-price-value=/);
   assert.match(h.dialog.innerHTML,/id="price-select-all"[^>]*disabled/);assert.match(h.dialog.innerHTML,/id="price-bulk-lock"[^>]*disabled/);assert.match(h.dialog.innerHTML,/id="price-bulk-unlock"[^>]*disabled/);
-  const options=[...h.dialog.innerHTML.match(/<select id="price-filter">(.*?)<\/select>/s)[1].matchAll(/value="([^"]+)"/g)].map(m=>m[1]);assert.deepEqual(options,['all','priced','locked']);
+  const options=[...h.dialog.innerHTML.match(/<select id="price-filter">(.*?)<\/select>/s)[1].matchAll(/value="([^"]+)"/g)].map(m=>m[1]);assert.deepEqual(options,['all','locked','unpriced']);
  }
  assert.equal(h.ctx.priceState(),before);assert.equal(requests,0);
  const preferences=structuredClone(before.preferences);preferences.categories.resources='ask';h.ctx.updatePrices({...before,preferences});assert.equal(h.ctx.candidates().length,0);
 });
 
-test('each retained filter independently activates rows, including zero rarity and zero price; clearing hides and deselects',()=>{
+test('each supported filter independently activates rows, including zero rarity and zero price; clearing hides and deselects',()=>{
  const h=harness(async()=>{});h.ctx.updatePrices(lockItemPrices(setItemPrice(priceDefaults(),1,0),[1],true).state);h.button.onclick();
- for(const [key,value,reset]of [['family','ore','all'],['search','Copper',''],['tier','0','all'],['plus','1','0'],['filter','priced','all'],['filter','locked','all']]){
+ for(const [key,value,reset]of [['family','resources','all'],['search','Copper',''],['tier','0','all'],['plus','1','0'],['filter','unpriced','all'],['filter','locked','all']]){
   changeFilter(h,key,value);assert.ok(h.ctx.candidates().length>0,key);assert.equal(h.dialog.innerHTML.includes('物品数量较多，请先设置筛选条件'),false);
-  if(key==='filter')assert.deepEqual([...h.ctx.candidates()],[1]);
+  if(key==='filter'&&value==='locked')assert.deepEqual([...h.ctx.candidates()],[1]);
+  if(key==='filter'&&value==='unpriced')assert.ok([...h.ctx.candidates()].every(id=>h.ctx.priceState().prices[id]?.price==null));
   h.controls.get('#price-select-all').onchange({target:{checked:true}});assert.ok(vm.runInContext('selected.size',h.ctx)>0);
   changeFilter(h,key,reset);assert.equal(h.ctx.candidates().length,0);assert.equal(vm.runInContext('selected.size',h.ctx),0);assert.ok(h.dialog.innerHTML.includes('物品数量较多，请先设置筛选条件'));
  }
@@ -199,4 +200,38 @@ test('automatic import checkbox saves only preferences without requesting quotes
  assert.equal(h.ctx.priceState().preferences.autoImport,false);assert.equal(h.ctx.priceState().prices,before.prices);assert.equal(reads,0);
  assert.doesNotMatch(h.dialog.innerHTML,/每天首次打开网站时自动在后台导入价格/);
  h.controls.get('#price-import-reset').onclick();assert.equal(h.ctx.priceState().preferences.autoImport,true);
+});
+
+test('category filter shares the pricing groups, including gems as resources and mounts as tools',()=>{
+ const h=harness(async()=>{});h.button.onclick();
+ for(const language of ['zh','en']){
+  h.ctx.mountItemPrices(language);
+  const options=[...h.dialog.innerHTML.match(/<select id="price-family">(.*?)<\/select>/s)[1].matchAll(/value="([^"]+)"/g)].map(m=>m[1]);
+  assert.deepEqual(options,['all',...priceCategories.map(category=>category.key)]);
+ }
+ changeFilter(h,'family','resources');assert.ok(h.ctx.candidates().includes(293));assert.ok(!h.ctx.candidates().includes(110));
+ changeFilter(h,'family','tools');assert.ok(h.ctx.candidates().includes(328));assert.ok(!h.ctx.candidates().includes(293));
+});
+
+test('enhancement defaults to exact zero, blank removes the level restriction, positive values generate only that level',()=>{
+ const h=harness(async()=>{});let state=h.ctx.priceState();
+ for(const id of [110,1110,10110,50110])state=setItemPrice(state,id,10);
+ state.quotes[20110]={ask:{value:20,capturedAt:Date.now()}};h.ctx.updatePrices(state);h.button.onclick();
+ assert.match(h.dialog.innerHTML,/<input id="price-plus"[^>]*value="0"/);
+ changeFilter(h,'family','equipment');assert.ok(h.ctx.candidates().includes(110));assert.ok(h.ctx.candidates().includes(1110));assert.ok([...h.ctx.candidates()].every(id=>Math.floor(id/game.encode(0,1))===0));
+ changeFilter(h,'plus','');for(const id of [110,10110,20110,50110])assert.ok(h.ctx.candidates().includes(id),String(id));
+ assert.match(h.dialog.innerHTML,/<input id="price-plus"[^>]*value=""/);
+ changeFilter(h,'plus','1');assert.ok(h.ctx.candidates().includes(10110));assert.ok([...h.ctx.candidates()].every(id=>Math.floor(id/game.encode(0,1))===1));
+ changeFilter(h,'plus','0');assert.ok([...h.ctx.candidates()].every(id=>Math.floor(id/game.encode(0,1))===0));
+ changeFilter(h,'family','all');assert.equal(h.ctx.candidates().length,0);changeFilter(h,'plus','');assert.ok(h.ctx.candidates().length>0);
+});
+
+test('unpriced includes missing and locked blank records but excludes configured zero, and composes with category and enhancement',()=>{
+ let reads=0;const h=harness(async()=>{reads++;});let state=h.ctx.priceState();
+ state=lockItemPrices(setItemPrice(state,1,0),[1],true).state;state=setItemPrice(state,2,null);state=lockItemPrices(state,[2],true).state;
+ state=setItemPrice(state,110,0);state=setItemPrice(state,10110,null);h.ctx.updatePrices(state);h.button.onclick();
+ changeFilter(h,'filter','unpriced');const ids=()=>[...h.ctx.candidates()];assert.ok(ids().includes(2));assert.ok(ids().includes(3));assert.ok(!ids().includes(1));assert.ok(!ids().includes(110));assert.ok(!ids().includes(10110));
+ changeFilter(h,'family','equipment');changeFilter(h,'plus','1');assert.ok(ids().includes(10110));assert.ok(ids().every(id=>itemCategory(id)==='equipment'&&Math.floor(id/game.encode(0,1))===1&&h.ctx.priceState().prices[id]?.price==null));
+ changeFilter(h,'family','resources');changeFilter(h,'plus','0');changeFilter(h,'filter','locked');assert.deepEqual(ids(),[1,2]);
+ assert.equal(reads,0);
 });

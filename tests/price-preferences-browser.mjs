@@ -37,7 +37,7 @@ try{
   assert.match(await page.locator('#price-import-settings .issue-box').innerText(),language==='zh'?/旧分类设置不一致/:/Conflicting saved/);
   const apiPrice=id=>page.evaluate(async id=>(await import('/src/price-service.js')).getItem(id).price,id);
   assert.equal(await apiPrice(1),77);assert.equal(requests,0);
-  await page.locator('#price-family').selectOption('ore');
+  await page.locator('#price-family').selectOption('resources');
   await page.evaluate(async()=>{const service=await import('/src/price-service.js');window.priceBefore=service.getSnapshot();window.priceEvents=[];service.subscribe(event=>window.priceEvents.push(event));});
   const choose=(category,mode)=>page.locator(`[data-price-category="${category}"][value="${mode}"]`).check();
   await choose('resources','');assert.equal(await page.locator('#price-import-settings .issue-box').count(),0);
@@ -51,7 +51,7 @@ try{
   await choose('resources','ask');assert.equal(await page.locator('[data-price-fallback="resources"]').isDisabled(),false);assert.equal(await apiPrice(1),90);
   await choose('all','vendor');assert.equal(await apiPrice(1),90);await choose('resources','');assert.equal(await apiPrice(1),game.vendorPrice(1));
   await choose('all','ask');await page.locator('[data-price-fallback="all"]').uncheck();assert.equal(await apiPrice(1),90);assert.equal(requests,0);
-  await page.reload();await page.locator('#item-prices-open').click();await page.locator('#price-family').selectOption('ore');assert.equal(await page.locator('[data-price-category="resources"][value=""]').isChecked(),true);assert.equal(await apiPrice(1),90);
+  await page.reload();await page.locator('#item-prices-open').click();await page.locator('#price-family').selectOption('resources');assert.equal(await page.locator('[data-price-category="resources"][value=""]').isChecked(),true);assert.equal(await apiPrice(1),90);
   assert.equal(await page.locator('[data-price-value="2"]').inputValue(),'0');
   await page.locator('#price-import').click();await page.waitForFunction(()=>document.querySelector('#price-import')?.disabled);
   assert.equal(requests,1);await choose('all','bid');assert.equal(await apiPrice(1),40);release();
