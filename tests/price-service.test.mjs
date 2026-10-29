@@ -13,8 +13,8 @@ test('service commands, typed events, concurrent refresh and snapshot isolation 
   const empty=service.getSnapshot();service.setPrice(1,0);
   assert.equal(service.getItem(1).price,0);assert.equal(service.getItem(1).configured.locked,true);assert.equal(empty.getItem(1).price,null);
   assert.equal(events.at(-1).prices,true);assert.equal(events.at(-1).market,false);
-  const prefs=service.getPreferences();prefs.categories.ore='bid';service.setPreferences(prefs);prefs.categories.ore='off';
-  assert.equal(service.getPreferences().categories.ore,'bid');assert.equal(events.at(-1).preferences,true);assert.equal(events.at(-1).prices,false);
+  const prefs=service.getPreferences();prefs.categories.resources='bid';service.setPreferences(prefs);prefs.categories.resources='off';
+  assert.equal(service.getPreferences().categories.resources,'bid');assert.equal(events.at(-1).preferences,true);assert.equal(events.at(-1).prices,false);
   assert.throws(()=>service.setPreferences({}),/invalidPricePreferences/);
   await service.importPrices();assert.equal(service.getItem(1).price,0);assert.equal(service.getItem(1).sellQuantity,100);
   assert.equal(events.at(-1).market,true);assert.equal(events.at(-1).prices,false);
@@ -30,7 +30,7 @@ test('service commands, typed events, concurrent refresh and snapshot isolation 
   await assert.rejects(service.importPrices(),/marketStale/);assert.equal(service.getSnapshot(),latest);
   service.setPrice(1,99);const snapshot=service.getSnapshot();payload={...payload,generatedAt:new Date(at+500).toISOString(),items:{2:{lowestSell:5,sellQty:0,highestBuy:null,buyQty:0}}};
   await service.importPrices();assert.equal(service.getItem(1).sellPrice,null);assert.equal(service.getItem(1).price,99);assert.equal(snapshot.getItem(1).sellPrice,9);
-  service.resetPreferences();assert.equal(service.getPreferences().categories.ore,'ask');
+  service.resetPreferences();assert.equal(service.getPreferences().categories.resources,null);
   const stored=JSON.parse(storage.get('dvi-item-prices-v1'));assert.equal(stored.prices[1].price,99);assert.equal(stored.quotes[2].ask.quantity,0);
   const saved=storage.get('dvi-item-prices-v1'),setItem=globalThis.localStorage.setItem;globalThis.localStorage.setItem=()=>{throw Error('quota');};
   service.setPrice(1,55);assert.equal(service.getItem(1).price,55);assert.equal(service.getSaveError(),'priceSaveFailed');assert.equal(events.at(-1).storage,true);assert.equal(storage.get('dvi-item-prices-v1'),saved);

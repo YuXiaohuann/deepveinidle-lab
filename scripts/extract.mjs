@@ -26,6 +26,7 @@ const exportsMap={
   "monsters": "qt",
   "equipment": "uY",
   "items": "ps",
+  "marketCategories": "Gn",
   "marketFamilies": "UI",
   "marketFamily": "BO",
   "gear": "je",

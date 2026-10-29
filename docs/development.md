@@ -67,9 +67,11 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 ## 官方市场价格与价格弹窗专项
 
-运行 `node --test tests/market-import.test.mjs tests/item-prices.test.mjs tests/item-price-store.test.mjs tests/item-price-status.test.mjs`。运行 `node tests/market-prices-browser.mjs` 验证官方 API 真实跨域、双语桌面／390px 弹窗、导入与锁定、错误保留及直接捕获（不提供 Worker／Blob API）；需要网络、本机监听和 Chrome。结果和截图保存在 `.test-artifacts/market-prices/`；接口异常明确失败，不以请求替身通过代替真实跨域验证。功能场景使用可控响应替身，不连接游戏账号。
+运行 `node --test tests/market-import.test.mjs tests/item-prices.test.mjs tests/item-price-store.test.mjs tests/item-price-status.test.mjs tests/price-protocol.test.mjs tests/price-service.test.mjs tests/price-preferences.test.mjs tests/price-preferences-service.test.mjs`。运行 `node tests/market-prices-browser.mjs` 验证官方 API 真实跨域、双语桌面／390px 弹窗、导入与锁定、错误保留及直接捕获（不提供 Worker／Blob API）；需要网络、本机监听和 Chrome。结果和截图保存在 `.test-artifacts/market-prices/`；接口异常明确失败，不以请求替身通过代替真实跨域验证。功能场景使用可控响应替身，不连接游戏账号。
 
 价格设置及自动导入专项可运行 `node tests/market-prices-browser.mjs --toolbar-only`，覆盖双语桌面／390px 筛选、手动导入、锁定、分类兜底、重置、自动导入开关、5 分钟边界与不轮询，以及成功／失败通知 30 秒自动关闭和点击／键盘关闭。行情使用请求替身，不重跑真实 API 或角色捕获专项。默认结果保存至 `.test-artifacts/price-toolbar/`；可用 `--out <目录>` 单独保存本轮证据，使用 `--base-url <目标网址>` 对指定候选或生产目标执行相同专项。目标参数不启动本机服务，也不代表完整发布验收通过。
+
+价格一级分类与即时定价专项：`node tests/price-preferences-browser.mjs [输出目录]`，默认输出 `.test-artifacts/price-preferences/`，使用本机服务、独立 Chrome 与官方接口请求替身。覆盖双语 1280px／700px／390px、各行对应选项列及换行位置对齐、“重置价格选项”紧接自动更新右侧及窄屏换行、全部行空位不参与交互或辅助技术读取、旧细分类冲突确认、“全部”必选及分类继承／覆盖／恢复继承、兜底继承、缺报价清除、锁定零价、表格与协议即时同步、单次通知、旧快照隔离、刷新恢复及请求期间改选不被迟到结果覆盖。配合 `node tests/price-refactor-browser.mjs` 回归六项字段、强化方案覆盖及消费者页面。截图需要审阅，不代替真实 API 或发布验收。
 
 ## 上游版本适配专项
 

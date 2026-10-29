@@ -1,7 +1,8 @@
+import {legacyPriceState} from './fixtures/legacy-price-state.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
-import {priceDefaults,normalizePriceState,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes,valueItems,valueRewards,valuationPrice,valueCombatRewards} from '../src/item-prices.js';
+import {priceDefaults,priceCategories,itemCategory,applyPricePreferences,pricePolicy,normalizePriceState,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes,valueItems,valueRewards,valuationPrice,valueCombatRewards} from '../src/item-prices.js';
 import {normalizeManual} from '../src/manual-settings.js';
 import {normalizeGathering} from '../src/gathering-model.js';
 import {enhancementDefaults,validateEnhancement,resolveEnhancementPrices,calculateEnhancement} from '../src/enhancement.js';
@@ -23,22 +24,25 @@ test('pets retain quantities but never contribute prices or missing-price warnin
 });
 const side=value=>({value,capturedAt:at});
 const snapshot=quotes=>({version:1,quotes,invalid:0});
-const policy=(state,categories,fallback=false)=>({...state,preferences:{...state.preferences,categories:{...Object.fromEntries(game.marketFamilies.map(f=>[f.key,'off'])),...categories},vendorFallback:Object.fromEntries(game.marketFamilies.map(f=>[f.key,fallback&&['ask','bid'].includes(categories[f.key])]))}});
+const policy=(state,categories,fallback=false)=>({...state,preferences:{...state.preferences,categories:{all:'off',...Object.fromEntries(priceCategories.map(f=>[f.key,null])),...categories},vendorFallback:Object.fromEntries(['all',...priceCategories.map(f=>f.key)].map(key=>[key,fallback&&['ask','bid'].includes(categories[key])]))}});
 
-test('all categories default to asks with independent vendor floors disabled',()=>{
- const state=priceDefaults();assert.ok(Object.values(state.preferences.categories).every(mode=>mode==='ask'));
+test('All defaults to asks and primary categories inherit it with independent floors disabled',()=>{
+ const state=priceDefaults();assert.equal(state.preferences.categories.all,'ask');
+ assert.ok(priceCategories.every(c=>state.preferences.categories[c.key]===null));
  assert.ok(Object.values(state.preferences.vendorFallback).every(value=>value===false));
- state.preferences.categories.ore='off';state.preferences.categories.materials='ask';state.preferences.vendorFallback.materials=true;
+ state.preferences.categories.resources='off';state.preferences.categories.equipment='ask';state.preferences.vendorFallback.equipment=true;
  assert.deepEqual(normalizePriceState(state).preferences,state.preferences);
 });
-test('legacy category choices and bidVendor floors migrate without changing prices or quotes',()=>{
- for(const version of [2,3]){
-  const state=setItemPrice(priceDefaults(),1,77);state.version=version;state.preferences.categories.ore='bidVendor';state.preferences.categories.weapons='off';delete state.preferences.vendorFallback;
+test('legacy consistent category choices and bidVendor floors migrate without changing prices or quotes',()=>{
+ for(const version of [2,3,4]){
+  const state=setItemPrice(legacyPriceState(version),1,77);
+  for(const key of priceCategories.find(c=>c.key==='resources').families){state.preferences.categories[key]=version<4?'bidVendor':'bid';state.preferences.vendorFallback[key]=true;}
+  for(const key of ['weapons','armour','jewellery'])state.preferences.categories[key]='off';
   state.quotes={1:{ask:side(80)}};const migrated=normalizePriceState(state);
-  assert.equal(migrated.version,4);assert.equal(migrated.preferences.categories.ore,'bid');assert.equal(migrated.preferences.vendorFallback.ore,true);assert.equal(migrated.preferences.vendorFallback.weapons,false);assert.equal(migrated.preferences.categories.weapons,'off');assert.equal(migrated.prices[1].price,77);
-  assert.deepEqual(migrated.quotes,version===2?{}:state.quotes);
+  assert.equal(migrated.version,5);assert.equal(migrated.preferences.categories.resources,'bid');assert.equal(migrated.preferences.vendorFallback.resources,true);assert.equal(migrated.preferences.vendorFallback.equipment,false);assert.equal(migrated.preferences.categories.equipment,'off');assert.equal(migrated.prices[1].price,77);
+  assert.deepEqual(migrated.quotes,version===2?{}:state.quotes);assert.deepEqual(migrated.preferences.reviewCategories,[]);
  }
- const state=priceDefaults();delete state.preferences.vendorFallback.ore;assert.throws(()=>normalizePriceState(state),/invalidPriceStorage/);
+ const state=priceDefaults();delete state.preferences.vendorFallback.resources;assert.throws(()=>normalizePriceState(state),/invalidPriceStorage/);
 });
 test('complete item IDs are independent and unsupported rarity/enhancement fail',()=>{
  let s=priceDefaults();for(const [id,value]of [[110,10],[4110,30],[50110,20]])s=setItemPrice(s,id,value);
@@ -58,31 +62,31 @@ test('bulk locks are idempotent and never modify price provenance or timestamps'
  result=lockItemPrices(result.state,[1,1001],false);assert.equal(result.changed,2);assert.deepEqual(result.state.prices[1],before);
 });
 test('mixed categories choose ask or bid; locked values survive imports',()=>{
- let s=policy(priceDefaults(),{ore:'bid',weapons:'ask'});s=setItemPrice(s,1,99);s=lockItemPrices(s,[1001],true).state;
+ let s=policy(priceDefaults(),{resources:'bid',equipment:'ask'});s=setItemPrice(s,1,99);s=lockItemPrices(s,[1001],true).state;
  const r=importItemPrices(s,snapshot({1:{ask:side(8),bid:side(4)},1001:{bid:side(5)},110:{ask:side(50),bid:side(20)},20:{ask:side(6)}}));
  assert.equal(r.state.prices[1].price,4);assert.equal(r.state.prices[110].price,50);assert.equal(r.state.prices[1001].price,null);assert.equal(r.state.prices[20],undefined);assert.equal(r.stats.locked,1);
 });
 test('vendor floor applies to chosen bid and ask sides but leaves uncaptured prices intact',()=>{
- let s=policy(priceDefaults(),{ore:'bid',weapons:'ask'},true);s=setItemPrice(s,2,99);s=setItemPrice(s,3,77);s=setItemPrice(s,110,55);
+ let s=policy(priceDefaults(),{resources:'bid',equipment:'ask'},true);s=setItemPrice(s,2,99);s=setItemPrice(s,3,77);s=setItemPrice(s,110,55);
  const r=importItemPrices(s,snapshot({1:{bid:side(null)},2:{ask:side(50)},3:{bid:side(1)},110:{ask:side(null)}}));
  assert.equal(r.state.prices[1].price,game.vendorPrice(1));assert.equal(r.state.prices[1].source,'vendor');assert.equal(r.state.prices[1].quoteCapturedAt,at);
  assert.equal(r.state.prices[2].price,99);assert.equal(r.state.prices[3].price,game.vendorPrice(3));assert.equal(r.state.prices[3].source,'vendor');assert.equal(r.state.prices[110].price,game.vendorPrice(110));assert.equal(r.stats.vendor,3);
- s.preferences.vendorFallback.ore=false;assert.equal(importItemPrices(s,snapshot({1:{bid:side(null)}})).state.prices[1],undefined);
+ s.preferences.vendorFallback.resources=false;assert.equal(importItemPrices(s,snapshot({1:{bid:side(null)}})).state.prices[1],undefined);
 });
 test('untradable captured items cannot use fallback',()=>{
  const id=game.items.find(i=>{try{return game.marketFamily(game.baseItemId(i.id))&&!game.canSell(i.id);}catch{return false;}})?.id;
- assert.ok(id);const s=policy(priceDefaults(),{[game.marketFamily(game.baseItemId(id))]:'bid'},true),r=importItemPrices(s,snapshot({[id]:{bid:side(null)}}));
+ assert.ok(id);const s=policy(priceDefaults(),{[itemCategory(id)]:'bid'},true),r=importItemPrices(s,snapshot({[id]:{bid:side(null)}}));
  assert.equal(r.state.prices[id],undefined);assert.ok(r.stats.unavailable>0);
 });
 test('missing and malformed observations do not zero, erase or silently reuse cache',()=>{
- let s=policy(setItemPrice(priceDefaults(),1,30),{ore:'bid'},true);s.quotes={1:{bid:side(50)}};
+ let s=policy(setItemPrice(priceDefaults(),1,30),{resources:'bid'},true);s.quotes={1:{bid:side(50)}};
  let r=importItemPrices(s,snapshot({1:{ask:side(40)}}));assert.equal(r.state.prices[1].price,30);
  r=importItemPrices(s,snapshot({1:{bid:{invalid:true,capturedAt:at}}}));assert.equal(r.state.prices[1].price,30);assert.equal(r.stats.vendor,0);assert.ok(r.stats.invalid>0);
  assert.equal(validateMarketSnapshot(snapshot({9999999:{bid:side(1)}})).invalid,1);
  assert.throws(()=>importItemPrices(s,{version:9,quotes:{},invalid:0}),/invalidMarketData/);assert.equal(s.prices[1].price,30);
 });
 test('quotes and imported prices cannot move backwards, including fallback',()=>{
- let s=policy(priceDefaults(),{ore:'bid'},true);s=importItemPrices(s,snapshot({1:{bid:side(25)}})).state;
+ let s=policy(priceDefaults(),{resources:'bid'},true);s=importItemPrices(s,snapshot({1:{bid:side(25)}})).state;
  const older={value:null,capturedAt:at-100};const r=importItemPrices(s,snapshot({1:{bid:older}}));assert.equal(r.state.prices[1].price,25);assert.equal(r.stats.stale,1);
  assert.equal(mergeQuotes(s.quotes,{1:{bid:older}})[1].bid.value,25);
 });
@@ -109,17 +113,17 @@ test('enhancement resolves explicit price modes and binds owned bases',()=>{
 test('bid floor chooses the maximum and counts ties as vendor fallback',()=>{
  const vendor=game.vendorPrice(3);assert.ok(vendor>1);
  for(const [bid,expected,source]of [[vendor-1,vendor,'vendor'],[vendor,vendor,'vendor'],[vendor+1,vendor+1,'bid']]){
-  const state=policy(priceDefaults(),{ore:'bid'},true),result=importItemPrices(state,snapshot({3:{bid:side(bid)}}));
+  const state=policy(priceDefaults(),{resources:'bid'},true),result=importItemPrices(state,snapshot({3:{bid:side(bid)}}));
   assert.equal(result.state.prices[3].price,expected);assert.equal(result.state.prices[3].source,source);assert.equal(result.state.prices[3].quoteCapturedAt,at);assert.equal(result.stats.vendor,source==='vendor'?1:0);
  }
- const disabled=policy(priceDefaults(),{ore:'bid'},false);assert.equal(importItemPrices(disabled,snapshot({3:{bid:side(vendor-1)}})).state.prices[3].price,vendor-1);
- const locked=lockItemPrices(setItemPrice(policy(priceDefaults(),{ore:'bid'},true),3,1),[3],true).state;
+ const disabled=policy(priceDefaults(),{resources:'bid'},false);assert.equal(importItemPrices(disabled,snapshot({3:{bid:side(vendor-1)}})).state.prices[3].price,vendor-1);
+ const locked=lockItemPrices(setItemPrice(policy(priceDefaults(),{resources:'bid'},true),3,1),[3],true).state;
  const result=importItemPrices(locked,snapshot({3:{bid:side(vendor-1)}}));assert.equal(result.state.prices[3].price,1);assert.equal(result.stats.vendor,0);assert.equal(result.stats.locked,1);
 });
 
 test('old price formats are rejected and independent categories do not share floors',()=>{
  const old={...priceDefaults(),version:1};old.preferences.vendorFallback=true;assert.throws(()=>normalizePriceState(old),/invalidPriceStorage/);
- const s=policy(priceDefaults(),{ore:'bid',weapons:'bid'});s.preferences.vendorFallback.ore=true;
+ const s=policy(priceDefaults(),{resources:'bid',equipment:'bid'});s.preferences.vendorFallback.resources=true;
  const r=importItemPrices(s,snapshot({3:{bid:side(1)},110:{bid:side(1)}}));assert.equal(r.state.prices[3].source,'vendor');assert.equal(r.state.prices[110].price,1);assert.equal(r.state.prices[110].source,'bid');
 });
 
@@ -150,7 +154,7 @@ test('fallback warnings follow positive quantities and aggregate income and prof
 });
 
 test('vendor category imports without quotes, preserves locks and supports saved variants',()=>{
- let state=policy(priceDefaults(),{ore:'vendor',weapons:'off'});
+ let state=policy(priceDefaults(),{resources:'vendor',equipment:'off'});
  state=setItemPrice(setItemPrice(state,1001,999),2,999);state=lockItemPrices(state,[2],true).state;
  assert.deepEqual(normalizePriceState(state).preferences,state.preferences);
  const result=importItemPrices(state,snapshot({1:{bid:{invalid:true,capturedAt:at}}}));
@@ -161,7 +165,7 @@ test('vendor category imports without quotes, preserves locks and supports saved
 
 test('vendor category leaves unsellable items unchanged',()=>{
  const id=game.items.find(i=>itemFamily(i.id)&&!game.canSell(i.id)).id;
- const state=policy(setItemPrice(priceDefaults(),id,77),{[itemFamily(id)]:'vendor'});
+ const state=policy(setItemPrice(priceDefaults(),id,77),{[itemCategory(id)]:'vendor'});
  const result=importItemPrices(state,snapshot({[id]:{bid:side(999)}}));
  assert.equal(result.state.prices[id].price,77);assert.ok(result.stats.unavailable>0);
 });
@@ -169,7 +173,7 @@ test('vendor category leaves unsellable items unchanged',()=>{
 test('ask vendor floor handles low, equal, high and absent asks independently of bids',()=>{
  const vendor=game.vendorPrice(3);
  for(const value of [1,vendor,vendor+1,null]){
-  const state=policy(priceDefaults(),{ore:'ask'},true);
+  const state=policy(priceDefaults(),{resources:'ask'},true);
   const result=importItemPrices(state,snapshot({3:{ask:side(value),bid:side(9999)}}));
   assert.equal(result.state.prices[3].price,Math.max(value??0,vendor));
   assert.equal(result.state.prices[3].source,value===null||value<=vendor?'vendor':'ask');

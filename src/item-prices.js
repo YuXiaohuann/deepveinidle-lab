@@ -2,6 +2,29 @@ import * as game from './upstream.js';
 
 export const priceStorageKey='dvi-item-prices-v1';
 export const marketFamilies=game.marketFamilies;
+// The market offers a dedicated gems shortcut as well as gems under resources.
+// Pricing uses the primary groups without that duplicate shortcut.
+export const priceCategories=game.marketCategories.filter(category=>category.key!=='gems');
+export function itemCategory(id){const family=itemFamily(id);return priceCategories.find(category=>category.families.includes(family))?.key??null;}
+const priceModes=['ask','bid','vendor','off'];
+export function pricePolicy(preferences,category){
+ if(!category||preferences.reviewCategories.includes(category))return {mode:'off',fallback:false};
+ const key=preferences.categories[category]===null?'all':category;
+ return {mode:preferences.categories[key],fallback:preferences.vendorFallback[key]};
+}
+export function validatePricePreferences(preferences){
+ const categories=priceCategories.map(category=>category.key),keys=['all',...categories];
+ if(!record(preferences)||typeof preferences.autoImport!=='boolean'||!record(preferences.categories)||!record(preferences.vendorFallback)||!Array.isArray(preferences.reviewCategories))throw Error('invalidPricePreferences');
+ if(Object.keys(preferences.categories).some(key=>!keys.includes(key))||Object.keys(preferences.vendorFallback).some(key=>!keys.includes(key)))throw Error('invalidPricePreferences');
+ for(const key of keys){
+  const mode=preferences.categories[key],inherits=key!=='all'&&mode===null;
+  if(!inherits&&!priceModes.includes(mode)||typeof preferences.vendorFallback[key]!=='boolean')throw Error('invalidPricePreferences');
+ }
+ const review=preferences.reviewCategories;
+ if(new Set(review).size!==review.length||review.some(key=>!categories.includes(key)||preferences.categories[key]!==null))throw Error('invalidPricePreferences');
+ return structuredClone(preferences);
+}
+export const hasPriceImports=preferences=>priceCategories.some(category=>pricePolicy(preferences,category.key).mode!=='off');
 const record=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const time=v=>Number.isSafeInteger(v)&&v>0&&v<=Date.now()+60000;
 export const validPrice=v=>typeof v==='number'&&Number.isFinite(v)&&v>=0&&v<=Number.MAX_SAFE_INTEGER;
@@ -10,10 +33,9 @@ export function validItemId(id){
  try{const base=game.baseItemId(id),tier=game.itemTier(id),plus=Math.floor(id/game.encode(0,1));return tier>=0&&tier<=4&&plus<=game.maxEnhancement&&game.encode(game.withRarity(base,tier),plus)===id&&game.item(id).id===id&&(!plus||game.canEnhance(id));}catch{return false;}
 }
 export function itemFamily(id){try{return game.marketFamily(game.baseItemId(id));}catch{return null;}}
-export function priceDefaults(){return {version:4,prices:{},quotes:{},preferences:{autoImport:true,categories:Object.fromEntries(marketFamilies.map(f=>[f.key,'ask'])),vendorFallback:Object.fromEntries(marketFamilies.map(f=>[f.key,false]))}};}
+export function priceDefaults(){return {version:5,prices:{},quotes:{},preferences:{autoImport:true,categories:{all:'ask',...Object.fromEntries(priceCategories.map(category=>[category.key,null]))},vendorFallback:Object.fromEntries(['all',...priceCategories.map(category=>category.key)].map(key=>[key,false])),reviewCategories:[]}};}
 export function normalizePriceState(raw){
- if(!record(raw)||![2,3,4].includes(raw.version)||!record(raw.prices)||!record(raw.quotes)||!record(raw.preferences)||!record(raw.preferences.categories))throw Error('invalidPriceStorage');
- // Game capture times and official generation times use different baselines.
+ if(!record(raw)||![2,3,4,5].includes(raw.version)||!record(raw.prices)||!record(raw.quotes)||!record(raw.preferences)||!record(raw.preferences.categories))throw Error('invalidPriceStorage');
  const next=priceDefaults();
  for(const [key,p] of Object.entries(raw.prices)){
   if(String(Number(key))!==key||!validItemId(Number(key))||!record(p)||p.price!==null&&!validPrice(p.price)||typeof p.locked!=='boolean'||!['manual','ask','bid','vendor'].includes(p.source)||!time(p.updatedAt)||p.quoteCapturedAt!==null&&!time(p.quoteCapturedAt))throw Error('invalidPriceStorage');
@@ -23,16 +45,38 @@ export function normalizePriceState(raw){
   const parsed=validateMarketSnapshot({version:1,quotes:raw.quotes,invalid:0});
   if(parsed.invalid)throw Error('invalidPriceStorage');next.quotes=parsed.quotes;
  }
+ if(raw.version===5){
+  try{next.preferences=validatePricePreferences(raw.preferences);}catch{throw Error('invalidPriceStorage');}
+  return next;
+ }
  if(raw.version===4&&(typeof raw.preferences.autoImport!=='boolean'||!record(raw.preferences.vendorFallback)))throw Error('invalidPriceStorage');
  if(raw.version===4)next.preferences.autoImport=raw.preferences.autoImport;
- for(const f of marketFamilies){
-  const mode=raw.preferences.categories[f.key],legacy=raw.version<4;
-  if(!(legacy?['off','ask','bid','bidVendor','vendor']:['off','ask','bid','vendor']).includes(mode))throw Error('invalidPriceStorage');
-  if(!legacy&&typeof raw.preferences.vendorFallback[f.key]!=='boolean')throw Error('invalidPriceStorage');
-  next.preferences.categories[f.key]=mode==='bidVendor'?'bid':mode;
-  next.preferences.vendorFallback[f.key]=legacy?mode==='bidVendor':raw.preferences.vendorFallback[f.key];
+ const legacyPolicies={};
+ for(const family of marketFamilies){
+  const mode=raw.preferences.categories[family.key],legacy=raw.version<4;
+  if(!(legacy?[...priceModes,'bidVendor']:priceModes).includes(mode)||!legacy&&typeof raw.preferences.vendorFallback[family.key]!=='boolean')throw Error('invalidPriceStorage');
+  legacyPolicies[family.key]={mode:mode==='bidVendor'?'bid':mode,fallback:legacy?mode==='bidVendor':raw.preferences.vendorFallback[family.key]};
+ }
+ for(const category of priceCategories){
+  const policies=category.families.map(key=>legacyPolicies[key]),first=policies[0];
+  if(!policies.every(policy=>policy.mode===first.mode&&policy.fallback===first.fallback))next.preferences.reviewCategories.push(category.key);
+  else if(first.mode!=='ask'||first.fallback){next.preferences.categories[category.key]=first.mode;next.preferences.vendorFallback[category.key]=first.fallback;}
  }
  return next;
+}
+// Preference changes revalue only affected categories, from the current cache.
+// Off/review categories keep their existing values, including manually unlocked ones.
+export function applyPricePreferences(state,preferences,now=Date.now()){
+ const next=validatePricePreferences(preferences),changed=priceCategories.filter(category=>JSON.stringify(pricePolicy(state.preferences,category.key))!==JSON.stringify(pricePolicy(next,category.key)));
+ if(!changed.some(category=>pricePolicy(next,category.key).mode!=='off'))return {...state,preferences:next};
+ const prices={...state.prices},selected=priceDefaults().preferences;selected.categories.all='off';
+ for(const category of changed){
+  const policy=pricePolicy(next,category.key);if(policy.mode==='off')continue;
+  selected.categories[category.key]=policy.mode;selected.vendorFallback[category.key]=policy.fallback;
+  for(const [id,price]of Object.entries(prices))if(!price.locked&&itemCategory(Number(id))===category.key)delete prices[id];
+ }
+ const result=importItemPrices({...state,prices},{version:1,quotes:state.quotes,invalid:0},selected,now);
+ return {...result.state,quotes:state.quotes,preferences:next};
 }
 export function validateMarketSnapshot(raw){
  if(!record(raw)||raw.version!==1||!record(raw.quotes)||!Number.isSafeInteger(raw.invalid)||raw.invalid<0)throw Error('invalidMarketData');
@@ -85,7 +129,7 @@ export function importItemPrices(state,snapshot,preferences=state.preferences,no
  // Include configured items with no quote so missing coverage is visible.
  const ids=new Set([...game.items.filter(i=>i.id===game.baseItemId(i.id)&&itemFamily(i.id)&&game.canSell(i.id)).map(i=>i.id),...Object.keys(prices).map(Number),...Object.keys(quotes).map(Number)]);
  for(const id of ids){
-  const category=itemFamily(id),mode=preferences.categories[category];if(!['ask','bid','vendor'].includes(mode))continue;const side=mode;
+  const category=itemCategory(id),{mode,fallback}=pricePolicy(preferences,category);if(!['ask','bid','vendor'].includes(mode))continue;const side=mode;
   const old=prices[id];if(old?.locked){stats.locked++;continue;}
   if(mode==='vendor'){
    if(!game.canSell(id)){stats.unavailable++;continue;}
@@ -98,7 +142,6 @@ export function importItemPrices(state,snapshot,preferences=state.preferences,no
   if(q.invalid){stats.invalid++;continue;}
   if(q.capturedAt<(quotes[id]?.[side]?.capturedAt??0)||old?.quoteCapturedAt&&q.capturedAt<old.quoteCapturedAt){stats.stale++;continue;}
   let value=q.value,source=side;
-  const fallback=preferences.vendorFallback?.[category]===true;
   if(value===null&&!fallback){stats.missing++;continue;}
   if(fallback){
    if(game.canSell(id)){

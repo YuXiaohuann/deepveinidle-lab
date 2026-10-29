@@ -1,3 +1,4 @@
+import {legacyPriceState} from './fixtures/legacy-price-state.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -42,7 +43,7 @@ try{
   await context.route('https://deepveinidle.com/api/market/prices.json',route=>{
    requests++;return route.fulfill({status:fail?503:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:fail?'Unavailable':JSON.stringify(payload)});
   });
-  let saved=setItemPrice(setItemPrice(priceDefaults(),1,123),2,99);saved.version=2;saved.preferences.categories.ore='bid';saved.prices[1].locked=true;saved.quotes={3:{bid:{value:999,capturedAt:Date.now()}}};
+  let saved=setItemPrice(setItemPrice(legacyPriceState(2),1,123),2,99);for(const key of ['ore','bars','fish','wood','crops','materials','gems'])saved.preferences.categories[key]='bid';saved.prices[1].locked=true;saved.quotes={3:{bid:{value:999,capturedAt:Date.now()}}};
   await context.addInitScript(({saved,language})=>{
    localStorage.setItem('dvi-price-auto-import-at-v1',String(Date.now()));localStorage.setItem('dvi-item-prices-v1',JSON.stringify(saved));localStorage.setItem('dvi-simulator-v1',JSON.stringify({language}));
   },{saved,language});
@@ -66,19 +67,19 @@ try{
   assert.equal(await page.locator('#price-auto-import').evaluate(el=>el.parentElement.textContent),language==='zh'?'自动更新价格':'Automatically update prices');
   assert.equal(await page.locator('#price-status').evaluate(el=>el.previousElementSibling.className),'price-import-options');
   assert.doesNotMatch(await page.locator('#price-import-settings').innerText(),/userscript|捕获|Captured/);
-  assert.deepEqual(await page.locator('[data-price-category="ore"]').evaluateAll(els=>els.map(el=>el.value)),['ask','bid','vendor','off']);
+  assert.deepEqual(await page.locator('[data-price-category="resources"]').evaluateAll(els=>els.map(el=>el.value)),['','ask','bid','vendor','off']);
   const stored=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-item-prices-v1')));
   const changeFilter=async(key,value)=>{const el=page.locator('#price-'+key);if(key==='search'||key==='plus'){await el.fill(value);await el.blur();}else await el.selectOption(value);};
   const expectEmpty=async()=>{assert.equal(await page.locator('[data-price-value]').count(),0);assert.ok((await page.locator('.price-list').innerText()).includes(emptyPrompt));assert.equal(await page.locator('#price-select-all').isDisabled(),true);assert.equal(await page.locator('#price-bulk-lock').isDisabled(),true);assert.equal(await page.locator('#price-bulk-unlock').isDisabled(),true);};
   assert.deepEqual(await stored(),saved);
-  const memory=await page.evaluate(async()=>{const {priceState}=await import('/src/item-price-store.js');return priceState();});assert.equal(memory.version,4);assert.deepEqual(memory.quotes,{});
+  const memory=await page.evaluate(async()=>{const {priceState}=await import('/src/item-price-store.js');return priceState();});assert.equal(memory.version,5);assert.deepEqual(memory.quotes,{});
   await page.locator('#price-import').scrollIntoViewIfNeeded();
   await page.screenshot({path:path.join(directory,`prices-${language}-${width}.png`)});
   const layout=await page.locator('#item-prices-dialog').evaluate(el=>({width:el.getBoundingClientRect().width,scroll:el.scrollWidth,client:el.clientWidth}));
   assert.ok(layout.width<=width,JSON.stringify(layout));assert.ok(layout.scroll<=layout.client+1,JSON.stringify(layout));
   await page.locator('#price-import-settings summary').click();assert.equal(await page.locator('#price-import-settings').evaluate(el=>el.open),false);
   assert.equal(requests,0);await page.locator('#price-import-settings summary').click();await page.locator('#price-import').click();await page.waitForFunction(()=>document.querySelector('#price-status')?.textContent.startsWith('已更新 ')||document.querySelector('#price-status')?.textContent.startsWith('Updated '));
-  assert.equal(requests,1);assert.equal((await stored()).version,4);assert.equal((await stored()).quotes[3],undefined);assert.equal((await stored()).prices[1].price,123);assert.equal((await stored()).prices[2].price,80);
+  assert.equal(requests,1);assert.equal((await stored()).version,5);assert.equal((await stored()).quotes[3],undefined);assert.equal((await stored()).prices[1].price,123);assert.equal((await stored()).prices[2].price,80);
   assert.equal((await stored()).prices[2].quoteCapturedAt,at);
   await expectEmpty();
   for(const [key,value,reset]of [['family','ore','all'],['search','Tin',''],['tier','0','all'],['plus','1','0'],['filter','priced','all'],['filter','locked','all']]){
@@ -129,10 +130,10 @@ try{
   const notice=await page.locator('#price-auto-notice').evaluate(el=>({right:el.getBoundingClientRect().right,left:el.getBoundingClientRect().left}));assert.ok(notice.left>=0&&notice.right<=width);
   assert.equal(await page.locator('#price-auto-notice button').count(),0);await page.locator('#price-auto-notice').click();assert.equal(await page.locator('#price-auto-notice').count(),0);
   await page.locator('#item-prices-open').click();
-  assert.deepEqual(await page.locator('[data-price-category="ore"]').evaluateAll(els=>els.map(el=>el.value)),['ask','bid','vendor','off']);
+  assert.deepEqual(await page.locator('[data-price-category="resources"]').evaluateAll(els=>els.map(el=>el.value)),['','ask','bid','vendor','off']);
   assert.equal(await page.locator('[data-price-fallback]:checked').count(),0);
   assert.equal(await page.locator('#price-auto-import').isChecked(),true);
-  assert.equal(await page.locator('#price-import-reset').textContent(),language==='zh'?'重置为默认值':'Reset to defaults');
+  assert.equal(await page.locator('#price-import-reset').textContent(),language==='zh'?'重置价格选项':'Reset price options');
   const optionLayout=await page.locator('.price-import-options').evaluate(el=>{const [button,label]=el.children;return {label:label.getBoundingClientRect().top,button:button.getBoundingClientRect().top,labelBottom:label.getBoundingClientRect().bottom,buttonRight:button.getBoundingClientRect().right,labelLeft:label.getBoundingClientRect().left};});
   assert.ok(optionLayout.button<optionLayout.labelBottom&&optionLayout.buttonRight<=optionLayout.labelLeft,JSON.stringify(optionLayout));
   const statusLayout=await page.locator('#price-status').evaluate(el=>({top:el.getBoundingClientRect().top,controlsBottom:el.previousElementSibling.getBoundingClientRect().bottom}));
@@ -141,14 +142,14 @@ try{
   assert.ok(rowHeights.every(height=>height<=(width===1280?40:80)),JSON.stringify(rowHeights));
   const settingsLayout=await page.locator('.price-categories').evaluate(el=>({scroll:el.scrollWidth,client:el.clientWidth,table:el.querySelector('table').getBoundingClientRect().width}));assert.ok(settingsLayout.scroll<=settingsLayout.client+1,JSON.stringify(settingsLayout));
   if(width===1280)assert.ok(settingsLayout.table<settingsLayout.client*.8,JSON.stringify(settingsLayout));
-  await page.locator('#price-auto-import').uncheck();assert.equal((await stored()).preferences.autoImport,false);await page.locator('[data-price-fallback="ore"]').check();await page.locator('[data-price-category="weapons"][value="off"]').check();
-  assert.equal((await stored()).preferences.vendorFallback.ore,true);
+  await page.locator('#price-auto-import').uncheck();assert.equal((await stored()).preferences.autoImport,false);await page.locator('[data-price-category="resources"][value="ask"]').check();await page.locator('[data-price-fallback="resources"]').check();await page.locator('[data-price-category="equipment"][value="off"]').check();
+  assert.equal((await stored()).preferences.vendorFallback.resources,true);
   await page.locator('#price-import-reset').click();assert.deepEqual((await stored()).preferences,priceDefaults().preferences);assert.equal(requests,1);assert.equal((await stored()).prices[1].locked,true);
   await page.screenshot({path:path.join(directory,`category-height-${language}-${width}.png`)});
   await page.reload();await page.locator('#item-prices-open').waitFor();assert.equal(requests,1);assert.equal(await page.locator('#price-auto-notice').count(),0);
   await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await page.waitForTimeout(50);assert.equal(requests,1);
   await page.evaluate(()=>{localStorage.setItem('dvi-price-auto-import-at-v1',String(Date.now()-300000));window.dispatchEvent(new Event('focus'));});await page.locator('#price-auto-notice').waitFor();assert.equal(requests,2);
-  result.cases.push(`${language} ${width}px: automatic background import, completion notice/dismiss, locks, default asks, independent floors, compact category rows, reset preserves prices, reload within five minutes and import after five minutes`);
+  result.cases.push(`${language} ${width}px: automatic background import, completion notice/dismiss, locks, All default asks and primary category inheritance, independent floors, compact category rows, reset revalues unlocked prices and preserves locks, reload within five minutes and import after five minutes`);
   await context.close();
  }
  {

@@ -9,6 +9,7 @@
     "monsters": "qt",
     "equipment": "uY",
     "items": "ps",
+    "marketCategories": "Gn",
     "marketFamilies": "UI",
     "marketFamily": "BO",
     "gear": "je",
@@ -5012,6 +5013,12 @@
       "start": 867881,
       "end": 870145,
       "sha256": "a62e51a4897022eff58811594540a2097c69b29d8f78c8e9ebd65e7c00dafa7c"
+    },
+    {
+      "name": "Gn",
+      "start": 5536866,
+      "end": 5537308,
+      "sha256": "5f8006c86d69d186ed8a609c18d72a4fdddd2ece90a44053b2d2eb0ee6fcc68d"
     },
     {
       "name": "Imo",
