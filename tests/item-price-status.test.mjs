@@ -40,7 +40,7 @@ for(const [error,label]of [['marketNetworkFailed','官方市场价格请求失�
  assert.match(summary,/price-market-warning/);assert.match(summary,/role="alert"/);assert.ok(summary.includes(label));assert.equal(summary.includes('已捕获'),false);
  assert.equal((h.dialog.innerHTML.match(/id="price-status"/g)??[]).length,1);
  assert.equal(h.dialog.innerHTML.includes('id="price-market-status"'),false);
- assert.ok(h.dialog.innerHTML.indexOf('id="price-clear"')<h.dialog.innerHTML.indexOf('id="price-import"'));
+ assert.ok(h.dialog.innerHTML.indexOf('id="price-import"')<h.dialog.innerHTML.indexOf('id="price-auto-import"'));
  assert.ok(h.dialog.innerHTML.indexOf('id="price-import"')<h.dialog.innerHTML.indexOf('id="price-status"'));
  h.controls.get('#price-bulk-lock').onclick();assert.ok(h.dialog.innerHTML.includes(label));
 });
@@ -122,11 +122,12 @@ test('failed import leaves prices and cache intact and removes market userscript
  for(const language of ['zh','en']){h.ctx.mountItemPrices(language);assert.doesNotMatch(h.dialog.innerHTML,/https:\/\/deepveinidle.com\/api\/market\/prices.json|Official market API|官方市场价格 API|character-import.user.js|userscript|未捕获|Not captured/);}
 });
 
-test('one toolbar status shows loading once and remains outside the market category details',async()=>{
+test('one status shows loading once below the update controls in the market category details',async()=>{
  let resolve,requests=0;const h=harness(()=>{requests++;return new Promise(r=>resolve=r);});h.button.onclick();const pending=h.controls.get('#price-import').onclick();await h.controls.get('#price-import').onclick();assert.equal(requests,1);
  assert.equal((h.dialog.innerHTML.match(/正在读取官方市场价格…/g)??[]).length,1);
- assert.ok(h.dialog.innerHTML.indexOf('</details>')<h.dialog.innerHTML.indexOf('id="price-import"'));
- assert.match(h.dialog.innerHTML,/<\/button><button id="price-import"[^>]*>一键导入价格<\/button><span id="price-status"/);
+ assert.ok(h.dialog.innerHTML.indexOf('id="price-status"')<h.dialog.innerHTML.indexOf('</details>'));
+ assert.match(h.dialog.innerHTML,/<button id="price-import"[^>]*>更新价格<\/button><label[^>]*><input id="price-auto-import"[^>]*>自动更新价格<\/label>/);
+ assert.match(h.dialog.innerHTML,/<\/div>\s*<span id="price-status"/);
  resolve({snapshot:{version:1,invalid:0,quotes:{1:{bid:{value:36,capturedAt:Date.now()}}}}});await pending;
  assert.match(h.ctx.message(),/已更新/);assert.doesNotMatch(h.ctx.message(),/未自动导入|异常或未适配/);
 });
