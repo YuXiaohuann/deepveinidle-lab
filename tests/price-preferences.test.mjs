@@ -5,7 +5,7 @@ import {priceDefaults,priceCategories,itemCategory,pricePolicy,applyPricePrefere
 import {createPriceSnapshot} from '../src/price-protocol.js';
 import {legacyPriceState} from './fixtures/legacy-price-state.mjs';
 const at=Date.now()-1000;
-const quote=(ask,bid)=>({ask:{value:ask,capturedAt:at},bid:{value:bid,capturedAt:at}});
+const quote=(ask,bid)=>({avg7d:{value:ask,capturedAt:at},avg30d:{value:bid,capturedAt:at},ask:{value:ask,capturedAt:at},bid:{value:bid,capturedAt:at}});
 const preferences=(state,change)=>{const next=structuredClone(state.preferences);change(next);return next;};
 const apply=(state,change)=>applyPricePreferences(state,preferences(state,change),at+1);
 function cached(){
@@ -40,7 +40,7 @@ test('category overrides and restoring inheritance immediately update exact vari
  assert.equal(state.prices[1].price,40);assert.equal(state.prices[1001].price,130);assert.equal(state.prices[293].price,120);
  assert.equal(state.prices[110].price,100);
  state=apply(state,p=>p.categories.resources=null);
- assert.equal(state.prices[1].price,90);assert.equal(state.prices[293].price,200);assert.equal(state.prices[1].source,'ask');
+ assert.equal(state.prices[1].price,90);assert.equal(state.prices[293].price,200);assert.equal(state.prices[1].source,'avg7d');
  state=apply(state,p=>p.categories.equipment='bid');assert.equal(state.prices[10110].price,180);
 });
 
@@ -55,7 +55,7 @@ test('switching source removes missing, unread and invalid unlocked values, neve
 });
 
 test('vendor floor inherits as a pair and category overrides use their own saved floor',()=>{
- let state=cached();state.quotes[3]=quote(1,1);
+ let state=cached();state.quotes[3]=quote(1,1);state.preferences.categories.all='ask';
  state=apply(state,p=>p.vendorFallback.all=true);assert.equal(state.prices[3].price,game.vendorPrice(3));
  state=apply(state,p=>p.categories.resources='ask');assert.equal(state.prices[3].price,1);
  state=apply(state,p=>p.vendorFallback.resources=true);assert.equal(state.prices[3].price,game.vendorPrice(3));
@@ -72,19 +72,21 @@ test('Skip retains values, inherited Skip disables requests while a category ove
  const restored=apply(enabled,p=>p.categories.equipment=null);assert.equal(restored.prices[110].price,60);
 });
 
-test('legacy conflicting families retain prices and quotes and require an explicit choice before updates',()=>{
- for(const version of [2,3,4]){
-  const old=setItemPrice(legacyPriceState(version),1,77);old.preferences.categories.ore='bid';old.quotes={1:quote(90,40)};
+test('legacy conflicting families reset to seven-day averages without changing values or cache',()=>{
+ for(const version of [2,3,4,5]){
+  const old=setItemPrice(version===5?{...priceDefaults(),version:5}:legacyPriceState(version),1,77);
+  old.preferences.autoImport=false;
+  if(version===5){old.preferences.categories.all='bid';old.preferences.reviewCategories=['resources'];}
+  else old.preferences.categories.ore='bid';
+  old.quotes={1:quote(90,40)};
   const next=normalizePriceState(old);
-  assert.deepEqual(next.preferences.reviewCategories,['resources']);assert.equal(next.prices[1].price,77);
-  assert.equal(pricePolicy(next.preferences,'resources').mode,'off');
+  assert.deepEqual(next.preferences,{...priceDefaults().preferences,autoImport:version<4?true:false});
+  assert.equal(next.prices[1].price,77);assert.deepEqual(next.quotes,version===2?{}:old.quotes);
   const imported=importItemPrices(next,{version:1,quotes:{1:quote(90,40)},invalid:0}).state;
-  assert.equal(imported.prices[1].price,77);
-  const confirmed=apply(imported,p=>{p.reviewCategories=[];p.categories.resources=null;});
-  assert.equal(confirmed.prices[1].price,90);assert.deepEqual(normalizePriceState(confirmed),confirmed);
+  assert.equal(imported.prices[1].price,90);assert.equal(imported.prices[1].source,'avg7d');
+  const changed=apply(imported,p=>p.categories.resources='avg30d');
+  assert.equal(changed.prices[1].price,40);assert.deepEqual(normalizePriceState(changed),changed);
  }
- const old=legacyPriceState(4);old.preferences.vendorFallback.ore=true;
- assert.deepEqual(normalizePriceState(old).preferences.reviewCategories,['resources']);
 });
 
 test('automatic checkbox is independent and resetting preferences revalues from cache, preserving locks',()=>{

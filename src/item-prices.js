@@ -6,7 +6,10 @@ export const marketFamilies=game.marketFamilies;
 // Pricing uses the primary groups without that duplicate shortcut.
 export const priceCategories=game.marketCategories.filter(category=>category.key!=='gems');
 export function itemCategory(id){const family=itemFamily(id);return priceCategories.find(category=>category.families.includes(family))?.key??null;}
-const priceModes=['ask','bid','vendor','off'];
+export const marketPriceModes=['avg7d','avg30d','ask','bid'];
+const priceModes=[...marketPriceModes,'vendor','off'];
+const priceSources=['manual',...marketPriceModes,'vendor'];
+const legacyPriceModes=['ask','bid','vendor','off'];
 export function pricePolicy(preferences,category){
  if(!category||preferences.reviewCategories.includes(category))return {mode:'off',fallback:false};
  const key=preferences.categories[category]===null?'all':category;
@@ -33,34 +36,32 @@ export function validItemId(id){
  try{const base=game.baseItemId(id),tier=game.itemTier(id),plus=Math.floor(id/game.encode(0,1));return tier>=0&&tier<=4&&plus<=game.maxEnhancement&&game.encode(game.withRarity(base,tier),plus)===id&&game.item(id).id===id&&(!plus||game.canEnhance(id));}catch{return false;}
 }
 export function itemFamily(id){try{return game.marketFamily(game.baseItemId(id));}catch{return null;}}
-export function priceDefaults(){return {version:5,prices:{},quotes:{},preferences:{autoImport:true,categories:{all:'ask',...Object.fromEntries(priceCategories.map(category=>[category.key,null]))},vendorFallback:Object.fromEntries(['all',...priceCategories.map(category=>category.key)].map(key=>[key,false])),reviewCategories:[]}};}
+export function priceDefaults(){return {version:6,prices:{},quotes:{},preferences:{autoImport:true,categories:{all:'avg7d',...Object.fromEntries(priceCategories.map(category=>[category.key,null]))},vendorFallback:Object.fromEntries(['all',...priceCategories.map(category=>category.key)].map(key=>[key,false])),reviewCategories:[]}};}
 export function normalizePriceState(raw){
- if(!record(raw)||![2,3,4,5].includes(raw.version)||!record(raw.prices)||!record(raw.quotes)||!record(raw.preferences)||!record(raw.preferences.categories))throw Error('invalidPriceStorage');
+ if(!record(raw)||![2,3,4,5,6].includes(raw.version)||!record(raw.prices)||!record(raw.quotes)||!record(raw.preferences)||!record(raw.preferences.categories))throw Error('invalidPriceStorage');
  const next=priceDefaults();
  for(const [key,p] of Object.entries(raw.prices)){
-  if(String(Number(key))!==key||!validItemId(Number(key))||!record(p)||p.price!==null&&!validPrice(p.price)||typeof p.locked!=='boolean'||!['manual','ask','bid','vendor'].includes(p.source)||!time(p.updatedAt)||p.quoteCapturedAt!==null&&!time(p.quoteCapturedAt))throw Error('invalidPriceStorage');
+  if(String(Number(key))!==key||!validItemId(Number(key))||!record(p)||p.price!==null&&!validPrice(p.price)||typeof p.locked!=='boolean'||!priceSources.includes(p.source)||!time(p.updatedAt)||p.quoteCapturedAt!==null&&!time(p.quoteCapturedAt))throw Error('invalidPriceStorage');
   next.prices[key]={price:p.price,locked:p.locked,source:p.source,updatedAt:p.updatedAt,quoteCapturedAt:raw.version===2?null:p.quoteCapturedAt};
  }
  if(raw.version>=3){
   const parsed=validateMarketSnapshot({version:1,quotes:raw.quotes,invalid:0});
   if(parsed.invalid)throw Error('invalidPriceStorage');next.quotes=parsed.quotes;
  }
- if(raw.version===5){
-  try{next.preferences=validatePricePreferences(raw.preferences);}catch{throw Error('invalidPriceStorage');}
+ if(raw.version>=5){
+  try{
+   const validated=validatePricePreferences(raw.preferences);
+   if(raw.version===6)next.preferences=validated;
+   else next.preferences.autoImport=validated.autoImport;
+  }catch{throw Error('invalidPriceStorage');}
   return next;
  }
  if(raw.version===4&&(typeof raw.preferences.autoImport!=='boolean'||!record(raw.preferences.vendorFallback)))throw Error('invalidPriceStorage');
  if(raw.version===4)next.preferences.autoImport=raw.preferences.autoImport;
- const legacyPolicies={};
+ const legacy=raw.version<4;
  for(const family of marketFamilies){
-  const mode=raw.preferences.categories[family.key],legacy=raw.version<4;
-  if(!(legacy?[...priceModes,'bidVendor']:priceModes).includes(mode)||!legacy&&typeof raw.preferences.vendorFallback[family.key]!=='boolean')throw Error('invalidPriceStorage');
-  legacyPolicies[family.key]={mode:mode==='bidVendor'?'bid':mode,fallback:legacy?mode==='bidVendor':raw.preferences.vendorFallback[family.key]};
- }
- for(const category of priceCategories){
-  const policies=category.families.map(key=>legacyPolicies[key]),first=policies[0];
-  if(!policies.every(policy=>policy.mode===first.mode&&policy.fallback===first.fallback))next.preferences.reviewCategories.push(category.key);
-  else if(first.mode!=='ask'||first.fallback){next.preferences.categories[category.key]=first.mode;next.preferences.vendorFallback[category.key]=first.fallback;}
+  const mode=raw.preferences.categories[family.key];
+  if(!legacyPriceModes.includes(mode)&&!(legacy&&mode==='bidVendor')||!legacy&&typeof raw.preferences.vendorFallback[family.key]!=='boolean')throw Error('invalidPriceStorage');
  }
  return next;
 }
@@ -84,7 +85,7 @@ export function validateMarketSnapshot(raw){
  for(const [key,q]of Object.entries(raw.quotes)){
   const id=Number(key);if(String(id)!==key||!validItemId(id)||!itemFamily(id)||!record(q)){invalid++;continue;}
   const entry={};
-  for(const side of ['ask','bid']){
+  for(const side of marketPriceModes){
    if(!Object.hasOwn(q,side))continue;const v=q[side];
    if(!record(v)||!time(v.capturedAt)||!(v.invalid===true||v.value===null||validPrice(v.value)&&v.value>0)){invalid++;continue;}
    entry[side]=v.invalid===true?{invalid:true,capturedAt:v.capturedAt}:{value:v.value,capturedAt:v.capturedAt};
@@ -100,7 +101,7 @@ export function validateMarketSnapshot(raw){
 }
 export function mergeQuotes(current,incoming){
  const quotes=structuredClone(current);
- for(const [id,q]of Object.entries(incoming))for(const side of ['ask','bid'])if(q[side]&&(!quotes[id]?.[side]||q[side].capturedAt>=quotes[id][side].capturedAt)){
+ for(const [id,q]of Object.entries(incoming))for(const side of marketPriceModes)if(q[side]&&(!quotes[id]?.[side]||q[side].capturedAt>=quotes[id][side].capturedAt)){
   quotes[id]??={};quotes[id][side]={...q[side]};
  }
  return quotes;
@@ -129,7 +130,7 @@ export function importItemPrices(state,snapshot,preferences=state.preferences,no
  // Include configured items with no quote so missing coverage is visible.
  const ids=new Set([...game.items.filter(i=>i.id===game.baseItemId(i.id)&&itemFamily(i.id)&&game.canSell(i.id)).map(i=>i.id),...Object.keys(prices).map(Number),...Object.keys(quotes).map(Number)]);
  for(const id of ids){
-  const category=itemCategory(id),{mode,fallback}=pricePolicy(preferences,category);if(!['ask','bid','vendor'].includes(mode))continue;const side=mode;
+  const category=itemCategory(id),{mode,fallback}=pricePolicy(preferences,category);if(!marketPriceModes.includes(mode)&&mode!=='vendor')continue;const side=mode;
   const old=prices[id];if(old?.locked){stats.locked++;continue;}
   if(mode==='vendor'){
    if(!game.canSell(id)){stats.unavailable++;continue;}

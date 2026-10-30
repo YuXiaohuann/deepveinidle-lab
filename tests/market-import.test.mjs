@@ -9,7 +9,7 @@ const payload=(items={1:{lowestSell:84,highestBuy:null},1110:{lowestSell:900,hig
 
 test('official prices map full variant IDs and use generation time, with null distinct from missing',()=>{
  const s=parseMarketPrices(payload({1:{lowestSell:84,highestBuy:null},1110:{lowestSell:900,highestBuy:700},2:{lowestSell:5},3:{lowestSell:0,highestBuy:'1'},9999999:{lowestSell:1,highestBuy:2}}));
- assert.deepEqual(s.quotes[1],{ask:{value:84,capturedAt:Date.parse(generatedAt),quantityInvalid:true},bid:{value:null,capturedAt:Date.parse(generatedAt),quantityInvalid:true}});
+ assert.deepEqual(s.quotes[1],{ask:{value:84,capturedAt:Date.parse(generatedAt),quantityInvalid:true},bid:{value:null,capturedAt:Date.parse(generatedAt),quantityInvalid:true},avg7d:{invalid:true,capturedAt:Date.parse(generatedAt)},avg30d:{invalid:true,capturedAt:Date.parse(generatedAt)}});
  assert.equal(s.quotes[1110].bid.value,700);assert.equal(s.quotes[110],undefined);assert.equal(s.quotes[2].bid.invalid,true);assert.equal(s.quotes[3].ask.invalid,true);assert.equal(s.quotes[3].bid.invalid,true);assert.equal(s.invalid,1);
  const state=priceDefaults();state.preferences.categories.resources='bid';state.preferences.vendorFallback.resources=true;
  const r=importItemPrices(state,s);assert.equal(r.state.prices[2],undefined);assert.equal(r.state.prices[3],undefined);assert.ok(r.state.prices[1]);assert.ok(r.stats.invalid>0);
@@ -44,4 +44,11 @@ test('userscript exposes only the role bridge and never reads or replies to mark
  const replies=[];document.addEventListener('dvi-character-response',event=>replies.push(JSON.parse(event.detail)));
  send('dvi-character-request','read');await new Promise(r=>setImmediate(r));assert.deepEqual(reads,['dvi-character-snapshot-v2']);assert.equal(replies[0].version,'2.4');
  assert.doesNotMatch(captureScript,/dvi-market|marketBook|marketDepth|Market prices captured/);
+});
+
+test('official seven/thirty-day averages preserve decimals and distinguish null from missing or invalid',()=>{
+ const parsed=parseMarketPrices(payload({1:{avg7d:73.25,avg30d:62},2:{avg7d:null,avg30d:0},3:{avg7d:'7'}}));
+ assert.deepEqual(parsed.quotes[1].avg7d,{value:73.25,capturedAt:Date.parse(generatedAt)});
+ assert.equal(parsed.quotes[1].avg30d.value,62);assert.equal(parsed.quotes[2].avg7d.value,null);
+ assert.equal(parsed.quotes[2].avg30d.invalid,true);assert.equal(parsed.quotes[3].avg7d.invalid,true);assert.equal(parsed.quotes[3].avg30d.invalid,true);
 });

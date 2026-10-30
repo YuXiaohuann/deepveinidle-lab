@@ -19,33 +19,33 @@ try{
  for(const language of ['zh','en'])for(const width of [1280,700,390]){
   const context=await browser.newContext({viewport:{width,height:960}}),page=await context.newPage();page.setDefaultTimeout(15000);
   page.on('pageerror',error=>result.errors.push(error.message));let requests=0,release;
-  const at=Date.now()-1000,quote=(ask,bid)=>({ask:{value:ask,capturedAt:at},bid:{value:bid,capturedAt:at}});
+  const at=Date.now()-1000,quote=(ask,bid)=>({avg7d:{value:ask+5,capturedAt:at},avg30d:{value:bid+5,capturedAt:at},ask:{value:ask,capturedAt:at},bid:{value:bid,capturedAt:at}});
   let saved=setItemPrice(setItemPrice(setItemPrice(legacyPriceState(),1,77),2,0),3,33);
   saved.prices[2].locked=true;saved.preferences.autoImport=false;saved.preferences.categories.bars='bid';
   saved.quotes={1:quote(90,40),2:quote(80,null),3:{ask:{value:22,capturedAt:at},bid:{invalid:true,capturedAt:at}},293:quote(200,120)};
   await context.addInitScript(({saved,language})=>{if(!localStorage.getItem('dvi-item-prices-v1'))localStorage.setItem('dvi-item-prices-v1',JSON.stringify(saved));localStorage.setItem('dvi-simulator-v1',JSON.stringify({language}));},{saved,language});
   await context.route('https://deepveinidle.com/api/market/prices.json',async route=>{
    requests++;await new Promise(resolve=>release=resolve);
-   await route.fulfill({contentType:'application/json',body:JSON.stringify({game:'Deep Vein Idle',generatedAt:new Date(at+500).toISOString(),refreshSeconds:300,items:{1:{lowestSell:150,highestBuy:55,sellQty:20,buyQty:10},293:{lowestSell:250,highestBuy:140,sellQty:30,buyQty:15}}})});
+   await route.fulfill({contentType:'application/json',body:JSON.stringify({game:'Deep Vein Idle',generatedAt:new Date(at+500).toISOString(),refreshSeconds:300,items:{1:{avg7d:115,avg30d:105,lowestSell:150,highestBuy:55,sellQty:20,buyQty:10},293:{avg7d:215,avg30d:205,lowestSell:250,highestBuy:140,sellQty:30,buyQty:15}}})});
   });
   await page.goto(base+'/forecast');await page.locator('#item-prices-open').click();
   assert.equal(await page.locator('.price-categories tbody tr').count(),6);
   assert.deepEqual(await page.locator('.price-categories tbody tr').evaluateAll(rows=>rows.map(row=>row.cells[0].childNodes[0].textContent)),language==='zh'?['全部','资源','消耗品','装备','工具','贵重品']:['All','Resources','Consumables','Equipment','Tools','Valuables']);
-  assert.equal(await page.locator('[data-price-category="all"][value="ask"]').isChecked(),true);
+  assert.equal(await page.locator('[data-price-category="all"][value="avg7d"]').isChecked(),true);
   assert.equal(await page.locator('[data-price-category="all"][value=""]').count(),0);
-  assert.equal(await page.locator('[data-price-category="resources"]:checked').count(),0);
-  assert.match(await page.locator('#price-import-settings .issue-box').innerText(),language==='zh'?/旧分类设置不一致/:/Conflicting saved/);
+  assert.equal(await page.locator('[data-price-category="resources"][value=""]').isChecked(),true);
+  assert.equal(await page.locator('#price-import-settings .issue-box').count(),0);
   const apiPrice=id=>page.evaluate(async id=>(await import('/src/price-service.js')).getItem(id).price,id);
   assert.equal(await apiPrice(1),77);assert.equal(requests,0);
   await page.locator('#price-family').selectOption('resources');
   await page.evaluate(async()=>{const service=await import('/src/price-service.js');window.priceBefore=service.getSnapshot();window.priceEvents=[];service.subscribe(event=>window.priceEvents.push(event));});
   const choose=(category,mode)=>page.locator(`[data-price-category="${category}"][value="${mode}"]`).check();
-  await choose('resources','');assert.equal(await page.locator('#price-import-settings .issue-box').count(),0);
+  await choose('resources','ask');assert.equal(await page.locator('#price-import-settings .issue-box').count(),0);
   assert.equal(await page.locator('[data-price-value="1"]').inputValue(),'90');assert.equal(await apiPrice(293),200);
   assert.equal(await page.evaluate(()=>window.priceBefore.getItem(1).price),77);
   assert.equal(await page.evaluate(()=>window.priceEvents.length),1);
   assert.deepEqual(await page.evaluate(()=>[window.priceEvents[0].prices,window.priceEvents[0].preferences,window.priceEvents[0].market]),[true,true,false]);
-  await choose('all','bid');assert.equal(await page.locator('[data-price-value="1"]').inputValue(),'40');assert.equal(await apiPrice(293),120);
+  await choose('resources','');await choose('all','bid');assert.equal(await page.locator('[data-price-value="1"]').inputValue(),'40');assert.equal(await apiPrice(293),120);
   assert.equal(await page.locator('[data-price-value="3"]').inputValue(),'');assert.equal(await page.locator('[data-price-value="2"]').inputValue(),'0');
   await page.locator('[data-price-fallback="all"]').check();assert.equal(await page.locator('[data-price-fallback="resources"]').isDisabled(),true);assert.equal(await page.locator('[data-price-fallback="resources"]').isChecked(),true);
   await choose('resources','ask');assert.equal(await page.locator('[data-price-fallback="resources"]').isDisabled(),false);assert.equal(await apiPrice(1),90);
@@ -60,8 +60,12 @@ try{
   await page.screenshot({path:path.join(directory,`inherited-${language}-${width}.png`)});
   await choose('all','off');assert.equal(await page.locator('#price-import').isDisabled(),true);assert.equal(await apiPrice(1),55);
   await choose('resources','ask');assert.equal(await apiPrice(1),150);assert.equal(await page.locator('#price-import').isDisabled(),false);assert.equal(requests,1);
-  await page.locator('#price-import-reset').click();assert.equal(await page.locator('[data-price-category="resources"][value=""]').isChecked(),true);assert.equal(await apiPrice(1),150);assert.equal(await apiPrice(2),0);
-  await page.screenshot({path:path.join(directory,`reset-${language}-${width}.png`)});
+  await page.locator('#price-import-reset').click();assert.equal(await page.locator('[data-price-category="resources"][value=""]').isChecked(),true);assert.equal(await apiPrice(1),115);assert.equal(await apiPrice(2),0);
+  assert.equal(await page.locator('[data-price-category="all"][value="avg7d"]').isChecked(),true);
+  await choose('all','avg30d');assert.equal(await apiPrice(1),105);
+  const fields=await page.evaluate(async()=>(await import('/src/price-service.js')).getItem(1));assert.equal(fields.avg7d,115);assert.equal(fields.avg30d,105);
+  await page.reload();await page.locator('#item-prices-open').click();assert.equal(await apiPrice(1),105);assert.equal(await page.locator('[data-price-category="all"][value="avg30d"]').isChecked(),true);
+  await page.screenshot({path:path.join(directory,`restored-average-${language}-${width}.png`)});
   const layout=await page.locator('#item-prices-dialog').evaluate(el=>({client:el.clientWidth,scroll:el.scrollWidth}));assert.ok(layout.scroll<=layout.client+1,JSON.stringify(layout));
   const alignment=await page.locator('.price-categories tbody tr').evaluateAll(rows=>rows.map(row=>{
    const top=row.getBoundingClientRect().top;
@@ -84,7 +88,7 @@ try{
   const placeholder=page.locator('.price-option-placeholder');
   assert.equal(await placeholder.count(),1);assert.equal(await placeholder.getAttribute('aria-hidden'),'true');
   assert.equal(await placeholder.locator('input,button,[tabindex]').count(),0);
-  result.cases.push(`${language}/${width}: aligned option columns and wrapped rows, inaccessible noninteractive All placeholder, primary game categories, conflicting v4 migration and confirmation, required All, inherited/override/floor/Skip/reset, immediate table/API and atomic events, old snapshot isolation, missing/invalid clears and locked zero, reload and latest policy during request`);
+  result.cases.push(`${language}/${width}: aligned option columns and wrapped rows, inaccessible noninteractive All placeholder, primary game categories, v4 reset and v6 restoration, both averages, required All, inherited/override/floor/Skip/reset, immediate table/API and atomic events, old snapshot isolation, missing/invalid clears and locked zero, reload and latest policy during request`);
   await context.close();
  }
  assert.deepEqual(result.errors,[]);result.status='passed';console.log(JSON.stringify({status:result.status,cases:result.cases.length,directory}));

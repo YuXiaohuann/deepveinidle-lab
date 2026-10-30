@@ -10,9 +10,10 @@ export function parseMarketPrices(raw){
   const id=Number(key);
   if(String(id)!==key||!validItemId(id)||!itemFamily(id)||!record(item)){invalid++;continue;}
   const quote={};
-  for(const [side,field,quantityField]of [['ask','lowestSell','sellQty'],['bid','highestBuy','buyQty']]){
+  for(const [side,field,quantityField]of [['ask','lowestSell','sellQty'],['bid','highestBuy','buyQty'],['avg7d','avg7d'],['avg30d','avg30d']]){
    const value=item[field];
    quote[side]=value===null||validPrice(value)&&value>0?{value,capturedAt:at}:{invalid:true,capturedAt:at};
+   if(!quantityField)continue;
    const quantity=item[quantityField];
    if(Number.isSafeInteger(quantity)&&quantity>=0)quote[side].quantity=quantity;
    else quote[side].quantityInvalid=true;

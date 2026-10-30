@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import * as game from '../src/upstream.js';
 import {marketErrors} from '../src/market-import.js';
-import {priceDefaults as defaultPrices,priceCategories,itemCategory,hasPriceImports,applyPricePreferences,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes} from '../src/item-prices.js';
+import {priceDefaults as defaultPrices,priceCategories,marketPriceModes,itemCategory,hasPriceImports,applyPricePreferences,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes} from '../src/item-prices.js';
 const priceDefaults=()=>{const state=defaultPrices();for(const key of Object.keys(state.preferences.categories))state.preferences.categories[key]='bid';return state;};
 const source=fs.readFileSync(new URL('../src/item-price-controls.js',import.meta.url),'utf8').replace(/^import .*;\n/gm,'').replace('export function mountItemPrices','function mountItemPrices');
 const refreshSource='let marketRequest;'+fs.readFileSync(new URL('../src/item-price-store.js',import.meta.url),'utf8').split('let marketRequest;')[1].replace(/export /g,'');
@@ -16,7 +16,7 @@ function harness(requestMarket,priceInputs=[]){
  const controls=new Map(),element=()=>({focus(){},setAttribute(key,value){this[key]=value;},scrollTop:0,textContent:''});
  const dialog={open:false,innerHTML:'',showModal(){this.open=true;},setAttribute(){},addEventListener(){},querySelector(selector){if(!controls.has(selector))controls.set(selector,element());return controls.get(selector);},querySelectorAll(selector){return selector==='[data-price-value]'?priceInputs:[];}};
  const button={};const document={createElement:()=>dialog,body:{append(){}},getElementById:()=>button};let current=state,subscriber;
- const ctx=vm.createContext({marketErrors,priceDefaults:defaultPrices,getItem:id=>createPriceSnapshot(current).getItem(id),game,priceCategories,itemCategory,hasPriceImports,translatedName:s=>s,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes,document,Date,Set,Number,Object,String,structuredClone,marketPricesUrl:"https://deepveinidle.com/api/market/prices.json",requestAnimationFrame:fn=>frames.push(fn),requestMarket,priceState:()=>current,priceSaveError:()=>null,setPricePreferences:preferences=>{current=applyPricePreferences(current,preferences);subscriber?.();},updatePrices:next=>{current=next;subscriber?.();},subscribePrices:fn=>subscriber=fn});
+ const ctx=vm.createContext({marketErrors,priceDefaults:defaultPrices,getItem:id=>createPriceSnapshot(current).getItem(id),game,priceCategories,marketPriceModes,itemCategory,hasPriceImports,translatedName:s=>s,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes,document,Date,Set,Number,Object,String,structuredClone,marketPricesUrl:"https://deepveinidle.com/api/market/prices.json",requestAnimationFrame:fn=>frames.push(fn),requestMarket,priceState:()=>current,priceSaveError:()=>null,setPricePreferences:preferences=>{current=applyPricePreferences(current,preferences);subscriber?.();},updatePrices:next=>{current=next;subscriber?.();},subscribePrices:fn=>subscriber=fn});
  vm.runInContext(refreshSource,ctx);vm.runInContext(source,ctx);ctx.mountItemPrices('zh');return {dialog,button,controls,ctx,nextFrame(){for(const fn of frames.splice(0))fn();},runFrames(){while(frames.length)this.nextFrame();}};
 }
 function changeFilter(h,key,value){const el=h.controls.get('#price-'+key);el.value=value;el.onchange();}
@@ -80,7 +80,7 @@ test('category radios place vendor price immediately before skip in both languag
  for(const [language,label]of [['zh','商人价'],['en','Vendor price']]){
   h.ctx.mountItemPrices(language);
   const options=[...h.dialog.innerHTML.matchAll(/name="price-category-resources"[^>]*value="([^"]*)"/g)].map(match=>match[1]);
-  assert.deepEqual(options,['','ask','bid','vendor','off']);assert.ok(h.dialog.innerHTML.includes(label));
+  assert.deepEqual(options,['','avg7d','avg30d','ask','bid','vendor','off']);assert.ok(h.dialog.innerHTML.includes(label));
  }
 });
 
@@ -186,7 +186,7 @@ test('global import and clear work without activating the item list or discardin
  h.ctx.confirm=()=>true;h.controls.get('#price-clear').onclick();assert.equal(h.ctx.priceState().prices[2],undefined);assert.equal(h.ctx.priceState().prices[1].price,123);assert.equal(h.ctx.priceState().quotes[2].bid.value,80);assert.equal(h.ctx.candidates().length,0);assert.ok(h.dialog.innerHTML.includes('物品数量较多，请先设置筛选条件'));
 });
 
-test('reset restores All asks and inheritance while preserving locked prices and cached quotes',()=>{
+test('reset restores All seven-day averages and inheritance while preserving locked prices and cached quotes',()=>{
  let reads=0;const h=harness(async()=>{reads++;});
  const state=lockItemPrices(setItemPrice(h.ctx.priceState(),1,77),[1],true).state;
  state.preferences.vendorFallback.resources=true;state.preferences.categories.equipment='off';state.preferences.autoImport=false;h.ctx.updatePrices(state);h.button.onclick();

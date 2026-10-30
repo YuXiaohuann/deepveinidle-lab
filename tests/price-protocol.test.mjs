@@ -8,7 +8,7 @@ import {enhancementDefaults,resolveEnhancementPrices} from '../src/enhancement.j
 const at=Date.now()-1000;
 const market=items=>parseMarketPrices({game:'Deep Vein Idle',generatedAt:new Date(at).toISOString(),refreshSeconds:300,items});
 
-test('six fields keep manual zero, vendor price and official market totals independent',()=>{
+test('manual zero, vendor price and official market totals stay independent',()=>{
  const state=setItemPrice(priceDefaults(),1,0);state.prices[1].locked=true;
  state.quotes=market({1:{lowestSell:136,sellQty:12731,highestBuy:43,buyQty:135652}}).quotes;
  const snapshot=createPriceSnapshot(state,[1,1001,50110]),item=snapshot.getItem(1);
@@ -47,4 +47,13 @@ test('existing valuation fallback and enhancement local overrides work with prot
  enhancement={...enhancement,shardPrice:0,priceModes:{...enhancement.priceModes,shardPrice:'manual'}};
  assert.equal(resolveEnhancementPrices(enhancement,snapshot).shardPrice,0);
  enhancement.shardPrice=null;assert.equal(resolveEnhancementPrices(enhancement,snapshot).shardPrice,null);
+});
+
+test('average prices are independent immutable fields with persisted status and generation time',()=>{
+ const state=priceDefaults();state.quotes=market({1:{avg7d:73.25,avg30d:62},2:{avg7d:null,avg30d:'bad'}}).quotes;
+ const snapshot=createPriceSnapshot(normalizePriceState(JSON.parse(JSON.stringify(state))));
+ const item=snapshot.getItem(1);assert.equal(item.avg7d,73.25);assert.equal(item.avg30d,62);assert.equal(item.market.status.avg7d,'available');assert.equal(item.market.generatedAt,at);
+ assert.equal(snapshot.getItem(2).market.status.avg7d,'noOrders');assert.equal(snapshot.getItem(2).market.status.avg30d,'invalid');
+ assert.equal(snapshot.getItem(3).market.status.avg7d,'unread');
+ state.quotes[1].avg7d.value=1;assert.equal(item.avg7d,73.25);assert.throws(()=>{item.avg30d=0;},TypeError);
 });

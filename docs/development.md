@@ -16,7 +16,7 @@ node scripts/serve.mjs
 node --test tests/*.test.mjs
 ```
 
-物品价格协议与命令测试为 `tests/price-protocol.test.mjs`、`tests/price-service.test.mjs`，官方接口解析见 `tests/market-import.test.mjs`。运行 `node tests/price-refactor-browser.mjs` 验证六项数据、全市场挂单总量、强化方案覆盖与清空，以及价格消费者页面导航；输出位于 `.test-artifacts/price-refactor/protocol/`。沿用市场价格浏览器专项，需要本机端口和 Chrome 进程权限，不能替代完整发布验收。协议见[物品价格模块](modules/item-prices.md)。
+物品价格协议与命令测试为 `tests/price-protocol.test.mjs`、`tests/price-service.test.mjs`，官方接口解析见 `tests/market-import.test.mjs`。运行 `node tests/price-refactor-browser.mjs` 验证八项数据、全市场挂单总量、强化方案覆盖与清空，以及价格消费者页面导航；输出位于 `.test-artifacts/price-refactor/protocol/`。沿用市场价格浏览器专项，需要本机端口和 Chrome 进程权限，不能替代完整发布验收。协议见[物品价格模块](modules/item-prices.md)。
 
 重新提取原始计算代码时，安装开发依赖后执行：
 
@@ -71,7 +71,7 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 价格设置及自动导入专项可运行 `node tests/market-prices-browser.mjs --toolbar-only`，覆盖双语桌面／390px 一级分类、强化空值／0／正值及已锁定／未定价组合筛选（零价不算未定价）、手动导入、锁定、分类兜底、重置、自动导入开关、5 分钟边界与不轮询，以及成功／失败通知 30 秒自动关闭和点击／键盘关闭。行情使用请求替身，不重跑真实 API 或角色捕获专项。默认结果保存至 `.test-artifacts/price-toolbar/`；可用 `--out <目录>` 单独保存本轮证据，使用 `--base-url <目标网址>` 对指定候选或生产目标执行相同专项。目标参数不启动本机服务，也不代表完整发布验收通过。
 
-价格一级分类与即时定价专项：`node tests/price-preferences-browser.mjs [输出目录]`，默认输出 `.test-artifacts/price-preferences/`，使用本机服务、独立 Chrome 与官方接口请求替身。覆盖双语 1280px／700px／390px、各行对应选项列及换行位置对齐、“重置价格选项”紧接自动更新右侧及窄屏换行、全部行空位不参与交互或辅助技术读取、旧细分类冲突确认、“全部”必选及分类继承／覆盖／恢复继承、兜底继承、缺报价清除、锁定零价、表格与协议即时同步、单次通知、旧快照隔离、刷新恢复及请求期间改选不被迟到结果覆盖。配合 `node tests/price-refactor-browser.mjs` 回归六项字段、强化方案覆盖及消费者页面。截图需要审阅，不代替真实 API 或发布验收。
+价格一级分类与即时定价专项：`node tests/price-preferences-browser.mjs [输出目录]`，默认输出 `.test-artifacts/price-preferences/`，使用本机服务、独立 Chrome 与官方接口请求替身。覆盖双语 1280px／700px／390px、各行对应选项列及换行位置对齐、“重置价格选项”紧接自动更新右侧及窄屏换行、全部行空位不参与交互或辅助技术读取、旧 v2～v5 选项统一重置、v6 选择恢复及两种成交均价、“全部”必选及分类继承／覆盖／恢复继承、兜底继承、缺报价清除、锁定零价、表格与协议即时同步、单次通知、旧快照隔离、刷新恢复及请求期间改选不被迟到结果覆盖。配合 `node tests/price-refactor-browser.mjs` 回归价格字段、强化方案覆盖及消费者页面。截图需要审阅，不代替真实 API 或发布验收。
 
 ## 上游版本适配专项
 

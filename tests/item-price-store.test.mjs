@@ -34,8 +34,8 @@ test('published v2 migrates prices, locks and preferences, discarding game quote
  state.prices[2]={price:99,locked:false,source:'bid',updatedAt:Date.now(),quoteCapturedAt:Date.now()};state.quotes={2:{bid:{value:99,capturedAt:Date.now()}}};state.preferences.categories.ore='ask';
  const saved=JSON.stringify(state);let writes=0,latest;
  await withStore({getItem:()=>saved,setItem:(key,value)=>{writes++;latest=JSON.parse(value);}},store=>{
-  const current=store.priceState();assert.equal(writes,0);assert.equal(store.priceSaveError(),null);assert.equal(current.version,5);assert.deepEqual(current.quotes,{});assert.equal(current.prices[1].price,0);assert.equal(current.prices[1].locked,true);assert.equal(current.prices[2].price,99);assert.equal(current.prices[2].source,'bid');assert.equal(current.prices[2].quoteCapturedAt,null);assert.equal(current.preferences.categories.resources,null);
-  store.updatePrices(current);assert.equal(writes,1);assert.equal(latest.version,5);
+  const current=store.priceState();assert.equal(writes,0);assert.equal(store.priceSaveError(),null);assert.equal(current.version,6);assert.deepEqual(current.quotes,{});assert.equal(current.prices[1].price,0);assert.equal(current.prices[1].locked,true);assert.equal(current.prices[2].price,99);assert.equal(current.prices[2].source,'bid');assert.equal(current.prices[2].quoteCapturedAt,null);assert.equal(current.preferences.categories.resources,null);
+  store.updatePrices(current);assert.equal(writes,1);assert.equal(latest.version,6);
  });
 });
 
@@ -67,10 +67,10 @@ test('market refresh rejects a full snapshot older than current quotes without w
  });}finally{globalThis.fetch=oldFetch;}
 });
 
-test('automatic import respects the five-minute boundary across reloads using asks and current locks',async()=>{
+test('automatic import respects the five-minute boundary across reloads using seven-day averages and current locks',async()=>{
  const values=new Map(),storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};
  const oldFetch=globalThis.fetch;let requests=0;
- globalThis.fetch=async()=>{requests++;return {ok:true,json:async()=>({game:'Deep Vein Idle',generatedAt:new Date().toISOString(),refreshSeconds:60,items:{1:{lowestSell:30,highestBuy:20},2:{lowestSell:40,highestBuy:10}}})};};
+ globalThis.fetch=async()=>{requests++;return {ok:true,json:async()=>({game:'Deep Vein Idle',generatedAt:new Date().toISOString(),refreshSeconds:60,items:{1:{lowestSell:90,highestBuy:20,avg7d:30,avg30d:25},2:{lowestSell:80,highestBuy:10,avg7d:40,avg30d:35}}})};};
  try{
   const at=Date.now();
   await withStore(storage,async store=>{
@@ -114,7 +114,7 @@ test('automatic import skips disabled categories and protects unreadable or inva
 
 test('automatic import reports price saving failure after receiving valid quotes',async()=>{
  const oldFetch=globalThis.fetch;
- globalThis.fetch=async()=>({ok:true,json:async()=>({game:'Deep Vein Idle',generatedAt:new Date().toISOString(),refreshSeconds:60,items:{1:{lowestSell:30,highestBuy:20}}})});
+ globalThis.fetch=async()=>({ok:true,json:async()=>({game:'Deep Vein Idle',generatedAt:new Date().toISOString(),refreshSeconds:60,items:{1:{lowestSell:90,highestBuy:20,avg7d:30,avg30d:25}}})});
  try{await withStore({getItem:()=>null,setItem:key=>{if(key==='dvi-item-prices-v1')throw Error('quota');}},async store=>{
   await assert.rejects(store.importAutomaticPrices(),/priceSaveFailed/);assert.equal(store.priceState().prices[1].price,30);
  });}finally{globalThis.fetch=oldFetch;}

@@ -26,20 +26,20 @@ const side=value=>({value,capturedAt:at});
 const snapshot=quotes=>({version:1,quotes,invalid:0});
 const policy=(state,categories,fallback=false)=>({...state,preferences:{...state.preferences,categories:{all:'off',...Object.fromEntries(priceCategories.map(f=>[f.key,null])),...categories},vendorFallback:Object.fromEntries(['all',...priceCategories.map(f=>f.key)].map(key=>[key,fallback&&['ask','bid'].includes(categories[key])]))}});
 
-test('All defaults to asks and primary categories inherit it with independent floors disabled',()=>{
- const state=priceDefaults();assert.equal(state.preferences.categories.all,'ask');
+test('All defaults to seven-day averages and primary categories inherit it with independent floors disabled',()=>{
+ const state=priceDefaults();assert.equal(state.preferences.categories.all,'avg7d');
  assert.ok(priceCategories.every(c=>state.preferences.categories[c.key]===null));
  assert.ok(Object.values(state.preferences.vendorFallback).every(value=>value===false));
  state.preferences.categories.resources='off';state.preferences.categories.equipment='ask';state.preferences.vendorFallback.equipment=true;
  assert.deepEqual(normalizePriceState(state).preferences,state.preferences);
 });
-test('legacy consistent category choices and bidVendor floors migrate without changing prices or quotes',()=>{
+test('legacy consistent category choices and bidVendor floors reset without changing prices or quotes',()=>{
  for(const version of [2,3,4]){
   const state=setItemPrice(legacyPriceState(version),1,77);
   for(const key of priceCategories.find(c=>c.key==='resources').families){state.preferences.categories[key]=version<4?'bidVendor':'bid';state.preferences.vendorFallback[key]=true;}
   for(const key of ['weapons','armour','jewellery'])state.preferences.categories[key]='off';
   state.quotes={1:{ask:side(80)}};const migrated=normalizePriceState(state);
-  assert.equal(migrated.version,5);assert.equal(migrated.preferences.categories.resources,'bid');assert.equal(migrated.preferences.vendorFallback.resources,true);assert.equal(migrated.preferences.vendorFallback.equipment,false);assert.equal(migrated.preferences.categories.equipment,'off');assert.equal(migrated.prices[1].price,77);
+  assert.equal(migrated.version,6);assert.deepEqual(migrated.preferences,priceDefaults().preferences);assert.equal(migrated.prices[1].price,77);
   assert.deepEqual(migrated.quotes,version===2?{}:state.quotes);assert.deepEqual(migrated.preferences.reviewCategories,[]);
  }
  const state=priceDefaults();delete state.preferences.vendorFallback.resources;assert.throws(()=>normalizePriceState(state),/invalidPriceStorage/);
@@ -177,5 +177,18 @@ test('ask vendor floor handles low, equal, high and absent asks independently of
   const result=importItemPrices(state,snapshot({3:{ask:side(value),bid:side(9999)}}));
   assert.equal(result.state.prices[3].price,Math.max(value??0,vendor));
   assert.equal(result.state.prices[3].source,value===null||value<=vendor?'vendor':'ask');
+ }
+});
+
+for(const mode of ['avg7d','avg30d'])test(`${mode} imports exact variants with vendor floors, locks, invalid protection and stale rejection`,()=>{
+ let state=policy(priceDefaults(),{resources:mode});state.preferences.vendorFallback.resources=true;
+ state=setItemPrice(state,1,99);state=setItemPrice(state,2,0);state=lockItemPrices(state,[2],true).state;
+ const vendor=game.vendorPrice(3);
+ let result=importItemPrices(state,snapshot({1:{[mode]:{invalid:true,capturedAt:at}},2:{[mode]:side(77)},3:{[mode]:side(null)},1001:{[mode]:side(444.5)}}));
+ assert.equal(result.state.prices[1].price,99);assert.equal(result.state.prices[2].price,0);assert.equal(result.state.prices[3].price,vendor);assert.equal(result.state.prices[3].source,'vendor');assert.equal(result.state.prices[1001].price,444.5);assert.equal(result.state.prices[1001].source,mode);
+ result=importItemPrices(result.state,snapshot({1001:{[mode]:{value:777,capturedAt:at-1}}}));
+ assert.equal(result.state.prices[1001].price,444.5);assert.equal(result.stats.stale,1);
+ for(const [value,expected] of [[vendor-1,vendor],[vendor,vendor],[vendor+1,vendor+1]]){
+  const r=importItemPrices(state,snapshot({3:{[mode]:side(value)}}));assert.equal(r.state.prices[3].price,expected);assert.equal(r.state.prices[3].source,value<=vendor?'vendor':mode);
  }
 });
