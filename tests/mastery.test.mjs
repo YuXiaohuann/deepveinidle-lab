@@ -43,7 +43,7 @@ test('mastery bonuses preserve enhancement quarter-percent and fractional offlin
  assert.equal(masteryValue('offline',20),2.4);
 });
 test('maximum affordable rank has a tight boundary for varied plans',()=>{
- for(const rank of [0,1,17,1000,19999])for(const budget of [0,40,1000,99999]){
+ for(const rank of [0,1,17,199,200])for(const budget of [0,40,1000,99999]){
   const s=masteryDefaults();s.current.xp=rank;s.target.xp=rank;s.target.move=2;s.totalPoints=game.masteryTotalCost(rank)+budget+82;
   const result=highestAffordableMastery(s,'xp'),cost=game.masteryTotalCost(result)-game.masteryTotalCost(rank);
   assert.ok(cost<=budget);if(result<masteryLimit)assert.ok(cost+game.masteryRankCost(result+1)>budget);

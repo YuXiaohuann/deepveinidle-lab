@@ -34,15 +34,15 @@ test('reset budget boundaries match independent exhaustive objectives, including
  assert.equal(exact.candidates[0].ranks.maxhit,2);
 });
 test('bounded search is reproducible, preserves inputs, reclaims old ranks and respects high-rank budgets',()=>{
- const current={...zero(),maxhit:400,accuracy:1},before=structuredClone(current),seen=[];
+ const current={...zero(),maxhit:200,accuracy:1},before=structuredClone(current),seen=[];
  const options={totalPoints:1000000,current,maxCandidates:240,evaluate:r=>{seen.push({...r});return r.rare+2*r.accuracy;}};
  const a=searchMasteryAllocations(options),b=searchMasteryAllocations({...options,evaluate:r=>r.rare+2*r.accuracy});
  assert.equal(a.exhaustive,false);assert.deepEqual(a,b);assert.ok(a.candidates.length<=240);assert.ok(a.candidates.length>1);
- assert.deepEqual(current,before);assert.ok(seen.some(r=>r.rare>200));assert.ok(seen.some(r=>r.maxhit<400));
+ assert.deepEqual(current,before);assert.ok(seen.some(r=>r.rare===200));assert.ok(seen.some(r=>r.maxhit<200));
  assert.equal(new Set(seen.map(r=>JSON.stringify(r))).size,seen.length);
- assert.ok(seen.every(r=>Object.values(r).every(n=>Number.isInteger(n)&&n>=0&&n<=20000)&&game.masteriesTotalCost(r)<=1000000));
- assert.equal(affordableRank(Number.MAX_SAFE_INTEGER),20000);
- assert.equal(masteryValue('accuracy',201),201);assert.equal(masteryValue('enhance',201),50);
+ assert.ok(seen.every(r=>Object.values(r).every(n=>Number.isInteger(n)&&n>=0&&n<=200)&&game.masteriesTotalCost(r)<=1000000));
+ assert.equal(affordableRank(Number.MAX_SAFE_INTEGER),200);
+ assert.equal(masteryValue('accuracy',200),200);assert.equal(masteryValue('enhance',200),50);
 });
 test('remaining-points allocations match independent enumeration and preserve all ten rank floors',()=>{
  const current={...zero(),xp:1,accuracy:1,rare:1,gather:2,craft:1,offline:1,enhance:3};
@@ -58,13 +58,13 @@ test('remaining-points allocations match independent enumeration and preserve al
  }
 });
 test('remaining-points search never refunds initial investment, even during bounded large-budget moves',()=>{
- const current={...zero(),xp:400,move:20,hp:5,maxhit:900,accuracy:210,rare:300,gather:20,craft:17,offline:3,enhance:201},before=structuredClone(current),seen=[];
+ const current={...zero(),xp:180,move:20,hp:5,maxhit:190,accuracy:180,rare:170,gather:20,craft:17,offline:3,enhance:200},before=structuredClone(current),seen=[];
  const totalPoints=game.masteriesTotalCost(current)+20000;
  const search=searchMasteryAllocations({totalPoints,current,allocationMode:'remaining',maxCandidates:240,evaluate:r=>{seen.push(r);return r.rare*2+r.accuracy+r.move;}});
  assert.equal(search.exhaustive,false);assert.ok(seen.length>1&&seen.length<=240);
  for(const ranks of seen){assert.ok(game.masteriesTotalCost(ranks)<=totalPoints);for(const m of game.masteries)assert.ok(ranks[m.id]>=current[m.id]);for(const id of ['gather','craft','offline','enhance'])assert.equal(ranks[id],current[id]);}
  assert.deepEqual(current,before);
- const capped=Object.fromEntries(game.masteries.map(m=>[m.id,20000]));
+ const capped=Object.fromEntries(game.masteries.map(m=>[m.id,200]));
  const full=searchMasteryAllocations({totalPoints:game.masteriesTotalCost(capped)+100000,current:capped,allocationMode:'remaining',maxCandidates:240,evaluate:()=>1});
  assert.equal(full.candidates.length,1);assert.deepEqual(full.candidates[0].ranks,capped);
 });
@@ -94,7 +94,7 @@ test('keeping current ranks remains a reviewed option when screening favors upgr
 test('validation rejects unsupported goals and bad budgets, ranks and scenarios',()=>{
  const base=input();for(const totalPoints of [-1,.5,NaN,Infinity,Number.MAX_SAFE_INTEGER+1,'40'])assert.throws(()=>optimizerInput({...base,totalPoints}));
  for(const objective of ['unknown','xp','enhanceCost',undefined])assert.throws(()=>optimizerInput({...base,objective}),/unsupportedObjective/);
- for(const rank of [-1,.1,20001,null,'1'])assert.throws(()=>optimizerInput({...base,current:{...zero(),xp:rank}}),/invalidOptimizerRanks/);
+ for(const rank of [-1,.1,201,null,'1'])assert.throws(()=>optimizerInput({...base,current:{...zero(),xp:rank}}),/invalidOptimizerRanks/);
  assert.throws(()=>optimizerInput({...base,combat:null}),/invalidOptimizerScenario/);
  assert.throws(()=>optimizerInput({...base,monsterId:-1}),/invalidOptimizerMonster/);
  assert.throws(()=>optimizerInput({...base,effort:'unknown'}),/invalidOptimizerEffort/);

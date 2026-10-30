@@ -64,7 +64,7 @@ test('game missing prices, unused scrolls, zero target, decimals and determinist
  assert.equal(gameSolve(config({scrollPrice:null})),null);
  assert.ok(gameSolve(config({protect:false,scrollPrice:null})));
  assert.equal(gameSolve(config({current:7,target:7,shardPrice:null,scrollPrice:null,basePrice:120})).quantiles[0].minPrice,0);
- const s=config({lectern:1000,shardPrice:.123,scrollPrice:null,basePrice:10});
+ const s=config({lectern:50,level:241,mastery:200,shardPrice:.123,scrollPrice:null,basePrice:10});
  assert.equal(gameSolve(s).quantiles[0].minPrice,calculateEnhancement(s).pricedGold);
  assert.throws(()=>gameSolve(config({target:20})),/distributionLimit/);
 });

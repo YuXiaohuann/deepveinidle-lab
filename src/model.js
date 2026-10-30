@@ -24,7 +24,7 @@ export function normalize(raw){
  if(foods.some(x=>x.id===Number(raw.food?.id)))s.food={id:Number(raw.food.id),tier:integer(raw.food.tier??0,0,4)};
  for(const k of Object.keys(s.brews))s.brews[k]=integer(raw.brews?.[k]??-1,-1,4,-1);
  for(const k of Object.keys(s.masteries))s.masteries[k]=integer(raw.masteries?.[k]??0,0,game.masteryRankLimit);
- for(const k of Object.keys(s.house))s.house[k]=integer(raw.house?.[k]??0,0,Number.MAX_SAFE_INTEGER);
+ for(const k of Object.keys(s.house))s.house[k]=integer(raw.house?.[k]??0,0,game.houseLevelLimit);
  s.style=['melee','ranged','magic'].includes(raw.style)?raw.style:(game.gear(s.gear.weapon.id)?.magic?'magic':game.gear(s.gear.weapon.id)?.ranged?'ranged':'melee');
 
  s.eatAt=[25,50,75].includes(Number(raw.eatAt))?Number(raw.eatAt):50;

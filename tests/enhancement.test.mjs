@@ -30,7 +30,7 @@ test('original chances, costs, XP and multipliers match independent vectors',()=
 });
 test('protection uses current +2 and only charges a scroll on failure',()=>{
  const steps=enhancementSteps(config({protect:true,target:4}));assert.equal(steps[1].protected,false);assert.equal(steps[2].protected,true);assert.equal(steps[2].failTo,1);assert.equal(steps[3].failTo,2);
- const r=calculateEnhancement(config({protect:true,target:4,lectern:100}));assert.equal(r.totals.scrolls,0);
+ const r=calculateEnhancement(config({protect:true,target:4,lectern:50}));assert.equal(r.totals.scrolls,0);
 });
 test('positive recurrence matches independent chain solution, including rebuilding below start',()=>{
  for(const protect of [false,true])for(const protectFrom of [2,4,8])for(const start of [0,3,7]){
@@ -41,7 +41,7 @@ test('positive recurrence matches independent chain solution, including rebuildi
  const r=calculateEnhancement(config({itemId:328,tier:2,level:32,current:5,target:6}));near(r.totals.gold,367901.05340684234);assert.ok(r.totals.gold>144000/.7434);
 });
 test('100% steps equal deterministic sums and +20 remains finite and positive',()=>{
- const r=calculateEnhancement(config({itemId:328,tier:2,current:5,target:10,lectern:1000}));assert.equal(r.totals.gold,24000*(6+7+8+9+10));assert.equal(r.totals.shards,3*(6+7+8+9+10));assert.equal(r.totals.attempts,5);
+ const r=calculateEnhancement(config({itemId:328,tier:2,current:5,target:10,lectern:50,level:game.maxLevel,mastery:200}));assert.equal(r.totals.gold,24000*(6+7+8+9+10));assert.equal(r.totals.shards,3*(6+7+8+9+10));assert.equal(r.totals.attempts,5);
  for(const protect of [false,true]){const result=calculateEnhancement(config({target:20,protect}));for(const value of Object.values(result.totals))assert.ok(Number.isFinite(value)&&value>=0);assert.ok(result.totals.attempts>20);}
 });
 test('zero target cost, blank prices and explicit zero pricing stay distinct',()=>{

@@ -14,7 +14,7 @@ import {masteryDefaults,masteryStorageKey} from '../src/mastery.js';
 import {craftingDefaults} from '../src/crafting-model.js';
 
 const args=process.argv.slice(2),option=name=>args.includes(name)?args[args.indexOf(name)+1]:null;
-const output=path.resolve(option('--out')??'.test-artifacts/upstream-1205/browser');
+const output=path.resolve(option('--out')??'.test-artifacts/upstream-1208/browser');
 await fs.mkdir(output,{recursive:true});
 const servers=[],result={cases:[],errors:[]};let browser;
 async function serve(script){
@@ -37,10 +37,44 @@ try{
    if(!localStorage.getItem('dvi-simulator-v1'))localStorage.setItem('dvi-simulator-v1',JSON.stringify({language,state}));if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify({version:1,build:{...craft,plans:{}},orders:[{id:"upstream",name:"Upstream order",enabled:true,plans:craft.plans,fees:{fixed:null,percent:null,minute:null}}],currentOrderId:"upstream",inventory:{capturedAt:Date.now(),items:craft.owned}}));
   },{state,craft,key:craftingStorageKey,language});
   await page.goto(base+'/combat');await page.selectOption('#language',language);
+  if(args.includes('--caps-only')){
+   for(const [route,prefix]of [['combat','data-path'],['gather','data-gather-field'],['craft','data-craft-field']]){
+    await page.goto(base+'/'+route);
+    const houses=page.locator(`[${prefix}^="house."]`),masteries=page.locator(`[${prefix}^="masteries."]`);
+    assert.ok(await houses.count()>0);assert.ok(await masteries.count()>0);
+    assert.ok((await houses.evaluateAll(els=>els.map(el=>el.max))).every(max=>max==='50'));
+    const accuracy=page.locator(`[${prefix}="masteries.accuracy"]`);
+    if(await accuracy.count())assert.equal(await accuracy.getAttribute('max'),'200');
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+   }
+   await page.goto(base+'/enhance');
+   assert.equal(await page.locator('[data-enhance-field="lectern"]').getAttribute('max'),'50');
+   await page.locator('#enhance-home-settings').evaluate(el=>el.open=true);
+   await page.locator('[data-enhance-field="lectern"]').fill('51');await page.locator('#enhance-results [role="alert"]').waitFor();
+   await page.locator('[data-enhance-field="lectern"]').fill('50');await page.locator('.enhance-table tbody tr').first().waitFor();
+   await page.goto(base+'/mastery');
+   await page.locator('#mastery-total').fill('100000');
+   const target=page.locator('[data-mastery-id="xp"][data-mastery-field="target"]');
+   assert.equal(await target.getAttribute('max'),'200');await target.fill('201');
+   assert.match(await page.locator('#mastery-issue').innerText(),/200/);
+   await target.fill('200');assert.equal(await page.locator('#mastery-issue').innerText(),'');
+   await page.screenshot({path:path.join(output,`caps-${language}-${width}.png`),fullPage:true});
+   for(const [route,key,invalid,note]of [
+    ['enhance',enhancementStorageKey,{...enhancementDefaults(),mastery:201},'#enhance-import-status'],
+    ['mastery',masteryStorageKey,{...masteryDefaults(),target:{...masteryDefaults().target,xp:201}},'#mastery-save-note']]){
+    const saved=JSON.stringify(invalid);await page.evaluate(({key,saved})=>localStorage.setItem(key,saved),{key,saved});
+    await page.goto(base+'/'+route);
+    assert.match(await page.locator(note).textContent(),language==='zh'?/无法读取/:/could not be read/);
+    assert.equal(await page.evaluate(key=>localStorage.getItem(key),key),saved);
+   }
+   result.cases.push({language,width,status:'passed',caps:true});await context.close();continue;
+  }
   await page.waitForFunction(()=>document.querySelector('#simulation-status').hidden&&!document.querySelector('#rows .pending'));
   assert.equal(await page.locator('#rows tr[data-enemy]').count(),1);
   assert.ok(!/Simulation failed|模拟失败/.test(await page.locator('#rows').innerText()));
-  assert.match(await page.locator('.footer-source').innerText(),/2026-10-28.*1\.0\.1205/);
+  assert.match(await page.locator('.footer-source').innerText(),/2026-10-30.*1\.0\.1208/);
+  assert.ok((await page.locator('[data-path^="house."]').evaluateAll(els=>els.map(el=>el.max))).every(max=>max==='50'));
+  assert.equal(await page.locator('[data-path="masteries.accuracy"]').getAttribute('max'),'200');
   const amuletNote=/总等级|total level/i;
   assert.doesNotMatch(await page.locator('#issues').innerText(),amuletNote);
   assert.equal(await page.locator('#issues .issue-box').count(),0);
@@ -63,6 +97,7 @@ try{
   const gather=gatheringDefaults();gather.levels.mining=99;gather.jobSelection=344;gather.simulationHours=1;gather.hotSetting='off';gather.worldRarity=100;
   await page.evaluate(({key,gather})=>localStorage.setItem(key,JSON.stringify(gather)),{key:gatheringStorageKey,gather});
   await page.goto(base+'/gather');
+  assert.ok((await page.locator('[data-gather-field^="house."]').evaluateAll(els=>els.map(el=>el.max))).every(max=>max==='50'));
   assert.match(await page.locator('[data-gather-field="jobSelection"] option[value="344"]').textContent(),language==='zh'?/纯净煤矿/:/Pure coal/);
   await page.waitForFunction(()=>document.querySelector('#gather-results tbody')?.textContent.includes('395'));
   assert.ok(!/模拟失败|Simulation failed|invalidRoute/.test(await page.locator('#gather-results').innerText()));
@@ -70,7 +105,8 @@ try{
   await page.waitForFunction(()=>document.querySelector('#gather-results tbody')?.textContent.includes('395'));
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   const gatherScreenshot=`gather-${language}-${width}.png`;await page.screenshot({path:path.join(output,gatherScreenshot),fullPage:true});
-  await page.locator('#craft-nav').click();await page.locator('[data-craft-rarity="4"]').click();await page.locator('#craft-filled').click();
+  await page.locator('#craft-nav').click();
+  assert.equal(await page.locator('[data-craft-field="house.forge"]').getAttribute('max'),'50');await page.locator('[data-craft-rarity="4"]').click();await page.locator('#craft-filled').click();
   await page.locator('[data-craft-order-row="upstream"]').waitFor();assert.match(await page.locator('.craft-table').innerText(),/1,900/);
   assert.equal(await page.locator('.craft-table [data-craft-count="upgrade-271:4"]').inputValue(),'2');
   assert.equal(await page.locator('[data-craft-inventory="4114"]').innerText(),'1');
@@ -104,11 +140,11 @@ try{
   await page.locator('[data-craft-rarity="4"]').click();
   assert.equal(await page.locator('.craft-table [data-craft-count="420:4"]').inputValue(),'2');
   assert.equal(await page.locator('[data-craft-price="700"]').inputValue(),'50');
-  const enhance={...enhancementDefaults(),mastery:201,target:100};delete enhance.lectern;
+  const enhance={...enhancementDefaults(),mastery:200,target:100};delete enhance.lectern;
   await page.evaluate(({key,state})=>localStorage.setItem(key,JSON.stringify(state)),{key:enhancementStorageKey,state:enhance});
   await page.goto(base+'/enhance');
   const target=page.locator('[data-enhance-field="target"]'),mastery=page.locator('[data-enhance-field="mastery"]'),lectern=page.locator('[data-enhance-field="lectern"]');
-  assert.equal(await lectern.inputValue(),'0');
+  assert.equal(await lectern.inputValue(),'0');assert.equal(await lectern.getAttribute('max'),'50');
   assert.equal(await target.inputValue(),'100');assert.equal(await target.getAttribute('max'),'20');
   await page.locator('#enhance-results [role="alert"]').waitFor();
   assert.match(await page.locator('#enhance-results').innerText(),/\+20/);
@@ -117,7 +153,7 @@ try{
   assert.equal(await mastery.inputValue(),'50');assert.equal(await mastery.getAttribute('max'),'50');
   await target.fill('20');await page.locator('.enhance-table tbody tr').first().waitFor();
   assert.equal(await page.locator('.enhance-table tbody tr').count(),20);
-  assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).mastery,enhancementStorageKey),201);
+  assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).mastery,enhancementStorageKey),200);
   assert.match(await page.locator('.enhance-table tbody tr').nth(19).innerText(),/30%/);
   await page.locator('#enhance-home-settings').evaluate(el=>el.open=true);await lectern.fill('7');
   assert.match(await page.locator('.enhance-table tbody tr').nth(19).innerText(),/32[.,]1%/);
@@ -127,7 +163,7 @@ try{
   const enhanceScreenshot=`enhance-${language}-${width}.png`;await page.screenshot({path:path.join(output,enhanceScreenshot),fullPage:true});
   await page.locator('#enhance-mastery-settings').evaluate(el=>el.open=true);
   await mastery.fill('51');await page.locator('#enhance-results [role="alert"]').waitFor();
-  assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).mastery,enhancementStorageKey),201);
+  assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).mastery,enhancementStorageKey),200);
   await mastery.fill('50');
   await page.locator('[data-enhance-field="current"]').fill('100');await page.locator('[data-enhance-field="current"]').dispatchEvent('change');
   await target.fill('100');await page.locator('.enhance-table tbody').waitFor();
@@ -138,17 +174,18 @@ try{
   await page.locator('#enhance-home-settings').evaluate(el=>el.open=true);await page.locator('#enhance-mastery-settings').evaluate(el=>el.open=true);
   await page.locator('[data-enhance-field="current"]').fill('0');await page.locator('[data-enhance-field="current"]').dispatchEvent('change');await target.fill('1');await lectern.fill('0');await mastery.fill('0');
   assert.equal(await page.locator('.enhance-inputs .stat').nth(4).locator('strong').innerText(),language==='zh'?'2.4 秒':'2.4 s');
-  const masteryState=masteryDefaults();masteryState.totalPoints=100000;masteryState.current.enhance=201;masteryState.target.enhance=201;
+  const masteryState=masteryDefaults();masteryState.totalPoints=100000;masteryState.current.enhance=200;masteryState.target.enhance=200;
   await page.evaluate(({key,state})=>localStorage.setItem(key,JSON.stringify(state)),{key:masteryStorageKey,state:masteryState});
   await page.goto(base+'/mastery');
   const card=page.locator('[data-mastery-row="enhance"]');
-  assert.equal(await card.locator('[data-mastery-current="enhance"]').innerText(),'201');
+  assert.equal(await card.locator('[data-mastery-current="enhance"]').innerText(),'200');
+  assert.equal(await card.locator('[data-mastery-field="target"]').getAttribute('max'),'200');
   assert.equal(await card.locator('[data-mastery-value="target"]').innerText(),'+50%');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   const masteryScreenshot=`mastery-${language}-${width}.png`;await page.screenshot({path:path.join(output,masteryScreenshot),fullPage:true});
   result.cases.push({language,width,status:'passed',screenshots:[gatherScreenshot,combatScreenshot,craftScreenshot,fireworksScreenshot,enhanceScreenshot,highScreenshot,masteryScreenshot],requirements});await context.close();
  }
- if(!option('--url')&&!args.includes('--combat-only')){
+ if(!option('--url')&&!args.includes('--combat-only')&&!args.includes('--caps-only')){
   const captureBase=await serve('scripts/check-capture-browser.mjs'),page=await browser.newPage();await page.goto(captureBase);
   await page.waitForFunction(()=>{const text=document.querySelector('#results').textContent;return text.includes('"PASS"')||text.includes('"error"');},{},{timeout:20000});
   result.capture=JSON.parse(await page.locator('#results').textContent());assert.ok(result.capture.passed.includes('PASS'),JSON.stringify(result.capture));

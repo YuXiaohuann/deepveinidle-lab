@@ -18,7 +18,7 @@ export function importWorkConfig(current,snapshot,{skills,slots,potions,rooms,ma
   if(buckets!==undefined){if(!Array.isArray(buckets)||buckets.length!==5||!buckets.every(v=>int(v))){warnings.push(`brewBuckets.${kind}`);continue;}const elapsed=Math.max(0,p.lastTick-(p.brews[kind]-buckets.reduce((a,b)=>a+b,0)));let sum=0;tier=-1;for(let i=4;i>=0;i--){sum+=buckets[i];if(elapsed<sum){tier=i;break;}}}
   put(`brewTier.${kind}`,tier,v=>int(v,0,4),v=>s.brews[kind]=v);
  }
- for(const r of rooms){if(!record(p.house)||!record(p.houseFurniture)){warnings.push(`house.${r.id}`);continue;}put(`house.${r.id}`,p.house[r.id]??0,v=>int(v),v=>s.house[r.id]=record(p.houseFurniture[r.id])?v:0);}
+ for(const r of rooms){if(!record(p.house)||!record(p.houseFurniture)){warnings.push(`house.${r.id}`);continue;}put(`house.${r.id}`,p.house[r.id]??0,v=>int(v,0,game.houseLevelLimit),v=>s.house[r.id]=record(p.houseFurniture[r.id])?v:0);}
  for(const m of masteries)put(`masteries.${m.id}`,p.masteries?.[m.id]??(record(p.masteries)?0:undefined),v=>int(v,0,game.masteryRankLimit),v=>s.masteries[m.id]=v);
  for(const perk of perks)put(`perks.${perk.id}`,p.perks?.[perk.id]??(record(p.perks)?0:undefined),v=>int(v,0,perk.ranks),v=>s.perks[perk.id]=v);
  put('guildBonus',p.guildBonus,v=>valid(v,0,1e5),v=>s.guildXp=v*100);

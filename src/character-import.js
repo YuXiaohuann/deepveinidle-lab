@@ -99,7 +99,7 @@ export function importCharacter(current,snapshot){
   }
   if(category==='home'){
    if(!record(p.house)||!record(p.houseFurniture)){warn('house / houseFurniture');continue;}
-   for(const r of combatRooms)put(`house.${r.id}`,Object.hasOwn(p.house,r.id)?p.house[r.id]:0,v=>int(v),v=>state.house[r.id]=r.bonus.kind==='bankSlots'||record(p.houseFurniture[r.id])?v:0);
+   for(const r of combatRooms)put(`house.${r.id}`,Object.hasOwn(p.house,r.id)?p.house[r.id]:0,v=>int(v,0,game.houseLevelLimit),v=>state.house[r.id]=r.bonus.kind==='bankSlots'||record(p.houseFurniture[r.id])?v:0);
   }
   if(category==='masteries')map('masteries',combatMasteries.map(m=>m.id),(k,v)=>state.masteries[k]=v,game.masteryRankLimit);
   if(category==='guild'){
