@@ -66,7 +66,7 @@
 | `tests/crafting.test.mjs` | 有效配方／品质原始离线对照、烧焦／升级／限次、材料预算、窗口速率与导入回归 |
 | `tests/gathering.test.mjs` | 最近点及起点一致性、四技能全部任务／点位原始离线对照、配置与导入回归 |
 | `src/enhancement.js`、`src/enhancement-controls.js` | 强化专用校验、导入、解析期望与独立页面交互 |
-| `src/enhancement-distribution.js`、`src/enhancement-distribution-worker.js` | 十进制整数化、GCD 网格成本分布递推、必成路径精确消元、滚动历史窗口与后台计算，独立限制内存和运算量，超限明确失败 |
+| `src/enhancement-distribution.js`、`src/enhancement-distribution-worker.js` | 十进制整数化、均值量级关联的自适应费用网格及 0.1% 上下界校验、GCD 递推、必成路径消元和滚动窗口；每次求解限制内存，上下界及细化共享运算预算，超限明确失败 |
 | `src/hot-forecast.js`、`src/forecast-filters.js`、`src/forecast-controls.js` | 热门日程计算、多选筛选规范化与独立本地存储、预报页面交互 |
 | `src/appreciation-controls.js`、`src/assets/appreciation.jpg` | 共用赞赏弹窗及原始赞赏图片；复用物品价格弹窗样式与交互约定 |
 | `src/formulas-controls.js`、`src/formulas-markdown.js`、`src/content/formulas/` | 中文公式正文、按需加载、Markdown 渲染、章节目录与独立阅读布局 |

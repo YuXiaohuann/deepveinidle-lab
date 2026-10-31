@@ -31,7 +31,7 @@ node scripts/extract.mjs
 
 ## 强化页专项
 
-运行 `node --test tests/enhancement-distribution.test.mjs tests/enhancement.test.mjs tests/enhancement-controls.test.mjs tests/enhancement-items.test.mjs tests/item-prices.test.mjs`，覆盖原始消耗与解析均值、完整路径成本分位数、必成步骤精确消元、独立路径概率对照、资源限制、价格与利润率、存档迁移及角色导入。
+运行 `node --test tests/enhancement-distribution.test.mjs tests/enhancement.test.mjs tests/enhancement-controls.test.mjs tests/enhancement-items.test.mjs tests/item-prices.test.mjs`，覆盖原始消耗与解析均值、精确 CDF 参考向量、完整路径分位数上下界及 0.1% 容差、均值量级网格与细化、微调／小数价格、共享运算预算、必成步骤消元、独立路径概率对照、资源限制、价格与利润率、存档迁移及角色导入。
 
 先启动本机服务，再执行 `node scripts/check-enhancement-distribution-browser.mjs [输出目录] [目标网址]`；默认目标为 `http://127.0.0.1:4173`，输出到 `.test-artifacts/enhancement-distribution/`。脚本使用独立无头 Chrome 和人工测试价格，正常路径运行真实 Worker，异常路径注入受控 Worker；验证中英文桌面／390px 的卡片布局、面板顺序、三档成本／收费、利润与整数取整、保存和重置、缺价、超限原因及旧结果隔离。日志、summary.json 和截图需结合审阅，不使用用户已有会话或游戏账号，不代替完整发布验收。
 

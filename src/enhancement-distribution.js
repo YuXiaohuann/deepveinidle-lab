@@ -2,7 +2,7 @@ export const enhancementPercentiles=Object.freeze([80,90,95]);
 const maxStoredCells=5_000_000,maxEvaluatedCells=500_000_000;
 
 // Decimal money is scaled with BigInt before GCD compression. Probabilities
-// remain Float64; no random sampling or rounding of per-attempt costs is used.
+// remain Float64. Adaptive bounds round integer costs, never input prices.
 function decimal(value){
  if(typeof value!=='number'||!Number.isFinite(value)||value<0)throw Error('invalidPrice');
  const [mantissa,exp='0']=String(value).split('e'),parts=mantissa.split('.');
@@ -39,25 +39,26 @@ export function exactCostDistribution(steps,start,{alphas=[.95,.99],maxCells=max
  const {values,scale}=integers(steps.flatMap(s=>[s.cost,s.failureCost]));
  return solve(steps,start,values,scale,alphas,maxCells,maxWork);
 }
-function solve(steps,start,values,scale,alphas,maxCells,maxWork){
+function solve(steps,start,values,scale,alphas,maxCells,maxWork,budget={used:0}){
  let target=steps.length,prefix=0n;
+ const finish=(result,points=0)=>{const evaluatedCells=points*target;budget.used+=evaluatedCells;return {...result,evaluatedCells};};
  const output=(cost,probability)=>{
   cost+=prefix;
   if(!Number.isFinite(Number(scale))||cost>BigInt(Number.MAX_SAFE_INTEGER))throw Error('distributionPrecision');
   return {minPrice:Number(cost)/Number(scale),actualProbability:probability};
  };
- if(start===target)return {quantiles:alphas.map(alpha=>({alpha,...output(0n,1)})),evaluatedBudgetPoints:0};
+ if(start===target)return finish({quantiles:alphas.map(alpha=>({alpha,...output(0n,1)})),evaluatedBudgetPoints:0});
  if(steps.slice(start).every(s=>s.chance===1)){
   const cost=steps.slice(start).reduce((total,_,i)=>total+values[(i+start)*2],0n);
-  return {quantiles:alphas.map(alpha=>({alpha,...output(cost,1)})),evaluatedBudgetPoints:0};
+  return finish({quantiles:alphas.map(alpha=>({alpha,...output(cost,1)})),evaluatedBudgetPoints:0});
  }
  ({steps,start,values,prefix}=stochasticStates(steps,start,values));
  target=steps.length;
  let unit=0n;
  for(const cost of values)unit=gcd(unit,cost);
- if(unit===0n)return {quantiles:alphas.map(alpha=>({alpha,...output(0n,1)})),evaluatedBudgetPoints:1};
- const points=Math.floor(maxWork/target);
- if(!points)resourceLimit('work',{states:target,maxWork});
+ if(unit===0n)return finish({quantiles:alphas.map(alpha=>({alpha,...output(0n,1)})),evaluatedBudgetPoints:1});
+ const points=Math.floor((maxWork-budget.used)/target);
+ if(!points)resourceLimit('work',{states:target,maxWork,evaluatedCells:budget.used});
  // Delays beyond the evaluated budget need no array index conversion.
  const index=v=>Number(v/unit>BigInt(points)?BigInt(points):v/unit);
  const costs=steps.map((_,k)=>index(values[2*k])),failureCosts=steps.map((_,k)=>index(values[2*k+1]));
@@ -83,14 +84,47 @@ function solve(steps,start,values,scale,alphas,maxCells,maxWork){
    rows[k][n%lengths[k]]=Math.min(1,value);
   }
   for(const alpha of alphas)if(!found.has(alpha)&&rows[start][n%lengths[start]]>=alpha)found.set(alpha,{alpha,...output(BigInt(n)*unit,rows[start][n%lengths[start]])});
-  if(found.size===requested)return {quantiles:alphas.map(a=>found.get(a)),evaluatedBudgetPoints:n+1,storedCells,dpStates:target};
+  if(found.size===requested)return finish({quantiles:alphas.map(a=>found.get(a)),evaluatedBudgetPoints:n+1,storedCells,dpStates:target},n+1);
  }
- resourceLimit('work',{states:target,maxWork,evaluatedBudgetPoints:points,storedCells});
+ budget.used+=points*target;
+ resourceLimit('work',{states:target,maxWork,evaluatedBudgetPoints:points,storedCells,evaluatedCells:budget.used});
 }
-export function enhancementDistribution(input,result){
+export function enhancementDistribution(input,result,{maxCells=maxStoredCells,maxWork=maxEvaluatedCells}={}){
+ if(!Number.isSafeInteger(maxCells)||maxCells<=0||!Number.isSafeInteger(maxWork)||maxWork<=0)throw Error('invalidConfiguration');
  if(result.pricedGold===null)return null;
  const {values,scale}=integers([input.shardPrice??0,input.scrollPrice??0,...result.steps.map(s=>s.gold)]);
  const steps=result.steps;
  const costs=result.steps.flatMap((s,k)=>[values[k+2]+BigInt(s.shards)*values[0],s.protected?values[1]:0n]);
- return solve(steps,input.current,costs,scale,enhancementPercentiles.map(p=>p/100),maxStoredCells,maxEvaluatedCells);
+ const alphas=enhancementPercentiles.map(p=>p/100),budget={used:0};
+ let rounds=0,evaluatedBudgetPoints=0,storedCells=0;
+ const exact=()=>{
+  const solved=solve(steps,input.current,costs,scale,alphas,maxCells,maxWork,budget);
+  return {...solved,exact:true,evaluatedBudgetPoints:evaluatedBudgetPoints+solved.evaluatedBudgetPoints,storedCells:Math.max(storedCells,solved.storedCells??0),evaluatedCells:budget.used,quantiles:solved.quantiles.map(q=>({...q,lowerPrice:q.minPrice,relativeError:0,exact:true}))};
+ };
+ if(input.current===input.target||steps.slice(input.current).every(s=>s.chance===1))return exact();
+ const exponent=Math.floor(Math.log10(result.pricedGold))-4;
+ let grid=exponent>=0?10n**BigInt(exponent)*scale:scale/(10n**BigInt(-exponent));
+ if(grid<1n)grid=1n;
+ const initialGrid=Number(grid)/Number(scale);
+ // Strictly positive base costs avoid zero-cost cycles between states in
+ // the lower model. The game's per-attempt gold cost is always positive.
+ const minimum=costs.filter((_,i)=>i%2===0).reduce((a,b)=>a<b?a:b);
+ if(minimum<=0n)throw Error('unreliableCalculation');
+ while(grid>minimum)grid/=10n;
+ for(;;){
+  rounds++;
+  if(costs.every(v=>v%grid===0n))return {...exact(),initialGrid,grid:Number(grid)/Number(scale),rounds};
+  const lowerCosts=costs.map(v=>v/grid*grid),upperCosts=costs.map(v=>(v+grid-1n)/grid*grid);
+  const lower=solve(steps,input.current,lowerCosts,scale,alphas,maxCells,maxWork,budget);
+  const upper=solve(steps,input.current,upperCosts,scale,alphas,maxCells,maxWork,budget);
+  evaluatedBudgetPoints+=lower.evaluatedBudgetPoints+upper.evaluatedBudgetPoints;
+  storedCells=Math.max(storedCells,lower.storedCells??0,upper.storedCells??0);
+  const quantiles=upper.quantiles.map((q,i)=>{
+   const lowerPrice=lower.quantiles[i].minPrice;
+   if(q.minPrice<lowerPrice)throw Error('unreliableCalculation');
+   return {alpha:q.alpha,minPrice:q.minPrice,lowerPrice,relativeError:lowerPrice===0?(q.minPrice===0?0:Infinity):(q.minPrice-lowerPrice)/lowerPrice,exact:false,actualProbability:null};
+  });
+  if(quantiles.every(q=>q.relativeError<=.001))return {quantiles,exact:false,initialGrid,grid:Number(grid)/Number(scale),rounds,evaluatedBudgetPoints,evaluatedCells:budget.used,storedCells,dpStates:upper.dpStates};
+  grid=grid>10n?grid/10n:1n;
+ }
 }

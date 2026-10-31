@@ -17,8 +17,8 @@ const rarities=()=>language==='zh'?['普通','罕见','稀有','史诗','传说'
 const options=(arr,value)=>arr.map(([v,label])=>`<option value="${v}" ${String(v)===String(value)?'selected':''}>${esc(label)}</option>`).join('');
 const errors={
  invalidProfitRate:['期望利润率须为 0（含）至 100（不含）之间的数值。','Expected profit margin must be at least 0% and less than 100%.'],
- distributionLimit:['未能完成精确计算：超出资源上限。','Exact calculation exceeded the resource limit.'],
- distributionPrecision:['未能完成精确计算：金额超出安全精度范围。','Exact calculation exceeds safe monetary precision.'],
+ distributionLimit:['分位数计算未完成：超出资源上限。','Quantile calculation exceeded the resource limit.'],
+ distributionPrecision:['分位数计算未完成：金额超出安全精度范围。','Quantile calculation exceeds safe monetary precision.'],
  distributionWorker:['费用分布计算失败，请重新计算或刷新页面。','Cost distribution calculation failed. Change a setting or reload.'],
  targetAboveLimit:['新强化目标最高为 +20；已有高强化装备仅可保留当前值。请调整目标。','New enhancement targets are capped at +20. Existing higher items can only keep their current level. Adjust the target.'],
  invalidConfiguration:['请输入范围内的整数配置。','Enter integer settings within the allowed ranges.'],invalidItem:['请选择可强化的装备及有效稀有度。','Select an enhanceable item and valid rarity.'],invalidPrice:['价格必须为空或非负有限数值。','Prices must be blank or finite nonnegative numbers.'],targetBelowCurrent:['目标强化值不能低于当前值。','Target enhancement cannot be below the current value.'],unreliableCalculation:['无法可靠计算此配置的期望成本。','Expected costs could not be calculated reliably.']};
@@ -46,7 +46,7 @@ function startDistribution(priced,result,revision){
   for(const [i,percent]of enhancementPercentiles.entries()){
    const el=document.getElementById(`enhance-q${percent}`),fee=document.getElementById(`enhance-fee-q${percent}`);if(!el||!fee)continue;
    el.querySelector('strong').textContent=error?errorMessage(error):formatMoney(values[i].minPrice);
-   el.querySelector('small').textContent=error?limitNote:text(`成本分位覆盖概率 ${(values[i].actualProbability*100).toFixed(4)}%`,`Cost quantile coverage ${(values[i].actualProbability*100).toFixed(4)}%`);
+   el.querySelector('small').textContent=error?limitNote:text(`至少 ${percent}% 的概率不超过此金额`,`At least ${percent}% probability of staying within this amount.`);
    const totalCost=error||priced.basePrice===null?null:values[i].minPrice+priced.basePrice;
    const amount=enhancementFee(totalCost,priced.profitRate);
    fee.querySelector('strong').textContent=priced.basePrice===null?text('未完整定价','Incomplete pricing'):error?errorMessage(error):!Number.isFinite(amount)||amount>Number.MAX_SAFE_INTEGER?errorMessage('distributionPrecision'):formatMoney(amount);
@@ -74,11 +74,11 @@ function renderResults(){const revision=cancelDistribution();const host=document
  <div class="result-heading"><div><span class="eyebrow">ENHANCEMENT ESTIMATE</span><h2>${text('平均强化投入','Average enhancement inputs')}</h2></div><span class="style-badge">+${state.current} → +${state.target}</span></div>
  <div class="stats enhance-stats enhance-inputs">${[[text('金币','Coins'),format(totals.gold)],[text('碎片','Shards'),format(totals.shards)],[text('保护卷轴','Protection scrolls'),format(totals.scrolls)],[text('次数','Attempts'),format(totals.attempts)],[text('耗时','Time'),duration]].map(([label,value])=>`<div class="stat"><span>${label}</span><strong>${value}</strong></div>`).join('')}</div>
  <div class="result-heading"><h2>${text('收费测算','Fee estimates')}</h2></div>
- <p class="table-note">${text('仅计强化金币、碎片和卷轴；80% / 90% / 95% 为完整强化路径的成本分位数。', 'Includes only enhancement gold, shards and scrolls; 80% / 90% / 95% are full-path cost quantiles.')}</p>
- <div class="stats enhance-stats enhance-fees"><div class="stat"><span>${text('平均投入成本','Mean enhancement cost')}</span><strong>${money(pricedGold)}</strong></div>${enhancementPercentiles.map(percent=>`<div class="stat" id="enhance-q${percent}"><span>${text(`${percent}%保本期望`,`${percent}% break-even cost`)}</span><strong>${pricedGold===null?incomplete:text('精确计算中…','Calculating exactly…')}</strong><small></small></div>`).join('')}
+ <p class="table-note">${text('仅计强化金币、碎片和卷轴，包含失败后重做的费用。', 'Includes enhancement gold, shards and scrolls, including the cost of rebuilding after failures.')}</p>
+ <div class="stats enhance-stats enhance-fees"><div class="stat"><span>${text('平均投入成本','Mean enhancement cost')}</span><strong>${money(pricedGold)}</strong></div>${enhancementPercentiles.map(percent=>`<div class="stat" id="enhance-q${percent}"><span>${text(`${percent}%保本期望`,`${percent}% break-even cost`)}</span><strong>${pricedGold===null?incomplete:text('分位数计算中…','Calculating quantiles…')}</strong><small></small></div>`).join('')}
  </div>
  <p class="table-note">${text('对应强化成本与底装购置费合计后，按期望利润率计算收费和利润。', 'Calculates fees and profit at the expected profit margin on the combined enhancement cost and base item purchase price.')}</p>
- <div class="stats enhance-stats enhance-fees"><div class="stat"><span>${text('平均收费','Mean fee')}</span><strong>${money(expectedFee)}</strong><small>${profitText(purchaseTotal,priced.profitRate)}</small></div>${enhancementPercentiles.map(percent=>`<div class="stat" id="enhance-fee-q${percent}"><span>${text(`${percent}%保本收费`,`${percent}% break-even fee`)}</span><strong>${expectedFee===null?incomplete:text('精确计算中…','Calculating exactly…')}</strong><small>${purchaseTotal===null?profitText(null,priced.profitRate):''}</small></div>`).join('')}</div>
+ <div class="stats enhance-stats enhance-fees"><div class="stat"><span>${text('平均收费','Mean fee')}</span><strong>${money(expectedFee)}</strong><small>${profitText(purchaseTotal,priced.profitRate)}</small></div>${enhancementPercentiles.map(percent=>`<div class="stat" id="enhance-fee-q${percent}"><span>${text(`${percent}%保本收费`,`${percent}% break-even fee`)}</span><strong>${expectedFee===null?incomplete:text('分位数计算中…','Calculating quantiles…')}</strong><small>${purchaseTotal===null?profitText(null,priced.profitRate):''}</small></div>`).join('')}</div>
  <section class="panel enemies"><h3>${text('逐级成功率与单次费用','Step chances and per-attempt costs')}</h3><p class="micro">${text('低于当前 +值的行是失败后可能需要重做的步骤。保护阈值按尝试前 +值判断。','Rows below your current enhancement may be revisited after failure. Protection checks the enhancement before the attempt.')}</p><div class="table-scroll"><table class="enhance-table"><thead><tr>${[text('步骤','Step'),text('成功率','Success chance'),text('金币','Coins'),text('碎片','Shards'),text('失败后','On failure')].map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${steps.length?steps.map(x=>`<tr class="${x.from<state.current?'enhance-rebuild':''}"><td>+${x.from} → +${x.to}${x.from<state.current?` <small>${text('重做','Rebuild')}</small>`:''}</td><td>${format(x.chance*100)}%</td><td>${format(x.gold)}</td><td>${format(x.shards)}</td><td>+${x.failTo}${x.protected?` · ${text('消耗 1 卷轴','1 scroll spent')}`:''}</td></tr>`).join(''):`<tr><td colspan="5">${text('已达到目标，无需强化。','Target already reached; no enhancement needed.')}</td></tr>`}</tbody></table></div></section>
 
 `;

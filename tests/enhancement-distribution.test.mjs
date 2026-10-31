@@ -49,6 +49,18 @@ test('limits, unsafe money and invalid inputs explicitly fail without partial re
 });
 const config=patch=>({...enhancementDefaults(),shardPrice:100,scrollPrice:200000,basePrice:0,...patch});
 const gameSolve=s=>enhancementDistribution(s,calculateEnhancement(s));
+const gameExact=s=>{
+ const r=calculateEnhancement(s);
+ return solve(r.steps.map(x=>({chance:x.chance,failTo:x.failTo,cost:x.gold+x.shards*(s.shardPrice??0),failureCost:x.protected?s.scrollPrice??0:0})),s.current,{alphas:[.8,.9,.95]});
+};
+function containsExact(result,expected){
+ for(const [i,q]of result.quantiles.entries()){
+  assert.ok(q.lowerPrice<=expected[i]&&expected[i]<=q.minPrice);
+  assert.ok(q.relativeError<=.001);
+  assert.ok(q.minPrice<=expected[i]*1.001);
+  if(!q.exact)assert.equal(q.actualProbability,null);
+ }
+}
 test('game cost distribution matches exact cases and excludes the base item',()=>{
  assert.deepEqual(enhancementPercentiles,[80,90,95]);
  for(const [protect,expected]of [[true,[951800,1204700,1634600]],[false,[264500,358800,455400]]]){
@@ -96,8 +108,8 @@ test('legendary Leviathan +16 and +20 complete without retaining all budget hist
  for(const [target,expected,oldPoints,states]of [[16,[458417200,595862000,733906800],3669535,5],[20,[1603458400,2160448400,2717438400],13587193,9]]){
   const s=config({itemId:357,tier:4,level:100,lectern:40,mastery:200,target,shardPrice:600,scrollPrice:300000});
   const result=gameSolve(s);
-  assert.deepEqual(result.quantiles.map(q=>q.minPrice),expected);
-  assert.ok(result.quantiles.every(q=>q.actualProbability>=q.alpha));
+  assert.deepEqual(gameExact(s).quantiles.map(q=>q.minPrice),expected);
+  containsExact(result,expected);
   assert.ok(result.evaluatedBudgetPoints<oldPoints);
   assert.ok(result.storedCells<5_000_000);
   assert.equal(result.dpStates,states);
@@ -131,8 +143,61 @@ test('forced paths preserve initial cost and rebuilding across low, mixed and ro
 test('lectern 30 and effective mastery 40% +20 completes within unchanged limits',()=>{
  const s=config({itemId:357,tier:4,level:100,lectern:30,mastery:160,target:20,shardPrice:600,scrollPrice:300000,basePrice:600000000});
  const result=gameSolve(s);
- assert.deepEqual(result.quantiles.map(q=>q.minPrice),[4010033400,5595154000,7180274600]);
+ const expected=[4010033400,5595154000,7180274600];
+ assert.deepEqual(gameExact(s).quantiles.map(q=>q.minPrice),expected);
+ containsExact(result,expected);
  assert.equal(result.dpStates,10);
- assert.ok(result.evaluatedBudgetPoints*result.dpStates<=500_000_000);
+ assert.ok(result.evaluatedCells<=500_000_000);
  assert.ok(result.storedCells<=5_000_000);
+});
+
+const feedback=patch=>config({itemId:357,tier:4,current:0,target:15,level:92,lectern:33,mastery:191,shardPrice:601,scrollPrice:300001,...patch});
+test('mean magnitude selects grid, refines all quantiles and keeps prices and mean unchanged',()=>{
+ const s=feedback(),before=JSON.stringify(s),mean=calculateEnhancement(s),result=gameSolve(s);
+ assert.equal(result.initialGrid,10000);
+ assert.equal(result.grid,1000);
+ assert.equal(result.rounds,2);
+ assert.equal(result.exact,false);
+ assert.ok(result.quantiles.every(q=>q.relativeError<=.001&&q.actualProbability===null));
+ assert.equal(JSON.stringify(s),before);
+ assert.deepEqual(calculateEnhancement(s),mean);
+ assert.ok(result.evaluatedCells<500_000_000);
+ assert.ok(result.storedCells<5_000_000);
+ const baseline=gameSolve(feedback({shardPrice:600,scrollPrice:300000}));
+ containsExact(baseline,[365651600,473042400,580433200]);
+});
+
+test('integer and decimal price regressions complete with validated bounds',()=>{
+ for(const patch of [{shardPrice:601,scrollPrice:300000},{shardPrice:600,scrollPrice:300001},{shardPrice:600.01,scrollPrice:300000}]){
+  const result=gameSolve(feedback(patch));
+  assert.ok(result.quantiles.every(q=>q.relativeError<=.001&&q.lowerPrice>0));
+ }
+});
+
+test('adaptive bounds contain exact independent prices across tiers, starts and protection',()=>{
+ for(const tier of [0,4])for(const current of [0,3])for(const protect of [true,false]){
+  const s=config({tier,current,target:5,shardPrice:123,scrollPrice:23456});
+  containsExact(gameSolve(s),gameExact(s).quantiles.map(q=>q.minPrice));
+ }
+ // Decimal prices with a tractable exact grid, and certain-success rebuilding.
+ for(const patch of [{shardPrice:.25,scrollPrice:12.5},{level:100,lectern:30,mastery:160,target:12}]){
+  const s=config(patch);containsExact(gameSolve(s),gameExact(s).quantiles.map(q=>q.minPrice));
+ }
+});
+
+test('bounds and refinements share the entire work budget, with explicit resource failures',()=>{
+ const s=feedback(),r=calculateEnhancement(s),full=enhancementDistribution(s,r);
+ assert.throws(()=>enhancementDistribution(s,r,{maxWork:full.evaluatedCells-5}),e=>e.message==='distributionLimit'&&e.details.reason==='work'&&e.details.evaluatedCells<=full.evaluatedCells-5);
+ assert.throws(()=>enhancementDistribution(s,r,{maxCells:1}),e=>e.message==='distributionLimit'&&e.details.reason==='memory');
+ assert.throws(()=>enhancementDistribution(s,r,{maxWork:0}),/invalidConfiguration/);
+});
+
+test('grid refinement avoids zero-cost cycles for expensive scrolls, and exact paths stay exact',()=>{
+ const s=config({target:3,shardPrice:0,scrollPrice:1e9}),r=gameSolve(s);
+ assert.ok(r.initialGrid>2000&&r.grid<=2000);
+ containsExact(r,gameExact(s).quantiles.map(q=>q.minPrice));
+ const certain=gameSolve(config({target:2,level:100,lectern:40,mastery:200}));
+ assert.equal(certain.exact,true);
+ assert.ok(certain.quantiles.every(q=>q.relativeError===0&&q.actualProbability===1));
+ assert.equal(gameSolve(config({current:7,target:7})).exact,true);
 });
