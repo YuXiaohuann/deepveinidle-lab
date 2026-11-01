@@ -81,10 +81,10 @@ test('game missing prices, unused scrolls, zero target, decimals and determinist
  assert.throws(()=>gameSolve(config({target:20})),/distributionLimit/);
 });
 
-test('profit margin and base price leave all three cost quantiles unchanged',()=>{
+test('market tax, profit margin and base price leave all three cost quantiles unchanged',()=>{
  const s=config({profitRate:0,basePrice:100}),raw=gameSolve(s);
- for(const profitRate of [3,12.5]){
-  const result=gameSolve({...s,profitRate});
+ for(const [taxRate,profitRate] of [[0,3],[3,12.5],[12.5,0]]){
+  const result=gameSolve({...s,profitRate,taxRate});
   for(let i=0;i<3;i++){
    assert.equal(result.quantiles[i].minPrice,raw.quantiles[i].minPrice);
    assert.equal(result.quantiles[i].actualProbability,raw.quantiles[i].actualProbability);

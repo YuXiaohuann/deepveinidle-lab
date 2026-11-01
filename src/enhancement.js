@@ -7,13 +7,13 @@ export const enhanceableItems=[...new Set([...game.equipment,...game.tools].map(
  .filter(id=>game.canEnhance(id)).map(id=>game.item(id));
 const record=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const integer=(v,min,max)=>Number.isSafeInteger(v)&&v>=min&&v<=max;
-export function enhancementDefaults(){return {guild:null,itemId:110,tier:3,current:0,target:7,level:1,lectern:0,mastery:0,protect:true,protectFrom:game.protectionMin,shardPrice:null,scrollPrice:null,basePrice:null,profitRate:3,priceModes:{shardPrice:'global',scrollPrice:'global',basePrice:'global'},basePriceItem:null};}
+export function enhancementDefaults(){return {guild:null,itemId:110,tier:3,current:0,target:7,level:1,lectern:0,mastery:0,protect:true,protectFrom:game.protectionMin,shardPrice:null,scrollPrice:null,basePrice:null,taxRate:3,profitRate:10,priceModes:{shardPrice:'global',scrollPrice:'global',basePrice:'global'},basePriceItem:null};}
 export function validateEnhancement(input,{allowUnsupportedTarget=false}={}){
  if(!record(input))throw Error('invalidConfiguration');
- const s={...input,guild:readGuild(input.guild),lectern:Object.hasOwn(input,'lectern')?input.lectern:0,profitRate:Object.hasOwn(input,'profitRate')?input.profitRate:3};
+ const s={...input,guild:readGuild(input.guild),lectern:Object.hasOwn(input,'lectern')?input.lectern:0,taxRate:Object.hasOwn(input,'taxRate')?input.taxRate:3,profitRate:Object.hasOwn(input,'profitRate')?input.profitRate:10};
  if(!enhanceableItems.some(x=>x.id===s.itemId)||!integer(s.tier,0,4)||!game.canEnhance(game.withRarity(s.itemId,s.tier)))throw Error('invalidItem');
  for(const [key,min,max]of [['current',0,game.maxEnhancement],['target',0,game.maxEnhancement],['level',1,game.maxLevel],['lectern',0,game.houseLevelLimit],['mastery',0,game.masteryRankLimit],['protectFrom',game.protectionMin,game.maxEnhancement]])if(!integer(s[key],min,max))throw Error('invalidConfiguration');
- if(typeof s.profitRate!=='number'||!Number.isFinite(s.profitRate)||s.profitRate<0||s.profitRate>=100)throw Error('invalidProfitRate');
+ validateFeeRates(s.profitRate,s.taxRate);
  if(typeof s.protect!=='boolean')throw Error('invalidConfiguration');
  for(const key of ['shardPrice','scrollPrice','basePrice'])if(s[key]!==null&&(typeof s[key]!=='number'||!Number.isFinite(s[key])||s[key]<0||s[key]>Number.MAX_SAFE_INTEGER))throw Error('invalidPrice');
  if(!record(input.priceModes)||!Object.hasOwn(input,'basePriceItem'))throw Error('invalidPrice');
@@ -49,9 +49,14 @@ function expectedCost(steps,start,cost){
  if(!Number.isFinite(result))throw Error('unreliableCalculation');
  return result;
 }
-export function enhancementFee(cost,profitRate){
+function validateFeeRates(profitRate,taxRate){
  if(typeof profitRate!=='number'||!Number.isFinite(profitRate)||profitRate<0||profitRate>=100)throw Error('invalidProfitRate');
- return cost===null?null:cost/(1-profitRate/100);
+ if(typeof taxRate!=='number'||!Number.isFinite(taxRate)||taxRate<0||taxRate>=100)throw Error('invalidTaxRate');
+ if(profitRate+taxRate>=100)throw Error('invalidFeeRates');
+}
+export function enhancementFee(cost,profitRate,taxRate=0){
+ validateFeeRates(profitRate,taxRate);
+ return cost===null?null:cost/(1-taxRate/100-profitRate/100);
 }
 export function calculateEnhancement(input){
  const s=validateEnhancement(input),steps=enhancementSteps(s),totals={};
@@ -60,7 +65,7 @@ export function calculateEnhancement(input){
  const missingPrices=['shards','scrolls'].filter(key=>totals[key]>0&&s[key==='shards'?'shardPrice':'scrollPrice']===null);
  const pricedGold=missingPrices.length?null:totals.gold+totals.shards*(s.shardPrice??0)+totals.scrolls*(s.scrollPrice??0);
  const purchaseTotal=pricedGold!==null&&s.basePrice!==null?pricedGold+s.basePrice:null;
- const expectedFee=enhancementFee(purchaseTotal,s.profitRate);
+ const expectedFee=enhancementFee(purchaseTotal,s.profitRate,s.taxRate);
  if([totals.seconds,pricedGold,purchaseTotal,expectedFee].some(v=>v!==null&&!Number.isFinite(v)))throw Error('unreliableCalculation');
  return {steps,totals,missingPrices,pricedGold,purchaseTotal,expectedFee};
 }

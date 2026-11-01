@@ -16,6 +16,8 @@ const name=s=>translatedName(s,language);
 const rarities=()=>language==='zh'?['普通','罕见','稀有','史诗','传说']:['Normal','Uncommon','Rare','Epic','Legendary'];
 const options=(arr,value)=>arr.map(([v,label])=>`<option value="${v}" ${String(v)===String(value)?'selected':''}>${esc(label)}</option>`).join('');
 const errors={
+ invalidTaxRate:['市场税率须为 0（含）至 100（不含）之间的数值。','Market tax rate must be at least 0% and less than 100%.'],
+ invalidFeeRates:['市场税率与期望利润率之和须小于 100%。','Market tax rate and expected profit margin must add up to less than 100%.'],
  invalidProfitRate:['期望利润率须为 0（含）至 100（不含）之间的数值。','Expected profit margin must be at least 0% and less than 100%.'],
  distributionLimit:['分位数计算未完成：超出资源上限。','Quantile calculation exceeded the resource limit.'],
  distributionPrecision:['分位数计算未完成：金额超出安全精度范围。','Quantile calculation exceeds safe monetary precision.'],
@@ -25,7 +27,7 @@ const errors={
 const errorMessage=code=>(errors[code]??[code,code])[language==='zh'?0:1];
 const format=v=>v>=1e12?v.toExponential(4):v.toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:2});
 const formatMoney=value=>Math.ceil(value).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:0});
-const profitText=(cost,rate)=>text('利润：','Profit: ')+(cost===null?text('未完整定价','Incomplete pricing'):formatMoney(enhancementFee(cost,rate)-cost));
+const profitText=(cost,rate,tax)=>text('税后利润：','Profit after tax: ')+(cost===null?text('未完整定价','Incomplete pricing'):formatMoney(enhancementFee(cost,rate,tax)*rate/100));
 const field=(key,label,min,max,step=1,value=state[key])=>`<label class="number-field"><span>${label}</span><input data-enhance-field="${key}" type="number" min="${min}" max="${max}" step="${step}" value="${value??''}"></label>`;
 function resetBaseOverride(){const id=game.encode(game.withRarity(state.itemId,state.tier),state.current);if(state.basePriceItem!==null&&state.basePriceItem!==id){state.priceModes.basePrice='global';state.basePrice=null;state.basePriceItem=null;}}
 function previewPrices(){try{return resolveEnhancementPrices(state,getSnapshot());}catch{return {shardPrice:null,scrollPrice:null,basePrice:null};}}
@@ -48,9 +50,9 @@ function startDistribution(priced,result,revision){
    el.querySelector('strong').textContent=error?errorMessage(error):formatMoney(values[i].minPrice);
    el.querySelector('small').textContent=error?limitNote:text(`至少 ${percent}% 的概率不超过此金额`,`At least ${percent}% probability of staying within this amount.`);
    const totalCost=error||priced.basePrice===null?null:values[i].minPrice+priced.basePrice;
-   const amount=enhancementFee(totalCost,priced.profitRate);
+   const amount=enhancementFee(totalCost,priced.profitRate,priced.taxRate);
    fee.querySelector('strong').textContent=priced.basePrice===null?text('未完整定价','Incomplete pricing'):error?errorMessage(error):!Number.isFinite(amount)||amount>Number.MAX_SAFE_INTEGER?errorMessage('distributionPrecision'):formatMoney(amount);
-   fee.querySelector('small').textContent=error?limitNote:profitText(totalCost,priced.profitRate);
+   fee.querySelector('small').textContent=error?limitNote:profitText(totalCost,priced.profitRate,priced.taxRate);
   }
  };
  distributionTimer=setTimeout(()=>{
@@ -77,8 +79,8 @@ function renderResults(){const revision=cancelDistribution();const host=document
  <p class="table-note">${text('仅计强化金币、碎片和卷轴，包含失败后重做的费用。', 'Includes enhancement gold, shards and scrolls, including the cost of rebuilding after failures.')}</p>
  <div class="stats enhance-stats enhance-fees"><div class="stat"><span>${text('平均投入成本','Mean enhancement cost')}</span><strong>${money(pricedGold)}</strong></div>${enhancementPercentiles.map(percent=>`<div class="stat" id="enhance-q${percent}"><span>${text(`${percent}%保本期望`,`${percent}% break-even cost`)}</span><strong>${pricedGold===null?incomplete:text('分位数计算中…','Calculating quantiles…')}</strong><small></small></div>`).join('')}
  </div>
- <p class="table-note">${text('对应强化成本与底装购置费合计后，按期望利润率计算收费和利润。', 'Calculates fees and profit at the expected profit margin on the combined enhancement cost and base item purchase price.')}</p>
- <div class="stats enhance-stats enhance-fees"><div class="stat"><span>${text('平均收费','Mean fee')}</span><strong>${money(expectedFee)}</strong><small>${profitText(purchaseTotal,priced.profitRate)}</small></div>${enhancementPercentiles.map(percent=>`<div class="stat" id="enhance-fee-q${percent}"><span>${text(`${percent}%保本收费`,`${percent}% break-even fee`)}</span><strong>${expectedFee===null?incomplete:text('分位数计算中…','Calculating quantiles…')}</strong><small>${purchaseTotal===null?profitText(null,priced.profitRate):''}</small></div>`).join('')}</div>
+ <p class="table-note">${text('对应强化成本与底装购置费合计后，按市场税率与期望利润率计算收费和税后利润。', 'Calculates fees and profit after tax using the market tax rate and expected profit margin on the combined enhancement cost and base item purchase price.')}</p>
+ <div class="stats enhance-stats enhance-fees"><div class="stat"><span>${text('平均收费','Mean fee')}</span><strong>${money(expectedFee)}</strong><small>${profitText(purchaseTotal,priced.profitRate,priced.taxRate)}</small></div>${enhancementPercentiles.map(percent=>`<div class="stat" id="enhance-fee-q${percent}"><span>${text(`${percent}%保本收费`,`${percent}% break-even fee`)}</span><strong>${expectedFee===null?incomplete:text('分位数计算中…','Calculating quantiles…')}</strong><small>${purchaseTotal===null?profitText(null,priced.profitRate,priced.taxRate):''}</small></div>`).join('')}</div>
  <section class="panel enemies"><h3>${text('逐级成功率与单次费用','Step chances and per-attempt costs')}</h3><p class="micro">${text('低于当前 +值的行是失败后可能需要重做的步骤。保护阈值按尝试前 +值判断。','Rows below your current enhancement may be revisited after failure. Protection checks the enhancement before the attempt.')}</p><div class="table-scroll"><table class="enhance-table"><thead><tr>${[text('步骤','Step'),text('成功率','Success chance'),text('金币','Coins'),text('碎片','Shards'),text('失败后','On failure')].map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${steps.length?steps.map(x=>`<tr class="${x.from<state.current?'enhance-rebuild':''}"><td>+${x.from} → +${x.to}${x.from<state.current?` <small>${text('重做','Rebuild')}</small>`:''}</td><td>${format(x.chance*100)}%</td><td>${format(x.gold)}</td><td>${format(x.shards)}</td><td>+${x.failTo}${x.protected?` · ${text('消耗 1 卷轴','1 scroll spent')}`:''}</td></tr>`).join(''):`<tr><td colspan="5">${text('已达到目标，无需强化。','Target already reached; no enhancement needed.')}</td></tr>`}</tbody></table></div></section>
 
 `;
@@ -104,7 +106,7 @@ export function renderEnhancement(nextLanguage){
  <label class="enhance-select"><span>${text("稀有度",'Rarity')}</span><select data-enhance-field="tier">${options(rarities().map((x,i)=>[i,x]),state.tier)}</select></label></div>
  <div class="skill-grid">${field('current',text('当前强化值','Current enhancement'),0,game.maxEnhancement)}${field('target',text('目标强化值','Target enhancement'),0,Math.max(game.enhancementTargetLimit,state.current??0))}</div>
  <div class="enhance-item-row enhance-protection-row"><label class="number-field"><span>${text('使用保护卷轴','Use protection scrolls')}</span><select data-enhance-field="protect">${options([['true',text('使用','Use')],['false',text('不使用','Do not use')]],state.protect)}</select></label>${field('protectFrom',text('保护卷轴起始等级','Protection scroll starting level'),game.protectionMin,game.maxEnhancement)}</div>
- <section class="config-detail" id="enhance-price-settings"><h3>${text('材料与底装估价','Material and base item prices')}</h3><div class="enhance-item-row">${field('shardPrice',text('虚空碎片','Voidshard'),0,Number.MAX_SAFE_INTEGER,'any',previewPrices().shardPrice)}${field('scrollPrice',text('保护卷轴','Protection scroll'),0,Number.MAX_SAFE_INTEGER,'any',previewPrices().scrollPrice)}</div><div class="enhance-item-row">${field('basePrice',text('底装购置费','Base item purchase'),0,Number.MAX_SAFE_INTEGER,'any',previewPrices().basePrice)}${field('profitRate',text('期望利润率 (%)','Expected profit margin (%)'),0,100,'any')}</div></section></section><div id="enhance-results" aria-live="polite"></div></div>`;
+ <section class="config-detail" id="enhance-price-settings"><h3>${text('价格与收费设置','Prices and fees')}</h3><div class="enhance-item-row">${field('shardPrice',text('虚空碎片','Voidshard'),0,Number.MAX_SAFE_INTEGER,'any',previewPrices().shardPrice)}${field('scrollPrice',text('保护卷轴','Protection scroll'),0,Number.MAX_SAFE_INTEGER,'any',previewPrices().scrollPrice)}</div><div class="enhance-item-row">${field('basePrice',text('底装购置费','Base item purchase'),0,Number.MAX_SAFE_INTEGER,'any',previewPrices().basePrice)}</div><div class="enhance-item-row">${field('taxRate',text('市场税率 (%)','Market tax rate (%)'),0,100,'any')}${field('profitRate',text('期望利润率 (%)','Expected profit margin (%)'),0,100,'any')}</div></section></section><div id="enhance-results" aria-live="polite"></div></div>`;
 
  host.querySelectorAll('[data-enhance-field]').forEach(el=>{
   const update=()=>{const key=el.dataset.enhanceField;state[key]=key==='protect'?el.value==='true':el.value===''?null:Number(el.value)/(key==='mastery'?0.25:1);if(key==='mastery'&&Number(el.value)>game.enhanceMasteryBonusCap*100)state.mastery=NaN;if(Object.hasOwn(state.priceModes,key)){state.priceModes[key]='manual';if(key==='basePrice')state.basePriceItem=game.encode(game.withRarity(state.itemId,state.tier),state.current);}if(['current','tier'].includes(key))resetBaseOverride();save();if(['current','tier'].includes(key)&&Number.isInteger(state.current)&&state.current>=0&&state.current<=game.maxEnhancement)renderEnhancement(language);else renderResults();};

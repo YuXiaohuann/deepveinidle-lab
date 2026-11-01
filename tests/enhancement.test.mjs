@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
-import {enhancementDefaults,enhanceableItems,validateEnhancement,enhancementSteps,calculateEnhancement,importEnhancement,decodeEnhancementItem} from '../src/enhancement.js';
+import {enhancementDefaults,enhanceableItems,validateEnhancement,enhancementSteps,calculateEnhancement,enhancementFee,importEnhancement,decodeEnhancementItem} from '../src/enhancement.js';
 const config=patch=>({...enhancementDefaults(),tier:0,target:5,protect:false,...patch});
 const near=(actual,expected)=>assert.ok(Math.abs(actual-expected)<=1e-9*Math.max(1,Math.abs(expected)),`${actual} != ${expected}`);
 // Independent Gaussian elimination of the absorbing chain (small targets).
@@ -62,12 +62,12 @@ test('profit margin covers enhancement and base costs, with explicit pricing req
  const gold=100+goldStep1+(300+.12*goldStep1)/.88;
  const shards=3+shardStep1+(9+.12*shardStep1)/.88;
  const scrolls=.12/.88;
- near(r.expectedFee,(gold+shards*10+scrolls*20+120)/.97);
+ near(r.expectedFee,(gold+shards*10+scrolls*20+120)/.87);
  assert.equal(calculateEnhancement(config({shardPrice:10})).expectedFee,null);
  assert.equal(calculateEnhancement(config({basePrice:0})).expectedFee,null);
  assert.equal(calculateEnhancement(config({protect:true,shardPrice:10,basePrice:0})).expectedFee,null);
- const free=calculateEnhancement(config({shardPrice:0,basePrice:0}));near(free.expectedFee,free.totals.gold/.97);
- near(calculateEnhancement(config({current:5,target:5,basePrice:120})).expectedFee,120/.97);
+ const free=calculateEnhancement(config({shardPrice:0,basePrice:0}));near(free.expectedFee,free.totals.gold/.87);
+ near(calculateEnhancement(config({current:5,target:5,basePrice:120})).expectedFee,120/.87);
  assert.equal(calculateEnhancement(config({current:5,target:5,basePrice:0})).expectedFee,0);
 });
 test('import captures enhancement-only fields and deduplicates worn and inventory candidates',()=>{
@@ -114,11 +114,11 @@ test('all seven upgrade-only items use their native 95/99 crafting tier for cost
 
 test('profit margin defaults for old saves, validates explicit inputs, and preserves raw costs',()=>{
  const old=config({shardPrice:10,scrollPrice:20,basePrice:120});delete old.profitRate;
- assert.equal(validateEnhancement(old).profitRate,3);
- const baseline=calculateEnhancement({...old,profitRate:0});
+ assert.equal(validateEnhancement(old).profitRate,10);
+ const baseline=calculateEnhancement({...old,profitRate:0,taxRate:0});
  assert.equal(baseline.expectedFee,baseline.purchaseTotal);
  for(const profitRate of [3,12.5,99.9]){
-  const result=calculateEnhancement({...old,profitRate});
+  const result=calculateEnhancement({...old,profitRate,taxRate:0});
   near((result.expectedFee-result.purchaseTotal)/result.expectedFee,profitRate/100);
   assert.deepEqual(result.totals,baseline.totals);
  }
@@ -128,11 +128,33 @@ test('profit margin defaults for old saves, validates explicit inputs, and prese
 });
 
 test('base price earns profit; missing base leaves enhancement cost intact',()=>{
- const s=config({shardPrice:10,scrollPrice:20,basePrice:100,profitRate:20});
+ const s=config({shardPrice:10,scrollPrice:20,basePrice:100,profitRate:20,taxRate:0});
  const result=calculateEnhancement(s),withoutBase=calculateEnhancement({...s,basePrice:0});
  near(result.expectedFee-withoutBase.expectedFee,125);
  near(result.expectedFee,(result.pricedGold+100)/.8);
  const missingBase=calculateEnhancement({...s,basePrice:null});
  assert.equal(missingBase.pricedGold,result.pricedGold);assert.equal(missingBase.expectedFee,null);
  assert.equal(calculateEnhancement({...s,current:5,target:5}).expectedFee,125);
+});
+
+test('market tax is recovered in fees while profit remains a share of gross fees',()=>{
+ const old=config({shardPrice:10,scrollPrice:20,basePrice:120,profitRate:3});delete old.taxRate;
+ assert.equal(validateEnhancement(old).taxRate,3);
+ assert.equal(validateEnhancement(old).profitRate,3);
+ for(const taxRate of [0,3,12.5,89.9]){
+  const s={...old,taxRate,profitRate:10},r=calculateEnhancement(s);
+  near(r.expectedFee*(1-taxRate/100)-r.purchaseTotal,r.expectedFee*.1);
+  near(enhancementFee(r.purchaseTotal,10,taxRate),r.expectedFee);
+  assert.deepEqual(r.totals,calculateEnhancement({...s,taxRate:0}).totals);
+  const restored=validateEnhancement(JSON.parse(JSON.stringify(s)));
+  assert.equal(restored.taxRate,taxRate);
+  assert.equal(importEnhancement(s,snapshot()).state.taxRate,taxRate);
+ }
+ for(const taxRate of [null,undefined,-1,100,Infinity,NaN,'3'])assert.throws(()=>validateEnhancement({...old,taxRate}),/invalidTaxRate/);
+ for(const [taxRate,profitRate]of [[90,10],[99,2]]){
+  assert.throws(()=>validateEnhancement({...old,taxRate,profitRate}),/invalidFeeRates/);
+  assert.throws(()=>enhancementFee(null,profitRate,taxRate),/invalidFeeRates/);
+ }
+ near(enhancementFee(100,0,3),100/.97);
+ assert.equal(enhancementFee(null,10,3),null);
 });
