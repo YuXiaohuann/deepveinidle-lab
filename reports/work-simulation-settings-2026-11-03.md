@@ -1,6 +1,6 @@
 # 采集与制造模拟配置对齐
 
-日期：2026-11-03。本地待发布变更；现行生产仍为1.9.4。设计见[采集](../docs/pages/gathering.md)、[制造](../docs/pages/crafting.md)与[战斗模拟配置](../docs/pages/combat.md#336-模拟配置)。
+日期：2026-11-03。本文记录发布前实施与专项；功能已随[1.9.5发布](v1.9.5-release-2026-11-03.md)，完整发布验收见该报告。设计见[采集](../docs/pages/gathering.md)、[制造](../docs/pages/crafting.md)与[战斗模拟配置](../docs/pages/combat.md#336-模拟配置)。
 
 ## 行为与影响范围
 
