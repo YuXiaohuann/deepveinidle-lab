@@ -12,11 +12,14 @@ import {defaults} from '../src/model.js';
 import {priceDefaults} from '../src/item-prices.js';
 import {tickMs} from '../src/upstream.js';
 const directory=path.resolve(process.argv[2]??'.test-artifacts/work-settings/settings');await fs.mkdir(directory,{recursive:true});
-const socket=net.createServer();socket.listen(0,'127.0.0.1');await once(socket,'listening');const port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
-const server=spawn(process.execPath,['scripts/serve.mjs'],{env:{...process.env,PORT:String(port)},stdio:['ignore','pipe','pipe']});
-const results={cases:[],errors:[]};let browser;
+const target=process.argv[3]??null;let server,port;
+if(!target){
+const socket=net.createServer();socket.listen(0,'127.0.0.1');await once(socket,'listening');port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
+server=spawn(process.execPath,['scripts/serve.mjs'],{env:{...process.env,PORT:String(port)},stdio:['ignore','pipe','pipe']});
+}
+const results={target:target??'local',cases:[],errors:[]};let browser;
 try{
- await Promise.race([once(server.stdout,'data'),once(server,'exit').then(([code])=>{throw Error(`Server exited: ${code}`);})]);
+ if(server)await Promise.race([once(server.stdout,'data'),once(server,'exit').then(([code])=>{throw Error(`Server exited: ${code}`);})]);
  browser=await chromium.launch({headless:true,executablePath:await browserPath()});
 
  for(const kind of ['gather','craft'])for(const language of ['zh','en'])for(const width of [1440,390]){
@@ -38,7 +41,7 @@ try{
    };
    document.addEventListener('dvi-character-request',e=>{const r=JSON.parse(e.detail);document.dispatchEvent(new CustomEvent('dvi-character-response',{detail:JSON.stringify({source:'dvi-character-script',id:r.id,version:'2.4',...(r.action==='probe'?{ready:true}:{snapshot:window.snapshot})})}));});
   },{kind,initial,combat,language,prices,snapshot});
-  await page.goto(`http://127.0.0.1:${port}/${kind}`);
+  await page.goto(`${target??`http://127.0.0.1:${port}`}/${kind}`);
   const ready=hours=>page.waitForFunction(hours=>window.runs.at(-1)?.done&&window.runs.at(-1).input.state.simulationHours===hours,hours);
   await ready(2);
   const settings=page.locator('#'+kind+(kind==='craft'?'-settings':'-simulation'));await settings.evaluate(el=>el.open=true);
@@ -67,5 +70,5 @@ try{
  }
  assert.deepEqual(results.errors,[]);
 }catch(error){results.errors.push(error.stack??String(error));process.exitCode=1;}
-finally{if(browser)await browser.close();server.kill();await fs.writeFile(path.join(directory,'results.json'),JSON.stringify(results,null,2)+'\n');}
+finally{if(browser)await browser.close();server?.kill();await fs.writeFile(path.join(directory,'results.json'),JSON.stringify(results,null,2)+'\n');}
 console.log(JSON.stringify(results,null,2));
