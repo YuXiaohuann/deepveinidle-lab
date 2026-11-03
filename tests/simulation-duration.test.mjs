@@ -21,8 +21,7 @@ test('duration defaults to 24 hours and saved durations normalize predictably',(
   assert.equal(saved.manual.simulationHours,expected);
   assert.equal(normalize(JSON.parse(JSON.stringify(saved))).manual.simulationHours,expected);
  }
- for(const hours of [.5,1,1.5,6.7,24])assert.equal(normalizeGathering({simulationHours:hours}).simulationHours,hours);
- assert.equal(normalizeGathering({simulationHours:0}).simulationHours,1/60);
+ for(const [hours,expected] of [[.5,1],[1,1],[1.5,2],[6.7,7],[24,24],[0,1]])assert.equal(normalizeGathering({simulationHours:hours}).simulationHours,expected);
  for(const hours of [0,-1,1/120,NaN])assert.throws(()=>simulationTicks(hours),/invalidDuration/);
 });
 test('one, six and 24 hour trials match independent upstream offline reports',()=>{

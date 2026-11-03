@@ -31,14 +31,14 @@ test('combat abbreviates daily XP and money while counts and quantities retain p
  }
 });
 
-test('gathering abbreviates selected-period XP, money and prices while quantities stay complete',()=>{
+test('gathering abbreviates daily XP, money and prices regardless of legacy period while quantities stay complete',()=>{
  for(const language of ['zh','en'])for(const period of ['hour','day']){
   const run=formatters('../src/gathering-controls.js',['text','format','money','amount','expectedQuantity'],{language,period,state:{simulationHours:6}});
-  // 3125 per six hours is 520.833 per hour, or 12500 per day.
-  assert.equal(run("amount(3125,'xp')"),period==='day'?'12.50K':'521');
-  assert.equal(run("amount(3125000,'coins')"),period==='day'?'12.50M':'520.83K');
-  assert.equal(run("amount(3125,'value')"),period==='day'?'12.50K':'521');
-  assert.equal(run('amount(3125)'),period==='day'?'12,500.0':'520.8');
+  // 3125 per six hours is 12500 per day; a legacy hourly selection is ignored.
+  assert.equal(run("amount(3125,'xp')"),'12.50K');
+  assert.equal(run("amount(3125000,'coins')"),'12.50M');
+  assert.equal(run("amount(3125,'value')"),'12.50K');
+  assert.equal(run('amount(3125)'),'12,500.0');
   assert.equal(run('expectedQuantity(12500)'),'12,500');
   assert.equal(run('expectedQuantity(0.000001)'),'1/1,000,000');
   assert.equal(run('money(12500)'),'12.50K');
