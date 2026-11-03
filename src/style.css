@@ -102,17 +102,19 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
 .enhance-table small{font-size:11px}
 @media(max-width:1050px){#enhance-section{padding:20px 18px}#enhance-content{grid-template-columns:300px minmax(0,1fr);gap:18px}.enhance-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:740px){#enhance-section{padding:17px 12px}#enhance-content{grid-template-columns:minmax(0,1fr);gap:18px}.enhance-stats strong{font-size:22px}}
-.enhance-equipment{padding:22px;margin-bottom:24px}
-.enhance-equipment .skill-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-.enhance-equipment .number-field{margin-bottom:12px}
+.enhance-equipment{padding:18px;margin-bottom:18px}
+.enhance-equipment .number-field{min-width:0;margin:0 0 10px}
+.enhance-equipment #enhance-price-settings{margin-top:6px;padding-top:12px}
 #enhance-results .enemies>h3{margin:20px 20px 12px}
 #enhance-results .enemies>.micro{margin:8px 20px 16px}
 
 .enhance-item-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .enhance-item-row .enhance-select{min-width:0}
+.enhance-item-row>.number-field{align-self:end}
 @media(max-width:740px){.enhance-item-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}}
 
-.enhance-protection-row select{width:100%;font-size:14px}
+@media(min-width:1200px){.enhance-level-row{grid-template-columns:repeat(4,minmax(0,1fr))}.enhance-price-row{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.enhance-level-row select{width:100%;font-size:14px}
 
 .search-select{position:relative;min-width:0;margin-bottom:12px;font-size:12px}
 .search-select>label{display:block;margin-bottom:6px;color:#a5b6bb}
@@ -122,7 +124,7 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
 .search-select-option:hover,.search-select-option.active{background:#2b454c;color:#fff}
 .search-select> [role=status]{display:block;overflow-wrap:anywhere}
 .search-select> [role=status]:empty{display:none}
-.enhance-item-row>.enhance-select,.enhance-item-row>.search-select{margin:18px 0;font-size:13px;align-self:start}
+.enhance-item-row>.enhance-select,.enhance-item-row>.search-select{margin:8px 0 12px;font-size:13px;align-self:start}
 .enhance-item-row>.search-select>label{margin-bottom:8px;color:inherit}
 
 #enhance-results>.enemies{margin-bottom:24px}
@@ -263,7 +265,7 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
 
 .appreciation-copy{margin:16px 0 0;font-size:13px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}
 
-#enhance-price-settings h3{font-size:13px;font-weight:600;margin:0 0 12px}
+#enhance-price-settings h3{font-size:13px;font-weight:600;margin:0 0 10px}
 
 #price-import{color:var(--gold);font-weight:650}
 #price-import:disabled{opacity:.4;cursor:not-allowed}
