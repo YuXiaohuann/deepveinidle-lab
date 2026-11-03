@@ -1,17 +1,17 @@
 import * as game from './upstream.js';
-import {craftingPlayer,craftingMaterials,planKey,validQuantity,safeAdd,calculateUpgrade} from './crafting-model.js';
-import {manualWindows} from './manual-settings.js';
-import {combatHot,combatHotWindows} from './combat-hot.js';
+import {normalizeCrafting,craftingPlayer,craftingMaterials,planKey,validQuantity,safeAdd,calculateUpgrade} from './crafting-model.js';
+import {MAX_SIMULATION_MINUTES,manualWindows} from './manual-settings.js';
+import {simulationTicks,combatHot,combatHotWindows} from './combat-hot.js';
 import {START_TICK,simulationTick} from './simulation.js';
 import {validateSimulationSeed} from './simulation-seed.js';
 
 import {beforeWork,expectedWorkRewards,expectedCraftProduct,addExpected} from './work-expectation.js';
 
 export const MAX_CRAFT_TICKS=30*24*3600000/game.tickMs;
-export function createCraftingScenario(raw,job,tier,count,{now=Date.now(),maxTicks=MAX_CRAFT_TICKS,seed=0}={}){
+export function createCraftingScenario(raw,job,tier,count,{now=Date.now(),maxTicks=MAX_CRAFT_TICKS,timeWindow=false,seed=0}={}){
  if(job.upgrade)throw Error('instantUpgrade');
  if(!validQuantity(count)||count===0)throw Error('invalidQuantity');
- if(!Number.isSafeInteger(maxTicks)||maxTicks<1||maxTicks>MAX_CRAFT_TICKS)throw Error('invalidDuration');
+ if(!Number.isSafeInteger(maxTicks)||maxTicks<1||maxTicks>(timeWindow?simulationTicks(Math.floor(MAX_SIMULATION_MINUTES/60)):MAX_CRAFT_TICKS))throw Error('invalidDuration');
  const {state:s,player:p}=craftingPlayer(raw);
  if(s.levels[job.skill]<job.levelReq)throw Error('levelTooLow');
  const materials=craftingMaterials(job,tier,count),context={...game.createContext(game.world,validateSimulationSeed(seed)),hypothetical:true,windows:manualWindows(START_TICK,START_TICK+maxTicks,s.weeklyXp,s.hotSetting!=='game',job.skill)};
@@ -65,8 +65,8 @@ export function simulateCrafting(raw,job,tier,count,{onProgress=()=>{},...option
 // A completed time window is valid even though an unlimited count is unfinished.
 export function simulateCraftingWindow(raw,job,tier,options={}){
  if(job.upgrade)return simulateCrafting(raw,job,tier,1,options);
- const ticks=24*3600000/game.tickMs;
- const result=simulateCrafting(raw,job,tier,ticks,{...options,maxTicks:ticks});
+ const ticks=simulationTicks(normalizeCrafting(raw).simulationHours);
+ const result=simulateCrafting(raw,job,tier,ticks,{...options,maxTicks:ticks,timeWindow:true});
  if(result.error==='timeLimit'){result.error=null;result.complete=true;}
  return result;
 }

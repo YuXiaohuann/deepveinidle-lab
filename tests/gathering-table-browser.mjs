@@ -53,15 +53,13 @@ try{
  results.cases.push('10-column order, name/level merge, default and ascending level sorting, highlighted data and locked rows');
  await page.locator('#gather-simulation').evaluate(el=>el.open=true);
  const runs=await page.evaluate(()=>window.gatherRuns.length);
- const countText=()=>page.locator('#gather-results .gather-table tbody tr').first().locator('td').nth(5).innerText();
- await page.selectOption('#gather-period','hour');assert.deepEqual(await headers(),daily.map(label=>label.replace('/天','/小时')));const hourly=await countText();assert.equal(await potions.locator('.loot-line').last().locator('span').last().innerText(),'1.0');assert.equal(await xpDetail.getAttribute('open'),'');assert.equal(await xpDetail.locator('.loot-line span').last().innerText(),singleXp);
- await page.selectOption('#gather-period','total');assert.deepEqual(await headers(),daily.map(label=>label.replace('/天','')));const total=await countText();assert.ok(Number(total.replaceAll(',',''))>Number(hourly.replaceAll(',','')));
- await page.selectOption('#gather-period','day');assert.equal(await countText(),total);
+ assert.equal(await page.locator('#gather-period').count(),0);assert.deepEqual(await headers(),daily);
+ assert.equal(await potions.locator('.loot-line').last().locator('span').last().innerText(),'24.0');assert.equal(await xpDetail.getAttribute('open'),'');assert.equal(await xpDetail.locator('.loot-line span').last().innerText(),singleXp);
  await page.locator('#gather-search').fill('no-such-task');await checkRows();assert.equal(await page.locator('#gather-results .empty-results').getAttribute('colspan'),'10');await page.locator('#gather-search').fill('');
  await page.selectOption('#language','en');assert.deepEqual(await headers(),['Task','XP/day','Income/day','Profit/day','Moving share','Gathering/day','Coins/day','Main items/day','Extra drops/day','Consumables/day']);assert.equal(await page.locator(`#${id}`).getAttribute('open'),'');
- await page.selectOption('#gather-period','hour');assert.ok((await headers())[1].endsWith('/h'));await page.selectOption('#gather-period','total');assert.equal((await headers())[1],'XP');await page.selectOption('#gather-period','day');
+
  assert.equal(await page.evaluate(()=>window.gatherRuns.length),runs);
- results.cases.push('three bilingual period headers, scaled gather counts, empty results and expanded state survive redraw without new Workers');
+ results.cases.push('fixed daily bilingual headers, gather counts, empty results and expanded state survive redraw without new Workers');
  const potionId=Number(Object.keys(sample.potionItems)[0]);
  await page.evaluate(async id=>{const service=await import('/src/price-service.js');service.setPrice(id,100000);},potionId);
  const sampleRow=page.locator(`#gather-${sample.jobId}-level`).locator('xpath=ancestor::tr');
@@ -93,10 +91,10 @@ try{
  await page.locator('#gather-results .gather-table tbody tr').first().locator('td').nth(4).locator('summary').click();assert.match(await page.locator('#gather-results .gather-table tbody tr').first().locator('td').nth(4).innerText(),/采集点/);
  await page.evaluate(()=>window.tableMode='error');await page.locator('#gather-rerun').click();await page.waitForFunction(()=>document.querySelector('.gather-progress').textContent.includes('无法建立采集路线'));await checkRows();assert.match(await page.locator('#gather-results .gather-table tbody tr').first().locator('td').nth(1).innerText(),/无法建立采集路线/);
  results.cases.push('controlled waiting and failed Worker rows retain column alignment and site details');
- await page.evaluate(()=>{const state=JSON.parse(localStorage.getItem('dvi-gathering-v1'));state.simulationHours=1;localStorage.setItem('dvi-gathering-v1',JSON.stringify(state));});await page.reload();await page.waitForFunction(()=>window.gatherRuns.at(-1)?.done);await checkRows();assert.equal((await headers()).length,10);assert.equal((await headers())[1],'经验/小时');
+ await page.evaluate(()=>{const state=JSON.parse(localStorage.getItem('dvi-gathering-v1'));state.simulationHours=1;localStorage.setItem('dvi-gathering-v1',JSON.stringify(state));});await page.reload();await page.waitForFunction(()=>window.gatherRuns.at(-1)?.done);await checkRows();assert.equal((await headers()).length,10);assert.equal((await headers())[1],'经验/天');
  await page.locator('#gather-search').fill('no-such-task');assert.equal(await page.locator('#gather-results .empty-results').getAttribute('colspan'),'10');await page.locator('#gather-search').fill('');
  await page.locator('[data-gather-skill="thieving"]').click();await page.waitForFunction(()=>window.gatherRuns.at(-1)?.done);assert.equal(await page.locator('#gather-results .gather-table td:first-child details').last().locator('.loot-line').count(),3);
- results.cases.push('short-duration hourly fallback, empty rows and thieving catch detail');
+ results.cases.push('short-duration daily scaling, empty rows and thieving catch detail');
  assert.deepEqual(results.errors,[]);await context.close();
 }catch(error){results.errors.push(error.stack??String(error));process.exitCode=1;}
 finally{if(browser)await browser.close();server.kill();await fs.writeFile(path.join(directory,'results.json'),JSON.stringify(results,null,2)+'\n');}

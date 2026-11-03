@@ -48,11 +48,10 @@ try{
  assert.equal(await xpDetail.locator('.loot-line span').last().innerText(),(data.xp/data.completed).toLocaleString('zh-CN',{maximumFractionDigits:2}));
  const countCell=()=>page.locator('.craft-table [data-craft-count="61:0"]').locator('xpath=ancestor::tr').locator('td').nth(3);
  assert.equal(await countCell().innerText(),data.completed.toLocaleString('zh-CN',{maximumFractionDigits:0}));
- await page.selectOption('#craft-period','hour');assert.deepEqual(await headers(),daily.map(label=>label.replace('/天','/小时')));assert.equal(await countCell().innerText(),(data.completed/24).toLocaleString('zh-CN',{maximumFractionDigits:0}));
- assert.equal(await xpDetail.getAttribute('open'),'');assert.equal(await xpDetail.locator('.loot-line span').last().innerText(),(data.xp/data.completed).toLocaleString('zh-CN',{maximumFractionDigits:2}));
- await page.selectOption('#craft-period','day');assert.equal(await page.evaluate(()=>window.craftRuns.length),runs);
+ assert.equal(await page.locator('#craft-period').count(),0);assert.deepEqual(await headers(),daily);assert.equal(await page.evaluate(()=>window.craftRuns.length),runs);
+ assert.equal(await xpDetail.getAttribute('open'),'');
  await page.locator('#craft-search').fill('no-such-recipe');await checkRows();assert.equal(await table().locator('.empty-results').getAttribute('colspan'),'7');await page.locator('#craft-search').fill('');
- results.cases.push('daily/hourly headers and rounded counts match real Worker result; period, filters and empty results preserve cache');
+ results.cases.push('daily headers and rounded counts match real Worker result; language, filters and empty results preserve cache');
  for(const width of [1440,390])for(const language of ['zh','en']){
   await page.setViewportSize({width,height:1000});await page.selectOption('#language',language);await checkRows();
   assert.equal(await xpDetail.locator('.loot-line span').first().innerText(),language==='zh'?'平均单次经验':'Average XP per action');assert.equal(await xpDetail.locator('p').count(),0);assert.equal(await recipe.getAttribute('open'),'');
@@ -75,11 +74,11 @@ try{
  results.cases.push('controlled pending/failure rows align; progress redraw preserves exact focused input node and horizontal scroll');
  await page.evaluate(()=>window.tableMode=undefined);await page.locator('[data-craft-skill="smithing"]').click();await page.locator('#craft-search').fill('Colossus blade');
  const upgrade=page.locator('.craft-table [data-craft-count="upgrade-271:0"]').locator('xpath=ancestor::tr');await checkRows();assert.match(await upgrade.locator('td').nth(1).innerText(),/1,900 \/次/);assert.equal(await upgrade.locator('td').nth(3).innerText(),'即时升级');
- const before=await upgrade.innerText();await page.selectOption('#craft-period','hour');assert.equal(await upgrade.innerText(),before);
+ const before=await upgrade.innerText();await page.selectOption('#language','en');await page.selectOption('#language','zh');assert.equal(await upgrade.innerText(),before);
  await page.locator('[data-craft-sort="xp"]').click();await checkRows();await page.selectOption('#language','en');assert.match(await upgrade.locator('td').nth(1).innerText(),/\/ upgrade/);
  await page.setViewportSize({width:390,height:1000});await upgrade.scrollIntoViewIfNeeded();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:path.join(directory,'upgrade-en-390.png')});
  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-crafting-orders-v1')));assert.deepEqual(saved.orders[0].plans,{'61:0':3});assert.deepEqual(saved.inventory.items,{20:2});assert.equal(await page.locator('.craft-material-table th').count(),6);
- results.cases.push('instant upgrade per-action units, period invariance, sortable table, narrow layout and new order and stock persistence');
+ results.cases.push('instant upgrade per-action units, language invariance, sortable table, narrow layout and new order and stock persistence');
  assert.deepEqual(results.errors,[]);await context.close();
 }catch(error){results.errors.push(error.stack??String(error));process.exitCode=1;}
 finally{if(browser)await browser.close();server.kill();await fs.writeFile(path.join(directory,'results.json'),JSON.stringify(results,null,2)+'\n');}

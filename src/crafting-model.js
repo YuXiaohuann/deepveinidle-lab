@@ -22,13 +22,12 @@ export const safeAdd=(a,b)=>{const value=a+b;if(!Number.isSafeInteger(value)||va
 const safeMultiply=(a,b)=>{const value=a*b;if(!Number.isSafeInteger(value)||value<0)throw Error('quantityOverflow');return value;};
 const integer=(v,min,max)=>Number.isFinite(Number(v))?Math.min(max,Math.max(min,Math.floor(Number(v)))):min;
 export function craftingDefaults(){return {
- period:'day',skill:'cooking',levels:Object.fromEntries(craftingSkills.map(k=>[k,1])),gear:Object.fromEntries(craftingSlots.map(k=>[k,{id:0,tier:0,plus:0}])),
+ period:'day',simulationHours:24,skill:'cooking',levels:Object.fromEntries(craftingSkills.map(k=>[k,1])),gear:Object.fromEntries(craftingSlots.map(k=>[k,{id:0,tier:0,plus:0}])),
  brews:Object.fromEntries(craftingPotions.map(p=>[p.kind,-1])),house:Object.fromEntries(craftingRooms.map(r=>[r.id,0])),masteries:Object.fromEntries(craftingMasteries.map(m=>[m.id,0])),
  perks:Object.fromEntries(craftingPerks.map(p=>[p.id,0])),guild:null,guildXp:0,weeklyXp:0,ironman:false,blessing:false,homeBank:0,hotSetting:'game',plans:{},upgradeMigration:false,tiers:Object.fromEntries(craftingJobs.map(j=>[j.id,0])),owned:{},
 };}
 export function normalizeCrafting(raw){
  const s=craftingDefaults();if(!raw||typeof raw!=='object')return s;
- s.period=raw.period==='hour'?'hour':'day';
  s.skill=craftingSkills.includes(raw.skill)?raw.skill:s.skill;
  for(const k of craftingSkills)s.levels[k]=integer(raw.levels?.[k]??1,1,game.maxLevel);
  for(const slot of craftingSlots){const v=raw.gear?.[slot];if(v&&slotItems(slot).some(g=>g.itemId===Number(v.id)))s.gear[slot]={id:Number(v.id),tier:integer(v.tier??0,0,4),plus:integer(v.plus??0,0,game.maxEnhancement)};}
@@ -36,7 +35,7 @@ export function normalizeCrafting(raw){
  for(const r of craftingRooms)s.house[r.id]=integer(raw.house?.[r.id]??0,0,game.houseLevelLimit);
  for(const m of craftingMasteries)s.masteries[m.id]=integer(raw.masteries?.[m.id]??0,0,game.masteryRankLimit);
  for(const p of craftingPerks)s.perks[p.id]=integer(raw.perks?.[p.id]??0,0,p.ranks);
- const manual=normalizeManual(raw,{fractionalWorldXp:true});for(const k of ['guildXp','weeklyXp','ironman','blessing','hotSetting'])s[k]=manual[k];
+ const manual=normalizeManual(raw,{fractionalWorldXp:true});for(const k of ['guildXp','weeklyXp','ironman','blessing','hotSetting','simulationHours'])s[k]=manual[k];
  s.homeBank=game.world.banks.some(b=>b.id===Number(raw.homeBank))?Number(raw.homeBank):0;s.guild=readGuild(raw.guild);
  for(const job of craftingJobs){
   s.tiers[job.id]=integer(raw.tiers?.[job.id]??0,0,4);

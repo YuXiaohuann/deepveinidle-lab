@@ -73,7 +73,7 @@ try{
  await page.locator('#craft-filled').click();
  await change('.craft-order-recipes [data-craft-count="41:0"]',8);await ready();assert.equal((await read()).orders[0].plans['41:0'],8);assert.equal(await page.locator(recipe('41:0')).inputValue(),'8');assert.equal(await page.locator('.craft-execution-table tbody tr').locator('td').last().innerText(),'8');
  const invalid=page.locator('.craft-order-recipes [data-craft-count="41:0"]');await invalid.fill('-1');await invalid.blur();assert.equal((await read()).orders[0].plans['41:0'],8);assert.equal(await invalid.getAttribute('aria-invalid'),'true');await change('.craft-order-recipes [data-craft-count="41:0"]',8);
- await page.locator('#craft-settings').evaluate(el=>el.open=true);await page.selectOption('#craft-period','hour');
+ await page.locator('#craft-settings').evaluate(el=>el.open=true);assert.equal(await page.locator('#craft-period').count(),0);
  await page.locator('#craft-filled').click();await change(recipe('42:0'),1);await ready();const before=await read();await page.reload();await ready();saved=await read();assert.deepEqual(saved.orders,before.orders);assert.deepEqual(saved.build.owned,before.build.owned);assert.equal(saved.currentOrderId,a);
  await page.locator('#craft-reset').click();saved=await read();assert.deepEqual(saved.orders,before.orders);assert.deepEqual(saved.build.owned,before.build.owned);assert.equal(saved.build.levels.smithing,1);
  assert.match(await rowFor(a).locator('td').nth(4).innerText(),/未完整计算/);assert.match(await rowFor(a).locator('td').nth(5).innerText(),/未完整计算/);

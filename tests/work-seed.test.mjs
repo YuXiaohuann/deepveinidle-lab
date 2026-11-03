@@ -60,7 +60,7 @@ test('crafting seeds reproduce all five skills and match original finite-route r
 
 function harness(){
  const workers=[],timers=new Map();let timerId=0,seed=100;
- const ctx={Date,JSON,URL,Map,Set,console:{error(){}},randomSimulationSeed:()=>++seed,setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),Worker:class{
+ const ctx={Date,JSON,URL,Map,Set,document:{getElementById:()=>null},renderHot:()=>{},console:{error(){}},randomSimulationSeed:()=>++seed,setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),Worker:class{
   constructor(){workers.push(this);}
   postMessage(data){this.data=data;}
   terminate(){this.terminated=true;}

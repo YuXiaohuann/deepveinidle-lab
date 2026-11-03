@@ -121,7 +121,7 @@ test('configuration import maps gathering fields and restores simulation default
  const d=gatheringDefaults(),p=gatheringPlayer(d).player;p.skills.mining=game.levelXp(85)+10;p.equipment.pickaxe=game.encode(game.withRarity(84,3),5);p.brews.gatherer=p.lastTick+100;p.brewTier.gatherer=2;p.perks.hands=8;p.masteries.gather=7;
  const snapshot={version:2,capturedAt:Date.now(),player:p,worldTick:p.lastTick,worldBuffs:[]};
  const r=importGathering({...d,simulationHours:1,jobSelection:1,siteSelection:1},snapshot);
- assert.equal(r.state.levels.mining,85);assert.deepEqual(r.state.gear.pickaxe,{id:84,tier:3,plus:5});assert.equal(r.state.brews.gatherer,2);assert.equal(r.state.perks.hands,8);assert.equal(r.state.masteries.gather,7);assert.equal(r.state.simulationHours,24);assert.equal('siteSelection' in r.state,false);assert.equal(r.state.jobSelection,'all');
+ assert.equal(r.state.levels.mining,85);assert.deepEqual(r.state.gear.pickaxe,{id:84,tier:3,plus:5});assert.equal(r.state.brews.gatherer,2);assert.equal(r.state.perks.hands,8);assert.equal(r.state.masteries.gather,7);assert.equal(r.state.simulationHours,1);assert.equal('siteSelection' in r.state,false);assert.equal(r.state.jobSelection,'all');
  p.skills.mining='bad';const partial=importGathering({...d,levels:{...d.levels,mining:90}},snapshot);assert.equal(partial.state.levels.mining,90);assert.ok(partial.warnings.includes('skills.mining'));
  assert.throws(()=>importGathering(d,{...snapshot,version:1}),/invalidSnapshot/);
 });

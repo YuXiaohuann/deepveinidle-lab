@@ -25,7 +25,7 @@ test('all five rarities appear independently, with XP and profit first and plan 
   vm.runInContext("currentOrder().plans={'61:2':7};filledOnly=true",p);assert.equal(vm.runInContext('visibleJobs()[0].tier',p),2);assert.equal(vm.runInContext('visibleJobs().length',p),1);
  }
 });
-test('hour/day toggles scale only cached rate columns and retain per-craft values',()=>{
+test('legacy period values do not change daily columns or per-craft values',()=>{
  const p=page();vm.runInContext(`const plan=visibleJobs()[0];rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{seed:4294967295,completed:240,xp:480,items:{40:240},consumed:{20:240}}});`,p);
  vm.runInContext("state.period='hour'",p);
  const hour=vm.runInContext('recipeRow(visibleJobs()[0])',p);
@@ -34,8 +34,8 @@ test('hour/day toggles scale only cached rate columns and retain per-craft value
  const cells=s=>s.match(/<td[^>]*>.*?<\/td>/g);
  assert.deepEqual(cells(hour).slice(4),cells(day).slice(4));
  assert.equal(cells(hour)[0],cells(day)[0]);
- assert.equal(cells(hour)[3],'<td>10</td>');assert.equal(cells(day)[3],'<td>240</td>');
- assert.match(cells(hour)[1],/>20</);assert.match(cells(day)[1],/>480</);
+ assert.equal(cells(hour)[3],'<td>240</td>');assert.equal(cells(day)[3],'<td>240</td>');
+ assert.match(cells(hour)[1],/>480</);assert.match(cells(day)[1],/>480</);
  vm.runInContext("state.plans={'61:0':90}",p);assert.equal(vm.runInContext('!!rateFor(visibleJobs()[0])',p),true);
  assert.match(vm.runInContext('headers()',p),/制造次数\/天/);
  vm.runInContext("language='en'",p);assert.match(vm.runInContext('recipeRow(visibleJobs()[0])',p),/Random seed<\/span><span>4294967295/);
@@ -97,9 +97,9 @@ test('upgrades stay in the seven-column table without extra recipe notes and kee
  }
 });
 
-test('craft count rounds after period conversion while sorting retains raw counts',()=>{
+test('daily craft count rounds for display while sorting retains raw counts',()=>{
  const p=page();vm.runInContext(`const plan=visibleJobs()[0];rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{completed:241.6,xp:480,items:{40:240},consumed:{20:240}}});`,p);
- for(const [period,expected]of [['day','242'],['hour','10']]){
+ for(const [period,expected]of [['day','242'],['hour','242']]){
   vm.runInContext(`state.period='${period}'`,p);const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
   assert.equal(row.match(/<td[^>]*>.*?<\/td>/g)[3],`<td>${expected}</td>`);
  }

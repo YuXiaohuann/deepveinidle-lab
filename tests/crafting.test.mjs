@@ -19,7 +19,7 @@ test('five crafting skills, default tiers, normalization and independent tools',
  const d=craftingDefaults();assert.equal(d.tiers[61],0);assert.deepEqual(d.plans,{});
  assert.equal(d.period,'day');
  for(const period of [undefined,null,'bad','day'])assert.equal(normalizeCrafting({period}).period,'day');
- assert.equal(normalizeCrafting({period:'hour'}).period,'hour');
+ assert.equal(normalizeCrafting({period:'hour'}).period,'day');
  const s=normalizeCrafting({...d,skill:'smithing',levels:{smithing:50},gear:{hammer:{id:365,tier:3,plus:5}},plans:{'41:0':10,'61:1':20,'bad':10,'41:1':-1,'41:2':1.2,'41:3':Number.MAX_SAFE_INTEGER+1},owned:{1:7,1001:9,bad:1}});
  assert.deepEqual(s.plans,{'41:0':10,'61:1':20});assert.equal(s.owned[1001],9);assert.equal(s.owned.bad,undefined);
  assert.equal(craftingPlan(s).length,2);const p=craftingPlayer(s).player;

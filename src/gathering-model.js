@@ -25,7 +25,7 @@ export function gatheringDefaults(){return {
  perks:Object.fromEntries(gatheringPerks.map(p=>[p.id,0])),guild:null,guildXp:0,weeklyXp:0,worldRarity:0,blessing:false,ironman:false,homeBank:0,discardGathered:false,
  jobSelection:'all',simulationHours:24,customSimulation:false,hotSetting:'game',vendorValues:true,valuationMode:'custom',
 };}
-export function normalizeGathering(raw){
+export function normalizeGathering(raw,{wholeHours=true}={}){
  const s=gatheringDefaults();if(!raw||typeof raw!=='object')return s;
  s.skill=gatheringSkills.includes(raw.skill)?raw.skill:s.skill;
  for(const k of gatheringSkills)s.levels[k]=integer(raw.levels?.[k]??1,1,game.maxLevel);
@@ -34,7 +34,7 @@ export function normalizeGathering(raw){
  for(const r of gatheringRooms)s.house[r.id]=integer(raw.house?.[r.id]??0,0,game.houseLevelLimit);
  for(const m of gatheringMasteries)s.masteries[m.id]=integer(raw.masteries?.[m.id]??0,0,game.masteryRankLimit);
  for(const p of gatheringPerks)s.perks[p.id]=integer(raw.perks?.[p.id]??0,0,p.ranks);
- const manual=normalizeManual(raw,{wholeHours:false,fractionalWorldXp:true});for(const k of ['guildXp','weeklyXp','worldRarity','blessing','ironman','simulationHours','customSimulation','hotSetting','vendorValues','valuationMode'])s[k]=manual[k];
+ const manual=normalizeManual(raw,{wholeHours,fractionalWorldXp:true});for(const k of ['guildXp','weeklyXp','worldRarity','blessing','ironman','simulationHours','customSimulation','hotSetting','vendorValues','valuationMode'])s[k]=manual[k];
  s.homeBank=game.world.banks.some(b=>b.id===Number(raw.homeBank))?Number(raw.homeBank):0;
  s.discardGathered=raw.discardGathered===true;
  s.guild=readGuild(raw.guild);
@@ -52,7 +52,7 @@ export function selectedGatheringSites(raw,job){
 // The combat scenario owns the common manual character initialization. Override
 // only gathering-specific skills, equipment and buffs before predictor cloning.
 export function gatheringPlayer(raw){
- const s=normalizeGathering(raw);
+ const s=normalizeGathering(raw,{wholeHours:false});
  const scenario=createScenario({levels:{},gear:{amulet:s.gear.amulet,mount:s.gear.mount},brews:s.brews,house:s.house,masteries:s.masteries,homeBank:s.homeBank,manual:{...s,perks:s.perks,foodRule:3,hotSetting:'game'}});
  const p=scenario.player;
  for(const k of gatheringSkills)p.skills[k]=game.levelXp(s.levels[k]);
@@ -69,5 +69,5 @@ export function gatheringStats(raw){const {state:s,player:p}=gatheringPlayer(raw
 }
 export function gatheringJobStats(raw,job){const {player:p}=gatheringPlayer(raw),chance=game.workChance(job,p);return {chance,seconds:game.tickMs/1000/chance,caught:game.caughtChance(job,p)};}
 export function importGathering(current,snapshot){
- return importWorkConfig(current,snapshot,{skills:gatheringSkills,slots:gatheringSlots,potions:gatheringPotions,rooms:gatheringRooms,masteries:gatheringMasteries,perks:gatheringPerks,normalize:normalizeGathering,gear:gatheringGear,reset:{jobSelection:'all',simulationHours:24,customSimulation:false,hotSetting:'game',vendorValues:true,valuationMode:'custom',discardGathered:false}});
+ return importWorkConfig(current,snapshot,{skills:gatheringSkills,slots:gatheringSlots,potions:gatheringPotions,rooms:gatheringRooms,masteries:gatheringMasteries,perks:gatheringPerks,normalize:normalizeGathering,gear:gatheringGear,reset:{jobSelection:'all',customSimulation:false,hotSetting:'game',vendorValues:true,valuationMode:'custom',discardGathered:false}});
 }
