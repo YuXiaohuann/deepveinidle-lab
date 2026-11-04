@@ -27,11 +27,11 @@ test('all three fees add, fixed charges once, stock does not reduce percentage b
  assert.equal(e.material.value,100);assert.equal(e.minutes,50);assert.deepEqual(e.fees,{fixed:100,percent:10,minute:350,total:460});
  const partial=orderEstimate(order,prices(),()=>({result:{complete:true,elapsedTicks:1}}),1000);assert.equal(partial.minutes,1/30);assert.equal(partial.fees.minute,7/30);
 });
-test('incomplete time is unknown only for nonzero time fees; empty and instant orders cost correctly',()=>{
+test('incomplete time is unknown only for nonzero time fees; empty and timed upgrade orders cost correctly',()=>{
  const order=createOrder('a','A');order.plans={'41:0':1};order.fees={fixed:5,percent:null,minute:null};
  let e=orderEstimate(order,prices(),()=>null,1000);assert.equal(e.minutes,null);assert.equal(e.fees.total,5);
  order.fees.minute=2;e=orderEstimate(order,prices(),()=>({result:{complete:false,elapsedTicks:4}}),1000);assert.equal(e.fees.minute,null);assert.equal(e.fees.total,null);assert.equal(e.fees.fixed,5);
- order.plans={'upgrade-271:0':2};e=orderEstimate(order,prices(),()=>({result:{complete:true,elapsedTicks:0}}),1000);assert.equal(e.minutes,0);assert.equal(e.fees.total,5);
+ order.plans={'upgrade-271:0':2};e=orderEstimate(order,prices(),()=>({result:{complete:true,elapsedTicks:45}}),1000);assert.equal(e.minutes,.75);assert.equal(e.fees.total,6.5);
  order.plans={};e=orderEstimate(order,prices(),()=>null,1000);assert.deepEqual(e.fees,{fixed:0,percent:0,minute:0,total:0});
 });
 test('fee overflow fails explicitly instead of clamping or hiding failed estimates',()=>{

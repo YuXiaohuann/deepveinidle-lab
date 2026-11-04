@@ -1,8 +1,10 @@
+import {createCraftingScenario} from '../src/crafting-simulation.js';
+import {simulationTick} from '../src/simulation.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {game,defaults,normalize,makePlayer,calculate,slots} from '../src/model.js';
 import {importCharacter} from '../src/character-import.js';
-import {craftingDefaults,craftingJobs,craftingPlayer,craftingMaterials,calculateUpgrade} from '../src/crafting-model.js';
+import {craftingDefaults,craftingJobs,craftingMaterials} from '../src/crafting-model.js';
 import {createScenario} from '../src/simulation.js';
 
 test('1205 amulet retains every quality and enhancement without total level warnings',()=>{
@@ -27,11 +29,14 @@ test('1205 imported worn amulet is retained without claiming total level eligibi
 
 test('1205 upgrade capacity accepts last slot and rejects net growth beyond capacity atomically',()=>{
  const s=craftingDefaults();s.levels.fletching=99;const job=craftingJobs.find(j=>j.upgrade?.id===264),from=145,to=629;
- const player=filled=>{const p=craftingPlayer(s).player;p.unlimitedBank=false;p.bank=craftingMaterials(job,0,2);for(let id=1;Object.keys(p.bank).length<filled;id++)if(!Object.hasOwn(p.bank,id)&&id!==to)p.bank[id]=1;return p;};
- const full=player(75),before=structuredClone(full);assert.equal(game.applyUpgrade(full,job.upgrade,from),'full');assert.deepEqual(full,before);
- const free=player(74);free.bank[280]=1;assert.equal(game.applyUpgrade(free,job.upgrade,from),'ok');assert.equal(free.bank[to],1);
- const last=player(74);assert.equal(game.applyUpgrade(last,job.upgrade,from),'ok');assert.equal(last.bank[to],1);assert.equal(Object.keys(last.bank).length,75);
- // A second upgrade consumes the last base/material stacks and reuses the existing result stack.
- assert.equal(game.applyUpgrade(last,job.upgrade,from),'ok');assert.equal(last.bank[to],2);assert.equal(last.bank[from],undefined);
- for(const tier of [0,4]){const one=calculateUpgrade(s,job,tier,1),batch=calculateUpgrade(s,job,tier,10);assert.equal(batch.xp,one.xp*10);assert.deepEqual(batch.consumed,craftingMaterials(job,tier,10));assert.equal(batch.items[game.withRarity(to,tier)],10);assert.equal(batch.elapsedTicks,0);}
+ const player=filled=>{const p=createCraftingScenario(s,job,0,2).player;p.unlimitedBank=false;p.bank=craftingMaterials(job,0,2);for(let id=1;Object.keys(p.bank).length<filled;id++)if(!Object.hasOwn(p.bank,id)&&id!==to)p.bank[id]=1;return p;};
+ const run=(p,count)=>{
+  const context=game.createContext(game.world,0);
+  assert.ok(game.startUpgrade(p,context,job.upgrade.id,from,count));
+  for(let tick=p.lastTick+1,end=tick+6000;tick<end&&p.route;tick++)simulationTick(p,context,tick,[]);
+  assert.equal(p.route,null);
+ };
+ const full=player(75),before=structuredClone(full.bank);run(full,1);assert.deepEqual(full.bank,before);
+ const free=player(74);free.bank[280]=1;run(free,1);assert.equal(free.bank[to],1);
+ const last=player(74);run(last,2);assert.equal(last.bank[to],2);assert.equal(last.bank[from],undefined);
 });

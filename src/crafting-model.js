@@ -101,15 +101,3 @@ export function craftingStats(raw){
  moveSpeed:Math.round(game.mountSpeed(p)*(1+.2*game.brewScale(p,'swift'))*(1+s.masteries.move*.005))/1000,capacity:game.packCapacity(p)};
 }
 export function importCrafting(current,snapshot){return importWorkConfig(current,snapshot,{skills:craftingSkills,slots:craftingSlots,potions:craftingPotions,rooms:craftingRooms,masteries:craftingMasteries,perks:craftingPerks,normalize:normalizeCrafting,gear:gatheringGear,reset:{homeBank:0,hotSetting:'game'}});}
-
-export function calculateUpgrade(raw,job,tier,count){
- if(!job.upgrade||!validQuantity(count))throw Error('invalidQuantity');
- const {state:s,player:p}=craftingPlayer(raw),materials=craftingMaterials(job,tier,count);
- if(s.levels[job.skill]<job.levelReq)throw Error('levelTooLow');
- if(count===0)return {complete:true,error:null,xp:0,elapsedTicks:0,completed:0,items:{},consumed:{},instant:true};
- const before=p.skills[job.skill],from=game.withRarity(job.upgrade.from[0],tier),to=game.upgradeResult(job.upgrade,from);
- p.bank=craftingMaterials(job,tier,1);
- const status=game.applyUpgrade(p,job.upgrade,from);if(status!=='ok')throw Error('upgrade:'+status);
- if(p.bank[to]!==1)throw Error('invalidUpgradeResult');
- return {complete:true,error:null,xp:safeMultiply(p.skills[job.skill]-before,count),elapsedTicks:0,completed:count,items:{[to]:count},consumed:materials,instant:true};
-}

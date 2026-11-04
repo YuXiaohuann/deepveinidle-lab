@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
-import {craftingDefaults,normalizeCrafting,craftingPlayer,craftingJobs,craftingSkills,craftingStats,importCrafting,calculateUpgrade} from '../src/crafting-model.js';
+import {craftingDefaults,normalizeCrafting,craftingPlayer,craftingJobs,craftingSkills,craftingStats,importCrafting} from '../src/crafting-model.js';
 import {createCraftingScenario,simulateCrafting} from '../src/crafting-simulation.js';
 import {START_TICK} from '../src/simulation.js';
 import {questlessOffline} from '../scripts/native-questless.mjs';
@@ -58,8 +58,8 @@ for(const skill of craftingSkills)test(`${skill}: full world XP and ironman matc
  assert.ok(Math.abs(craftingStats(state).xpBonus-craftingStats({...state,weeklyXp:0}).xpBonus-.3525)<1e-9);
 });
 
-test('current crafting recipes have no random quality rewards; instant upgrades ignore world XP',()=>{
+test('current crafting recipes have no random quality rewards; station upgrades ignore world XP',()=>{
  assert.ok(craftingJobs.filter(j=>!j.upgrade).every(j=>j.inputs.length>0&&!j.bonus));
  const job=craftingJobs.find(j=>j.upgrade),state=craftingDefaults();state.levels[job.skill]=game.maxLevel;
- assert.deepEqual(calculateUpgrade({...state,weeklyXp:123.45,ironman:true},job,0,1),calculateUpgrade(state,job,0,1));
+ assert.deepEqual(simulateCrafting({...state,weeklyXp:123.45,ironman:true},job,0,1),simulateCrafting(state,job,0,1));
 });

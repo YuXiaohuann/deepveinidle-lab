@@ -1,5 +1,5 @@
-import {questlessOffline} from './native-questless.mjs';
-// Independently extract the complete 1.0.1208 native engine for compatibility checks.
+import {questlessOffline,questlessTick} from './native-questless.mjs';
+// Independently extract the complete 1.0.1211 native engine for compatibility checks.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -12,7 +12,7 @@ import {game,preset} from '../src/model.js';
 import {createScenario,START_TICK} from '../src/simulation.js';
 import {gatheringDefaults,gatheringJobs} from '../src/gathering-model.js';
 import {createGatheringScenario,simulateGatheringSite} from '../src/gathering-simulation.js';
-import {craftingDefaults,craftingTiers,craftingJobs,craftingMaterials,craftingPlayer} from '../src/crafting-model.js';
+import {craftingDefaults,craftingTiers,craftingJobs,craftingMaterials} from '../src/crafting-model.js';
 import {createCraftingScenario,simulateCrafting} from '../src/crafting-simulation.js';
 import {enhancementDefaults,enhanceableItems,enhancementSteps} from '../src/enhancement.js';
 import {forecast} from '../src/hot-forecast.js';
@@ -29,7 +29,7 @@ for(const node of parse(source,{ecmaVersion:'latest',sourceType:'module',ranges:
   const entry={start:d.start,text:node.kind+' '+source.slice(d.start,d.end)+';'};ids.forEach(id=>declarations.set(id,entry));
  }
 }
-const exports={"world":"q","monsters":"Xt","predict":"ou","startFight":"Kr","createContext":"EJ","gear":"We","armourMultiplier":"F2","masteryMultiplier":"Wa","restock":"c8","offline":"bV","startWork":"zs","applyUpgrade":"jE","enhanceCost":"Eu","enhanceChance":"N2","enhanceXp":"YE","enhanceTicks":"Ts","skillPetChance":"Ak","hotSkill":"Ab"};
+const exports={"world":"$","monsters":"ns","predict":"wu","startFight":"Lr","createContext":"l3","gear":"De","armourMultiplier":"jH","masteryMultiplier":"Da","restock":"AV","offline":"TQ","startWork":"qs","enhanceCost":"mf","enhanceChance":"O1","enhanceXp":"C7","enhanceTicks":"an","skillPetChance":"b2","hotSkill":"cv","startUpgrade":"sI","tick":"v$"};
 const selected=new Set(),allowed=new Set(['WeakSet','WeakMap','Uint8Array','Uint16Array','Uint32Array','Int16Array','Int32Array','Float64Array','Math','Map','Set','Number','Object','Array','String','Error','Date','Boolean','Infinity','undefined','JSON','RegExp','parseInt','parseFloat']);
 function collect(name){
  const d=declarations.get(name);if(!d)throw Error('Missing native declaration '+name);if(selected.has(d))return;selected.add(d);
@@ -37,15 +37,12 @@ function collect(name){
  for(const dep of new Set(refs))if(declarations.has(dep))collect(dep);else if(!allowed.has(dep))throw Error('Unexpected native dependency '+dep);
 }
 Object.values(exports).forEach(collect);
-const directory=fs.mkdtempSync(path.join(os.tmpdir(),'dvi-1208-audit-'));
+const directory=fs.mkdtempSync(path.join(os.tmpdir(),'dvi-1211-audit-'));
 try{
  const file=path.join(directory,'native.mjs');
  fs.writeFileSync(file,[...selected].sort((a,b)=>a.start-b.start).map(d=>d.text).join('\n')+'\nexport{'+Object.entries(exports).map(([alias,name])=>name+' as '+alias).join(',')+'};');
  const native=await import(pathToFileURL(file));
- // Manufacturing job lists changed; compare map geometry and combat routes.
- const siteGeometry=({jobIds,...site})=>site;
- const geometry=world=>({...world,sites:world.sites.map(siteGeometry),siteById:new Map([...world.siteById].map(([id,site])=>[id,siteGeometry(site)]))});
- assert.deepEqual(geometry(native.world),geometry(game.world));assert.deepEqual(native.monsters,game.monsters);
+ assert.deepEqual(native.world,game.world);assert.deepEqual(native.monsters,game.monsters);
  let count=0;
  function compare(state,monster){
   const {player}=createScenario(state,monster);
@@ -83,9 +80,19 @@ try{
  for(const job of craftingJobs)for(const tier of craftingTiers(job)){
   const actual=simulateCrafting(state,job,tier,3,{seed:314});
   if(job.upgrade){
-   const {player}=craftingPlayer(state),before=player.skills[job.skill],from=game.withRarity(job.upgrade.from[0],tier);
-   player.bank=craftingMaterials(job,tier,3);for(let i=0;i<3;i++)assert.equal(native.applyUpgrade(player,job.upgrade,from),'ok');
-   assert.equal(actual.xp,player.skills[job.skill]-before);assert.equal(player.bank[game.withRarity(job.output.itemId,tier)],3);upgradeCount++;
+   const {player,context,site}=createCraftingScenario(state,job,tier,3,{seed:314});
+   const before=player.skills[job.skill],from=game.withRarity(job.upgrade.from[0],tier);
+   player.bank=craftingMaterials(job,tier,3);
+   assert.ok(native.startUpgrade(player,context,job.upgrade.id,from,3));
+   assert.equal(player.route.siteId,site.id);
+   let completed=0,elapsed=0;
+   while(completed<3&&elapsed<6000){
+    const events=[];questlessTick(native,player,context,START_TICK+(++elapsed),events);
+    completed+=events.filter(e=>e.kind==='produced'&&e.upgrade===job.upgrade.id).length;
+   }
+   assert.equal(completed,3);assert.equal(actual.elapsedTicks,elapsed);
+   assert.equal(actual.xp,player.skills[job.skill]-before);
+   assert.equal(player.bank[game.withRarity(job.output.itemId,tier)],3);upgradeCount++;
   }else{
    const scenario=createCraftingScenario(state,job,tier,3,{seed:314}),before=scenario.player.skills[job.skill];
    const report=questlessOffline(native,scenario.player,scenario.context,START_TICK+6000);
@@ -111,5 +118,5 @@ try{
  if(process.argv[2])fs.writeFileSync(process.argv[2],JSON.stringify({predictions:count,gearVariants:105,gatheringSites:gatheringCount,craftingCases:craftingCount,upgradeCases:upgradeCount,enhancementCosts:costs,enhancementCases,forecastSlots:49})+'\n');
  console.log(`Enhancing: ${enhancementCases} item/rarity/level/mastery/plus cases matched independent native chance, costs and XP; duration and pet chance matched.`);
  console.log(`Other pages: ${gatheringCount} gathering sites, ${craftingCount} ordinary recipe/quality cases, ${upgradeCount} upgrade/quality cases, ${costs} enhancement costs and 49 forecast slots matched independent native code.`);
- console.log(`Native 1.0.1208 comparison: ${count}/${count} complete 1-hour predictions matched; world geometry, monsters and 105 new-gear variants matched.`);
+ console.log(`Native 1.0.1211 comparison: ${count}/${count} complete 1-hour predictions matched; world geometry, monsters and 105 new-gear variants matched.`);
 }finally{fs.rmSync(directory,{recursive:true});}

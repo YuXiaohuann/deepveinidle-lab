@@ -26,21 +26,31 @@ test('legendary upgrade materials include same-quality +0 base and exact extra q
  assert.deepEqual(materialRequirements(s),{4114:2,4252:4,4145:3,4251:3});
  const row=materialBudget(s,{}).rows.find(r=>r.id===4114);assert.equal(row.required,2);assert.equal(row.purchase,1);
 });
-test('every upgrade quality is instant, deterministic, +0 and grants unmodified fixed XP',()=>{
+test('every upgrade quality runs at a station, is deterministic, +0 and grants unmodified fixed XP',()=>{
  const s=craftingDefaults();for(const k of Object.keys(s.levels))s.levels[k]=99;
  s.masteries.xp=100;s.brews.elixir=4;s.guildXp=50;s.weeklyXp=100;s.hotSetting='current';
  for(const job of upgrades)for(let tier=0;tier<5;tier++){
   const r=simulateCrafting(s,job,tier,3,{seed:314});
-  assert.equal(r.complete,true);assert.equal(r.instant,true);assert.equal(r.elapsedTicks,0);assert.equal(r.xp,job.xp*3);
+  assert.equal(r.complete,true);assert.ok(r.elapsedTicks>0);assert.ok(r.workingTicks>0);assert.equal(r.xp,job.xp*3);
   assert.deepEqual(r.items,{[game.withRarity(job.output.itemId,tier)]:3});
   assert.deepEqual(r.consumed,craftingMaterials(job,tier,3));assert.equal(r.completed,3);
-  const rate=simulateCraftingWindow(s,job,tier);assert.equal(rate.instant,true);assert.equal(rate.completed,1);assert.equal(rate.xp,job.xp);
+  const rate=simulateCraftingWindow({...s,simulationHours:1},job,tier);assert.ok(rate.complete);assert.ok(rate.completed>3);assert.equal(rate.xp,job.xp*rate.completed);
  }
 });
 test('locked upgrades still require materials and imports retain upgrade plans; overflow fails',()=>{
  const s=craftingDefaults(),job=upgrades[0];s.plans={[job.id+':4']:2};
  assert.ok(Object.keys(materialRequirements(s)).length>0);assert.throws(()=>simulateCrafting(s,job,4,2),/levelTooLow/);
  const p=craftingPlayer(s).player,r=importCrafting(s,{version:2,capturedAt:Date.now(),player:p});assert.deepEqual(r.state.plans,s.plans);
- s.levels[job.skill]=99;assert.throws(()=>simulateCrafting(s,job,0,Number.MAX_SAFE_INTEGER),/quantityOverflow/);
+ s.levels.smithing=99;assert.throws(()=>simulateCrafting(s,upgrades.find(j=>j.upgrade.id===271),0,Number.MAX_SAFE_INTEGER),/quantityOverflow/);
  assert.equal(craftingPlan(s)[0].job.id,job.id);
+});
+
+test('upgrade speed changes station time and a short order reports incomplete',()=>{
+ const s=craftingDefaults(),job=upgrades.find(j=>j.id==='upgrade-271');
+ s.levels.smithing=99;
+ const base=simulateCrafting(s,job,0,10),fast=simulateCrafting({...s,masteries:{craft:200}},job,0,10);
+ assert.ok(fast.elapsedTicks<base.elapsedTicks);
+ const partial=simulateCrafting(s,job,0,10,{maxTicks:base.elapsedTicks-1});
+ assert.equal(partial.error,'timeLimit');assert.equal(partial.complete,false);
+ assert.equal(partial.completed,9);assert.deepEqual(partial.consumed,craftingMaterials(job,0,9));
 });

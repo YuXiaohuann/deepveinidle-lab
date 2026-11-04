@@ -14,7 +14,7 @@ import {masteryDefaults,masteryStorageKey} from '../src/mastery.js';
 import {craftingDefaults} from '../src/crafting-model.js';
 
 const args=process.argv.slice(2),option=name=>args.includes(name)?args[args.indexOf(name)+1]:null;
-const output=path.resolve(option('--out')??'.test-artifacts/upstream-1208/browser');
+const output=path.resolve(option('--out')??'.test-artifacts/upstream-1211/browser');
 await fs.mkdir(output,{recursive:true});
 const servers=[],result={cases:[],errors:[]};let browser;
 async function serve(script){
@@ -32,7 +32,7 @@ try{
   page.on('pageerror',error=>result.errors.push(error.message));
   const state=preset('ranged');state.manual.simulationHours=1;state.manual.enemySelection='monster-11';state.manual.hotSetting='off';
   state.gear.amulet={id:357,tier:4,plus:17};
-  const craft=craftingDefaults();craft.skill='smithing';craft.levels.smithing=99;craft.levels.crafting=99;craft.plans={'upgrade-271:4':2};craft.owned={4044:6,4114:1,4252:1};
+  const craft=craftingDefaults();craft.skill='smithing';craft.simulationHours=1;craft.levels.smithing=99;craft.levels.crafting=99;craft.plans={'upgrade-271:4':2};craft.owned={4044:6,4114:1,4252:1};
   await context.addInitScript(({state,craft,key,language})=>{
    if(!localStorage.getItem('dvi-simulator-v1'))localStorage.setItem('dvi-simulator-v1',JSON.stringify({language,state}));if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify({version:1,build:{...craft,plans:{}},orders:[{id:"upstream",name:"Upstream order",enabled:true,plans:craft.plans,fees:{fixed:null,percent:null,minute:null}}],currentOrderId:"upstream",inventory:{capturedAt:Date.now(),items:craft.owned}}));
   },{state,craft,key:craftingStorageKey,language});
@@ -72,7 +72,7 @@ try{
   await page.waitForFunction(()=>document.querySelector('#simulation-status').hidden&&!document.querySelector('#rows .pending'));
   assert.equal(await page.locator('#rows tr[data-enemy]').count(),1);
   assert.ok(!/Simulation failed|模拟失败/.test(await page.locator('#rows').innerText()));
-  assert.match(await page.locator('.footer-source').innerText(),/2026-10-30.*1\.0\.1208/);
+  assert.match(await page.locator('.footer-source').innerText(),/2026-11-04.*1\.0\.1211/);
   assert.ok((await page.locator('[data-path^="house."]').evaluateAll(els=>els.map(el=>el.max))).every(max=>max==='50'));
   assert.equal(await page.locator('[data-path="masteries.accuracy"]').getAttribute('max'),'200');
   const amuletNote=/总等级|total level/i;
@@ -107,7 +107,10 @@ try{
   const gatherScreenshot=`gather-${language}-${width}.png`;await page.screenshot({path:path.join(output,gatherScreenshot),fullPage:true});
   await page.locator('#craft-nav').click();
   assert.equal(await page.locator('[data-craft-field="house.forge"]').getAttribute('max'),'50');await page.locator('[data-craft-rarity="4"]').click();await page.locator('#craft-filled').click();
-  await page.locator('[data-craft-order-row="upstream"]').waitFor();assert.match(await page.locator('.craft-table').innerText(),/1,900/);
+  await page.locator('[data-craft-order-row="upstream"]').waitFor();
+  const upgradeRow=page.locator('.craft-table tbody tr').filter({has:page.locator('[data-craft-count="upgrade-271:4"]')});
+  await upgradeRow.locator('td').nth(1).locator('summary').click();
+  assert.match(await upgradeRow.locator('td').nth(1).innerText(),/1,900/);
   assert.equal(await page.locator('.craft-table [data-craft-count="upgrade-271:4"]').inputValue(),'2');
   assert.equal(await page.locator('[data-craft-inventory="4114"]').innerText(),'1');
   assert.equal(await page.locator('[data-craft-inventory="4252"]').innerText(),'1');

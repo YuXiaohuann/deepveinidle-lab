@@ -1,15 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
-import {craftingDefaults,craftingJobs,craftingTiers,craftingMaterials,normalizeCrafting,craftingPlayer} from '../src/crafting-model.js';
-import {simulateCrafting} from '../src/crafting-simulation.js';
+import {craftingDefaults,craftingJobs,craftingTiers,craftingMaterials,normalizeCrafting} from '../src/crafting-model.js';
+import {createCraftingScenario,simulateCrafting} from '../src/crafting-simulation.js';
 import {validItemId,itemFamily,priceDefaults,setItemPrice,valuationPrice} from '../src/item-prices.js';
 import {translatedName} from '../src/i18n.js';
-import {createScenario} from '../src/simulation.js';
+import {createScenario,simulationTick} from '../src/simulation.js';
 
 const fireworks=craftingJobs.filter(j=>Number(j.id)>=420&&Number(j.id)<=424);
 test('1196 effective item and recipe catalogues remain available',()=>{
- assert.equal(game.items.length,1327);assert.equal(game.recipes.length,227);
+ assert.equal(game.items.length,1330);assert.equal(game.recipes.length,227);
  assert.equal(game.item(397).name,'Moon box');assert.equal(game.vendorPrice(397),10);assert.equal(game.marketFamily(397),'valuables');
  assert.equal(craftingJobs.filter(j=>!j.upgrade).length,177);assert.equal(game.upgradeRecipes.length,17);
 });
@@ -53,13 +53,15 @@ test('1196 fireworks stay out of native collection catalogue and points',()=>{
  }
  assert.equal(game.masteryEarnedPoints({collections:{701:10000000},forgeLog:{}}),0);
 });
-test('1196 upgraded endgame equipment counts at its rarity without enhancement encoding',()=>{
+test('timed upgrade keeps the base gear rarity and enhancement',()=>{
  const job=game.upgradeRecipes.find(j=>j.to.includes(629));assert.ok(job);
- const state=craftingDefaults();state.levels[job.skill]=99;const {player}=craftingPlayer(state);
+ const state=craftingDefaults();state.levels[job.skill]=99;const {player,context}=createCraftingScenario(state,craftingJobs.find(j=>j.upgrade?.id===job.id),4,1);
  const from=game.encode(game.withRarity(job.from[0],4),7),to=game.upgradeResult(job,from);
  player.bank={[from]:1,...Object.fromEntries(game.upgradeMaterials(job,from).named.map(i=>[i.itemId,i.qty]))};
- assert.equal(game.applyUpgrade(player,job,from),'ok');assert.equal(player.bank[to],1);
- assert.equal(player.collections[game.withRarity(629,4)],1);assert.equal(player.collections[to],undefined);
+ assert.ok(game.startUpgrade(player,context,job.id,from,1));
+ for(let tick=player.lastTick+1,end=tick+6000;tick<end&&player.route;tick++)simulationTick(player,context,tick,[]);
+ assert.equal(player.bank[to],1);
+ assert.equal(to,game.encode(game.withRarity(629,4),7));
  assert.equal(game.collectionItems.has(629),true);
 });
 test('1196 predictor preserves remaining potion time and resets synthetic quests and pack',()=>{

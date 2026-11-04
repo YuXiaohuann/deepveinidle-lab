@@ -5,9 +5,9 @@ import * as game from'../src/upstream.js';
 import {enhancementDefaults,enhanceableItems,validateEnhancement,enhancementSteps,calculateEnhancement,importEnhancement} from'../src/enhancement.js';
 const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-12,`${a} != ${b}`);
 
-test('1208 reviewed full snapshot retains lectern and client boss definitions',()=>{
+test('Current reviewed full snapshot retains lectern and client boss definitions',()=>{
  const m=JSON.parse(fs.readFileSync(new URL('../vendor/manifest.json',import.meta.url)));
- assert.equal(m.changelogVersion,'1.0.1208');assert.equal(m.sha256,'654fd8927fcd1015d0a2ca09503340501862048ed8ed97ff02c4201fb8f4d746');assert.deepEqual(m.overrides,[]);
+ assert.equal(m.changelogVersion,'1.0.1211');assert.equal(m.sha256,'5b1234190b980ab6ad057b60429ea2c9cfde570e3d7f447ddbfe06dbf1a0f830');assert.deepEqual(m.overrides,[]);
  assert.notEqual(game.rooms.find(r=>r.id==='lectern').retired,true);
  assert.deepEqual(game.bosses.map(b=>b.exclusive.chance),[1/500,1/500,1/500]);
 });

@@ -8,7 +8,7 @@ import {simulateMonster,createScenario,START_TICK,HOUR_TICKS,DAY_TICKS} from '..
 const preset=style=>{const s=presetBuild(style);s.manual.hotSetting='off';s.manual.simulationHours=24;return s;};
 const defaults=()=>{const s=defaultBuild();s.manual.hotSetting='off';s.manual.simulationHours=24;return s;};
 
-test('banking first eats warehouse food without overflowing HP, then loads trip food',()=>{
+test('banking eats without overhealing and loads trip food only with auto-eating enabled',()=>{
  for(const [hp,eatAt,stock,expectedHp,eaten]of [[12,.5,28,72,3],[42,.5,28,82,2],[43,.5,28,83,2],[12,0,28,12,0],[12,.5,0,12,0],[0,.5,28,80,4],[12,.5,1,32,1]]){
   const {player:p,context}=createScenario(preset('magic'));
   p.bank={66:stock};p.pack=[];p.foodItemId=66;p.foodPerTrip=28;
@@ -18,7 +18,7 @@ test('banking first eats warehouse food without overflowing HP, then loads trip 
   assert.equal(p.hp,expectedHp,`hp=${hp}, threshold=${eatAt}, stock=${stock}`);
   assert.equal(events.filter(e=>e.kind==='ate').length,eaten);
   assert.ok(events.filter(e=>e.kind==='ate').every(e=>e.healed===20));
-  assert.equal(p.pack.reduce((sum,item)=>sum+item.qty,0),stock-eaten);
+  assert.equal(p.pack.reduce((sum,item)=>sum+item.qty,0),eatAt>0?stock-eaten:0);
   assert.equal(p.activity,'idle');
  }
 });

@@ -85,14 +85,15 @@ test('recipe toolbar retains filters while batch editing belongs to the order pa
  assert.match(source,/id="craft-batch"/);
 });
 
-test('upgrades stay in the seven-column table without extra recipe notes and keep per-upgrade units',()=>{
+test('upgrades stay in the seven-column table without extra recipe notes and display daily simulation results',()=>{
  for(const lang of ['zh','en']){
   const p=page(lang);vm.runInContext("state.skill='smithing';query='Colossus blade';state.levels.smithing=99",p);
   const plans=vm.runInContext('visibleJobs()',p);assert.equal(plans.length,5);
+  vm.runInContext(`const plan=visibleJobs()[0];rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{completed:12,xp:22800,items:{350:12},consumed:{114:12}}});`,p);
   const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
   assert.equal((row.match(/<td[ >]/g)||[]).length,7);
   assert.doesNotMatch(row,/即时升级 · 底装 \+0|Instant upgrade · base \+0|gear-stats/);
-  assert.match(row,lang==='zh'?/1,900 \/次/:/1,900 \/ upgrade/);
+  assert.match(row,/22,800/);assert.match(row,lang==='zh'?/平均单次经验/:/Average XP per action/);
   assert.match(row,/data-craft-count="upgrade-271:0"/);assert.doesNotMatch(row,/data-craft-upgrade-plus/);
  }
 });
@@ -120,6 +121,4 @@ test('XP details use unrounded run totals, include burnt attempts and do not sca
  }
  vm.runInContext('rateFor(visibleJobs()[0]).result.completed=0;rateFor(visibleJobs()[0]).result.xp=0',p);
  assert.match(vm.runInContext('recipeRow(visibleJobs()[0])',p),/单次经验<\/span><span>—<\/span>/);
- vm.runInContext("state.skill='smithing';query='Colossus blade'",p);const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
- assert.match(row,/单次经验<\/span><span>1,900<\/span>/);assert.doesNotMatch(row,/本轮平均/);
 });

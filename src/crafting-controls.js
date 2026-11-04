@@ -11,7 +11,7 @@ import {valuationPrice,validPrice} from './item-prices.js';
 import {registerCharacterUpdates,characterImportPanel,probeCharacter,importStatusText} from './import-controls.js';
 import {worldBuffWarningText} from './world-buffs.js';
 import {randomSimulationSeed} from './simulation-seed.js';
-import {craftingStorageKey,craftingDefaults,craftingTiers,normalizeCrafting,craftingSkills,craftingToolSlots,craftingJobs,craftingPotions,craftingRooms,craftingMasteries,craftingPerks,planKey,validQuantity,craftingPlan,craftingMaterials,priceItems,craftingStats,importCrafting,calculateUpgrade} from './crafting-model.js';
+import {craftingStorageKey,craftingDefaults,craftingTiers,normalizeCrafting,craftingSkills,craftingToolSlots,craftingJobs,craftingPotions,craftingRooms,craftingMasteries,craftingPerks,planKey,validQuantity,craftingPlan,craftingMaterials,priceItems,craftingStats,importCrafting} from './crafting-model.js';
 
 let state=craftingDefaults(),language='zh',query='',group='',filledOnly=false,sort='levelReq',direction='desc',notice='',importStatus=null,importBusy=false,saveOK=true,active=false,probeStarted=false;
 let worker=null,timer=null,renderTimer=null,generation=0,running=false,progress=null,workerError=null,clock=Date.now(),roundSeed=null;
@@ -73,27 +73,26 @@ function itemLines(items,{prices=false}={}){
 }
 function visibleJobs(){return craftingJobs.filter(j=>j.skill===state.skill&&(!group||j.group===group)&&`${j.name} ${translatedName(j.name,'zh')}`.toLowerCase().includes(query.toLowerCase())).flatMap(job=>craftingTiers(job).map(tier=>({job,tier,key:planKey(job.id,tier),count:currentOrder()?.plans[planKey(job.id,tier)]??0}))).filter(p=>selectedTiers.has(p.tier)&&(!filledOnly||p.count>0));}
 function rateFor(plan){const entry=rateCache.get(plan.key);return entry?.signature===signature({...plan,count:0})?entry:null;}
-function methodNote(){return text('制造次数、耗时、移动、回仓、经验及材料消耗来自<strong class="simulation-caveat">原始模拟</strong>；普通制造产物按指定稀有度计算，烹饪产物与稀有掉落为基于本次模拟机会的<strong class="simulation-caveat">数学期望</strong>，活动礼盒仍按原始模拟统计；利润结合产物期望、实际材料消耗及物品价格推算，不扣药水成本与市场手续费。材料需求与购买预算按计划次数计算，即时装备升级直接计算。','Craft counts, elapsed time, movement, banking, XP and material consumption come from the <strong class="simulation-caveat">original simulation</strong>; ordinary products use the selected rarity, while cooking products and rare drops are <strong class="simulation-caveat">mathematical expectations</strong> based on opportunities in this run. Event boxes still use simulated counts. Profit uses expected products, actual material consumption and item prices, excluding potion costs and market fees. Material requirements and purchase budgets use planned counts; instant gear upgrades are calculated directly.');}
+function methodNote(){return text('制造次数、耗时、移动、回仓、经验及材料消耗来自<strong class="simulation-caveat">原始模拟</strong>；普通制造产物按指定稀有度计算，烹饪产物与稀有掉落为基于本次模拟机会的<strong class="simulation-caveat">数学期望</strong>，活动礼盒仍按原始模拟统计；利润结合产物期望、实际材料消耗及物品价格推算，不扣药水成本与市场手续费。材料需求与购买预算按计划次数计算，装备升级按原始工位路线计时。','Craft counts, elapsed time, movement, banking, XP and material consumption come from the <strong class="simulation-caveat">original simulation</strong>; ordinary products use the selected rarity, while cooking products and rare drops are <strong class="simulation-caveat">mathematical expectations</strong> based on opportunities in this run. Event boxes still use simulated counts. Profit uses expected products, actual material consumption and item prices, excluding potion costs and market fees. Material requirements and purchase budgets use planned counts; gear upgrades follow the original station route.');}
 function rarityFilters(){return `<div class="presets craft-rarity-filters" role="group" aria-label="${text('稀有度筛选','Rarity filter')}">${rarities().map((r,tier)=>`<button type="button" data-craft-rarity="${tier}" aria-pressed="${selectedTiers.has(tier)}" class="${selectedTiers.has(tier)?'selected':''}">${r}</button>`).join('')}</div>`;}
 function signature(plan){
  const skill=plan.job.skill;return JSON.stringify({count:plan.count,simulationHours:state.simulationHours,tier:plan.tier,level:state.levels[skill],tool:state.gear[craftingToolSlots[skill]],mount:state.gear.mount,brews:state.brews,house:craftingRooms.filter(r=>r.bonus.skill===skill).map(r=>[r.id,state.house[r.id]]),masteries:state.masteries,perks:{pockets:state.perks.pockets,quick:state.perks.quick,hands:skill==='cooking'?state.perks.hands:0},guildXp:state.guildXp,weeklyXp:state.weeklyXp,ironman:state.ironman,blessing:state.blessing,homeBank:state.homeBank,hotSetting:state.hotSetting,clock:state.hotSetting==='current'?clock:null});
 }
 function resultFor(plan){const c=cache.get(simulationKey(plan));return c?.signature===signature(plan)?c:null;}
 function sortedJobs(){
- const metric=p=>{if(p.job.upgrade&&['completed','xp','profit'].includes(sort))return undefined;if(sort==='levelReq')return p.job.levelReq;try{const r=rateFor(p)?.result;return {xp:r?.xp,completed:r?.completed,materialValue:priceItems(craftingMaterials(p.job,p.tier,1),getSnapshot()).value,outputValue:priceItems({[game.withRarity(p.job.output.itemId,p.tier)]:p.job.output.qty},getSnapshot()).value,profit:r?priceItems(r.items,getSnapshot(),{expected:true}).value-priceItems(r.consumed,getSnapshot()).value:undefined}[sort];}catch{return undefined;}};
+ const metric=p=>{if(sort==='levelReq')return p.job.levelReq;try{const r=rateFor(p)?.result;return {xp:r?.xp,completed:r?.completed,materialValue:priceItems(craftingMaterials(p.job,p.tier,1),getSnapshot()).value,outputValue:priceItems({[game.withRarity(p.job.output.itemId,p.tier)]:p.job.output.qty},getSnapshot()).value,profit:r?priceItems(r.items,getSnapshot(),{expected:true}).value-priceItems(r.consumed,getSnapshot()).value:undefined}[sort];}catch{return undefined;}};
  return visibleJobs().sort((a,b)=>{const x=metric(a),y=metric(b);if(x===undefined)return y===undefined?String(a.job.id).localeCompare(String(b.job.id))||a.tier-b.tier:1;if(y===undefined)return -1;return (x-y)*(direction==='asc'?1:-1)||String(a.job.id).localeCompare(String(b.job.id))||a.tier-b.tier;});
 }
 function headers(){const period=text('天','day');return [[text('配方','Recipe'),'levelReq'],[text('经验','XP')+'/'+period,'xp'],[text('利润','Profit')+'/'+period,'profit'],[text('制造次数','Crafts')+'/'+period,'completed'],[text('单次材料成本','Material cost / craft'),'materialValue'],[text('单次产物价值','Product value / craft'),'outputValue'],[text('订单制造次数','Order crafts'),null]].map(([label,key])=>`<th ${key?`aria-sort="${sort===key?(direction==='asc'?'ascending':'descending'):'none'}"`:''}>${key?`<button class="sort-header" data-craft-sort="${key}">${label} <span class="sort-arrow">${sort===key?(direction==='asc'?'↑':'↓'):'↕'}</span></button>`:label}</th>`).join('');}
 function recipeRow(plan){
  const {job,tier,key,count}=plan,locked=state.levels[job.skill]<job.levelReq;
- const seed=job.upgrade?undefined:rateFor(plan)?.result?.seed??resultFor(plan)?.result?.seed;
+ const seed=rateFor(plan)?.result?.seed??resultFor(plan)?.result?.seed;
  const recipeInfo=[[text('单次产量','Output per craft'),format(job.output.qty)],[text('基础经验 / 次','Base XP / craft'),format(job.xp)],...(job.burn?[[text('安全等级','No-burn level'),job.burn.safeAtLevel]]:[]),...(seed===undefined?[]:[[text('随机种子','Random seed'),seed]])].map(([label,value])=>detailLine(label,value)).join('');
  const lead=`<tr><td class="column-highlight">${detail(`${key}-recipe`,`<span class="enemy-name"><span><strong>${esc(name(job.name))} · ${rarities()[tier]}</strong><small>${text('所需等级','Level')} ${job.levelReq}</small></span></span>`,recipeInfo)}${locked?`<small class="death-note">${errorText('levelTooLow')}</small>`:''}</td>`;
  const input=`<td><input ${!currentOrder()?'disabled':''} id="craft-count-${job.id}-${tier}" class="craft-quantity" type="number" min="0" max="${Number.MAX_SAFE_INTEGER}" step="1" data-craft-count="${key}" value="${count}" aria-label="${esc(name(job.name)+' '+rarities()[tier]+' '+text('计划制造次数','planned crafts'))}"></td>`;
  try{
   const materials=craftingMaterials(job,tier,1),cost=priceItems(materials,getSnapshot()),products={[game.withRarity(job.output.itemId,tier)]:job.output.qty},value=priceItems(products,getSnapshot()),entry=rateFor(plan),r=entry?.result,factor=24/state.simulationHours;
   const unitValues=`<td>${detail(`${key}-cost`,warn(cost.missing)+format(cost.value,2),itemLines(materials,{prices:true}))}</td><td>${detail(`${key}-value`,warn(value.missing)+format(value.value,2),itemLines(products,{prices:true}))}</td>`;
-  if(job.upgrade)return lead+`<td class="column-highlight">${detail(`${key}-xp`,format(job.xp)+' '+text('/次','/ upgrade'),detailLine(text('单次经验','XP per action'),format(job.xp)))}</td><td class="column-highlight">${warn([...cost.missing,...value.missing])+format(value.value-cost.value,2)} ${text('/次','/ upgrade')}</td><td>${text('即时升级','Instant upgrade')}</td>`+unitValues+input+'</tr>';
   const label=locked?errorText('levelTooLow'):entry?.error?errorText(entry.error):r?.error?errorText(r.error):text('计算中…','Calculating…');
   const output=r?priceItems(r.items,getSnapshot(),{expected:true}):null,consumed=r?priceItems(r.consumed,getSnapshot()):null;
   const profit=r?output.value-consumed.value:0,missing=r?[...output.missing,...consumed.missing]:[];
@@ -176,10 +175,6 @@ function refreshInventory(){return craftingUpdater.read({config:false,inventory:
 function renderResults({keepToolbar=false}={}){
  const host=document.getElementById('craft-results');if(!host)return;
  if(ensureCurrentOrder())save();
- for(const plan of allOrderPlans().filter(p=>p.job.upgrade&&!resultFor(p))){
-  try{cache.set(simulationKey(plan),{signature:signature(plan),result:calculateUpgrade(state,plan.job,plan.tier,plan.count)});}
-  catch(error){cache.set(simulationKey(plan),{signature:signature(plan),error:String(error.message??error)});}
- }
  const stats=craftingStats(state),jobs=sortedJobs();
  let materialHtml;
  try{
@@ -207,11 +202,11 @@ function stopWorker(){clearTimeout(renderTimer);renderTimer=null;generation++;wo
 function schedule(){stopWorker();clearTimeout(timer);workerError=null;roundSeed=null;clock=Date.now();renderHot();cache.clear();rateCache.clear();if(active)timer=setTimeout(startSimulation,180);}
 function startSimulation(){
  if(workerError)return;
- clearTimeout(timer);const pendingPlans=[...allOrderPlans().filter(p=>!p.job.upgrade&&state.levels[p.job.skill]>=p.job.levelReq&&!resultFor(p)),...craftingJobs.filter(j=>!j.upgrade&&j.skill===state.skill&&state.levels[j.skill]>=j.levelReq).flatMap(job=>craftingTiers(job).map(tier=>({job,tier,key:planKey(job.id,tier),count:0,mode:'rate'}))).filter(p=>!rateFor(p))];
+ clearTimeout(timer);const pendingPlans=[...allOrderPlans().filter(p=>state.levels[p.job.skill]>=p.job.levelReq&&!resultFor(p)),...craftingJobs.filter(j=>j.skill===state.skill&&state.levels[j.skill]>=j.levelReq).flatMap(job=>craftingTiers(job).map(tier=>({job,tier,key:planKey(job.id,tier),count:0,mode:'rate'}))).filter(p=>!rateFor(p))];
  const plans=[...new Map(pendingPlans.map(p=>[p.mode==='rate'?'rate:'+p.key:simulationKey(p),p])).values()];
  if(!plans.length){renderResults({keepToolbar:true});return;}stopWorker();const token=generation,signatures=new Map(plans.map(p=>[`${p.mode??'plan'}:${p.mode==='rate'?p.key:simulationKey(p)}`,signature(p)]));running=true;workerError=null;
  try{
-  if(plans.some(p=>!p.job.upgrade))roundSeed??=randomSimulationSeed();
+  roundSeed??=randomSimulationSeed();
   worker=new Worker(new URL('./crafting-worker.js',import.meta.url),{type:'module'});
   worker.onmessage=({data})=>{if(token!==generation)return;
    if(data.result)(data.mode==='rate'?rateCache:cache).set(data.result.key,{signature:signatures.get(`${data.mode??'plan'}:${data.result.key}`),result:data.result});

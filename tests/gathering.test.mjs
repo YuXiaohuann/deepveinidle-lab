@@ -146,8 +146,11 @@ test('nearest strategy preserves original point order and uses the prediction de
  assert.equal(selectedGatheringSites(automatic,job)[0].id,1);
  assert.equal(selectedGatheringSites({...automatic,homeBank:1},job)[0].id,1);
  const second=selectedGatheringSites({...automatic,homeBank:2},job);assert.equal(second.length,1);
+ // From depot 2, the shortest walk reaches the far side of the river first.
+ const fishing=gatheringJobs.find(j=>j.id===25);
+ assert.equal(selectedGatheringSites({...automatic,skill:'fishing',homeBank:2},fishing)[0].id,34);
  const theft=jobFor('thieving');assert.equal(selectedGatheringSites({...automatic,skill:'thieving',homeBank:2},theft)[0].id,84);
- assert.equal(game.nearestWorkSite({world:{sites:[{id:3,x:1,y:0,jobIds:[1]},{id:2,x:0,y:1,jobIds:[1]}]}},1,0,0),3);
+ assert.equal(game.nearestWorkSite({world:{width:4,height:4,collision:new Uint8Array(16),sites:[{id:3,x:1,y:0,jobIds:[1]},{id:2,x:0,y:1,jobIds:[1]}]}},1,0,0),3);
  const result=simulateGatheringJob(automatic,job);assert.equal(result.sites.length,1);assert.equal(result.sites[0].siteId,1);
  assert.equal('siteSelection' in normalizeGathering({...automatic,jobSelection:job.id}),false);
  assert.equal('siteSelection' in normalizeGathering({...automatic,siteSelection:'bad'}),false);
