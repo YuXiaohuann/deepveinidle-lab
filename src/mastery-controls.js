@@ -34,6 +34,7 @@ function updateResults(){
   const card=host.querySelector(`[data-mastery-row="${m.id}"]`),current=Number(state.current[m.id]),target=Number(state.target[m.id]);
   const valid=rank=>Number.isInteger(rank)&&rank>=0&&rank<=masteryLimit;
   const delta=String(state.current[m.id]).trim()!==''&&String(state.target[m.id]).trim()!==''&&valid(current)&&valid(target)?target-current:0;
+  card.dataset.hasTarget=String(valid(target)&&target>0);
   card.dataset.active=String(current>0||target>0);card.dataset.pending=String(delta!==0);
   card.querySelector('[data-mastery-delta]').textContent=delta?text(`${delta>0?'+':'−'}${format(Math.abs(delta))} 级`,`${delta>0?'+':'−'}${format(Math.abs(delta))} ${Math.abs(delta)===1?'rank':'ranks'}`):'';
  }
