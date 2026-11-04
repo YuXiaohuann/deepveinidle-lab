@@ -23,7 +23,7 @@ try{
   if(!localStorage.getItem('dvi-gathering-v1'))localStorage.setItem('dvi-gathering-v1',JSON.stringify(state));
   window.gatherRuns=[];const OriginalWorker=Worker;
   window.Worker=class extends OriginalWorker{
-   constructor(url,options){super(url,options);if(String(url).includes('gathering-worker.js')){this.run={results:[]};window.gatherRuns.push(this.run);this.addEventListener('message',({data})=>{if(data.result)this.run.results.push(data.result);if(data.done)this.run.done=true;});}}
+   constructor(url,options){super(url,options);if(String(url).includes('gathering-worker.js')){this.run={results:[],worker:this};window.gatherRuns.push(this.run);this.addEventListener('message',({data})=>{if(data.result)this.run.results.push(data.result);if(data.done)this.run.done=true;});}}
    postMessage(data,...rest){if(this.run){this.run.mode=window.tableMode;if(window.tableMode==='wait')return;if(window.tableMode==='error'){setTimeout(()=>this.onmessage({data:{error:'invalidRoute',done:true}}),0);return;}}return super.postMessage(data,...rest);}
   };
  },{...gatheringDefaults(),siteSelection:3,hotSetting:'off',brews:{...gatheringDefaults().brews,gatherer:2}});
@@ -89,6 +89,32 @@ try{
  await page.setViewportSize({width:1440,height:1000});await page.selectOption('#language','zh');
  await page.evaluate(()=>window.tableMode='wait');await page.locator('#gather-rerun').click();await page.waitForFunction(()=>window.gatherRuns.at(-1)?.mode==='wait');await checkRows();assert.equal(await page.locator('#gather-results .gather-table tbody tr').first().locator('td').nth(1).innerText(),'…');
  await page.locator('#gather-results .gather-table tbody tr').first().locator('td').nth(4).locator('summary').click();assert.match(await page.locator('#gather-results .gather-table tbody tr').first().locator('td').nth(4).innerText(),/采集点/);
+ await page.locator('#gather-search').fill('no-such-task');
+ assert.ok(await page.evaluate(()=>{
+  const input=document.querySelector('#gather-search');
+  input.setSelectionRange(2,5);
+  window.gatherRuns.at(-1).worker.onmessage({data:{progress:{completed:1,total:2}}});
+  return document.querySelector('#gather-search')===input&&document.activeElement===input&&input.selectionStart===2&&input.selectionEnd===5&&
+   document.querySelector('.gather-progress').textContent.includes('1/2')&&Boolean(document.querySelector('#gather-results .empty-results'));
+ }));
+ await page.locator('#gather-search').fill('');
+ const ime=await context.newCDPSession(page);
+ await page.locator('#gather-search').evaluate(input=>{
+  window.compositionInput=input;
+  window.compositionEvents=[];
+  for(const type of ['compositionstart','compositionend'])input.addEventListener(type,event=>window.compositionEvents.push(event.type));
+ });
+ await ime.send('Input.imeSetComposition',{text:'kuang',selectionStart:5,selectionEnd:5});
+ await page.evaluate(()=>window.gatherRuns.at(-1).worker.onmessage({data:{progress:{completed:2,total:2}}}));
+ await page.waitForFunction(()=>document.querySelector('.gather-progress').textContent.includes('2/2'));
+ assert.deepEqual(await page.evaluate(()=>window.compositionEvents),['compositionstart']);
+ assert.ok(await page.evaluate(()=>document.activeElement===window.compositionInput));
+ await ime.send('Input.insertText',{text:'矿'});
+ assert.equal(await page.locator('#gather-search').inputValue(),'矿');
+ assert.deepEqual(await page.evaluate(()=>window.compositionEvents),['compositionstart','compositionend']);
+ await ime.detach();
+ await page.locator('#gather-search').fill('');
+ results.cases.push('Worker progress preserves the focused task filter and text selection');
  await page.evaluate(()=>window.tableMode='error');await page.locator('#gather-rerun').click();await page.waitForFunction(()=>document.querySelector('.gather-progress').textContent.includes('无法建立采集路线'));await checkRows();assert.match(await page.locator('#gather-results .gather-table tbody tr').first().locator('td').nth(1).innerText(),/无法建立采集路线/);
  results.cases.push('controlled waiting and failed Worker rows retain column alignment and site details');
  await page.evaluate(()=>{const state=JSON.parse(localStorage.getItem('dvi-gathering-v1'));state.simulationHours=1;localStorage.setItem('dvi-gathering-v1',JSON.stringify(state));});await page.reload();await page.waitForFunction(()=>window.gatherRuns.at(-1)?.done);await checkRows();assert.equal((await headers()).length,10);assert.equal((await headers())[1],'经验/天');

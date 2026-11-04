@@ -27,7 +27,7 @@ try{
   if(!localStorage.getItem('orders-test-init')){localStorage.setItem('orders-test-init','1');localStorage.setItem(key,JSON.stringify(workspace));localStorage.setItem('dvi-crafting-v1','{"old":true}');localStorage.setItem('dvi-item-prices-v1',JSON.stringify(prices));localStorage.setItem('orders-test-unrelated','keep');}
   window.stockSnapshot={version:2,capturedAt:Date.now(),player:{bank:{},pack:[]}};
   document.addEventListener('dvi-character-request',event=>{const request=JSON.parse(event.detail);document.dispatchEvent(new CustomEvent('dvi-character-response',{detail:JSON.stringify({source:'dvi-character-script',version:'2.4',id:request.id,...(request.action==='probe'?{ready:true}:{snapshot:window.stockSnapshot})})}));});
-  const Original=Worker;window.craftRuns=[];window.Worker=class extends Original{constructor(url,options){super(url,options);if(String(url).includes('crafting-worker.js')){this.run={input:null,results:[]};window.craftRuns.push(this.run);this.addEventListener('message',({data})=>{if(data.result)this.run.results.push(data);if(data.done)this.run.done=true;});}}postMessage(data,...rest){if(this.run)this.run.input=data;return super.postMessage(data,...rest);}terminate(){if(this.run)this.run.terminated=true;return super.terminate();}};
+  const Original=Worker;window.craftRuns=[];window.Worker=class extends Original{constructor(url,options){super(url,options);if(String(url).includes('crafting-worker.js')){this.run={input:null,results:[],worker:this};window.craftRuns.push(this.run);this.addEventListener('message',({data})=>{if(data.result)this.run.results.push(data);if(data.done)this.run.done=true;});}}postMessage(data,...rest){if(this.run)this.run.input=data;return super.postMessage(data,...rest);}terminate(){if(this.run)this.run.terminated=true;return super.terminate();}};
  },{key,workspace,prices});
  page=await context.newPage();page.setDefaultTimeout(30000);page.on('pageerror',error=>results.errors.push(error.message));
  const read=()=>page.evaluate(key=>JSON.parse(localStorage.getItem(key)),key);
@@ -37,6 +37,37 @@ try{
  const rowFor=id=>page.locator(`[data-craft-order-enabled="${id}"]`).locator('xpath=ancestor::tr');
  const ready=()=>page.waitForFunction(()=>window.craftRuns.length&&window.craftRuns.every(r=>r.done||r.terminated));
  await page.goto((target??`http://127.0.0.1:${port}`)+'/craft');await ready();
+ await page.locator('#craft-search').fill('no-such-recipe');
+ await page.evaluate(()=>{
+  const input=document.querySelector('#craft-search');
+  input.setSelectionRange(2,5);
+  window.filterNodes=[input,document.querySelector('#craft-group'),document.querySelector('#craft-filled')];
+  window.craftRuns.at(-1).worker.onmessage({data:{progress:{completed:1,total:2}}});
+ });
+ await page.waitForFunction(()=>document.querySelector('.craft-progress').textContent.includes('1/2'));
+ assert.ok(await page.evaluate(()=>{
+  const [input,group,filled]=window.filterNodes;
+  return document.querySelector('#craft-search')===input&&document.activeElement===input&&input.selectionStart===2&&input.selectionEnd===5&&
+   document.querySelector('#craft-group')===group&&document.querySelector('#craft-filled')===filled&&Boolean(document.querySelector('.craft-table .empty-results'));
+ }));
+ await page.locator('#craft-search').fill('');
+ const ime=await context.newCDPSession(page);
+ await page.locator('#craft-search').evaluate(input=>{
+  window.compositionInput=input;
+  window.compositionEvents=[];
+  for(const type of ['compositionstart','compositionend'])input.addEventListener(type,event=>window.compositionEvents.push(event.type));
+ });
+ await ime.send('Input.imeSetComposition',{text:'kuang',selectionStart:5,selectionEnd:5});
+ await page.evaluate(()=>window.craftRuns.at(-1).worker.onmessage({data:{progress:{completed:2,total:2}}}));
+ await page.waitForFunction(()=>document.querySelector('.craft-progress').textContent.includes('2/2'));
+ assert.deepEqual(await page.evaluate(()=>window.compositionEvents),['compositionstart']);
+ assert.ok(await page.evaluate(()=>document.activeElement===window.compositionInput));
+ await ime.send('Input.insertText',{text:'矿'});
+ assert.equal(await page.locator('#craft-search').inputValue(),'矿');
+ assert.deepEqual(await page.evaluate(()=>window.compositionEvents),['compositionstart','compositionend']);
+ await ime.detach();
+ await page.locator('#craft-search').fill('');
+ check('Worker progress preserves recipe filter nodes, focus and text selection');
  assert.equal(await page.evaluate(()=>localStorage.getItem('dvi-crafting-v1')),null);assert.equal(await page.evaluate(()=>localStorage.getItem('orders-test-unrelated')),'keep');assert.equal(await page.locator(recipe('41:0')).isDisabled(),false);
  const initial=await read();assert.equal(initial.orders.length,1);assert.equal(initial.orders[0].enabled,true);assert.equal(initial.currentOrderId,initial.orders[0].id);
  assert.equal(await page.locator('#craft-orders-panel #craft-order-name').count(),1);assert.equal(await page.locator('#craft-orders-panel .craft-orders-table').count(),1);assert.equal(await page.locator('#craft-recipes-panel #craft-order-name').count(),0);
@@ -48,7 +79,8 @@ try{
  for(const fee of ['fixed','percent','minute'])assert.equal(await page.locator('#craft-fee-'+fee).getAttribute('placeholder'),'0');
  await change(recipe('41:0'),3);await change(recipe('42:0'),2);
  let saved=await read();const a=saved.currentOrderId;assert.deepEqual(saved.orders[0].plans,{'41:0':3,'42:0':2});assert.equal(saved.orders[0].enabled,true);
- await page.locator('#craft-search').fill('Bronze bar');await change('#craft-batch-'+a,5);await page.locator('#craft-batch').click();saved=await read();assert.deepEqual(saved.orders[0].plans,{'41:0':5,'42:0':5});
+ // Batch editing is covered separately from the Worker/toolbar interaction above.
+ await ready();await page.locator('#craft-search').fill('Bronze bar');await change('#craft-batch-'+a,5);await page.locator('#craft-batch').click();saved=await read();assert.deepEqual(saved.orders[0].plans,{'41:0':5,'42:0':5});
  await page.locator('#craft-search').fill('');await change(recipe('42:0'),0);await change(recipe('41:0'),3);
  await change('#craft-fee-fixed',100);await change('#craft-fee-percent',10);await change('#craft-fee-minute',7);await ready();
  check('old crafting data removed without unrelated data loss; automatic enabled multi-recipe order; automatic entry and hidden-recipe batch editing; all three zero placeholders');

@@ -44,13 +44,26 @@ function renderNotice(){
 }
 function rememberDetails(root){root?.querySelectorAll('details[id]').forEach(el=>details.set(el.id,el.open));}
 function restoreDetails(root){root.querySelectorAll('details[id]').forEach(el=>{if(details.has(el.id))el.open=details.get(el.id);el.ontoggle=()=>{if(el.isConnected)details.set(el.id,el.open);};});}
+function replaceSiblings(anchor,nextAnchor){
+ const siblings=[...nextAnchor.parentNode.children],index=siblings.indexOf(nextAnchor);
+ for(const child of [...anchor.parentElement.children])if(child!==anchor)child.remove();
+ anchor.before(...siblings.slice(0,index));
+ anchor.after(...siblings.slice(index+1));
+}
 // Reuse the focused input node when result markup changes. Keystrokes, invalid
 // intermediate text and focus survive Worker progress and price notifications.
-function replaceResults(host,html){
+function replaceResults(host,html,keepToolbar){
  rememberDetails(host);const scrolls=[...host.querySelectorAll('.table-scroll')].map(el=>({left:el.scrollLeft,top:el.scrollTop}));const input=host.contains(document.activeElement)&&document.activeElement.matches('input,select')?document.activeElement:null;
  const fragment=document.createElement('template');fragment.innerHTML=html;
- if(input?.id){const replacement=[...fragment.content.querySelectorAll('[id]')].find(el=>el.id===input.id);if(replacement){replacement.replaceWith(input);}}
- host.replaceChildren(fragment.content);host.querySelectorAll('.table-scroll').forEach((el,i)=>{if(scrolls[i]){el.scrollLeft=scrolls[i].left;el.scrollTop=scrolls[i].top;}});restoreDetails(host);if(input?.isConnected)input.focus({preventScroll:true});
+ if(input?.id&&!(keepToolbar&&input.closest('.craft-toolbar'))){const replacement=[...fragment.content.querySelectorAll('[id]')].find(el=>el.id===input.id);if(replacement){replacement.replaceWith(input);}}
+ const toolbar=keepToolbar&&host.querySelector('.craft-toolbar');
+ if(toolbar){
+  // Keep the toolbar and its ancestors attached while replacing surrounding content.
+  const nextToolbar=fragment.content.querySelector('.craft-toolbar');
+  replaceSiblings(toolbar,nextToolbar);
+  replaceSiblings(toolbar.parentElement,nextToolbar.parentElement);
+ }else host.replaceChildren(fragment.content);
+ host.querySelectorAll('.table-scroll').forEach((el,i)=>{if(scrolls[i]){el.scrollLeft=scrolls[i].left;el.scrollTop=scrolls[i].top;}});restoreDetails(host);if(input?.isConnected&&document.activeElement!==input)input.focus({preventScroll:true});
 }
 const detailLine=(label,value)=>`<div class="loot-line"><span>${label}</span><span>${value}</span></div>`;
 function detail(id,summary,body){return `<details class="reward-detail" id="craft-${id}"><summary>${summary}</summary><div>${body}</div></details>`;}
@@ -160,7 +173,7 @@ function acceptInventory(snapshot){
  return next;
 }
 function refreshInventory(){return craftingUpdater.read({config:false,inventory:true});}
-function renderResults(){
+function renderResults({keepToolbar=false}={}){
  const host=document.getElementById('craft-results');if(!host)return;
  if(ensureCurrentOrder())save();
  for(const plan of allOrderPlans().filter(p=>p.job.upgrade&&!resultFor(p))){
@@ -174,12 +187,12 @@ function renderResults(){
   materialHtml=`<div class="table-scroll"><table class="gather-table craft-material-table"><thead><tr>${[text('材料','Material'),text('品质','Rarity'),text('需要采购','To purchase'),text('库存 / 总需求','Stock / required'),text('单价','Unit price'),text('采购金额','Purchase cost')].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${budget.rows.length?budget.rows.map(r=>`<tr><td>${esc(translatedItemName(r.id,language))}</td><td>${rarities()[game.itemTier(r.id)]}</td><td>${r.purchase===null?'—':format(r.purchase)}</td><td class="craft-stock"><span data-craft-inventory="${r.id}">${r.owned===null?'—':format(r.owned)}</span> / <span>${format(r.required)}</span> · <span>${r.owned===null?'—':Math.min(100,Math.floor(r.owned/r.required*100))+'%'}</span></td><td>${warn(r.fallback?[r.id]:[])}${priceInput(r.id,'budget')}</td><td>${warn(r.purchase>0&&r.fallback?[r.id]:[])}${r.cost===null?'—':format(r.cost,2)}</td></tr>`).join(''):`<tr><td colspan="6" class="empty-results">${text('选择订单后显示材料需求','Select orders to see material requirements')}</td></tr>`}</tbody><tfoot><tr><td colspan="5">${text('采购金额合计','Total purchase cost')}</td><td class="column-highlight">${warn(budget.missing)}${budget.total===null?'—':format(budget.total,2)}</td></tr></tfoot></table></div>`;
  }catch(error){materialHtml=`<p class="table-note death-note">${esc(errorText(error.message))}</p>`;}
  const groups=[...new Set(craftingJobs.filter(j=>j.skill===state.skill).map(j=>j.group))];if(group&&!groups.includes(group))groups.push(group);
- replaceResults(host,`<div class="result-heading"><div><span class="eyebrow">CRAFTING OVERVIEW</span><h2>${text('制造属性','Crafting stats')}</h2></div><span class="style-badge">${skillName(state.skill)}</span></div><div class="stats gather-stats">${[[text('技能等级','Skill level'),format(stats.level)],[text('制造速度加成','Craft speed bonus'),format(stats.speedBonus*100,2)+'%'],[text('经验加成','XP bonus'),format(stats.xpBonus*100,2)+'%'],[text('移动速度','Movement speed'),format(stats.moveSpeed,2)+'×'],[text("背包格子",'Inventory slots'),format(stats.capacity)]].map(([label,v])=>`<div class="stat"><span>${label}</span><strong>${v}</strong></div>`).join('')}</div><section id="craft-recipes-panel" class="panel enemies"><div class="enemies-heading craft-recipe-heading"><div class="craft-recipe-title"><h2>${text('配方选择','Recipe selection')}</h2><span class="craft-editing-order" title="${esc(orderLabel(currentOrder()))}">${esc(orderLabel(currentOrder()))}</span></div>${craftingProgress()}</div><div class="toolbar craft-toolbar"><select id="craft-group" aria-label="${text('配方分类','Recipe group')}">${options([['',text('全部分类','All groups')],...groups.map(g=>[g,name(g)])],group)}</select><div class="search-wrap"><span>⌕</span><input id="craft-search" type="search" value="${esc(query)}" placeholder="${text('搜索配方名称（中 / 英）','Search recipes in English or Chinese')}" aria-label="${text('搜索制造配方','Search crafting recipes')}"></div>${rarityFilters()}<button id="craft-filled" type="button" class="craft-filter-button${filledOnly?' selected':''}" aria-pressed="${filledOnly}">${text('只看已填写','Filled only')}</button><button id="craft-rerun" class="secondary rerun-simulation">${text('重新模拟','Rerun simulation')}</button></div><p id="craft-notice" class="table-note" role="status"></p><div class="table-scroll"><table class="gather-table craft-table"><thead><tr>${headers()}</tr></thead><tbody>${jobs.length?jobs.map(recipeRow).join(''):`<tr><td colspan="7" class="empty-results">${text('没有匹配的配方','No matching recipes')}</td></tr>`}</tbody></table></div><p id="craft-method-note" class="table-note">${methodNote()}</p></section>${orderPanel()}<section class="panel enemies craft-materials"><div class="enemies-heading craft-material-heading"><h2>${text('执行计划','Execution plan')}</h2><button id="craft-refresh-inventory" class="secondary">${text('刷新库存','Refresh inventory')}</button></div><p id="craft-inventory-status" class="table-note" role="status"></p>${executionRecipes()}<h3>${text('材料需求','Material requirements')}</h3>${materialHtml}<p class="table-note">${text('汇总所选订单全部配方，不受搜索和筛选影响。库存来自游戏仓库与背包，共享材料合并后仅抵扣一次库存；比例加工费与制造利润按全部材料消耗价值计算。表内修改单价同步全局并自动锁定；商人价兜底仅用于估值，不代表市场实际购买价格。','Includes all recipes in selected orders, regardless of filters. Stock comes from the game warehouse and backpack and is deducted once; percentage fees and manufacturing profit value all consumed materials. Editing prices updates global prices and locks them. Vendor fallback is an estimate, not an executable market buy price.')}</p><p id="craft-price-status" class="table-note" role="status"></p></section>`);
+ replaceResults(host,`<div class="result-heading"><div><span class="eyebrow">CRAFTING OVERVIEW</span><h2>${text('制造属性','Crafting stats')}</h2></div><span class="style-badge">${skillName(state.skill)}</span></div><div class="stats gather-stats">${[[text('技能等级','Skill level'),format(stats.level)],[text('制造速度加成','Craft speed bonus'),format(stats.speedBonus*100,2)+'%'],[text('经验加成','XP bonus'),format(stats.xpBonus*100,2)+'%'],[text('移动速度','Movement speed'),format(stats.moveSpeed,2)+'×'],[text("背包格子",'Inventory slots'),format(stats.capacity)]].map(([label,v])=>`<div class="stat"><span>${label}</span><strong>${v}</strong></div>`).join('')}</div><section id="craft-recipes-panel" class="panel enemies"><div class="enemies-heading craft-recipe-heading"><div class="craft-recipe-title"><h2>${text('配方选择','Recipe selection')}</h2><span class="craft-editing-order" title="${esc(orderLabel(currentOrder()))}">${esc(orderLabel(currentOrder()))}</span></div>${craftingProgress()}</div><div class="toolbar craft-toolbar"><select id="craft-group" aria-label="${text('配方分类','Recipe group')}">${options([['',text('全部分类','All groups')],...groups.map(g=>[g,name(g)])],group)}</select><div class="search-wrap"><span>⌕</span><input id="craft-search" type="search" value="${esc(query)}" placeholder="${text('搜索配方名称（中 / 英）','Search recipes in English or Chinese')}" aria-label="${text('搜索制造配方','Search crafting recipes')}"></div>${rarityFilters()}<button id="craft-filled" type="button" class="craft-filter-button${filledOnly?' selected':''}" aria-pressed="${filledOnly}">${text('只看已填写','Filled only')}</button><button id="craft-rerun" class="secondary rerun-simulation">${text('重新模拟','Rerun simulation')}</button></div><p id="craft-notice" class="table-note" role="status"></p><div class="table-scroll"><table class="gather-table craft-table"><thead><tr>${headers()}</tr></thead><tbody>${jobs.length?jobs.map(recipeRow).join(''):`<tr><td colspan="7" class="empty-results">${text('没有匹配的配方','No matching recipes')}</td></tr>`}</tbody></table></div><p id="craft-method-note" class="table-note">${methodNote()}</p></section>${orderPanel()}<section class="panel enemies craft-materials"><div class="enemies-heading craft-material-heading"><h2>${text('执行计划','Execution plan')}</h2><button id="craft-refresh-inventory" class="secondary">${text('刷新库存','Refresh inventory')}</button></div><p id="craft-inventory-status" class="table-note" role="status"></p>${executionRecipes()}<h3>${text('材料需求','Material requirements')}</h3>${materialHtml}<p class="table-note">${text('汇总所选订单全部配方，不受搜索和筛选影响。库存来自游戏仓库与背包，共享材料合并后仅抵扣一次库存；比例加工费与制造利润按全部材料消耗价值计算。表内修改单价同步全局并自动锁定；商人价兜底仅用于估值，不代表市场实际购买价格。','Includes all recipes in selected orders, regardless of filters. Stock comes from the game warehouse and backpack and is deducted once; percentage fees and manufacturing profit value all consumed materials. Editing prices updates global prices and locks them. Vendor fallback is an estimate, not an executable market buy price.')}</p><p id="craft-price-status" class="table-note" role="status"></p></section>`,keepToolbar);
  bindResults();renderNotice();renderInventoryStatus();
 }
 function readCount(el){const value=el.value===''?0:el.valueAsNumber;if(el.validity.badInput||!el.checkValidity()||!validQuantity(value)){el.setAttribute('aria-invalid','true');notice='invalidQuantity';renderNotice();return null;}el.removeAttribute('aria-invalid');notice='';return value;}
 function bindResults(){
- document.getElementById('craft-search').oninput=e=>{query=e.target.value;renderResults();};
+ document.getElementById('craft-search').oninput=e=>{query=e.target.value;renderResults({keepToolbar:true});};
  document.getElementById('craft-group').onchange=e=>{group=e.target.value;renderResults();};
  document.querySelectorAll('[data-craft-rarity]').forEach(el=>el.onclick=()=>{const tier=Number(el.dataset.craftRarity);if(selectedTiers.has(tier))selectedTiers.delete(tier);else selectedTiers.add(tier);renderResults();});
  document.getElementById('craft-filled').onclick=()=>{filledOnly=!filledOnly;renderResults();};
@@ -196,7 +209,7 @@ function startSimulation(){
  if(workerError)return;
  clearTimeout(timer);const pendingPlans=[...allOrderPlans().filter(p=>!p.job.upgrade&&state.levels[p.job.skill]>=p.job.levelReq&&!resultFor(p)),...craftingJobs.filter(j=>!j.upgrade&&j.skill===state.skill&&state.levels[j.skill]>=j.levelReq).flatMap(job=>craftingTiers(job).map(tier=>({job,tier,key:planKey(job.id,tier),count:0,mode:'rate'}))).filter(p=>!rateFor(p))];
  const plans=[...new Map(pendingPlans.map(p=>[p.mode==='rate'?'rate:'+p.key:simulationKey(p),p])).values()];
- if(!plans.length){renderResults();return;}stopWorker();const token=generation,signatures=new Map(plans.map(p=>[`${p.mode??'plan'}:${p.mode==='rate'?p.key:simulationKey(p)}`,signature(p)]));running=true;workerError=null;
+ if(!plans.length){renderResults({keepToolbar:true});return;}stopWorker();const token=generation,signatures=new Map(plans.map(p=>[`${p.mode??'plan'}:${p.mode==='rate'?p.key:simulationKey(p)}`,signature(p)]));running=true;workerError=null;
  try{
   if(plans.some(p=>!p.job.upgrade))roundSeed??=randomSimulationSeed();
   worker=new Worker(new URL('./crafting-worker.js',import.meta.url),{type:'module'});
@@ -206,13 +219,13 @@ function startSimulation(){
    if(data.progress)progress=data.progress;
    if(data.error)workerError=data.error;
    if(data.done||data.error){running=false;worker?.terminate();worker=null;}
-   if(data.done||data.error){clearTimeout(renderTimer);renderTimer=null;renderResults();if(data.done&&active)startSimulation();}
-   else if(!renderTimer)renderTimer=setTimeout(()=>{renderTimer=null;renderResults();},200);
+   if(data.done||data.error){clearTimeout(renderTimer);renderTimer=null;renderResults({keepToolbar:true});if(data.done&&active)startSimulation();}
+   else if(!renderTimer)renderTimer=setTimeout(()=>{renderTimer=null;renderResults({keepToolbar:true});},200);
   };
-  worker.onerror=()=>{if(token!==generation)return;workerError='workerFailed';stopWorker();renderResults();};
+  worker.onerror=()=>{if(token!==generation)return;workerError='workerFailed';stopWorker();renderResults({keepToolbar:true});};
   worker.postMessage({state,now:clock,seed:roundSeed??0,plans:plans.map(p=>({jobId:p.job.id,key:p.mode==='rate'?p.key:simulationKey(p),tier:p.tier,count:p.count,mode:p.mode}))});
  }catch(error){workerError=String(error.message??error);stopWorker();console.error(error);}
- renderResults();
+ renderResults({keepToolbar:true});
 }
 const field=(path,label,value,min=0,max=Number.MAX_SAFE_INTEGER,step=1)=>`<label class="number-field"><span>${esc(label)}</span><input type="number" data-craft-field="${path}" min="${min}" max="${max}" step="${step}" value="${value}" aria-label="${esc(label)}"></label>`;
 const select=(path,label,values,value)=>`<label class="potion"><span>${esc(label)}</span><select data-craft-field="${path}" aria-label="${esc(label)}">${options(values,value)}</select></label>`;
