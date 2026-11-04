@@ -190,6 +190,7 @@
 ## 功能实施与专项验证
 
 - [收藏性价比首版实施与验证](collection-implementation-2026-10-17.md)（2026-10-17，含原始依据、开发期证据与验证入口）
+- [收藏导入错误记录修复验证](collection-import-invalid-records-2026-10-18.md)（2026-10-18，已随 1.4.5 发布；收藏页现已移除，保留历史导入边界与证据）
 
 - [采集两项世界增益实施与验证](gathering-world-buffs-implementation-2026-10-16.md)（2026-10-16，已随1.3.8发布）
 - [采集丢弃配置实施与验证](gathering-discard-implementation-2026-10-16.md)（2026-10-16，已随1.3.7发布）
@@ -224,6 +225,7 @@
 - [游戏更新兼容性核验](upstream-update-audit-2026-10-06.md)（2026-10-06）
 - [当前游戏资源与快照核验](upstream-update-audit-2026-10-08.md)（2026-10-08）
 - [游戏 1.0.1190 更新调研与适配范围](upstream-update-research-2026-10-16.md)（2026-10-16）
+- [游戏 1.0.1196 差异核验旧入口](upstream-update-research-2026-10-21.md)（2026-10-21，内容已整合到对应适配报告，保留既有链接入口）
 
 ## 配装与早期价格方案
 

@@ -10,7 +10,13 @@ node scripts/serve.mjs
 
 打开 [本机页面](http://127.0.0.1:4173)。服务仅监听本机，可通过 `PORT` 环境变量修改端口；支持 `/combat`、`/gather`、`/craft`、`/enhance`、`/mastery`、`/forecast`、`/formulas` 和调试页 `/debug`。调试页仅提供角色配置 JSON 导出、战斗／强化配置文件导入；完整角色快照捕获、导入、导出与模拟已在当前版本移除。
 
-运行测试（功能修改默认仅选相关测试，完整测试用于发布前验证）：
+功能修改默认运行相关测试；涉及共用逻辑、影响范围难以界定或专项检查发现问题时扩大范围，发布前按[发布流程](release.md)执行完整检查。专项示例：
+
+```sh
+node --test tests/enhancement.test.mjs tests/enhancement-controls.test.mjs
+```
+
+需要完整测试时运行：
 
 ```sh
 node --test tests/*.test.mjs
@@ -25,7 +31,7 @@ pnpm install --frozen-lockfile
 node scripts/extract.mjs
 ```
 
-当前完整公开资源位于 `vendor/game-original.js`，来源、摘要、语义导出及声明摘要记录于 `vendor/manifest.json`；当前生成模块完整来自已核验的 1.0.1208，无混合版本或局部替换；`vendor/game-combat-1187.js` 和 `reports/combat-update-mapping-2026-10-13.mjs` 局部映射仅保留为此前战斗阶段的证据，不再被当前提取器使用。`vendor/game-combat-update.js` 保留为历史局部更新的原始证据。禁止手工修改生成文件 `src/upstream.js`；更新原始资源须遵循 [上游更新流程](technical.md#64-上游更新流程)，完成映射审阅、重新提取及回归验证。
+完整公开资源位于 `vendor/game-original.js`，来源、摘要、语义导出及声明摘要记录于 `vendor/manifest.json`；当前快照与提取边界见[原始代码复用](technical.md#62-原始代码复用)。禁止手工修改生成文件 `src/upstream.js`；更新资源前遵循[上游更新流程](technical.md#64-上游更新流程)，完成映射审阅、重新提取及回归验证。
 
 本机服务有意不开放 `docs/`、`reports/` 与 `AGENTS.md`；文档通过仓库或本地编辑器阅读。README 与 DESIGN 仍可直接访问，但其拆分文档链接不属于网页预览服务范围。无需为文档整理扩大服务器访问范围。
 
@@ -61,7 +67,7 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 ## 发布工具开发
 
-发布前检查、打包及目标验收使用 `pnpm release:check`、`pnpm release:package`、`pnpm release:verify`，参数及证据规则见 [发布流程](release.md)。三个入口不自动提交、登录或部署。开发发布工具时先运行 `node --test --test-reporter=tap tests/release-tools.test.mjs`；其中 HTTP 测试只使用临时回环服务器。完整应用测试仍在正式发布前执行。
+发布前检查、打包及目标验收使用 `pnpm release:check`、`pnpm release:package`、`pnpm release:verify`，参数及证据规则见 [发布流程](release.md)。三个入口不自动提交、登录或部署。开发发布工具时先运行 `node --test --test-reporter=tap tests/release-tools.test.mjs`；其中 HTTP 测试只使用临时回环服务器。应用测试按影响范围选择，发布前必须执行完整检查。
 
 完整独立原始计算对照的常规入口为 `node scripts/native-audit.mjs`，复用已核验全部页面审计；日期型报告脚本仅保留历史证据。浏览器依赖为固定版本 playwright-core，需本机 Chrome／Chromium，或通过 RELEASE_BROWSER 指定可执行文件；不下载浏览器，也不使用用户已有会话和游戏账号。
 
@@ -83,7 +89,9 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 ## 采集与制造表格专项
 
-`node --test tests/crafting-display.test.mjs` 验证配方列序、品质、周期换算、制造次数取整、经验明细与异常行。浏览器专项使用 `node tests/gathering-table-browser.mjs [输出目录]`、`node tests/crafting-table-browser.mjs [输出目录]`，需要本机监听和 Chrome；默认分别输出至 `.test-artifacts/gathering-table/`、`.test-artifacts/crafting-table/`，复验时指定独立目录以保留历史证据。覆盖双语桌面／390px、排序、经验展开、周期切换、等待／失败及计划输入；正常计算使用真实 Worker，异常场景使用受控消息，不替代完整发布验收。
+模拟配置专项：`node --test tests/work-simulation-settings.test.mjs` 验证时长规范化、旧存档、角色导入保留时长及制造实际窗口。`node tests/work-simulation-settings-browser.mjs [输出目录] [目标网址]` 验证双语桌面／390px 的整数小时输入、固定每天展示、热门日程、导入、刷新、重置及旧 Worker 隔离；默认输出 `.test-artifacts/work-settings/settings/`，提供目标网址时不启动本机服务。使用合成角色消息与真实工作 Worker，截图需审阅，不代替完整发布验收。
+
+`node --test tests/crafting-display.test.mjs` 验证配方列序、品质、周期换算、制造次数取整、经验明细与异常行。浏览器专项使用 `node tests/gathering-table-browser.mjs [输出目录]`、`node tests/crafting-table-browser.mjs [输出目录]`，需要本机监听和 Chrome；默认分别输出至 `.test-artifacts/gathering-table/`、`.test-artifacts/crafting-table/`，复验时指定独立目录以保留历史证据。覆盖双语桌面／390px、排序、经验展开、固定每天展示及周期选择器移除、等待／失败及计划输入；正常计算使用真实 Worker，异常场景使用受控消息，不替代完整发布验收。
 
 ## 制造订单专项
 
