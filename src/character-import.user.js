@@ -20,7 +20,7 @@
  'use strict';
  const key='dvi-character-snapshot-v2';
  if(['https://deepveinidle.com','https://cn.deepveinidle.com'].includes(location.origin)){
-  const page=unsafeWindow,NativeSocket=page.WebSocket;
+  const page=typeof unsafeWindow!=='undefined'?unsafeWindow:window,NativeSocket=page.WebSocket;
   const object=v=>v&&typeof v==='object'&&!Array.isArray(v);
   const fields=['lastTick','skills','equipment','foodItemId','eatAt','foodMaxTier','foodPerTrip','brews','brewTier','brewBuckets','house','houseFurniture','masteries','perks','guildBonus','homeBank','ironman','bank','pack','overflow','collections','forgeLog'];
   const clean=v=>JSON.parse(JSON.stringify(v,(k,value)=>/^(?:password|token|auth|authorization|cookie|email|chat)$/i.test(k)?undefined:value));

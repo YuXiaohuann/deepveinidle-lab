@@ -11,6 +11,16 @@ import {craftingDefaults,importCrafting} from '../src/crafting-model.js';
 const key='dvi-character-snapshot-v2',marketKey='dvi-market-quotes-v1';
 const player=()=>({lastTick:100,skills:Object.fromEntries(['melee','ranged','magic','defence','hitpoints','enhancing','mining','fishing','woodcutting','thieving','cooking','smithing','fletching','herblore','crafting'].map(k=>[k,game.levelXp(30)])),equipment:{weapon:null,mount:null},foodItemId:null,eatAt:.75,foodMaxTier:0,foodPerTrip:-1,brews:{},brewTier:{},brewBuckets:{},house:{lectern:2},houseFurniture:{lectern:{cell:1}},masteries:{},perks:{},guildBonus:0,homeBank:null,ironman:false,bank:{64:100,110:1},pack:[{itemId:80,qty:1}],overflow:{81:1},collections:{64:25},forgeLog:{0:1},name:'not needed',history:Array(100).fill('not needed'),token:'secret'});
 
+for(const hasUnsafeWindow of [true,false])test(`capture ${hasUnsafeWindow?'prefers unsafeWindow over a separate window':'falls back to page window when unsafeWindow is absent'}`,async()=>{
+ const h=captureHarness(undefined,{hasUnsafeWindow});
+ if(hasUnsafeWindow){
+  new h.context.window.WebSocket('wss://deepveinidle.com/ws').receive([{t:'welcome',you:player()}]);
+  await flush();assert.equal(h.writes.length,0);
+ }else assert.equal(Object.hasOwn(h.context,'unsafeWindow'),false);
+ new h.page.WebSocket('wss://deepveinidle.com/ws').receive([{t:'welcome',you:player()}]);
+ await flush();assert.deepEqual(h.storage.get(key).player.skills,player().skills);assert.match(h.badge().textContent,/Character captured/);
+});
+
 for(const host of ['deepveinidle.com','cn.deepveinidle.com'])test(`${host} captures only same-origin game sockets`,async()=>{
  const h=captureHarness(undefined,{origin:`https://${host}`});
  const other=host==='deepveinidle.com'?'cn.deepveinidle.com':'deepveinidle.com';
