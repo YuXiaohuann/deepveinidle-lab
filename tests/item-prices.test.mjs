@@ -102,7 +102,7 @@ test('valuation modes default independently of old toggles',()=>{
  assert.equal(normalizeGathering({valuationMode:'custom'}).valuationMode,'custom');assert.equal(normalizeGathering({vendorValues:true}).valuationMode,'custom');
 });
 test('enhancement resolves explicit price modes and binds owned bases',()=>{
- const prices={208:{price:2},359:{price:3},110:{price:4},111:{price:9}};let s={...enhancementDefaults(),tier:0};let resolved=resolveEnhancementPrices(s,prices);
+ const prices={208:{price:2},359:{price:3},110:{price:4},111:{price:9}};let s={...enhancementDefaults(),itemId:110,tier:0};let resolved=resolveEnhancementPrices(s,prices);
  assert.deepEqual([resolved.shardPrice,resolved.scrollPrice,resolved.basePrice],[2,3,4]);assert.notEqual(calculateEnhancement(resolved).expectedFee,null);
  const missing={...s};delete missing.priceModes;assert.throws(()=>validateEnhancement(missing),/invalidPrice/);const unbound={...s};delete unbound.basePriceItem;assert.throws(()=>validateEnhancement(unbound),/invalidPrice/);
  s=validateEnhancement({...s,shardPrice:7,basePrice:8,priceModes:{shardPrice:'manual',scrollPrice:'global',basePrice:'manual'},basePriceItem:110});assert.equal(resolveEnhancementPrices(s,prices).basePrice,8);

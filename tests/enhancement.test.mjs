@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
 import {enhancementDefaults,enhanceableItems,validateEnhancement,enhancementSteps,calculateEnhancement,enhancementFee,importEnhancement,decodeEnhancementItem} from '../src/enhancement.js';
-const config=patch=>({...enhancementDefaults(),tier:0,target:5,protect:false,...patch});
+const config=patch=>({...enhancementDefaults(),itemId:110,tier:0,target:5,protect:false,...patch});
 const near=(actual,expected)=>assert.ok(Math.abs(actual-expected)<=1e-9*Math.max(1,Math.abs(expected)),`${actual} != ${expected}`);
 // Independent Gaussian elimination of the absorbing chain (small targets).
 function linearExpected(steps,start,reward){
@@ -70,14 +70,15 @@ test('profit margin covers enhancement and base costs, with explicit pricing req
  near(calculateEnhancement(config({current:5,target:5,basePrice:120})).expectedFee,120/.87);
  assert.equal(calculateEnhancement(config({current:5,target:5,basePrice:0})).expectedFee,0);
 });
-test('import captures enhancement-only fields and deduplicates worn and inventory candidates',()=>{
- const s=config({shardPrice:3}),r=importEnhancement(s,snapshot());assert.equal(r.state.level,32);assert.equal(r.state.lectern,12);assert.equal(r.state.mastery,3);assert.equal(r.state.shardPrice,3);assert.equal(r.candidates.length,4);assert.deepEqual(r.candidates[0],{itemId:328,tier:2,current:5,id:game.encode(game.withRarity(328,2),5)});assert.deepEqual(s,config({shardPrice:3}));
+test('import captures enhancement-only fields and preserves the equipment settings',()=>{
+ const s=config({shardPrice:3}),r=importEnhancement(s,snapshot());assert.equal(r.state.level,32);assert.equal(r.state.lectern,12);assert.equal(r.state.mastery,3);assert.equal(r.state.shardPrice,3);assert.equal(r.candidates,undefined);for(const key of ['itemId','tier','current','target'])assert.equal(r.state[key],s[key]);assert.deepEqual(s,config({shardPrice:3}));
  const unplaced=snapshot();unplaced.player.houseFurniture={};assert.equal(importEnhancement(s,unplaced).state.lectern,0);
  const empty=snapshot();empty.player.masteries={};empty.player.house={};empty.player.houseFurniture={};assert.equal(importEnhancement(s,empty).state.mastery,0);
 });
-test('import rejects missing or illegal data atomically and ignores ordinary inventory items',()=>{
- const state=config();for(const field of ['skills','house','houseFurniture','masteries','equipment','pack','bank','overflow']){const s=snapshot();delete s.player[field];assert.throws(()=>importEnhancement(state,s));assert.deepEqual(state,config());}
- for(const mutate of [s=>s.version=1,s=>s.player.skills.enhancing=NaN,s=>s.player.masteries.enhance=-1,s=>s.player.houseFurniture.lectern=null,s=>s.player.bank[110]=-1,s=>s.player.equipment.weapon=game.encode(110,101)]){const s=snapshot();mutate(s);assert.throws(()=>importEnhancement(state,s));}
+test('import rejects missing or illegal role data atomically and ignores inventory',()=>{
+ const state=config();for(const field of ['skills','house','houseFurniture','masteries']){const s=snapshot();delete s.player[field];assert.throws(()=>importEnhancement(state,s));assert.deepEqual(state,config());}
+ for(const mutate of [s=>s.version=1,s=>s.player.skills.enhancing=NaN,s=>s.player.masteries.enhance=-1,s=>s.player.houseFurniture.lectern=null]){const s=snapshot();mutate(s);assert.throws(()=>importEnhancement(state,s));}
+ for(const field of ['equipment','pack','bank','overflow']){const snap=snapshot();delete snap.player[field];assert.doesNotThrow(()=>importEnhancement(state,snap));snap.player[field]='unused';assert.doesNotThrow(()=>importEnhancement(state,snap));}
  assert.equal(decodeEnhancementItem(64),null);
 });
 

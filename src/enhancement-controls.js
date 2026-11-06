@@ -8,7 +8,7 @@ import {enhancementStorageKey,enhancementDefaults,enhanceableItems,validateEnhan
 
 let distributionWorker=null,distributionTimer=null,distributionRevision=0;
 let probeStarted=false;
-let state=enhancementDefaults(),candidates=[],language='zh',busy=false,status=null,saveOK=true;
+let state=enhancementDefaults(),language='zh',busy=false,status=null,saveOK=true;
 try{const saved=localStorage.getItem(enhancementStorageKey);if(saved)state=validateEnhancement(JSON.parse(saved),{allowUnsupportedTarget:true});}catch{status={error:'savedInvalid'};}
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const text=(zh,en)=>language==='zh'?zh:en;
@@ -88,20 +88,18 @@ function renderResults(){const revision=cancelDistribution();const host=document
 }
 export function applyEnhancementImport(snapshot){
  const result=importEnhancement(state,snapshot);
- state=result.state;candidates=result.candidates;status={capturedAt:result.capturedAt};save();
+ state=result.state;status={capturedAt:result.capturedAt};save();
  return {...status,saveOK};
 }
 export function renderEnhancement(nextLanguage){
  const openDetails=new Map([...document.querySelectorAll('#enhance-section details[id]')].map(el=>[el.id,el.open]));
  language=nextLanguage;const host=document.getElementById('enhance-content');if(!host)return;
- const candidateLabel=x=>`${name(game.item(x.itemId).name)} · ${rarities()[x.tier]} +${x.current}`;
  host.innerHTML=`<aside class="panel config enhance-config"><div class="panel-heading"><h1>${text('角色配置','Character build')}</h1><button id="enhance-reset" class="text-button">${text('清空配置','Reset settings')}</button></div><p class="muted intro">${text('配置角色的强化技能与成功率加成。','Configure enhancing skill and success chance bonuses.')}</p>
  ${characterImportPanel(language,{id:'enhance-import-settings',statusId:'enhance-import-status',buttons:[{id:'enhance-import',label:text('导入配置','Import configuration')}]})}
  <details class="config-detail" id="enhance-skill-settings"><summary>${text('技能','Skills')}</summary><div class="skill-grid">${field('level',text('强化技能等级','Enhancing skill level'),1,game.maxLevel)}</div><p class="micro">${text('强化技能每比 1 级高一级，成功率倍率增加 0.2%。','Each enhancing level above level 1 adds 0.2% to the success chance multiplier.')}</p></details>
  <details class="config-detail" id="enhance-home-settings"><summary>${text('家园','Home')}</summary><div class="skill-grid">${field('lectern',text('符文书台等级','Rune lectern level'),0,game.houseLevelLimit)}</div><p class="micro">${text('符文书台只计已放置的等级，每级将成功率乘以额外 1%。','Only placed rune lectern levels apply; +1% of the chance per level.')}</p></details>
  <details class="config-detail" id="enhance-mastery-settings"><summary>${text('精通','Masteries')}</summary><label class="number-field"><span>${text('强化精通实际加成 (%)','Effective enhance mastery bonus (%)')}</span><input data-enhance-field="mastery" type="number" min="0" max="${game.enhanceMasteryBonusCap*100}" step="0.25" value="${state.mastery===null?'':Math.min(game.enhanceMasteryBonusCap*100,state.mastery*0.25)}"></label></details>
  <p class="save-note" id="enhance-save-note"></p></aside><div class="results enhance-workspace"><section class="panel enhance-equipment"><div class="panel-heading"><h2>${text('强化配置','Enhancement settings')}</h2><button id="enhance-equipment-reset" class="text-button">${text('清空配置','Reset settings')}</button></div>
- ${candidates.length?`<label class="enhance-select"><span>${text('快捷选择角色物品','Quick select character item')}</span><select id="enhance-candidate">${options([['',text('选择一件角色物品','Select a character item')],...candidates.map(x=>[x.id,candidateLabel(x)])],'')}</select></label>`:''}
  <div class="enhance-item-row">${searchSelectMarkup('enhance-item-search',text('装备 / 工具','Equipment / tool'))}
  <label class="enhance-select"><span>${text("稀有度",'Rarity')}</span><select data-enhance-field="tier">${options(rarities().map((x,i)=>[i,x]),state.tier)}</select></label></div>
  <div class="enhance-item-row enhance-level-row">${field('current',text('当前强化值','Current enhancement'),0,game.maxEnhancement)}${field('target',text('目标强化值','Target enhancement'),0,Math.max(game.enhancementTargetLimit,state.current??0))}<label class="number-field"><span>${text('使用保护卷轴','Use protection scrolls')}</span><select data-enhance-field="protect">${options([['true',text('使用','Use')],['false',text('不使用','Do not use')]],state.protect)}</select></label>${field('protectFrom',text('保护卷轴起始等级','Protection scroll starting level'),game.protectionMin,game.maxEnhancement)}</div>
@@ -114,8 +112,7 @@ export function renderEnhancement(nextLanguage){
  const itemOptions=()=>enhanceableItems.map(x=>({value:x.id,label:name(x.name),search:`${x.name} ${translatedName(x.name,'zh')}`}));
  bindSearchSelect({id:'enhance-item-search',options:itemOptions(),value:state.itemId,selectedLabel:id=>name(game.item(id).name),onSelect:id=>{state.itemId=id;resetBaseOverride();save();renderEnhancement(language);},emptyText:text('没有匹配的装备或工具','No matching equipment or tools'),countText:count=>text(`${count} 件匹配物品`,`${count} matching items`)});
  document.getElementById('enhance-reset').onclick=()=>{const {guild,level,lectern,mastery}=enhancementDefaults();state={...state,guild,level,lectern,mastery};status=null;save();renderEnhancement(language);};
- document.getElementById('enhance-equipment-reset').onclick=()=>{const {guild,level,lectern,mastery}=state;state={...enhancementDefaults(),guild,level,lectern,mastery};candidates=[];save();renderEnhancement(language);};
- document.getElementById('enhance-candidate')?.addEventListener('change',event=>{const selected=candidates.find(x=>x.id===Number(event.target.value));if(!selected||event.target.value==='')return;state=validateEnhancement({...state,itemId:selected.itemId,tier:selected.tier,current:selected.current,target:Math.max(state.target??0,selected.current)},{allowUnsupportedTarget:true});save();renderEnhancement(language);});
+ document.getElementById('enhance-equipment-reset').onclick=()=>{const {guild,level,lectern,mastery}=state;state={...enhancementDefaults(),guild,level,lectern,mastery};save();renderEnhancement(language);};
  document.getElementById('enhance-import').onclick=()=>enhancementUpdater.read({config:true,inventory:false});
  if(!probeStarted){probeStarted=true;probeCharacter().then(()=>{if(!status&&!busy){status={ready:true};renderStatus();}}).catch(error=>{if(!status&&!busy){status={error:error.message};renderStatus();}});}
  renderStatus();renderResults();for(const [id,open]of openDetails){const el=document.getElementById(id);if(el)el.open=open;}

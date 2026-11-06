@@ -15,14 +15,22 @@ await fs.mkdir(directory,{recursive:true});
 const browser=await chromium.launch({headless:true,executablePath:await browserPath()});
 const results={base,cases:[],errors:[]};
 const prices=priceDefaults();for(const id of [20,110,208,359])prices.prices[id]={price:id+100,locked:true,source:'manual',updatedAt:Date.now(),quoteCapturedAt:null};
-prices.prices[game.encode(game.withRarity(110,3),0)]={price:777,locked:true,source:'manual',updatedAt:Date.now(),quoteCapturedAt:null};
+prices.prices[game.encode(game.withRarity(328,4),0)]={price:777,locked:true,source:'manual',updatedAt:Date.now(),quoteCapturedAt:null};
 const craft={...craftingDefaults(),levels:{...craftingDefaults().levels,cooking:80,smithing:75},guild:{name:'Test',tag:'T'},guildXp:12,plans:{'61:0':2,'61:4':3,'upgrade-271:2':4},owned:{20:100,21:7},upgradeMigration:true,period:'hour'};
-const enhance={...enhancementDefaults(),guild:{name:'Test',tag:'T'},level:60,lectern:8,mastery:12,tier:4,current:3,target:9,protect:false,protectFrom:5,shardPrice:100,scrollPrice:200,basePrice:300,priceModes:{shardPrice:'manual',scrollPrice:'manual',basePrice:'manual'},basePriceItem:game.encode(game.withRarity(110,4),3)};
+const enhance={...enhancementDefaults(),itemId:110,guild:{name:'Test',tag:'T'},level:60,lectern:8,mastery:12,tier:4,current:3,target:9,protect:false,protectFrom:5,shardPrice:100,scrollPrice:200,basePrice:300,priceModes:{shardPrice:'manual',scrollPrice:'manual',basePrice:'manual'},basePriceItem:game.encode(game.withRarity(110,4),3)};
 const snapshot={version:2,capturedAt:Date.now(),guild:enhance.guild,player:{skills:{enhancing:game.levelXp(60)},house:{lectern:8},houseFurniture:{lectern:{cell:1,slot:0}},masteries:{enhance:12},equipment:{mount:game.encode(game.withRarity(328,3),7)},bank:{},pack:[],overflow:{}}};
 const read=(page,key)=>page.evaluate(key=>JSON.parse(localStorage.getItem(key)),key);
 const omit=(value,keys)=>Object.fromEntries(Object.entries(value).filter(([key])=>!keys.includes(key)));
 try{
  for(const width of [1280,390])for(const language of ['zh','en']){
+  const freshContext=await browser.newContext({viewport:{width,height:900}});
+  const fresh=await freshContext.newPage();
+  await fresh.goto(base+'/enhance');
+  await fresh.evaluate(async language=>{const m=await import('/src/enhancement-controls.js');m.renderEnhancement(language);},language);
+  assert.equal(await fresh.inputValue('#enhance-item-search'),language==='zh'?'马':'Horse');
+  for(const [key,value]of [['tier','4'],['current','0'],['target','10']])assert.equal(await fresh.inputValue(`[data-enhance-field="${key}"]`),value);
+  assert.equal(await fresh.locator('#enhance-candidate').count(),0);
+  await freshContext.close();
   const context=await browser.newContext({viewport:{width,height:900}});
   await context.addInitScript(({craft,enhance,prices,language,craftingStorageKey,enhancementStorageKey,priceStorageKey})=>{
    const values={[craftingStorageKey]:{version:1,build:{...craft,plans:{}},orders:[{id:"reset",name:"Reset order",enabled:true,plans:craft.plans,fees:{fixed:10,percent:2,minute:3}}],currentOrderId:"reset",inventory:{capturedAt:Date.now(),items:craft.owned}},[enhancementStorageKey]:enhance,[priceStorageKey]:prices,'dvi-simulator-v1':{language}};
@@ -49,12 +57,12 @@ try{
   await page.screenshot({path:path.join(directory,`craft-${language}-${width}.png`),fullPage:true});
   await page.goto(base+'/enhance');
   await page.evaluate(async({snapshot,language})=>{const m=await import('/src/enhancement-controls.js');m.applyEnhancementImport(snapshot);m.renderEnhancement(language);},{snapshot,language});
-  assert.equal(await page.locator('#enhance-candidate').count(),1);
+  assert.equal(await page.locator('#enhance-candidate').count(),0);
   await page.locator('#enhance-reset').click();
   const resetLeft=await read(page,enhancementStorageKey),roleKeys=['guild','level','lectern','mastery'];
   assert.deepEqual(omit(resetLeft,roleKeys),omit(enhance,roleKeys));
   for(const key of roleKeys)assert.deepEqual(resetLeft[key],enhancementDefaults()[key]);
-  assert.equal(await page.locator('#enhance-candidate').count(),1);
+  assert.equal(await page.locator('#enhance-candidate').count(),0);
   await page.evaluate(async({snapshot,language})=>{const m=await import('/src/enhancement-controls.js');m.applyEnhancementImport(snapshot);m.renderEnhancement(language);},{snapshot,language});
   const beforeRight=await read(page,enhancementStorageKey);
   await page.locator('#enhance-equipment-reset').click();
@@ -62,6 +70,8 @@ try{
   assert.deepEqual(omit(resetRight,roleKeys),omit(enhancementDefaults(),roleKeys));
   for(const key of roleKeys)assert.deepEqual(resetRight[key],beforeRight[key]);
   assert.equal(await page.locator('#enhance-candidate').count(),0);
+  assert.equal(await page.inputValue('#enhance-item-search'),language==='zh'?'马':'Horse');
+  for(const [key,value]of [['tier','4'],['current','0'],['target','10']])assert.equal(await page.inputValue(`[data-enhance-field="${key}"]`),value);
   for(const [key,value]of [['shardPrice',308],['scrollPrice',459],['basePrice',777]])assert.equal(await page.inputValue(`[data-enhance-field="${key}"]`),String(value));
   assert.deepEqual(await read(page,priceStorageKey),prices);
   await page.reload();assert.deepEqual(await read(page,enhancementStorageKey),resetRight);
@@ -69,7 +79,7 @@ try{
   const layout=await page.locator('.enhance-equipment .panel-heading').evaluate(el=>{const [title,button]=el.children,a=title.getBoundingClientRect(),b=button.getBoundingClientRect();return {overlap:a.right>b.left,overflow:document.documentElement.scrollWidth>innerWidth,buttonRight:b.right,titleLeft:a.left};});
   assert.equal(layout.overlap,false);assert.equal(layout.overflow,false);
   await page.screenshot({path:path.join(directory,`enhance-${language}-${width}.png`),fullPage:true});
-  results.cases.push({width,language,status:'passed',checks:['craft left isolation','order deselection preserves recipes and stock','enhance left/right isolation','candidate scope','global prices preserved','reload','layout']});
+  results.cases.push({width,language,status:'passed',checks:['craft left isolation','order deselection preserves recipes and stock','initial enhancement defaults','enhance left/right isolation','character item shortcut removed','global prices preserved','reload','layout']});
   await context.close();
  }
  assert.deepEqual(results.errors,[]);console.log(JSON.stringify(results));

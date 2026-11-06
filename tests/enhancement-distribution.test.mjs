@@ -47,7 +47,7 @@ test('limits, unsafe money and invalid inputs explicitly fail without partial re
  for(const patch of [{chance:0},{chance:1.01},{cost:-1},{failureCost:NaN},{failTo:-1}])assert.throws(()=>solve([{chance:.5,cost:1,failureCost:1,failTo:0,...patch}]));
  for(const options of [{alphas:[1]},{maxCells:0}])assert.throws(()=>solve(reference(2),0,options));
 });
-const config=patch=>({...enhancementDefaults(),shardPrice:100,scrollPrice:200000,basePrice:0,...patch});
+const config=patch=>({...enhancementDefaults(),itemId:110,tier:3,target:7,shardPrice:100,scrollPrice:200000,basePrice:0,...patch});
 const gameSolve=s=>enhancementDistribution(s,calculateEnhancement(s));
 const gameExact=s=>{
  const r=calculateEnhancement(s);

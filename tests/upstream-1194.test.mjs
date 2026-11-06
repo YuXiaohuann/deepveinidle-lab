@@ -17,7 +17,7 @@ test('1194 separates the +20 task cap from existing +100 item encoding',()=>{
   assert.equal(validateEnhancement(JSON.parse(JSON.stringify(state))).current,current);
   assert.equal(normalize({...defaults(),gear:{weapon:{id:110,tier:4,plus:current}}}).gear.weapon.plus,current);
   const snapshot={version:2,capturedAt:Date.now(),player:{lastTick:0,skills:{enhancing:0},house:{},houseFurniture:{},masteries:{enhance:200},equipment:{weapon:id},bank:{},pack:[],overflow:{}}};
-  assert.equal(importEnhancement(enhancementDefaults(),snapshot).candidates[0].current,current);
+  assert.equal(importEnhancement(state,snapshot).state.current,current);
   const combat=importCharacter(defaults(),snapshot);assert.equal(combat.state.gear.weapon.plus,current);
  }
  for(const [current,target]of [[0,21],[20,21],[21,22],[50,100]])assert.throws(()=>calculateEnhancement({...enhancementDefaults(),current,target}),/targetAboveLimit/);
