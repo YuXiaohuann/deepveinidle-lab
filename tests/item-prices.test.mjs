@@ -24,7 +24,7 @@ test('pets retain quantities but never contribute prices or missing-price warnin
 });
 const side=value=>({value,capturedAt:at});
 const snapshot=quotes=>({version:1,quotes,invalid:0});
-const policy=(state,categories,fallback=false)=>({...state,preferences:{...state.preferences,categories:{all:'off',...Object.fromEntries(priceCategories.map(f=>[f.key,null])),...categories},vendorFallback:Object.fromEntries(['all',...priceCategories.map(f=>f.key)].map(key=>[key,fallback&&['ask','bid'].includes(categories[key])]))}});
+const policy=(state,categories,fallback=false)=>({...state,preferences:{...state.preferences,categories:{monsterValuables:null,all:'off',...Object.fromEntries(priceCategories.map(f=>[f.key,null])),...categories},vendorFallback:Object.fromEntries(['all','monsterValuables',...priceCategories.map(f=>f.key)].map(key=>[key,fallback&&['ask','bid'].includes(categories[key])]))}});
 
 test('All defaults to seven-day averages and primary categories inherit it with independent floors disabled',()=>{
  const state=priceDefaults();assert.equal(state.preferences.categories.all,'avg7d');
@@ -39,7 +39,7 @@ test('legacy consistent category choices and bidVendor floors reset without chan
   for(const key of priceCategories.find(c=>c.key==='resources').families){state.preferences.categories[key]=version<4?'bidVendor':'bid';state.preferences.vendorFallback[key]=true;}
   for(const key of ['weapons','armour','jewellery'])state.preferences.categories[key]='off';
   state.quotes={1:{ask:side(80)}};const migrated=normalizePriceState(state);
-  assert.equal(migrated.version,6);assert.deepEqual(migrated.preferences,priceDefaults().preferences);assert.equal(migrated.prices[1].price,77);
+  assert.equal(migrated.version,7);assert.deepEqual(migrated.preferences,priceDefaults().preferences);assert.equal(migrated.prices[1].price,77);
   assert.deepEqual(migrated.quotes,version===2?{}:state.quotes);assert.deepEqual(migrated.preferences.reviewCategories,[]);
  }
  const state=priceDefaults();delete state.preferences.vendorFallback.resources;assert.throws(()=>normalizePriceState(state),/invalidPriceStorage/);

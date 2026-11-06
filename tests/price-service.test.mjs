@@ -17,7 +17,7 @@ test('service commands, typed events, concurrent refresh and snapshot isolation 
   assert.equal(service.getPreferences().categories.resources,'bid');assert.equal(events.at(-1).preferences,true);assert.equal(events.at(-1).prices,false);
   assert.throws(()=>service.setPreferences({}),/invalidPricePreferences/);
   await service.importPrices();assert.equal(service.getItem(1).price,0);assert.equal(service.getItem(1).sellQuantity,100);
-  assert.equal(events.at(-1).market,true);assert.equal(events.at(-1).prices,false);
+  assert.equal(events.at(-1).market,true);assert.equal(events.at(-1).prices,true);assert.equal(service.getItem(207).price,288000);
   const before=service.getSnapshot([1]);service.setLocked([1],false);
   t.mock.method(globalThis,'fetch',async()=>{requests++;await new Promise(resolve=>release=resolve);return {ok:true,json:async()=>payload};});
   const importing=service.importPrices(),refreshing=service.importPrices();assert.equal(requests,1);
@@ -25,7 +25,7 @@ test('service commands, typed events, concurrent refresh and snapshot isolation 
   assert.equal(service.getItem(1).price,77);assert.equal(before.items[1].price,0);
   service.setLocked([1],false);t.mock.method(globalThis,'fetch',async()=>({ok:true,json:async()=>payload}));
   await service.importPrices();assert.equal(service.getItem(1).price,4);
-  assert.equal(service.clearPrices(),1);assert.equal(service.getItem(1).price,null);assert.equal(service.getItem(1).buyQuantity,200);
+  assert.equal(service.clearPrices(),14);assert.equal(service.getItem(1).price,null);assert.equal(service.getItem(1).buyQuantity,200);
   const latest=service.getSnapshot();payload={...payload,generatedAt:new Date(at-1000).toISOString()};
   await assert.rejects(service.importPrices(),/marketStale/);assert.equal(service.getSnapshot(),latest);
   service.setPrice(1,99);const snapshot=service.getSnapshot();payload={...payload,generatedAt:new Date(at+500).toISOString(),items:{2:{lowestSell:5,sellQty:0,highestBuy:null,buyQty:0}}};

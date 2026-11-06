@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
-import {priceDefaults,priceCategories,itemCategory,pricePolicy,applyPricePreferences,normalizePriceState,setItemPrice,lockItemPrices,importItemPrices,hasPriceImports,validatePricePreferences} from '../src/item-prices.js';
+import {priceDefaults,priceCategories,itemPriceCategory,itemCategory,pricePolicy,applyPricePreferences,normalizePriceState,setItemPrice,lockItemPrices,importItemPrices,hasPriceImports,validatePricePreferences} from '../src/item-prices.js';
 import {createPriceSnapshot} from '../src/price-protocol.js';
 import {legacyPriceState} from './fixtures/legacy-price-state.mjs';
 const at=Date.now()-1000;
@@ -65,7 +65,7 @@ test('vendor floor inherits as a pair and category overrides use their own saved
 });
 
 test('Skip retains values, inherited Skip disables requests while a category override enables them',()=>{
- const state=cached(),skipped=apply(state,p=>p.categories.all='off');
+ const state=cached(),skipped=apply(state,p=>{p.categories.all='off';p.categories.monsterValuables=null;});
  assert.deepEqual(skipped.prices,state.prices);assert.equal(hasPriceImports(skipped.preferences),false);
  const enabled=apply(skipped,p=>p.categories.equipment='bid');
  assert.equal(enabled.prices[110].price,60);assert.equal(enabled.prices[1].price,90);assert.equal(hasPriceImports(enabled.preferences),true);
@@ -95,4 +95,38 @@ test('automatic checkbox is independent and resetting preferences revalues from 
  let changed=apply(disabled,p=>p.categories.all='bid');changed=lockItemPrices(setItemPrice(changed,1,0),[1],true).state;
  const reset=applyPricePreferences(changed,priceDefaults().preferences);
  assert.equal(reset.prices[1].price,0);assert.equal(reset.prices[293].price,200);assert.equal(reset.preferences.autoImport,true);
+});
+
+
+test('monster valuables use their independent default vendor policy without changing other valuables',()=>{
+ const ids=[...new Set(game.monsters.map(m=>m.bonus.itemId))];
+ assert.equal(ids.length,13);
+ for(const id of ids){assert.equal(itemCategory(id),'valuables');assert.equal(itemPriceCategory(id),'monsterValuables');}
+ const other=game.items.find(i=>itemCategory(i.id)==='valuables'&&!ids.includes(game.baseItemId(i.id))).id;
+ let state=priceDefaults();state.quotes={201:quote(9000,8000),207:quote(999999,888888),[other]:quote(500,400)};
+ state=importItemPrices(state,{version:1,quotes:state.quotes,invalid:0}).state;
+ assert.equal(state.prices[201].price,600);assert.equal(state.prices[207].price,288000);assert.equal(state.prices[other].price,500);
+ state=apply(state,p=>p.categories.valuables='off');
+ state=apply(state,p=>p.categories.monsterValuables='ask');assert.equal(state.prices[201].price,9000);assert.equal(state.prices[other].price,500);
+ state=apply(state,p=>{p.categories.all='bid';p.categories.monsterValuables=null;});assert.equal(state.prices[201].price,8000);
+ state=apply(state,p=>p.vendorFallback.all=true);assert.equal(state.prices[207].price,888888);
+ state=apply(state,p=>p.categories.monsterValuables='vendor');assert.equal(state.prices[207].price,288000);
+ state=lockItemPrices(setItemPrice(setItemPrice(state,201,0),202,null),[201,202],true).state;
+ state=apply(state,p=>p.categories.monsterValuables='avg30d');assert.equal(state.prices[201].price,0);assert.equal(state.prices[202].price,null);assert.equal(createPriceSnapshot(state).getItem(203).price,null);
+ state=apply(state,p=>p.categories.monsterValuables='off');const previous=state.prices;
+ state=apply(state,p=>p.categories.all='off');assert.deepEqual(state.prices,previous);assert.equal(hasPriceImports(state.preferences),false);
+ state=applyPricePreferences(state,priceDefaults().preferences);assert.equal(state.prices[207].price,288000);assert.equal(state.prices[201].price,0);
+});
+
+test('v6 migration adds only the new policy, preserving choices, prices, quotes and locks; v7 restores exactly',()=>{
+ let old=lockItemPrices(setItemPrice(setItemPrice(priceDefaults(),201,123),202,0),[202],true).state;
+ old.version=6;delete old.preferences.categories.monsterValuables;delete old.preferences.vendorFallback.monsterValuables;
+ old.preferences.categories.all='bid';old.preferences.categories.valuables='off';old.preferences.vendorFallback.all=true;old.preferences.autoImport=false;old.quotes={201:quote(900,800)};
+ const original=structuredClone(old),next=normalizePriceState(old);
+ assert.equal(next.version,7);assert.deepEqual(old,original);assert.deepEqual(next.prices,old.prices);assert.deepEqual(next.quotes,old.quotes);
+ const prefs=structuredClone(next.preferences);delete prefs.categories.monsterValuables;delete prefs.vendorFallback.monsterValuables;assert.deepEqual(prefs,old.preferences);
+ assert.equal(next.preferences.categories.monsterValuables,'vendor');assert.equal(next.preferences.vendorFallback.monsterValuables,false);
+ const updated=importItemPrices(next,{version:1,quotes:old.quotes,invalid:0}).state;assert.equal(updated.prices[201].price,600);assert.equal(updated.prices[202].price,0);
+ const chosen=apply(updated,p=>p.categories.monsterValuables=null);assert.deepEqual(normalizePriceState(chosen),chosen);
+ delete chosen.preferences.categories.monsterValuables;assert.throws(()=>normalizePriceState(chosen),/invalidPriceStorage/);
 });

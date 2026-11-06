@@ -34,8 +34,8 @@ test('published v2 migrates prices, locks and preferences, discarding game quote
  state.prices[2]={price:99,locked:false,source:'bid',updatedAt:Date.now(),quoteCapturedAt:Date.now()};state.quotes={2:{bid:{value:99,capturedAt:Date.now()}}};state.preferences.categories.ore='ask';
  const saved=JSON.stringify(state);let writes=0,latest;
  await withStore({getItem:()=>saved,setItem:(key,value)=>{writes++;latest=JSON.parse(value);}},store=>{
-  const current=store.priceState();assert.equal(writes,0);assert.equal(store.priceSaveError(),null);assert.equal(current.version,6);assert.deepEqual(current.quotes,{});assert.equal(current.prices[1].price,0);assert.equal(current.prices[1].locked,true);assert.equal(current.prices[2].price,99);assert.equal(current.prices[2].source,'bid');assert.equal(current.prices[2].quoteCapturedAt,null);assert.equal(current.preferences.categories.resources,null);
-  store.updatePrices(current);assert.equal(writes,1);assert.equal(latest.version,6);
+  const current=store.priceState();assert.equal(writes,0);assert.equal(store.priceSaveError(),null);assert.equal(current.version,7);assert.deepEqual(current.quotes,{});assert.equal(current.prices[1].price,0);assert.equal(current.prices[1].locked,true);assert.equal(current.prices[2].price,99);assert.equal(current.prices[2].source,'bid');assert.equal(current.prices[2].quoteCapturedAt,null);assert.equal(current.preferences.categories.resources,null);
+  store.updatePrices(current);assert.equal(writes,1);assert.equal(latest.version,7);
  });
 });
 

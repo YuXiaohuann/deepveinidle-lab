@@ -50,6 +50,7 @@ try{
   await page.goto(base+'/forecast');await page.selectOption('#language',language);
   await page.locator('#item-prices-open').click();
   await page.locator('#item-prices-dialog').waitFor();
+  assert.equal(await page.locator('#price-import-settings').evaluate(el=>el.open),false);await page.locator('#price-import-settings summary').click();
   await page.waitForTimeout(100);assert.equal(requests,0);assert.equal(await page.locator('#price-status').textContent(),'');
   await page.locator('#price-close').click();await page.locator('#item-prices-open').click();
   await page.waitForTimeout(100);assert.equal(requests,0);
@@ -72,9 +73,9 @@ try{
   const changeFilter=async(key,value)=>{const el=page.locator('#price-'+key);if(key==='search'||key==='plus'){await el.fill(value);await el.blur();}else await el.selectOption(value);};
   const expectEmpty=async()=>{assert.equal(await page.locator('[data-price-value]').count(),0);assert.ok((await page.locator('.price-list').innerText()).includes(emptyPrompt));assert.equal(await page.locator('#price-select-all').isDisabled(),true);assert.equal(await page.locator('#price-bulk-lock').isDisabled(),true);assert.equal(await page.locator('#price-bulk-unlock').isDisabled(),true);};
   assert.deepEqual(await stored(),saved);
-  const memory=await page.evaluate(async()=>{const {priceState}=await import('/src/item-price-store.js');return priceState();});assert.equal(memory.version,6);assert.deepEqual(memory.quotes,{});
+  const memory=await page.evaluate(async()=>{const {priceState}=await import('/src/item-price-store.js');return priceState();});assert.equal(memory.version,7);assert.deepEqual(memory.quotes,{});
   assert.deepEqual(await page.locator('#price-family option').evaluateAll(els=>els.map(el=>el.value)),['all','resources','consumables','equipment','tools','valuables']);
-  assert.deepEqual(await page.locator('#price-family option').allTextContents(),await page.locator('.price-categories tbody tr td:first-child').allTextContents());
+  assert.deepEqual(await page.locator('#price-family option').allTextContents(),(await page.locator('.price-categories tbody tr td:first-child').allTextContents()).slice(0,-1));
   assert.equal(await page.locator('#price-plus').inputValue(),'0');
   await changeFilter('family','equipment');assert.equal(await page.locator('[data-price-value="10110"]').count(),0);
   await changeFilter('plus','');assert.equal(await page.locator('[data-price-value="10110"]').inputValue(),'55');assert.equal(await page.locator('[data-price-value="20110"]').inputValue(),'');
@@ -97,7 +98,7 @@ try{
   assert.ok(layout.width<=width,JSON.stringify(layout));assert.ok(layout.scroll<=layout.client+1,JSON.stringify(layout));
   await page.locator('#price-import-settings summary').click();assert.equal(await page.locator('#price-import-settings').evaluate(el=>el.open),false);
   assert.equal(requests,0);await page.locator('#price-import-settings summary').click();await page.locator('#price-import').click();await page.waitForFunction(()=>document.querySelector('#price-status')?.textContent.startsWith('已更新 ')||document.querySelector('#price-status')?.textContent.startsWith('Updated '));
-  assert.equal(requests,1);assert.equal((await stored()).version,6);assert.equal((await stored()).quotes[3],undefined);assert.equal((await stored()).prices[1].price,123);assert.equal((await stored()).prices[2].price,80);
+  assert.equal(requests,1);assert.equal((await stored()).version,7);assert.equal((await stored()).quotes[3],undefined);assert.equal((await stored()).prices[1].price,123);assert.equal((await stored()).prices[2].price,80);
   assert.equal((await stored()).prices[2].quoteCapturedAt,at);
   await expectEmpty();
   for(const [key,value,reset]of [['family','resources','all'],['search','Tin',''],['tier','0','all'],['plus','1','0'],['filter','unpriced','all'],['filter','locked','all']]){
@@ -148,6 +149,7 @@ try{
   const notice=await page.locator('#price-auto-notice').evaluate(el=>({right:el.getBoundingClientRect().right,left:el.getBoundingClientRect().left}));assert.ok(notice.left>=0&&notice.right<=width);
   assert.equal(await page.locator('#price-auto-notice button').count(),0);await page.locator('#price-auto-notice').click();assert.equal(await page.locator('#price-auto-notice').count(),0);
   await page.locator('#item-prices-open').click();
+  assert.equal(await page.locator('#price-import-settings').evaluate(el=>el.open),false);await page.locator('#price-import-settings summary').click();
   assert.deepEqual(await page.locator('[data-price-category="resources"]').evaluateAll(els=>els.map(el=>el.value)),['','avg7d','avg30d','ask','bid','vendor','off']);
   assert.equal(await page.locator('[data-price-fallback]:checked').count(),0);
   assert.equal(await page.locator('#price-auto-import').isChecked(),true);
@@ -196,7 +198,7 @@ try{
   await context.route('https://deepveinidle.com/api/market/prices.json',route=>{requests++;return route.fulfill({status:503,body:'Unavailable'});});
   await page.goto(base+'/forecast');await page.locator('#item-prices-open').click();assert.equal(requests,0);assert.equal(await page.locator('#price-auto-import').isChecked(),false);
   await page.reload();await page.locator('#item-prices-open').click();assert.equal(requests,0);assert.equal(await page.locator('#price-auto-import').isChecked(),false);
-  await page.locator('#price-auto-import').check();assert.equal(requests,0);await page.reload();await page.locator('#price-auto-notice').waitFor();assert.equal(requests,1);
+  await page.locator('#price-import-settings summary').click();await page.locator('#price-auto-import').check();assert.equal(requests,0);await page.reload();await page.locator('#price-auto-notice').waitFor();assert.equal(requests,1);
   result.cases.push('automatic import checkbox persists across reloads, prevents requests while off, and enables the next visit');await context.close();
  }
  for(const fail of [false,true]){

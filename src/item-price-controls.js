@@ -1,7 +1,7 @@
 import {getItem} from './price-service.js';
 import * as game from './upstream.js';
 import {translatedName} from './i18n.js';
-import {priceDefaults,marketPriceModes,priceCategories,itemCategory,hasPriceImports,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices} from './item-prices.js';
+import {priceDefaults,marketPriceModes,priceCategories,priceOptionCategories,itemCategory,hasPriceImports,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices} from './item-prices.js';
 import {priceState,priceSaveError,updatePrices,subscribePrices,refreshMarketPrices,setPricePreferences} from './item-price-store.js';
 import {marketErrors} from './market-import.js';
 
@@ -62,17 +62,19 @@ function row(id){const s=priceState(),p=s.prices[id],q=s.quotes[id],base=game.it
 }
 function render(){if(!dialog?.open||editing)return;
  const scroll=dialog.querySelector('.price-list')?.scrollTop??0,s=priceState(),rows=candidates();selected=new Set([...selected].filter(id=>rows.includes(id)));
+ // Read the live state before replacing the panel; toggle events may arrive after a redraw.
+ render.importOpen=dialog.querySelector('#price-import-settings')?.open??render.importOpen;
  const saved=priceSaveError();
  dialog.innerHTML=`<div class="price-heading"><h2 id="item-prices-title">${text('物品价格','Item prices')}</h2><button id="price-close" class="secondary">${text('关闭','Close')}</button></div>
  <p class="micro">${text('全页面共用 · 单价为税前参考 · 空值为未定价 · 手动修改自动锁定 · 锁定价格将阻止导入覆盖。','Shared across pages · Prices are before-tax references · Blank means unpriced · Manual edits lock prices automatically · Locked prices prevent import overwrites.')}</p>
  <details class="price-import config-detail character-import" id="price-import-settings" ${render.importOpen?'open':''}><summary>${text('市场价格导入','Import market prices')}</summary>
  <div class="import-body"><div class="price-import-options"><button id="price-import" class="secondary" ${busy||!hasPriceImports(s.preferences)?'disabled':''}>${text('更新价格','Update prices')}</button><label class="check"><input id="price-auto-import" type="checkbox" ${s.preferences.autoImport?'checked':''}>${text('自动更新价格','Automatically update prices')}</label><button id="price-import-reset" class="secondary">${text('重置价格选项','Reset price options')}</button></div>
  <span id="price-status" class="micro import-status${statusError()?' price-market-warning':''}" role="${statusError()?'alert':'status'}">${esc(message())}</span>
- ${s.preferences.reviewCategories.length?`<p class="issue-box" role="alert">${text('旧分类设置不一致，请重新选择以下分类的价格选项；确认前保留原价格并暂停该分类更新：','Conflicting saved category settings. Choose a price option for each category below; existing prices are kept and updates paused until confirmed: ')}${s.preferences.reviewCategories.map(key=>text(priceCategories.find(c=>c.key===key).zh,priceCategories.find(c=>c.key===key).en)).join('、')}</p>`:''}
- <div class="price-categories"><table><thead><tr><th>${text('分类','Category')}</th><th>${text('报价物品数','Quoted items')}</th><th>${text('价格选项','Price source')}</th></tr></thead><tbody>${[{key:'all',zh:'全部',en:'All'},...priceCategories].map(category=>{
- const key=category.key,name=text(category.zh,category.en),mode=s.preferences.categories[key],review=s.preferences.reviewCategories.includes(key),count=Object.keys(s.quotes).filter(id=>key==='all'||itemCategory(Number(id))===key).length;
+ ${s.preferences.reviewCategories.length?`<p class="issue-box" role="alert">${text('旧分类设置不一致，请重新选择以下分类的价格选项；确认前保留原价格并暂停该分类更新：','Conflicting saved category settings. Choose a price option for each category below; existing prices are kept and updates paused until confirmed: ')}${s.preferences.reviewCategories.map(key=>text(priceOptionCategories.find(c=>c.key===key).zh,priceOptionCategories.find(c=>c.key===key).en)).join('、')}</p>`:''}
+ <div class="price-categories"><table><thead><tr><th>${text('分类','Category')}</th><th>${text('价格选项','Price source')}</th></tr></thead><tbody>${[{key:'all',zh:'全部',en:'All'},...priceOptionCategories].map(category=>{
+ const key=category.key,name=text(category.zh,category.en),mode=s.preferences.categories[key],review=s.preferences.reviewCategories.includes(key);
  const options=[...(key==='all'?[]:[['',text('继承全部','Use All')]]),['avg7d',text('7天平均成交价格','7-day average')],['avg30d',text('30天平均成交价格','30-day average')],['ask',text('卖单价','Ask')],['bid',text('买单价','Bid')],['vendor',text('商人价','Vendor price')],['off',text('不导入','Skip')]];
- return `<tr><td>${name}${review?`<small>${text('待确认','Review required')}</small>`:''}</td><td>${count}</td><td><div class="price-category-settings"><div class="price-options" role="radiogroup" aria-label="${esc(name+' '+text('价格选项','price source'))}">${key==='all'?`<span class="check price-option-placeholder" aria-hidden="true">${text('继承全部','Use All')}</span>`:''}${options.map(([value,label])=>`<label class="check"><input type="radio" name="price-category-${key}" data-price-category="${key}" value="${value}" ${!review&&(mode??'')===value?'checked':''} ${key==='all'?'required':''}>${label}</label>`).join('')}</div><label class="check price-fallback"><input type="checkbox" data-price-fallback="${key}" ${(mode===null?s.preferences.vendorFallback.all:s.preferences.vendorFallback[key])?'checked':''} ${!review&&marketPriceModes.includes(mode)?'':'disabled'}>${text('商人价兜底','Vendor floor')}</label></div></td></tr>`;
+ return `<tr><td>${name}${review?`<small>${text('待确认','Review required')}</small>`:''}</td><td><div class="price-category-settings"><div class="price-options" role="radiogroup" aria-label="${esc(name+' '+text('价格选项','price source'))}">${key==='all'?`<span class="check price-option-placeholder" aria-hidden="true">${text('继承全部','Use All')}</span>`:''}${options.map(([value,label])=>`<label class="check"><input type="radio" name="price-category-${key}" data-price-category="${key}" value="${value}" ${!review&&(mode??'')===value?'checked':''} ${key==='all'?'required':''}>${label}</label>`).join('')}</div><label class="check price-fallback"><input type="checkbox" data-price-fallback="${key}" ${(mode===null?s.preferences.vendorFallback.all:s.preferences.vendorFallback[key])?'checked':''} ${!review&&marketPriceModes.includes(mode)?'':'disabled'}>${text('商人价兜底','Vendor floor')}</label></div></td></tr>`;
  }).join('')}</tbody></table></div>
 
  </div></details>
@@ -82,7 +84,6 @@ ${saved?`<p class="issue-box" role="alert">${esc((errors[saved]??[saved,saved])[
  <div class="price-actions"><label class="check"><input id="price-select-all" type="checkbox" ${!rows.length?'disabled':''} ${rows.length&&rows.every(id=>selected.has(id))?'checked':''}>${text('全选当前筛选结果','Select all filtered items')} (${rows.length})</label><span>${text('已选','Selected')} ${selected.size}</span><button id="price-bulk-lock" class="secondary" ${!selected.size?'disabled':''}>${text('批量锁定','Lock selected')}</button><button id="price-bulk-unlock" class="secondary" ${!selected.size?'disabled':''}>${text('批量解锁','Unlock selected')}</button><button id="price-clear" class="secondary" ${busy||!Object.values(s.prices).some(p=>!p.locked&&p.price!==null)?'disabled':''}>${text('清空价格','Clear prices')}</button></div>
  <div class="price-list table-scroll"><table><thead><tr>${['',text('物品','Item'),text('有效单价','Effective unit price'),text('锁定','Locked'),text('商人价格','Vendor price'),text('最低卖单价','Lowest ask'),text('在售数量','Quantity for sale'),text('最高买单价','Highest bid'),text('求购数量','Quantity wanted'),text('7天平均成交价格','7-day average trade price'),text('30天平均成交价格','30-day average trade price')].map(v=>`<th>${v}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.map(row).join(''):`<tr><td colspan="11" class="${hasFilters()?'':'price-filter-prompt'}">${hasFilters()?text('没有匹配物品','No matching items'):text('物品数量较多，请先设置筛选条件','Many items to display; set a filter first')}</td></tr>`}</tbody></table></div>`;
  dialog.querySelector('#price-close').onclick=()=>dialog.close();
- dialog.querySelector('#price-import-settings').ontoggle=e=>{render.importOpen=e.target.open;};
  dialog.querySelector('#price-import').onclick=()=>importPrices();
  dialog.querySelector('#price-auto-import').onchange=e=>{setPricePreferences({...priceState().preferences,autoImport:e.target.checked});dialog.querySelector('#price-auto-import')?.focus();};
  dialog.querySelector('#price-import-reset').onclick=()=>{status=null;setPricePreferences(priceDefaults().preferences);dialog.querySelector('#price-import-reset')?.focus();};
@@ -105,7 +106,7 @@ ${saved?`<p class="issue-box" role="alert">${esc((errors[saved]??[saved,saved])[
  }
  dialog.querySelector('.price-list').scrollTop=scroll;
 }
-render.importOpen=true;
+render.importOpen=false;
 async function importPrices(){if(busy)return;const preferences=structuredClone(priceState().preferences);busy=true;render();
  try{const result=await refreshMarketPrices(preferences);marketError=null;status={stats:result.stats};
  }catch(error){marketError=error.message;status=null;}finally{busy=false;render();}

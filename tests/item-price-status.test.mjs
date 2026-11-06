@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import * as game from '../src/upstream.js';
 import {marketErrors} from '../src/market-import.js';
-import {priceDefaults as defaultPrices,priceCategories,marketPriceModes,itemCategory,hasPriceImports,applyPricePreferences,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes} from '../src/item-prices.js';
+import {priceDefaults as defaultPrices,priceCategories,priceOptionCategories,marketPriceModes,itemCategory,hasPriceImports,applyPricePreferences,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes} from '../src/item-prices.js';
 const priceDefaults=()=>{const state=defaultPrices();for(const key of Object.keys(state.preferences.categories))state.preferences.categories[key]='bid';return state;};
 const source=fs.readFileSync(new URL('../src/item-price-controls.js',import.meta.url),'utf8').replace(/^import .*;\n/gm,'').replace('export function mountItemPrices','function mountItemPrices');
 const refreshSource='let marketRequest;'+fs.readFileSync(new URL('../src/item-price-store.js',import.meta.url),'utf8').split('let marketRequest;')[1].replace(/export /g,'');
@@ -16,7 +16,7 @@ function harness(requestMarket,priceInputs=[]){
  const controls=new Map(),element=()=>({focus(){},setAttribute(key,value){this[key]=value;},scrollTop:0,textContent:''});
  const dialog={open:false,innerHTML:'',showModal(){this.open=true;},setAttribute(){},addEventListener(){},querySelector(selector){if(!controls.has(selector))controls.set(selector,element());return controls.get(selector);},querySelectorAll(selector){return selector==='[data-price-value]'?priceInputs:[];}};
  const button={};const document={createElement:()=>dialog,body:{append(){}},getElementById:()=>button};let current=state,subscriber;
- const ctx=vm.createContext({marketErrors,priceDefaults:defaultPrices,getItem:id=>createPriceSnapshot(current).getItem(id),game,priceCategories,marketPriceModes,itemCategory,hasPriceImports,translatedName:s=>s,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes,document,Date,Set,Number,Object,String,structuredClone,marketPricesUrl:"https://deepveinidle.com/api/market/prices.json",requestAnimationFrame:fn=>frames.push(fn),requestMarket,priceState:()=>current,priceSaveError:()=>null,setPricePreferences:preferences=>{current=applyPricePreferences(current,preferences);subscriber?.();},updatePrices:next=>{current=next;subscriber?.();},subscribePrices:fn=>subscriber=fn});
+ const ctx=vm.createContext({marketErrors,priceDefaults:defaultPrices,getItem:id=>createPriceSnapshot(current).getItem(id),game,priceCategories,priceOptionCategories,marketPriceModes,itemCategory,hasPriceImports,translatedName:s=>s,validItemId,itemFamily,setItemPrice,lockItemPrices,clearUnlockedPrices,importItemPrices,validateMarketSnapshot,mergeQuotes,document,Date,Set,Number,Object,String,structuredClone,marketPricesUrl:"https://deepveinidle.com/api/market/prices.json",requestAnimationFrame:fn=>frames.push(fn),requestMarket,priceState:()=>current,priceSaveError:()=>null,setPricePreferences:preferences=>{current=applyPricePreferences(current,preferences);subscriber?.();},updatePrices:next=>{current=next;subscriber?.();},subscribePrices:fn=>subscriber=fn});
  vm.runInContext(refreshSource,ctx);vm.runInContext(source,ctx);ctx.mountItemPrices('zh');return {dialog,button,controls,ctx,nextFrame(){for(const fn of frames.splice(0))fn();},runFrames(){while(frames.length)this.nextFrame();}};
 }
 function changeFilter(h,key,value){const el=h.controls.get('#price-'+key);el.value=value;el.onchange();}
@@ -191,7 +191,7 @@ test('reset restores All seven-day averages and inheritance while preserving loc
  const state=lockItemPrices(setItemPrice(h.ctx.priceState(),1,77),[1],true).state;
  state.preferences.vendorFallback.resources=true;state.preferences.categories.equipment='off';state.preferences.autoImport=false;h.ctx.updatePrices(state);h.button.onclick();
  h.controls.get('#price-import-reset').onclick();
- assert.deepEqual(h.ctx.priceState().preferences,defaultPrices().preferences);assert.deepEqual(h.ctx.priceState().prices,state.prices);assert.equal(h.ctx.priceState().quotes,state.quotes);assert.equal(reads,0);
+ assert.deepEqual(h.ctx.priceState().preferences,defaultPrices().preferences);assert.deepEqual(h.ctx.priceState().prices[1],state.prices[1]);assert.equal(h.ctx.priceState().prices[207].price,288000);assert.equal(h.ctx.priceState().quotes,state.quotes);assert.equal(reads,0);
 });
 
 test('automatic import checkbox saves only preferences without requesting quotes',()=>{
