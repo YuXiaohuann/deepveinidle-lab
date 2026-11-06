@@ -15,7 +15,7 @@ function nativeResult(s,job,tier,count){
  return {player,report,xp:player.skills[job.skill]-xp};
 }
 test('five crafting skills, default tiers, normalization and independent tools',()=>{
- assert.deepEqual(craftingSkills.map(s=>craftingJobs.filter(j=>j.skill===s).length),[8,66,38,8,74]);
+ assert.deepEqual(craftingSkills.map(s=>craftingJobs.filter(j=>j.skill===s).length),[8,71,40,8,77]);
  const d=craftingDefaults();assert.equal(d.tiers[61],0);assert.deepEqual(d.plans,{});
  assert.equal(d.period,'day');
  for(const period of [undefined,null,'bad','day'])assert.equal(normalizeCrafting({period}).period,'day');

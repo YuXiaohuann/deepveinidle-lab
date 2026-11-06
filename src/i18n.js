@@ -1,6 +1,8 @@
 import {game} from './model.js';
 // Missing upstream terms only: game translations always take precedence.
 export const fallbackTranslations={
+"Blight-glass Alembic":"枯疫玻璃蒸馏器","Raidstone Whetstone":"团战磨刀石",
+"Off-hand":"副手","Head":"头部","Body":"胸部",
 "Upgrades":"升级",
 "Pure coal":"纯净煤矿",
 "Pickaxe":"镐","Fishing rod":"鱼竿","Axe":"斧",

@@ -77,15 +77,15 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 价格设置及自动导入专项可运行 `node tests/market-prices-browser.mjs --toolbar-only`，覆盖双语桌面／390px 一级分类、强化空值／0／正值及已锁定／未定价组合筛选（零价不算未定价）、手动导入、锁定、分类兜底、重置、自动导入开关、5 分钟边界与不轮询，以及成功／失败通知 30 秒自动关闭和点击／键盘关闭。行情使用请求替身，不重跑真实 API 或角色捕获专项。默认结果保存至 `.test-artifacts/price-toolbar/`；可用 `--out <目录>` 单独保存本轮证据，使用 `--base-url <目标网址>` 对指定候选或生产目标执行相同专项。目标参数不启动本机服务，也不代表完整发布验收通过。
 
-价格一级分类与即时定价专项：`node tests/price-preferences-browser.mjs [输出目录]`，默认输出 `.test-artifacts/price-preferences/`，使用本机服务、独立 Chrome 与官方接口请求替身。覆盖双语 1280px／700px／390px、各行对应选项列及换行位置对齐、“重置价格选项”紧接自动更新右侧及窄屏换行、全部行空位不参与交互或辅助技术读取、旧 v2～v5 选项统一重置、v6 选择恢复及两种成交均价、“全部”必选及分类继承／覆盖／恢复继承、兜底继承、缺报价清除、锁定零价、表格与协议即时同步、单次通知、旧快照隔离、刷新恢复及请求期间改选不被迟到结果覆盖。配合 `node tests/price-refactor-browser.mjs` 回归价格字段、强化方案覆盖及消费者页面。截图需要审阅，不代替真实 API 或发布验收。
+价格一级分类与即时定价专项：`node tests/price-preferences-browser.mjs [输出目录] [目标网址]`，默认输出 `.test-artifacts/price-preferences/`，使用本机服务、独立 Chrome 与官方接口请求替身。覆盖双语 1280px／700px／390px、各行对应选项列及换行位置对齐、“重置价格选项”紧接自动更新右侧及窄屏换行、全部行空位不参与交互或辅助技术读取、旧 v2～v5 选项统一重置、v6 选择恢复及两种成交均价、“全部”必选及分类继承／覆盖／恢复继承、兜底继承、缺报价清除、锁定零价、表格与协议即时同步、单次通知、旧快照隔离、刷新恢复及请求期间改选不被迟到结果覆盖。配合 `node tests/price-refactor-browser.mjs` 回归价格字段、强化方案覆盖及消费者页面。截图需要审阅，不代替真实 API 或发布验收。
 
 ## 上游版本适配专项
 
-`node --test tests/upstream-1208.test.mjs tests/upstream-1205.test.mjs tests/upstream-1204.test.mjs tests/upstream-1203.test.mjs tests/upstream-1199.test.mjs tests/upstream-1196.test.mjs tests/upstream-1194.test.mjs tests/enhancement.test.mjs tests/mastery.test.mjs` 验证 1208 精通 200／家园 50 上限、越界旧配置与导入拒绝／警告、激活精通切页捕获，以及利维坦护符无总等级门槛提示／导入保留、升级容量原子性／批量成本，以及纯净煤矿任务／固定普通主产物／额外奖励品质、书台恢复、1198 缺字段配置迁移、统一碎片／经验、2.4 秒尝试与宠物机会恢复、深渊之眼商人特殊售价及等级缓存边界，以及烟花有效品质／定价／收藏排除、装备升级保留品质与强化编码、预测初始化以及强化目标 +20、既有 +100 编码／导入保留、精通 +50% 封顶及锻造录 +15 计点边界／15,662 总上限。
+`node --test tests/upstream-1212.test.mjs tests/upstream-1208.test.mjs tests/upstream-1205.test.mjs tests/upstream-1204.test.mjs tests/upstream-1203.test.mjs tests/upstream-1199.test.mjs tests/upstream-1196.test.mjs tests/upstream-1194.test.mjs tests/enhancement.test.mjs tests/mastery.test.mjs` 验证 1208 精通 200／家园 50 上限、越界旧配置与导入拒绝／警告、激活精通切页捕获，以及利维坦护符无总等级门槛提示／导入保留、升级容量原子性／批量成本，以及纯净煤矿任务／固定普通主产物／额外奖励品质、书台恢复、1198 缺字段配置迁移、统一碎片／经验、2.4 秒尝试与宠物机会恢复、深渊之眼商人特殊售价及等级缓存边界，以及烟花有效品质／定价／收藏排除、装备升级保留品质与强化编码、预测初始化以及强化目标 +20、既有 +100 编码／导入保留、精通 +50% 封顶及锻造录 +15 计点边界／15,662 总上限。
 
 `node --test tests/upstream-1190.test.mjs` 覆盖迁移战斗区域、自动及两个指定仓库、巨像六件五品质材料、保存兼容与任务自动领奖隔离。独立离线对照使用 `scripts/native-questless.mjs` 按日边界分段保持空任务，以数学日／周编号独立于应用适配函数核验。
 
-`node tests/upstream-browser.mjs --out .test-artifacts/upstream-1211/browser` 检查双语桌面／390px 护符无总等级门槛提示／刷新保留、纯净煤矿任务／计算／刷新保存及战斗完成、来源版本、巨像材料／经验与库存计划刷新保存，书台恢复／保存与缺字段迁移、强化成功率、新旧目标与高强化存档、精通等级及家园控件上限、强化加成封顶、烟花有效品质／火药定价／计划保存，以及合成消息下的直接捕获（不提供 Worker／Blob API）；需要本机监听和 Chrome。指定 `--url https://dvi-lab.pages.dev --out <证据目录>` 时检查该实际目标四组页面，不把本地角色捕获专项当作生产测试。截图和机器结果落盘，仍需人工审阅。加 `--combat-only` 仅运行护符提示删除相关的战斗／精通检查，覆盖无其他问题时隐藏提示框、刷新恢复及其他等级不足提示保留。
+`node tests/upstream-browser.mjs --out .test-artifacts/upstream-1212/browser` 检查双语桌面／390px 护符无总等级门槛提示／刷新保留、纯净煤矿任务／计算／刷新保存及战斗完成、来源版本、巨像材料／经验与库存计划刷新保存，书台恢复／保存与缺字段迁移、强化成功率、新旧目标与高强化存档、精通等级及家园控件上限、强化加成封顶、烟花有效品质／火药定价／计划保存，以及合成消息下的直接捕获（不提供 Worker／Blob API）；需要本机监听和 Chrome。指定 `--url https://dvi-lab.pages.dev --out <证据目录>` 时检查该实际目标四组页面，不把本地角色捕获专项当作生产测试。截图和机器结果落盘，仍需人工审阅。加 `--combat-only` 仅运行护符提示删除相关的战斗／精通检查，覆盖无其他问题时隐藏提示框、刷新恢复及其他等级不足提示保留。
 
 ## 采集与制造表格专项
 
@@ -104,3 +104,7 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 `node --test tests/character-auto-import.test.mjs tests/character-inventory.test.mjs tests/character-import.test.mjs tests/crafting-orders.test.mjs tests/crafting-display.test.mjs` 验证配置／库存独立导入、偏好与坏存档保护、生命周期和并发；`node tests/character-auto-import-browser.mjs [输出目录]` 使用独立 Chrome 和本机服务验证五页配置开关、制造库存开关、每页保存、焦点合并、重绘稳定、配置／库存隔离及双语桌面／390px。默认输出 `.test-artifacts/character-auto-import/browser/`，角色与市场均用受控响应，不连接游戏账号；配合制造库存专项回归，不替代发布验收。
 
 1208 上限与旧存档浏览器专项：`node tests/upstream-browser.mjs --caps-only --out .test-artifacts/upstream-1208/caps-browser`。覆盖中英文桌面／390px 下战斗、采集、制造的家园控件、强化书台及精通等级上限、越界输入提示和恢复合法值、强化／精通越界存档明确提示且原存储保留。此选项仅执行该专项，不代表完整页面或发布验收。
+
+技能装备专项：`node tests/upstream-1212-browser.mjs [输出目录] [目标网址]`，默认输出 `.test-artifacts/upstream-1212/browser/`。覆盖中英文桌面／390px 的 105 级工具、技能副手速度、套装经验、禁用品质／强化、保存恢复及新增升级订单真实 Worker；需要本机回环监听和独立 Chrome，不连接游戏账号。截图须人工审阅，不代替生产验收。独立原始计算入口同时对照无装备与新工具／副手／套装组合的采集点，以及带新装备的制造配方。
+
+上游新装备及价格选项专项提供目标网址时直接检查该网址，不启动本机服务；本机／预览通过不能代替本轮正式生产目标验收。

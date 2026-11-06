@@ -5,8 +5,8 @@ import {craftingJobs,craftingDefaults,normalizeCrafting,craftingPlan,craftingMat
 import {simulateCrafting,simulateCraftingWindow} from '../src/crafting-simulation.js';
 
 const upgrades=craftingJobs.filter(j=>j.upgrade);
-test('17 upgrade recipes share the recipe catalogue without retired tasks or ID collisions',()=>{
- assert.equal(upgrades.length,17);assert.equal(new Set(craftingJobs.map(j=>j.id)).size,craftingJobs.length);
+test('27 upgrade recipes share the recipe catalogue without retired tasks or ID collisions',()=>{
+ assert.equal(upgrades.length,27);assert.equal(new Set(craftingJobs.map(j=>j.id)).size,craftingJobs.length);
  assert.ok(craftingJobs.every(j=>!j.retired));
  assert.ok(craftingJobs.some(j=>j.id===271));assert.ok(craftingJobs.some(j=>j.id==='upgrade-271'));
 });
@@ -27,7 +27,7 @@ test('legendary upgrade materials include same-quality +0 base and exact extra q
  const row=materialBudget(s,{}).rows.find(r=>r.id===4114);assert.equal(row.required,2);assert.equal(row.purchase,1);
 });
 test('every upgrade quality runs at a station, is deterministic, +0 and grants unmodified fixed XP',()=>{
- const s=craftingDefaults();for(const k of Object.keys(s.levels))s.levels[k]=99;
+ const s=craftingDefaults();for(const k of Object.keys(s.levels))s.levels[k]=105;
  s.masteries.xp=100;s.brews.elixir=4;s.guildXp=50;s.weeklyXp=100;s.hotSetting='current';
  for(const job of upgrades)for(let tier=0;tier<5;tier++){
   const r=simulateCrafting(s,job,tier,3,{seed:314});

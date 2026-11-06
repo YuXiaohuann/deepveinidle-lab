@@ -13,9 +13,13 @@ import * as game from '../src/upstream.js';
 const directory=path.resolve(process.argv[2]??'.test-artifacts/price-preferences');
 await fs.mkdir(directory,{recursive:true});const result={cases:[],errors:[]};let server,browser;
 try{
+ let base=process.argv[3];
+ if(!base){
  const socket=net.createServer();socket.listen(0,'127.0.0.1');await once(socket,'listening');const port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
  server=spawn(process.execPath,['scripts/serve.mjs'],{env:{...process.env,PORT:String(port)},stdio:['ignore','pipe','pipe']});await once(server.stdout,'data');
- const base=`http://127.0.0.1:${port}`;browser=await chromium.launch({headless:true,executablePath:await browserPath()});
+ base=`http://127.0.0.1:${port}`; }
+ result.target=base;
+ browser=await chromium.launch({headless:true,executablePath:await browserPath()});
  for(const language of ['zh','en'])for(const width of [1280,700,390]){
   const context=await browser.newContext({viewport:{width,height:960}}),page=await context.newPage();page.setDefaultTimeout(15000);
   page.on('pageerror',error=>result.errors.push(error.message));let requests=0,release;

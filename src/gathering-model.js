@@ -7,15 +7,16 @@ import {readGuild} from './guild.js';
 export const gatheringStorageKey='dvi-gathering-v1';
 export const gatheringSkills=['mining','fishing','woodcutting','thieving'];
 export const toolSlots={mining:'pickaxe',fishing:'rod',woodcutting:'axe',thieving:'gloves'};
-export const gatheringSlots=[...Object.values(toolSlots),'amulet','mount'];
+export const workEquipmentSlots=['shield','helmet','body','legs'];
+export const gatheringSlots=[...Object.values(toolSlots),'amulet','mount',...workEquipmentSlots];
 export const gatheringJobs=game.recipes.filter(r=>gatheringSkills.includes(r.skill));
 export const gatheringPotions=game.potions.filter(p=>['gatherer','hunter','elixir','swift'].includes(p.kind)).sort((a,b)=>game.recipes.find(r=>r.output.itemId===a.itemId)?.levelReq-game.recipes.find(r=>r.output.itemId===b.itemId)?.levelReq);
 export const gatheringRooms=game.rooms.filter(r=>r.bonus.kind==='rareChance'||r.bonus.kind==='gatherSpeed'&&gatheringSkills.includes(r.bonus.skill));
 export const gatheringMasteries=game.masteries.filter(m=>['gather','xp','move','rare'].includes(m.id));
 export const gatheringPerks=game.perks.filter(p=>['pockets','quick','hands'].includes(p.id));
 const integer=(v,min,max,fallback=min)=>Number.isFinite(Number(v))?Math.min(max,Math.max(min,Math.floor(Number(v)))):fallback;
-export const slotItems=slot=>slot==='amulet'?game.equipment.filter(g=>g.slot===slot):game.tools.filter(g=>g.slot===slot);
-export const gatheringGear=(slot,id)=>slot==='amulet'?game.gear(id):game.tool(id);
+export const slotItems=slot=>slot==='amulet'?game.equipment.filter(g=>g.slot===slot):slot==='shield'?game.equipment.filter(g=>g.slot===slot&&g.offhand):workEquipmentSlots.includes(slot)?game.equipment.filter(g=>g.slot===slot&&game.skillOutfits.some(o=>o.id===g.itemId)):game.tools.filter(g=>g.slot===slot);
+export const gatheringGear=(slot,id)=>slot==='amulet'||workEquipmentSlots.includes(slot)?game.gear(id):game.tool(id);
 const sitesForJob=job=>game.world.sites.filter(s=>s.jobIds.includes(job.id));
 export function gatheringDefaults(){return {
  skill:'mining',levels:Object.fromEntries(gatheringSkills.map(k=>[k,1])),
@@ -29,7 +30,7 @@ export function normalizeGathering(raw,{wholeHours=true}={}){
  const s=gatheringDefaults();if(!raw||typeof raw!=='object')return s;
  s.skill=gatheringSkills.includes(raw.skill)?raw.skill:s.skill;
  for(const k of gatheringSkills)s.levels[k]=integer(raw.levels?.[k]??1,1,game.maxLevel);
- for(const slot of gatheringSlots){const v=raw.gear?.[slot];if(v&&slotItems(slot).some(g=>g.itemId===Number(v.id)))s.gear[slot]={id:Number(v.id),tier:integer(v.tier??0,0,4),plus:integer(v.plus??0,0,game.maxEnhancement)};}
+ for(const slot of gatheringSlots){const v=raw.gear?.[slot];if(v&&slotItems(slot).some(g=>g.itemId===Number(v.id)))s.gear[slot]={id:Number(v.id),tier:game.itemSupportsRarity(Number(v.id))?integer(v.tier??0,0,4):0,plus:game.canEnhance(Number(v.id))?integer(v.plus??0,0,game.maxEnhancement):0};}
  for(const p of gatheringPotions)s.brews[p.kind]=integer(raw.brews?.[p.kind]??-1,-1,4,-1);
  for(const r of gatheringRooms)s.house[r.id]=integer(raw.house?.[r.id]??0,0,game.houseLevelLimit);
  for(const m of gatheringMasteries)s.masteries[m.id]=integer(raw.masteries?.[m.id]??0,0,game.masteryRankLimit);

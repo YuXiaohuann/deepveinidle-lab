@@ -28,7 +28,7 @@ test('new combat gear supports all qualities, enhancement, prices, translation a
   }
  }
  // The reviewed upgrade recipe level now determines enhancement costs.
- assert.equal(enhanceableItems.length,168);
+ assert.equal(enhanceableItems.length,193);
  assert.ok(newGear.every(([id])=>enhanceableItems.some(i=>i.id===id)));
 });
 

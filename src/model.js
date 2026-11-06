@@ -20,7 +20,7 @@ export function normalize(raw){
  s.guild=readGuild(raw.guild);
  s.manual=normalizeManual(raw.manual,{fractionalWorldXp:true});
  for(const k of skills)s.levels[k]=integer(raw.levels?.[k]??s.levels[k],1,game.maxLevel,s.levels[k]);
- for(const slot of slots){const v=raw.gear?.[slot];if(!v)continue;const id=integer(v.id,0,999);if(baseGear.some(x=>x.itemId===id&&x.slot===slot))s.gear[slot]={id,tier:integer(v.tier??0,0,4),plus:integer(v.plus??0,0,game.maxEnhancement)};}
+ for(const slot of slots){const v=raw.gear?.[slot];if(!v)continue;const id=integer(v.id,0,999);if(baseGear.some(x=>x.itemId===id&&x.slot===slot))s.gear[slot]={id,tier:game.itemSupportsRarity(id)?integer(v.tier??0,0,4):0,plus:game.canEnhance(id)?integer(v.plus??0,0,game.maxEnhancement):0};}
  if(foods.some(x=>x.id===Number(raw.food?.id)))s.food={id:Number(raw.food.id),tier:integer(raw.food.tier??0,0,4)};
  for(const k of Object.keys(s.brews))s.brews[k]=integer(raw.brews?.[k]??-1,-1,4,-1);
  for(const k of Object.keys(s.masteries))s.masteries[k]=integer(raw.masteries?.[k]??0,0,game.masteryRankLimit);
@@ -55,7 +55,7 @@ export function calculate(raw){
  return {state,player:p,issues,rows,stats:{hit,accuracy,evasion,style,strength:game.strength(p),armour:game.armour(p),hp:game.maxHp(p),seconds:game.attackTicks(p)*game.tickMs/1000},food:{...food,healing,fedSeconds:(game.foodBuff(state.food.tier)?.ticks??0)*game.tickMs/1000,rootSeconds:game.isCrop(food.id)?game.cropDuration(food.id)*game.tickMs/1000:0}};
 }
 export function preset(style){const s=defaults();for(const k of skills)s.levels[k]=85;
- slots.filter(slot=>slot!=='mount').forEach(slot=>{const candidates=baseGear.filter(g=>g.slot===slot&&g.levelReq<=85&&(slot==='weapon'?(style==='magic'?g.magic:style==='ranged'?g.ranged&&!g.magic:!g.magic&&!g.ranged&&!g.twoHanded):!g.style||g.style===style)).sort((a,b)=>b.levelReq-a.levelReq);s.gear[slot]={id:candidates[0]?.itemId??0,tier:2,plus:5};});s.style=style;return s;}
+ slots.filter(slot=>slot!=='mount').forEach(slot=>{const candidates=baseGear.filter(g=>g.slot===slot&&!g.offhand&&!game.skillOutfits.some(o=>o.id===g.itemId)&&g.levelReq<=85&&(slot==='weapon'?(style==='magic'?g.magic:style==='ranged'?g.ranged&&!g.magic:!g.magic&&!g.ranged&&!g.twoHanded):!g.style||g.style===style)).sort((a,b)=>b.levelReq-a.levelReq);s.gear[slot]={id:candidates[0]?.itemId??0,tier:2,plus:5};});s.style=style;return s;}
 export function chooseLanguage(saved,languages){return ['zh','en'].includes(saved)?saved:languages.some(x=>/^zh(?:-|$)/i.test(x))?'zh':'en';}
 
 export function gearForStyle(slot,style){return baseGear.filter(g=>g.slot===slot&&(slot==='weapon'?(g.magic?'magic':g.ranged?'ranged':'melee')===style:!g.style||g.style===style));}

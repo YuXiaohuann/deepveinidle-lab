@@ -1,5 +1,5 @@
 import {questlessOffline,questlessTick} from './native-questless.mjs';
-// Independently extract the complete 1.0.1211 native engine for compatibility checks.
+// Independently extract the complete 1.0.1212 native engine for compatibility checks.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -29,7 +29,7 @@ for(const node of parse(source,{ecmaVersion:'latest',sourceType:'module',ranges:
   const entry={start:d.start,text:node.kind+' '+source.slice(d.start,d.end)+';'};ids.forEach(id=>declarations.set(id,entry));
  }
 }
-const exports={"world":"$","monsters":"ns","predict":"wu","startFight":"Lr","createContext":"l3","gear":"De","armourMultiplier":"jH","masteryMultiplier":"Da","restock":"AV","offline":"TQ","startWork":"qs","enhanceCost":"mf","enhanceChance":"O1","enhanceXp":"C7","enhanceTicks":"an","skillPetChance":"b2","hotSkill":"cv","startUpgrade":"sI","tick":"v$"};
+const exports={"world":"U","monsters":"bs","predict":"Qg","startFight":"tm","createContext":"QI","gear":"ma","armourMultiplier":"gF","masteryMultiplier":"Ca","restock":"v1o","offline":"K2","startWork":"ud","enhanceCost":"Zf","enhanceChance":"Kb","enhanceXp":"Zwo","enhanceTicks":"dn","skillPetChance":"sJ","hotSkill":"vO","startUpgrade":"QQ","tick":"g_"};
 const selected=new Set(),allowed=new Set(['WeakSet','WeakMap','Uint8Array','Uint16Array','Uint32Array','Int16Array','Int32Array','Float64Array','Math','Map','Set','Number','Object','Array','String','Error','Date','Boolean','Infinity','undefined','JSON','RegExp','parseInt','parseFloat']);
 function collect(name){
  const d=declarations.get(name);if(!d)throw Error('Missing native declaration '+name);if(selected.has(d))return;selected.add(d);
@@ -37,7 +37,7 @@ function collect(name){
  for(const dep of new Set(refs))if(declarations.has(dep))collect(dep);else if(!allowed.has(dep))throw Error('Unexpected native dependency '+dep);
 }
 Object.values(exports).forEach(collect);
-const directory=fs.mkdtempSync(path.join(os.tmpdir(),'dvi-1211-audit-'));
+const directory=fs.mkdtempSync(path.join(os.tmpdir(),'dvi-1212-audit-'));
 try{
  const file=path.join(directory,'native.mjs');
  fs.writeFileSync(file,[...selected].sort((a,b)=>a.start-b.start).map(d=>d.text).join('\n')+'\nexport{'+Object.entries(exports).map(([alias,name])=>name+' as '+alias).join(',')+'};');
@@ -63,8 +63,13 @@ try{
   const encoded=game.encode(game.withRarity(id,tier),plus);assert.deepEqual(game.gear(encoded),native.gear(encoded));
  }
  let gatheringCount=0;
- for(const job of gatheringJobs){
+ for(const geared of [false,true])for(const job of gatheringJobs){
   const state=gatheringDefaults();state.skill=job.skill;state.levels[job.skill]=99;state.simulationHours=1;state.hotSetting='off';
+  if(geared){
+   const [slot,id,shield,outfit]={mining:['pickaxe',698,720,741],fishing:['rod',572,722,744],woodcutting:['axe',575,724,747],thieving:['gloves',718,728,753]}[job.skill];
+   state.levels[job.skill]=105;state.gear[slot]={id,tier:4,plus:17};state.gear.shield={id:shield,tier:4,plus:17};
+   for(const [index,part]of ['helmet','body','legs'].entries())state.gear[part]={id:outfit+index,tier:0,plus:0};
+  }
   for(const site of game.world.sites.filter(site=>site.jobIds.includes(job.id))){
    const scenario=createGatheringScenario(state,job,site,{seed:314}),actual=simulateGatheringSite(state,job,site,{seed:314});
    let player;native.predict(scenario.player,scenario.context,p=>{player=p;return false;});player.offlineCapTicks=12000;
@@ -76,8 +81,11 @@ try{
   }
  }
  let craftingCount=0,upgradeCount=0;
- const state=craftingDefaults();state.hotSetting='off';for(const skill of Object.keys(state.levels))state.levels[skill]=99;
+ const state=craftingDefaults();state.hotSetting='off';for(const skill of Object.keys(state.levels))state.levels[skill]=105;
  for(const job of craftingJobs)for(const tier of craftingTiers(job)){
+  const [slot,id,shield,outfit]={cooking:['pan',573,723,744],smithing:['hammer',699,721,741],fletching:['knife',576,725,747],herblore:['mortar',712,727,750],crafting:['needle',719,729,753]}[job.skill];
+  state.gear[slot]={id,tier:4,plus:17};state.gear.shield={id:shield,tier:4,plus:17};
+  for(const [index,part]of ['helmet','body','legs'].entries())state.gear[part]={id:outfit+index,tier:0,plus:0};
   const actual=simulateCrafting(state,job,tier,3,{seed:314});
   if(job.upgrade){
    const {player,context,site}=createCraftingScenario(state,job,tier,3,{seed:314});
@@ -118,5 +126,5 @@ try{
  if(process.argv[2])fs.writeFileSync(process.argv[2],JSON.stringify({predictions:count,gearVariants:105,gatheringSites:gatheringCount,craftingCases:craftingCount,upgradeCases:upgradeCount,enhancementCosts:costs,enhancementCases,forecastSlots:49})+'\n');
  console.log(`Enhancing: ${enhancementCases} item/rarity/level/mastery/plus cases matched independent native chance, costs and XP; duration and pet chance matched.`);
  console.log(`Other pages: ${gatheringCount} gathering sites, ${craftingCount} ordinary recipe/quality cases, ${upgradeCount} upgrade/quality cases, ${costs} enhancement costs and 49 forecast slots matched independent native code.`);
- console.log(`Native 1.0.1211 comparison: ${count}/${count} complete 1-hour predictions matched; world geometry, monsters and 105 new-gear variants matched.`);
+ console.log(`Native 1.0.1212 comparison: ${count}/${count} complete 1-hour predictions matched; world geometry, monsters and 105 new-gear variants matched.`);
 }finally{fs.rmSync(directory,{recursive:true});}

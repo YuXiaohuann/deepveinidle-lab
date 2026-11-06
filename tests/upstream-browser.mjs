@@ -14,7 +14,7 @@ import {masteryDefaults,masteryStorageKey} from '../src/mastery.js';
 import {craftingDefaults} from '../src/crafting-model.js';
 
 const args=process.argv.slice(2),option=name=>args.includes(name)?args[args.indexOf(name)+1]:null;
-const output=path.resolve(option('--out')??'.test-artifacts/upstream-1211/browser');
+const output=path.resolve(option('--out')??'.test-artifacts/upstream-1212/browser');
 await fs.mkdir(output,{recursive:true});
 const servers=[],result={cases:[],errors:[]};let browser;
 async function serve(script){
@@ -72,7 +72,7 @@ try{
   await page.waitForFunction(()=>document.querySelector('#simulation-status').hidden&&!document.querySelector('#rows .pending'));
   assert.equal(await page.locator('#rows tr[data-enemy]').count(),1);
   assert.ok(!/Simulation failed|模拟失败/.test(await page.locator('#rows').innerText()));
-  assert.match(await page.locator('.footer-source').innerText(),/2026-11-04.*1\.0\.1211/);
+  assert.match(await page.locator('.footer-source').innerText(),/2026-11-06.*1\.0\.1212/);
   assert.ok((await page.locator('[data-path^="house."]').evaluateAll(els=>els.map(el=>el.max))).every(max=>max==='50'));
   assert.equal(await page.locator('[data-path="masteries.accuracy"]').getAttribute('max'),'200');
   const amuletNote=/总等级|total level/i;
