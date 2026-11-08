@@ -21,11 +21,22 @@ export function optimizerContext(raw){
  return {objective:raw.objective,allocationMode:raw.allocationMode,totalPoints:number(raw.totalPoints),current:Object.fromEntries(game.masteries.map(m=>[m.id,number(raw.current?.[m.id])])),effort:raw.effort,
   ...(gathering?{jobId:raw.jobId,gathering:optimizerScenario(raw.objective,{...raw.gathering,skill:gatheringJobs.find(j=>j.id===raw.jobId)?.skill})}:{monsterId:raw.monsterId,combat:optimizerScenario(raw.objective,raw.combat)})};
 }
-export function optimizerContextKey(raw){return JSON.stringify(stable(optimizerContext(raw)));}
+const pick=(value,keys)=>Object.fromEntries(keys.map(key=>[key,value[key]]));
+export function optimizerContextKey(raw){
+ const context=optimizerContext(raw),gathering=optimizerPolicy(context.objective).gathering;
+ const source=gathering?context.gathering:context.combat,settings=gathering?source:source.manual;
+ // Compare whole input groups, without source-page filters or overridden masteries.
+ const scenario={...pick(source,['levels','gear','brews','house']),
+  perks:gathering?source.perks:{...settings.perks,meals:source.meals},
+  buffs:pick(settings,['guildXp','weeklyXp','worldRarity','blessing','hotSetting']),
+  supplies:{homeBank:source.homeBank,ironman:settings.ironman,...(gathering?{discardGathered:source.discardGathered}:{coins:settings.coins,bankSlotsBought:settings.bankSlotsBought,unlimitedBank:settings.unlimitedBank})},
+  ...(!gathering?{style:source.style,food:{...pick(source,['food','eatAt','fed','rooted']),...pick(settings,['foodRule','foodMaxTier','foodPerTrip'])}}:{})};
+ return JSON.stringify(stable({...pick(context,['objective','allocationMode','totalPoints','current']),...(gathering?{jobId:context.jobId}:{monsterId:context.monsterId}),scenario}));
+}
 export function validateMasteryResult(record){
  requireValue(object(record));
  if(record.engine!==masteryResultEngine)throw Error('savedMasteryVersion');
- requireValue(integer(record.savedAt)&&record.savedAt>0&&object(record.input)&&object(record.plan)&&object(record.baseline));
+ requireValue(object(record.input)&&object(record.plan)&&object(record.baseline));
  const raw=record.input;requireValue(integer(raw.now)&&raw.now>0&&object(raw.current));ranks(raw.current);
  requireValue(integer(raw.totalPoints)&&object(raw.prices));
  const input=optimizerInput(raw);checkOptimizerPrices(input,raw.prices);
@@ -44,18 +55,18 @@ export function validateMasteryResult(record){
  }else requireValue(plan.additionalCost===null);
  return record;
 }
-export function createMasteryResult(request,result,index=0,savedAt=Date.now()){
+export function createMasteryResult(request,result,index=0){
  requireValue(object(result)&&result.objective===request.objective&&result.allocationMode===request.allocationMode&&result.totalPoints===request.totalPoints&&Array.isArray(result.plans));
  const plan=result.plans[index];requireValue(object(plan));
  const input={...optimizerContext(request),now:request.now,prices:structuredClone(request.prices)};
- return structuredClone(validateMasteryResult({engine:masteryResultEngine,savedAt,input,baseline:result.baseline,plan:{ranks:plan.ranks,cost:plan.cost,additionalCost:plan.additionalCost,stats:plan.stats,paired:plan.paired}}));
+ return structuredClone(validateMasteryResult({engine:masteryResultEngine,input,baseline:result.baseline,plan:{ranks:plan.ranks,cost:plan.cost,additionalCost:plan.additionalCost,stats:plan.stats,paired:plan.paired}}));
 }
-export function emptyMasteryResults(){return {version:1,revision:0,selected:'auto',manual:null,auto:null};}
+export function emptyMasteryResults(){return {version:1,revision:0,manual:null,auto:null};}
 function validateStore(value){
  requireValue(object(value));if(value.version!==1)throw Error('savedMasteryVersion');
- requireValue(integer(value.revision)&&['manual','auto'].includes(value.selected));
+ requireValue(integer(value.revision));
  for(const slot of ['manual','auto'])if(value[slot]!==null)validateMasteryResult(value[slot]);
- return value;
+ return {version:1,revision:value.revision,manual:value.manual,auto:value.auto};
 }
 export function readMasteryResults(storage){
  const raw=storage.getItem(masteryResultStorageKey);return raw===null?emptyMasteryResults():validateStore(JSON.parse(raw));

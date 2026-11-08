@@ -165,7 +165,7 @@ try{
  await page.evaluate(async id=>{const service=await import('/src/price-service.js');service.setPrice(id,105);},priceItemId);
  assert.equal(await page.locator('#optimizer-output').innerHTML(),frozenOutput);
  assert.equal(await page.evaluate(()=>window.optimizerWorkers.length),completedWorkerCount);
- assert.match(await page.locator('#optimizer-status').innerText(),/有效价格已变化/);
+ assert.match(await page.locator('#optimizer-status').innerText(),/价格已变化/);
  for(const width of [1440,390])for(const language of ['zh','en']){
   await page.setViewportSize({width,height:1100});await page.selectOption('#language',language);
   assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.open),true);
@@ -178,21 +178,21 @@ try{
   assert.equal(await page.locator('[data-optimizer-copy]').count(),0);
   assert.equal(await page.locator('[data-optimizer-apply="0"]').innerText(),language==='zh'?'已应用':'Applied');
   assert.equal(await page.locator('#optimizer-start').textContent(),language==='zh'?'开始计算':'Start calculation');
-  assert.match(await page.locator('#optimizer-status').innerText(),language==='zh'?/有效价格已变化/:/Effective prices changed/);
+  assert.match(await page.locator('#optimizer-status').innerText(),language==='zh'?/价格已变化/:/Prices changed/);
   await page.locator('#mastery-optimizer').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(directory,`${language}-${width}.png`)});
   await page.locator('.optimizer-plan').first().scrollIntoViewIfNeeded();await page.screenshot({path:path.join(directory,`${language}-${width}-result.png`)});
  }
  results.cases.push('Chinese/English desktop and 390px layouts preserve compact results and applied state after redraw, with no copy controls');
  await page.evaluate(()=>window.optimizerMode='wait');await page.click('#optimizer-start');
- assert.doesNotMatch(await page.locator('#optimizer-status').innerText(),/prices changed/);
+ assert.doesNotMatch(await page.locator('#optimizer-status').innerText(),/Prices changed/);
  assert.equal(await page.evaluate(id=>window.optimizerWorkers.at(-1).request.prices[id].price,priceItemId),105);
  await page.evaluate(async id=>{const service=await import('/src/price-service.js');service.setPrice(id,107);},priceItemId);
  assert.equal(await page.locator('#optimizer-start').textContent(),'Cancel calculation');assert.ok(!await page.evaluate(()=>window.optimizerWorkers.at(-1).wasTerminated));
  await page.evaluate(()=>window.optimizerWorkers.at(-1).onmessage({data:{progress:{phase:'search',candidates:3,maxCandidates:120,simulations:6}}}));
- assert.match(await page.locator('#optimizer-status').innerText(),/Searching.*Effective prices changed/);
+ assert.match(await page.locator('#optimizer-status').innerText(),/Searching.*Prices changed/);
  await page.evaluate(result=>window.optimizerWorkers.at(-1).onmessage({data:{result}}),remainingPlan);
- assert.match(await page.locator('#optimizer-status').innerText(),/Effective prices changed/);assert.ok(await page.locator('.optimizer-plan').count()>0);
- await page.click('#optimizer-start');assert.doesNotMatch(await page.locator('#optimizer-status').innerText(),/prices changed/);
+ assert.match(await page.locator('#optimizer-status').innerText(),/Prices changed/);assert.ok(await page.locator('.optimizer-plan').count()>0);
+ await page.click('#optimizer-start');assert.doesNotMatch(await page.locator('#optimizer-status').innerText(),/Prices changed/);
  assert.equal(await page.evaluate(id=>window.optimizerWorkers.at(-1).request.prices[id].price,priceItemId),107);await page.click('#optimizer-start');
  results.cases.push('price changes preserve completed results and running Workers; warning survives progress, completion and language redraw; rerun clears it and captures latest prices');
  await page.selectOption('#language','zh');
@@ -228,7 +228,7 @@ try{
  // Changing a target does not invalidate frozen search inputs.
  await page.locator('[data-mastery-row="maxhit"] [data-mastery-field="target"]').fill('2');assert.equal(await page.locator('#optimizer-start').textContent(),'Cancel calculation');
  await page.click('#optimizer-start');
- await page.click('#optimizer-start');await page.evaluate(async()=>{const service=await import('/src/price-service.js');service.setPrice(6,999);});assert.match(await page.locator('#optimizer-status').innerText(),/prices changed/);assert.equal(await page.locator('#optimizer-start').textContent(),'Cancel calculation');await page.click('#optimizer-start');
+ await page.click('#optimizer-start');await page.evaluate(async()=>{const service=await import('/src/price-service.js');service.setPrice(6,999);});assert.match(await page.locator('#optimizer-status').innerText(),/Prices changed/);assert.equal(await page.locator('#optimizer-start').textContent(),'Cancel calculation');await page.click('#optimizer-start');
  const missingId=ids.find(id=>!game.isPet(id));
  await page.evaluate(async id=>{const service=await import('/src/price-service.js');service.setPrice(id,null);},missingId);const workers=await page.evaluate(()=>window.optimizerWorkers.length);await page.click('#optimizer-start');assert.match(await page.locator('#optimizer-status').innerText(),/possible rewards/);assert.equal(await page.evaluate(()=>window.optimizerWorkers.length),workers);
  await page.evaluate(async id=>{const service=await import('/src/price-service.js');service.setPrice(id,0);},missingId);await page.click('#optimizer-start');assert.equal(await page.locator('#optimizer-start').textContent(),'Cancel calculation');await page.click('#optimizer-start');
@@ -273,6 +273,9 @@ try{
   await page.click('#optimizer-start');await page.waitForSelector('.optimizer-plan');
   const actual=await page.evaluate(()=>window.optimizerWorkers.at(-1).result);
   assert.equal(actual.objective,objective);assert.equal(actual.hours,24);
+  await page.waitForFunction(objective=>JSON.parse(localStorage.getItem('dvi-mastery-results-v1')).auto.input.objective===objective,objective);
+  const role=await page.locator('[data-saved-slot="auto"] .saved-character-levels').innerText();
+  if(gathering){assert.match(role,/采矿|Mining/);assert.doesNotMatch(role,/远程|防御|生命|Ranged|Defence|Hitpoints/);}
   assert.equal(await page.locator('.optimizer-plan dt').first().textContent(),objective.endsWith('Collection')?'精通产出评分':'收入');
   assert.deepEqual(await ranksInFields('target'),actual.plans[0].ranks);
   for(const language of ['en','zh']){
@@ -282,6 +285,15 @@ try{
   }
   await page.setViewportSize({width:1440,height:1000});
  }
+ // A saved income card combines concurrent configuration and price notices.
+ await page.locator('#mastery-total').fill('124');
+ await page.evaluate(async()=>{const record=JSON.parse(localStorage.getItem('dvi-mastery-results-v1')).auto;const {setPrice}=await import('/src/price-service.js');const [id,value]=Object.entries(record.input.prices).find(([,v])=>v.price>0);setPrice(Number(id),value.price+1);});
+ const warning=page.locator('[data-saved-slot="auto"] .saved-result-warning');assert.equal(await warning.count(),1);
+ assert.equal(await warning.innerText(),'配置已变化，需重新计算 · 价格已变化，沿用计算时价格');assert.equal(await warning.locator('br').count(),0);
+ const oneLine=await warning.evaluate(el=>el.getBoundingClientRect().height<=parseFloat(getComputedStyle(el).lineHeight)+1);assert.equal(oneLine,true);
+ await page.setViewportSize({width:390,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ await page.locator('[data-saved-slot="auto"]').screenshot({path:path.join(directory,'combined-notices-zh-390.png')});await page.setViewportSize({width:1440,height:1000});
+ results.cases.push('saved income configuration and price notices share one paragraph and line on desktop, with natural mobile wrapping');
  assert.deepEqual(await page.evaluate(()=>({combat:localStorage.getItem('dvi-simulator-v1'),gather:localStorage.getItem('dvi-gathering-v1')})),sourceBefore);
  results.cases.push('three new objectives use real Workers, correct configuration and metrics, preserve source pages and apply only target ranks; bilingual mobile redraw keeps the selected goal');
  await page.selectOption('#optimizer-goal','gatherCollection');await page.evaluate(()=>window.optimizerMode='wait');await page.click('#optimizer-start');
