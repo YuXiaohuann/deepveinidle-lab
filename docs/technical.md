@@ -79,6 +79,7 @@
 | `src/debug-controls.js`、`tests/debug-controls.test.mjs` | 隐藏调试页、角色配置 JSON 文件下载与战斗／强化两个共用导入入口、文件往返及失败状态验证 |
 | `src/mastery.js`、`src/mastery-controls.js` | 独立精通预算、升级成本、配置校验与双语交互 |
 | `src/mastery-optimizer.js`、`src/mastery-optimizer-worker.js`、`src/mastery-optimizer-controls.js` | 目标策略、有界搜索、独立复核与专用 Worker；配置／价格快照、任务隔离及应用到本页目标。具体预算、评分和交互见[精通优化设计](pages/mastery.md#计算最优分配方案) |
+| `src/mastery-result-store.js`、`src/mastery-result-controls.js` | 精通手动／自动两个保存栏位的快照校验、版本与跨标签冲突检查、浏览器存储及计算面板内的方案展示；计算、搜索、估值或上游规则发生不兼容变更时更新计算兼容版本，不能将旧结果当作新引擎结果应用 |
 | `tests/mastery-optimizer.test.mjs`、`tests/mastery-optimizer-browser.mjs` | 独立穷举算例、真实模拟对照、预算／缺价／异常与种子隔离，以及真实 Worker、取消、失效和双语窄屏验证 |
 | `src/price-protocol.js`、`src/price-service.js` | 物品价格八项数据的只读快照、固定公开协议、统一设价命令及分类变更通知 |
 | `src/item-prices.js`、`src/item-price-store.js`、`src/market-import.js`、`src/item-price-controls.js`、`src/price-auto-import.js` | 价格模块内部规则、存储、官方价格及挂单总量解析、管理弹窗与自动导入通知 |

@@ -108,7 +108,8 @@ try{
  assert.ok(await page.evaluate(()=>window.optimizerWorkers.at(-1).wasTerminated));
  const resetPlan=await page.evaluate(()=>window.optimizerWorkers.at(-1).result);
  assert.ok(resetPlan.plans[0].cost<=123);assert.equal(resetPlan.hours,24);assert.equal(resetPlan.monsterId,7);assert.ok(resetPlan.reviewSeeds.every(seed=>!resetPlan.screeningSeeds.includes(seed)));
- assert.equal(await page.locator('#optimizer-output button').count(),resetPlan.plans.length);
+ assert.equal(await page.locator('#optimizer-output [data-optimizer-apply]').count(),resetPlan.plans.length);
+ assert.equal(await page.locator('#optimizer-output [data-optimizer-save]').count(),resetPlan.plans.length);
  assert.equal(await page.locator('[data-optimizer-copy]').count(),0);
  assert.equal(await page.locator('.optimizer-ranks').count(),0);
  assert.deepEqual(await page.locator('.optimizer-plan').first().locator('dt').allTextContents(),['收入','投入','差异（较原配置）']);
@@ -148,6 +149,7 @@ try{
  assert.deepEqual(await ranksInFields('current'),JSON.parse(remainingSaved).current);
  assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-mastery-v1')).target),remainingPlan.plans[0].ranks);
  assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-simulator-v1')).state),combatBefore);
+ assert.equal(await page.locator('#optimizer-output [data-optimizer-save]').count(),remainingPlan.plans.length);
  assert.equal(await page.locator('[data-optimizer-copy]').count(),0);
  assert.equal(await page.locator('[data-optimizer-apply="0"]').isDisabled(),true);
  results.cases.push('remaining-points search auto-applies best targets while preserving current ranks and non-combat investment; compact investment includes added cost');
@@ -171,7 +173,8 @@ try{
   assert.equal(await page.locator('#optimizer-goal option:disabled').count(),2);
   assert.equal(await page.locator('#optimizer-allocation-mode').inputValue(),'remaining');
   assert.equal(await page.getByLabel(language==='zh'?'计算模式':'Calculation mode').count(),1);
-  assert.equal(await page.locator('#optimizer-output button').count(),remainingPlan.plans.length);
+  assert.equal(await page.locator('#optimizer-output [data-optimizer-apply]').count(),remainingPlan.plans.length);
+  assert.equal(await page.locator('#optimizer-output [data-optimizer-save]').count(),remainingPlan.plans.length);
   assert.equal(await page.locator('[data-optimizer-copy]').count(),0);
   assert.equal(await page.locator('[data-optimizer-apply="0"]').innerText(),language==='zh'?'已应用':'Applied');
   assert.equal(await page.locator('#optimizer-start').textContent(),language==='zh'?'开始计算':'Start calculation');

@@ -4,17 +4,20 @@ import {translatedName} from './i18n.js';
 import {getSnapshot,subscribe} from './price-service.js';
 import {optimizerIncomeItems,optimizerPolicy,optimizerScenario,optimizerInput,checkOptimizerPrices,optimizerEfforts} from './mastery-optimizer.js';
 
+import {optimizerContextKey,createMasteryResult} from './mastery-result-store.js';
+import {renderSavedMasteryResults,saveAutomaticMasteryResult,saveManualMasteryResult} from './mastery-result-controls.js';
+
 const optimizerJobs=[...gatheringJobs].sort((a,b)=>gatheringSkills.indexOf(a.skill)-gatheringSkills.indexOf(b.skill)||b.levelReq-a.levelReq);
 const optimizerMonsters=[...game.monsters].sort((a,b)=>b.level-a.level);
 let language='zh',mastery=null,getCombat=()=>null,getGathering=()=>null,objective='combatIncome',jobId=gatheringJobs[0].id,monsterId=7,effort='standard',allocationMode='reset';
 let worker=null,generation=0,result=null,progress=null,notice=null,fingerprint=null,pricesChanged=false;
-let targetRanks=null,onApply=null,applying=false;
+let targetRanks=null,onApply=null,applying=false,resultRequest=null;
 const text=(zh,en)=>language==='zh'?zh:en;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const name=s=>translatedName(s,language);
 const format=n=>n.toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:2});
 const host=()=>document.getElementById('mastery-optimizer');
-const signature=()=>JSON.stringify({mastery,scenario:optimizerScenario(objective,optimizerPolicy(objective).gathering?getGathering():getCombat()),objective,jobId,monsterId,effort,allocationMode});
+const signature=()=>optimizerContextKey({...mastery,objective,jobId,monsterId,effort,allocationMode,combat:getCombat(),gathering:getGathering()});
 const allocationLabel=mode=>mode==='remaining'?text('分配剩余点数','Allocate remaining points'):text('重置后分配','Reallocate all points');
 const draftNumber=value=>typeof value==='number'||typeof value==='string'&&value.trim()!==''?Number(value):NaN;
 export function setMasteryCombatSource(provider){getCombat=provider;}
@@ -23,8 +26,8 @@ export function invalidateMasteryOptimizer(){
  if(!applying&&(worker||result)&&fingerprint!==signature()){clear('changed');paint();}
 }
 export function leaveMasteryOptimizer(){if(worker){clear('cancelled');paint();}}
-function clear(code){generation++;worker?.terminate();worker=null;result=null;progress=null;notice=code?{code}:null;fingerprint=null;pricesChanged=false;}
-subscribe(change=>{if(change.prices&&!optimizerPolicy(objective).collection&&(worker||result)){pricesChanged=true;paint();}});
+function clear(code){generation++;worker?.terminate();worker=null;result=null;resultRequest=null;progress=null;notice=code?{code}:null;fingerprint=null;pricesChanged=false;}
+subscribe(change=>{if(change.prices){if(!optimizerPolicy(objective).collection&&(worker||result))pricesChanged=true;paint();}});
 const errors=()=>({
  invalidOptimizerPoints:text('请填写有效的非负整数总点数。','Enter valid nonnegative integer total points.'),
  invalidOptimizerRanks:text('请先修正当前精通等级。','Correct current mastery ranks first.'),
@@ -75,7 +78,7 @@ function planMarkup(plan,index){
  const delta=plan.paired?format(plan.paired.mean)+(Math.abs(plan.paired.mean)<=2*plan.paired.se?' · '+text('差异接近波动','Close to variability'):''):result.baseline.overBudget?text('原配置超预算，无法比较','Current plan exceeds budget; unavailable'):text('原配置未完成模拟，无法比较','Current plan did not finish; unavailable');
  const investment=format(plan.cost)+(result.allocationMode==='remaining'?' · '+text('新增','Added')+' '+format(plan.additionalCost):'');
  const applied=isApplied(plan);
- return `<article class="optimizer-plan"><div class="optimizer-plan-heading"><h4>${index===0?text('本次搜索最佳方案','Best plan found'):text(`备选 ${index}`,`Alternative ${index}`)}</h4><button class="secondary" data-optimizer-apply="${index}" ${applied?'disabled':''}>${applied?text('已应用','Applied'):text('应用','Apply')}</button></div><dl class="optimizer-plan-metrics"><div><dt>${optimizerPolicy(result.objective).collection?text('精通产出评分','Mastery yield score'):text('收入','Income')}</dt><dd>${format(plan.stats.mean)}</dd></div><div><dt>${text('投入','Investment')}</dt><dd>${investment}</dd></div><div><dt>${text('差异（较原配置）','Difference vs original')}</dt><dd>${delta}</dd></div></dl></article>`;
+ return `<article class="optimizer-plan"><div class="optimizer-plan-heading"><h4>${index===0?text('本次搜索最佳方案','Best plan found'):text(`备选 ${index}`,`Alternative ${index}`)}</h4><button class="secondary" data-optimizer-save="${index}">${text('保存','Save')}</button><button class="secondary" data-optimizer-apply="${index}" ${applied?'disabled':''}>${applied?text('已应用','Applied'):text('应用','Apply')}</button></div><dl class="optimizer-plan-metrics"><div><dt>${optimizerPolicy(result.objective).collection?text('精通产出评分','Mastery yield score'):text('收入','Income')}</dt><dd>${format(plan.stats.mean)}</dd></div><div><dt>${text('投入','Investment')}</dt><dd>${investment}</dd></div><div><dt>${text('差异（较原配置）','Difference vs original')}</dt><dd>${delta}</dd></div></dl></article>`;
 }
 function applyRecommendation(index){
  if(!result||!result.plans[index])return;
@@ -90,6 +93,7 @@ function applyRecommendation(index){
  paint();
 }
 function paint(){
+ renderSavedMasteryResults(language,{currentKey:signature,onApply,target:targetRanks,onManualSave:paint});
  const root=host();if(!root)return;
  root.querySelector('#optimizer-status').textContent=message();
  root.querySelector('#optimizer-start').textContent=worker?text('取消计算','Cancel calculation'):text('开始计算','Start calculation');
@@ -100,10 +104,10 @@ function paint(){
 export function renderMasteryOptimizer(nextLanguage,nextMastery,options={}){
  language=nextLanguage;mastery=structuredClone(nextMastery);targetRanks=options.target;onApply=options.onApply;
  const root=host();if(!root)return;
- root.innerHTML=`<summary>${text('计算最优分配方案','Calculate optimal allocation')}</summary><p class="micro"><span class="simulation-caveat">${text('计算结果仅针对当前装备和所选目标，应用于其他目标时效果可能更差。','Results apply only to the current equipment and selected target, and may perform worse for other targets.')}</span> ${text('结果仅供参考，请自行评估分配方案。','Use them as a reference and assess the allocation yourself.')}</p><div class="optimizer-fields"><label class="number-field"><span>${text('计算模式','Calculation mode')}</span><select id="optimizer-allocation-mode"><option value="reset" ${allocationMode==='reset'?'selected':''}>${allocationLabel('reset')}</option><option value="remaining" ${allocationMode==='remaining'?'selected':''}>${allocationLabel('remaining')}</option></select></label><label class="number-field"><span>${text('优化目标','Optimization goal')}</span><select id="optimizer-goal"><option value="combatIncome" ${objective==='combatIncome'?'selected':''}>${text('战斗收入最高','Highest combat income')}</option><option value="gatherIncome" ${objective==='gatherIncome'?'selected':''}>${text('采集收入最高','Highest gathering income')}</option><option value="combatCollection" ${objective==='combatCollection'?'selected':''}>${text('战斗精通点数最高','Highest combat mastery points')}</option><option value="gatherCollection" ${objective==='gatherCollection'?'selected':''}>${text('采集精通点数最高','Highest gathering mastery points')}</option><option disabled>${text('经验获取最多（暂未支持）','Most XP (not yet available)')}</option><option disabled>${text('强化成本最低（暂未支持）','Lowest enhancement cost (not yet available)')}</option></select></label>${optimizerPolicy(objective).gathering?`<label class="number-field"><span>${text('采集任务','Gathering task')}</span><select id="optimizer-job">${optimizerJobs.map(j=>`<option value="${j.id}" ${j.id===jobId?'selected':''}>${esc(name(j.name))} · ${j.levelReq}</option>`).join('')}</select></label>`:`<label class="number-field"><span>${text('目标怪物','Target monster')}</span><select id="optimizer-monster">${optimizerMonsters.map(m=>`<option value="${m.id}" ${m.id===monsterId?'selected':''}>${esc(name(m.name))} · ${m.level}</option>`).join('')}</select></label>`}<label class="number-field"><span>${text('搜索次数','Search allowance')}</span><select id="optimizer-effort">${Object.entries(optimizerEfforts).map(([id,max])=>`<option value="${id}" ${effort===id?'selected':''}>${text({fast:'快速',standard:'标准',deep:'深入',comprehensive:'全面'}[id],{fast:'Fast',standard:'Standard',deep:'Deep',comprehensive:'Comprehensive'}[id])}${text('：最多 ',': up to ')}${max}${text(' 个配置',' configurations')}</option>`).join('')}</select></label></div><p id="optimizer-scenario" class="micro"></p><p class="micro">${text('使用对应战斗／采集页当前配装，固定模拟 24 小时，开始时冻结价格、增益与配置。<br>收入为金币＋掉落估值，未扣食物药水；宠物估值为 0。<br>精通产出评分按各品质首档奖励比例 1／3／10／30／100 加权，金币和宠物不计，不依赖物品价格；不代表实际获得的精通点数。','Uses the current Combat or Gathering build with a fixed 24-hour simulation. Prices, buffs and settings are captured at start.<br>Income is coins + valued drops, before food and potion costs; pets are valued at zero.<br>Mastery yield score weights output qualities by 1/3/10/30/100, excluding coins and pets. It is price-independent and does not represent actual mastery points earned.')}</p><div class="optimizer-actions"><button id="optimizer-start" class="secondary">${text('开始计算','Start calculation')}</button><a id="optimizer-edit-combat" href="${optimizerPolicy(objective).gathering?'/gather':'/combat'}">${optimizerPolicy(objective).gathering?text('前往采集页编辑配装','Edit build on Gathering page'):text('前往战斗页编辑配装','Edit build on Combat page')}</a></div><p id="optimizer-status" role="status" aria-live="polite"></p><div id="optimizer-output"></div>`;
+ root.innerHTML=`<summary>${text('计算最优分配方案','Calculate optimal allocation')}</summary><p class="micro"><span class="simulation-caveat">${text('计算结果仅针对当前装备和所选目标，应用于其他目标时效果可能更差。','Results apply only to the current equipment and selected target, and may perform worse for other targets.')}</span> ${text('结果仅供参考，请自行评估分配方案。','Use them as a reference and assess the allocation yourself.')}</p><div class="optimizer-fields"><label class="number-field"><span>${text('计算模式','Calculation mode')}</span><select id="optimizer-allocation-mode"><option value="reset" ${allocationMode==='reset'?'selected':''}>${allocationLabel('reset')}</option><option value="remaining" ${allocationMode==='remaining'?'selected':''}>${allocationLabel('remaining')}</option></select></label><label class="number-field"><span>${text('优化目标','Optimization goal')}</span><select id="optimizer-goal"><option value="combatIncome" ${objective==='combatIncome'?'selected':''}>${text('战斗收入最高','Highest combat income')}</option><option value="gatherIncome" ${objective==='gatherIncome'?'selected':''}>${text('采集收入最高','Highest gathering income')}</option><option value="combatCollection" ${objective==='combatCollection'?'selected':''}>${text('战斗精通点数最高','Highest combat mastery points')}</option><option value="gatherCollection" ${objective==='gatherCollection'?'selected':''}>${text('采集精通点数最高','Highest gathering mastery points')}</option><option disabled>${text('经验获取最多（暂未支持）','Most XP (not yet available)')}</option><option disabled>${text('强化成本最低（暂未支持）','Lowest enhancement cost (not yet available)')}</option></select></label>${optimizerPolicy(objective).gathering?`<label class="number-field"><span>${text('采集任务','Gathering task')}</span><select id="optimizer-job">${optimizerJobs.map(j=>`<option value="${j.id}" ${j.id===jobId?'selected':''}>${esc(name(j.name))} · ${j.levelReq}</option>`).join('')}</select></label>`:`<label class="number-field"><span>${text('目标怪物','Target monster')}</span><select id="optimizer-monster">${optimizerMonsters.map(m=>`<option value="${m.id}" ${m.id===monsterId?'selected':''}>${esc(name(m.name))} · ${m.level}</option>`).join('')}</select></label>`}<label class="number-field"><span>${text('搜索次数','Search allowance')}</span><select id="optimizer-effort">${Object.entries(optimizerEfforts).map(([id,max])=>`<option value="${id}" ${effort===id?'selected':''}>${text({fast:'快速',standard:'标准',deep:'深入',comprehensive:'全面'}[id],{fast:'Fast',standard:'Standard',deep:'Deep',comprehensive:'Comprehensive'}[id])}${text('：最多 ',': up to ')}${max}${text(' 个配置',' configurations')}</option>`).join('')}</select></label></div><p id="optimizer-scenario" class="micro"></p><p class="micro">${text('使用对应战斗／采集页当前配装，固定模拟 24 小时，开始时冻结价格、增益与配置。<br>收入为金币＋掉落估值，未扣食物药水；宠物估值为 0。<br>精通产出评分按各品质首档奖励比例 1／3／10／30／100 加权，金币和宠物不计，不依赖物品价格；不代表实际获得的精通点数。','Uses the current Combat or Gathering build with a fixed 24-hour simulation. Prices, buffs and settings are captured at start.<br>Income is coins + valued drops, before food and potion costs; pets are valued at zero.<br>Mastery yield score weights output qualities by 1/3/10/30/100, excluding coins and pets. It is price-independent and does not represent actual mastery points earned.')}</p><div class="optimizer-actions"><button id="optimizer-start" class="secondary">${text('开始计算','Start calculation')}</button><a id="optimizer-edit-combat" href="${optimizerPolicy(objective).gathering?'/gather':'/combat'}">${optimizerPolicy(objective).gathering?text('前往采集页编辑配装','Edit build on Gathering page'):text('前往战斗页编辑配装','Edit build on Combat page')}</a></div><p id="optimizer-status" role="status" aria-live="polite"></p><div id="optimizer-results"><div id="optimizer-output"></div><div id="mastery-saved-results" class="mastery-saved-results"></div></div>`;
  root.querySelector('#optimizer-scenario').textContent=summary();
  root.querySelector('#optimizer-start').onclick=()=>{if(worker){clear('cancelled');paint();}else start();};
- root.querySelector('#optimizer-output').onclick=e=>{const button=e.target.closest('[data-optimizer-apply]');if(button&&!button.disabled)applyRecommendation(Number(button.dataset.optimizerApply));};
+ root.querySelector('#optimizer-output').onclick=async e=>{const button=e.target.closest('[data-optimizer-apply]');if(button&&!button.disabled)applyRecommendation(Number(button.dataset.optimizerApply));const save=e.target.closest('[data-optimizer-save]');if(save&&result&&resultRequest){await saveManualMasteryResult(createMasteryResult(resultRequest,result,Number(save.dataset.optimizerSave)));paint();}};
  root.querySelector('#optimizer-edit-combat').onclick=e=>{if(e.button===0&&!e.ctrlKey&&!e.metaKey&&!e.shiftKey&&!e.altKey){e.preventDefault();document.getElementById(optimizerPolicy(objective).gathering?'gather-nav':'combat-nav').click();}};
  const monsterSelect=root.querySelector('#optimizer-monster');if(monsterSelect)monsterSelect.onchange=e=>{monsterId=Number(e.target.value);clear();paint();};
  const jobSelect=root.querySelector('#optimizer-job');if(jobSelect)jobSelect.onchange=e=>{jobId=Number(e.target.value);clear();root.querySelector('#optimizer-scenario').textContent=summary();paint();};
@@ -123,10 +127,18 @@ function start(){
   checkOptimizerPrices(input,prices);const request={...input,prices};fingerprint=signature();
   worker=new Worker(new URL('./mastery-optimizer-worker.js',import.meta.url),{type:'module'});const task=generation,activeWorker=worker;
   progress={phase:'search',candidates:0,maxCandidates:optimizerEfforts[effort],simulations:0};
-  worker.onmessage=({data})=>{
+  worker.onmessage=async({data})=>{
    if(task!==generation||worker!==activeWorker)return;
    if(data.error){worker.terminate();worker=null;progress=null;notice={code:data.error,itemIds:data.itemIds};}
-   else if(data.result){worker.terminate();worker=null;progress=null;result=data.result;notice=null;applyRecommendation(0);}
+   else if(data.result){
+    worker.terminate();worker=null;progress=null;
+    try{
+     const record=createMasteryResult(request,data.result);
+     result=data.result;resultRequest=structuredClone(request);notice=null;paint();
+     await saveAutomaticMasteryResult(record,()=>task===generation&&fingerprint===signature());
+     if(task===generation&&fingerprint===signature())applyRecommendation(0);
+    }catch(error){if(task===generation)clear(error.message);}
+   }
    else if(data.progress)progress=data.progress;
    paint();
   };
