@@ -10,11 +10,15 @@ import {gatheringDefaults} from '../src/gathering-model.js';
 import {priceDefaults} from '../src/item-prices.js';
 
 const directory=path.resolve(process.argv[2]??'.test-artifacts/gathering-table');await fs.mkdir(directory,{recursive:true});
-const socket=net.createServer();socket.listen(0,'127.0.0.1');await once(socket,'listening');const port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
-const server=spawn(process.execPath,['scripts/serve.mjs'],{env:{...process.env,PORT:String(port)},stdio:['ignore','pipe','pipe']});
-const results={cases:[],errors:[]};let browser;
+const target=process.argv[3]?.replace(/\/$/,'')??null;let server,port;
+if(!target){
+const socket=net.createServer();socket.listen(0,'127.0.0.1');await once(socket,'listening');port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
+server=spawn(process.execPath,['scripts/serve.mjs'],{env:{...process.env,PORT:String(port)},stdio:['ignore','pipe','pipe']});
+}
+const base=target??`http://127.0.0.1:${port}`;
+const results={target:target??'local',cases:[],errors:[]};let browser;
 try{
- await Promise.race([once(server.stdout,'data'),once(server,'exit').then(([code])=>{throw Error(`Server exited: ${code}`);})]);
+ if(server)await Promise.race([once(server.stdout,'data'),once(server,'exit').then(([code])=>{throw Error(`Server exited: ${code}`);})]);
  browser=await chromium.launch({headless:true,executablePath:await browserPath()});
  const context=await browser.newContext({viewport:{width:1440,height:1000}});
  const prices=priceDefaults();prices.preferences.autoImport=false;
@@ -28,7 +32,7 @@ try{
   };
  },{...gatheringDefaults(),siteSelection:3,hotSetting:'off',brews:{...gatheringDefaults().brews,gatherer:2}});
  const page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',error=>results.errors.push(error.message));
- await page.goto(`http://127.0.0.1:${port}/gather`);
+ await page.goto(`${base}/gather`);
  assert.equal(await page.locator('[data-gather-field="siteSelection"]').count(),0);
  assert.doesNotMatch(await page.locator('#gather-content').innerText(),/所有采集点平均|实际随机选择|Average of all sites|selects sites randomly/);
  await page.waitForFunction(()=>window.gatherRuns.at(-1)?.done);
@@ -124,5 +128,5 @@ try{
  results.cases.push('short-duration daily scaling, empty rows and thieving catch detail');
  assert.deepEqual(results.errors,[]);await context.close();
 }catch(error){results.errors.push(error.stack??String(error));process.exitCode=1;}
-finally{if(browser)await browser.close();server.kill();await fs.writeFile(path.join(directory,'results.json'),JSON.stringify(results,null,2)+'\n');}
+finally{if(browser)await browser.close();server?.kill();await fs.writeFile(path.join(directory,'results.json'),JSON.stringify(results,null,2)+'\n');}
 console.log(JSON.stringify(results,null,2));

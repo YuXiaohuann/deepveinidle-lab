@@ -10,11 +10,15 @@ import {craftingDefaults,craftingJobs} from '../src/crafting-model.js';
 import {priceDefaults} from '../src/item-prices.js';
 
 const directory=path.resolve(process.argv[2]??'.test-artifacts/crafting-filters/demand');await fs.mkdir(directory,{recursive:true});
-const socket=net.createServer();socket.listen(0,'127.0.0.1');await once(socket,'listening');const port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
-const server=spawn(process.execPath,['scripts/serve.mjs'],{env:{...process.env,PORT:String(port)},stdio:['ignore','pipe','pipe']});
-const results={cases:[],errors:[]};let browser;
+const target=process.argv[3]?.replace(/\/$/,'')??null;let server,port;
+if(!target){
+const socket=net.createServer();socket.listen(0,'127.0.0.1');await once(socket,'listening');port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
+server=spawn(process.execPath,['scripts/serve.mjs'],{env:{...process.env,PORT:String(port)},stdio:['ignore','pipe','pipe']});
+}
+const base=target??`http://127.0.0.1:${port}`;
+const results={target:target??'local',cases:[],errors:[]};let browser;
 try{
- await Promise.race([once(server.stdout,'data'),once(server,'exit').then(()=>{throw Error('Server stopped');})]);
+ if(server)await Promise.race([once(server.stdout,'data'),once(server,'exit').then(()=>{throw Error('Server stopped');})]);
  browser=await chromium.launch({headless:true,executablePath:await browserPath()});
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>results.errors.push(e.message));
  const state=craftingDefaults();state.skill='smithing';state.simulationHours=1;for(const k in state.levels)state.levels[k]=110;
@@ -29,7 +33,7 @@ try{
    terminate(){if(this.run)this.run.terminated=true;return super.terminate();}
   };
  },{state,prices});
- await page.goto(`http://127.0.0.1:${port}/craft`);
+ await page.goto(`${base}/craft`);
  const settle=async()=>{await page.waitForTimeout(250);await page.waitForFunction(()=>document.querySelector('.craft-progress')?.classList.contains('is-idle'));};
  const runCount=()=>page.evaluate(()=>window.filterRuns.length);
  const last=()=>page.evaluate(()=>window.filterRuns.at(-1).input);
@@ -70,5 +74,5 @@ try{
  results.cases.push('Chinese/English desktop and 390px toolbar order, containment and layout');
  assert.deepEqual(results.errors,[]);await context.close();
 }catch(error){results.errors.push(error.stack??String(error));process.exitCode=1;}
-finally{if(browser)await browser.close();server.kill();await fs.writeFile(path.join(directory,'results.json'),JSON.stringify(results,null,2)+'\n');}
+finally{if(browser)await browser.close();server?.kill();await fs.writeFile(path.join(directory,'results.json'),JSON.stringify(results,null,2)+'\n');}
 console.log(JSON.stringify(results,null,2));

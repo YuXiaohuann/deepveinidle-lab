@@ -104,11 +104,13 @@ node --test tests/mastery.test.mjs tests/mastery-controls.test.mjs tests/mastery
 
 模拟配置专项：`node --test tests/work-simulation-settings.test.mjs` 验证时长规范化、旧存档、角色导入保留时长及制造实际窗口。`node tests/work-simulation-settings-browser.mjs [输出目录] [目标网址]` 验证双语桌面／390px 的整数小时输入、固定每天展示、热门日程、导入、刷新、重置及旧 Worker 隔离；默认输出 `.test-artifacts/work-settings/settings/`，提供目标网址时不启动本机服务。使用合成角色消息与真实工作 Worker，截图需审阅，不代替完整发布验收。
 
-`node --test tests/crafting-display.test.mjs` 验证配方列序、品质、周期换算、制造次数取整、经验明细与异常行。浏览器专项使用 `node tests/gathering-table-browser.mjs [输出目录]`、`node tests/crafting-table-browser.mjs [输出目录]`，需要本机监听和 Chrome；默认分别输出至 `.test-artifacts/gathering-table/`、`.test-artifacts/crafting-table/`，复验时指定独立目录以保留历史证据。覆盖双语桌面／390px、排序、经验展开、采集／制造次数展开的起始耗时与完成概率（升级为固定耗时）、制造名称与品质不折行、固定每天展示及周期选择器移除、等待／失败及计划输入；正常计算使用真实 Worker，异常场景使用受控消息，不替代完整发布验收。
+`node --test tests/crafting-display.test.mjs` 验证配方列序、品质、周期换算、制造次数取整、经验明细与异常行。浏览器专项使用 `node tests/gathering-table-browser.mjs [输出目录] [目标网址]`、`node tests/crafting-table-browser.mjs [输出目录] [目标网址]`，需要本机监听和 Chrome；默认分别输出至 `.test-artifacts/gathering-table/`、`.test-artifacts/crafting-table/`，复验时指定独立目录以保留历史证据。覆盖双语桌面／390px、排序、经验展开、采集／制造次数展开的起始耗时与完成概率（升级为固定耗时）、制造名称与品质不折行、固定每天展示及周期选择器移除、等待／失败及计划输入；正常计算使用真实 Worker，异常场景使用受控消息，不替代完整发布验收。
 
-三页模拟状态标题栏专项：`node tests/simulation-heading-browser.mjs [输出目录]`，默认输出 `.test-artifacts/heading-status/`。覆盖战斗、采集、制造的双语桌面／390px状态位置、右对齐、长文换行、进度及失败显示，以及真实Worker完成后隐藏；错误与进度采用受控消息，不连接游戏账号。截图需审阅，不代替完整发布验收。
+上述表格专项及下述标题栏／按需任务专项传入目标网址时不启动本机服务，直接检查指定目标；本机通过不能代替生产验证。
 
-制造按需模拟专项：`node tests/crafting-filter-browser.mjs [输出目录]`，默认输出 `.test-artifacts/crafting-filters/demand/`。验证分类与稀有度交集决定速率任务、搜索和只看已填写仅影响显示、缺失补算及同轮缓存、种子／起点保留、与原始模拟结果一致、全不选品质、运行中切换及旧Worker隔离、隐藏／跨技能／未执行订单仍计算，以及输入法不触发模拟、双语桌面／390px搜索右侧分类布局。需要本机服务和独立Chrome，正常结果使用真实Worker，隔离场景使用受控消息，不连接游戏账号。
+三页模拟状态标题栏专项：`node tests/simulation-heading-browser.mjs [输出目录] [目标网址]`，默认输出 `.test-artifacts/heading-status/`。覆盖战斗、采集、制造的双语桌面／390px状态位置、右对齐、长文换行、进度及失败显示，以及真实Worker完成后隐藏；错误与进度采用受控消息，不连接游戏账号。截图需审阅，不代替完整发布验收。
+
+制造按需模拟专项：`node tests/crafting-filter-browser.mjs [输出目录] [目标网址]`，默认输出 `.test-artifacts/crafting-filters/demand/`。验证分类与稀有度交集决定速率任务、搜索和只看已填写仅影响显示、缺失补算及同轮缓存、种子／起点保留、与原始模拟结果一致、全不选品质、运行中切换及旧Worker隔离、隐藏／跨技能／未执行订单仍计算，以及输入法不触发模拟、双语桌面／390px搜索右侧分类布局。需要本机服务和独立Chrome，正常结果使用真实Worker，隔离场景使用受控消息，不连接游戏账号。
 
 ## 制造订单专项
 

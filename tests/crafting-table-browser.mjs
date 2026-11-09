@@ -10,11 +10,15 @@ import {craftingDefaults} from '../src/crafting-model.js';
 import {priceDefaults} from '../src/item-prices.js';
 
 const directory=path.resolve(process.argv[2]??'.test-artifacts/crafting-table');await fs.mkdir(directory,{recursive:true});
-const socket=net.createServer();socket.listen(0,'127.0.0.1');await once(socket,'listening');const port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
-const server=spawn(process.execPath,['scripts/serve.mjs'],{env:{...process.env,PORT:String(port)},stdio:['ignore','pipe','pipe']});
-const results={cases:[],errors:[]};let browser;
+const target=process.argv[3]?.replace(/\/$/,'')??null;let server,port;
+if(!target){
+const socket=net.createServer();socket.listen(0,'127.0.0.1');await once(socket,'listening');port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
+server=spawn(process.execPath,['scripts/serve.mjs'],{env:{...process.env,PORT:String(port)},stdio:['ignore','pipe','pipe']});
+}
+const base=target??`http://127.0.0.1:${port}`;
+const results={target:target??'local',cases:[],errors:[]};let browser;
 try{
- await Promise.race([once(server.stdout,'data'),once(server,'exit').then(([code])=>{throw Error(`Server exited: ${code}`);})]);
+ if(server)await Promise.race([once(server.stdout,'data'),once(server,'exit').then(([code])=>{throw Error(`Server exited: ${code}`);})]);
  browser=await chromium.launch({headless:true,executablePath:await browserPath()});
  const context=await browser.newContext({viewport:{width:1440,height:1000}});
  const prices=priceDefaults();prices.preferences.autoImport=false;
@@ -29,7 +33,7 @@ try{
   };
  },{...craftingDefaults(),hotSetting:'off',levels:{...craftingDefaults().levels,smithing:99},plans:{'61:0':3},owned:{20:2}});
  const page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',error=>results.errors.push(error.message));
- await page.goto(`http://127.0.0.1:${port}/craft`);await page.waitForFunction(()=>window.craftRuns.at(-1)?.done);
+ await page.goto(`${base}/craft`);await page.waitForFunction(()=>window.craftRuns.at(-1)?.done);
  const table=()=>page.locator('#craft-results .craft-table');
  const headers=()=>table().locator('th').allTextContents().then(items=>items.map(item=>item.replace(/\s*[↑↓↕]/g,'').trim()));
  const checkRows=async()=>assert.ok(await table().locator('tbody tr').evaluateAll(rows=>rows.every(row=>[...row.cells].reduce((sum,cell)=>sum+cell.colSpan,0)===7)));
@@ -104,5 +108,5 @@ try{
  results.cases.push('timed upgrade daily rates, language invariance, sortable table, narrow layout and new order and stock persistence');
  assert.deepEqual(results.errors,[]);await context.close();
 }catch(error){results.errors.push(error.stack??String(error));process.exitCode=1;}
-finally{if(browser)await browser.close();server.kill();await fs.writeFile(path.join(directory,'results.json'),JSON.stringify(results,null,2)+'\n');}
+finally{if(browser)await browser.close();server?.kill();await fs.writeFile(path.join(directory,'results.json'),JSON.stringify(results,null,2)+'\n');}
 console.log(JSON.stringify(results,null,2));
