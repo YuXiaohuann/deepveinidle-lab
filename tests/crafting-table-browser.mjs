@@ -52,7 +52,7 @@ try{
  let values=await levels();assert.deepEqual(values,[...values].sort((a,b)=>b-a));
  const recipe=page.locator('#craft-61\\:0-recipe');assert.match(await recipe.locator('summary').innerText(),/ · 普通\n所需等级 1/);await recipe.locator('summary').click();assert.equal(await recipe.locator('.loot-line').count(),4);
  await page.locator('[data-craft-sort="levelReq"]').click();values=await levels();assert.deepEqual(values,[...values].sort((a,b)=>a-b));assert.equal(await recipe.getAttribute('open'),'');
- await page.locator('[data-craft-rarity="2"]').click();assert.match(await page.locator('#craft-61\\:2-recipe summary').innerText(),/ · 稀有/);
+ await page.locator('[data-craft-rarity="2"]').click();await page.waitForFunction(()=>window.craftRuns.some(run=>run.done&&run.results.some(r=>r.mode==='rate'&&r.result.key==='61:2')));assert.match(await page.locator('#craft-61\\:2-recipe summary').innerText(),/ · 稀有/);
  results.cases.push('seven columns, name/rarity and level, default/ascending sorting, highlighted values and locked rows, independent quality rows');
  await page.locator('#craft-settings').evaluate(el=>el.open=true);const runs=await page.evaluate(()=>window.craftRuns.length);
  const data=await page.evaluate(()=>window.craftRuns[0].results.find(r=>r.mode==='rate'&&r.result.key==='61:0').result);
