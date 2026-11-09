@@ -97,6 +97,7 @@ try{
 
  for(const language of ['zh','en'])for(const width of [1440,390]){
   await page.selectOption('#language',language);await page.setViewportSize({width,height:1000});
+  assert.equal(await page.locator('#optimizer-history-note').count(),0);assert.doesNotMatch(await page.locator('#mastery-optimizer').innerText(),/指标为计算时估算|Metrics are estimates from the calculation/);
   assert.equal(await saved.locator('details').count(),0);
   assert.equal(await saved.locator('.saved-rank-list').count(),0);
   assert.deepEqual(await saved.locator('.saved-result-card').evaluateAll(es=>es.map(el=>el.dataset.savedSlot)),['auto','manual']);
@@ -106,7 +107,10 @@ try{
   for(const id of ['auto','manual']){
    const context=await slot(id).locator('.saved-plan-context').innerText();
    assert.doesNotMatch(context,language==='zh'?/快速|标准|深入|全面|24 小时/:/(?:^| · )(?:Fast|Standard|Deep|Comprehensive)(?: ·|\n|$)|24 hours/);
-   assert.match(context,/\b\d{2}-\d{2} \d{2}:\d{2}\b/);assert.doesNotMatch(context,/\d{2}:\d{2}:\d{2}/);
+   assert.doesNotMatch(context,/Calculated|计算于|\d{2}:\d{2}/);
+   const time=slot(id).locator('.optimizer-plan-title .saved-calculation-time');assert.match(await time.innerText(),/\b\d{2}-\d{2} \d{2}:\d{2}\b/);assert.doesNotMatch(await time.innerText(),/\d{2}:\d{2}:\d{2}/);
+   assert.equal(await time.evaluate(el=>parseFloat(getComputedStyle(el).fontSize)<parseFloat(getComputedStyle(el.parentElement.querySelector('h4')).fontSize)),true);
+   if(width===1440)assert.equal(await time.evaluate(el=>el.getBoundingClientRect().left>=el.parentElement.querySelector('h4').getBoundingClientRect().right),true);
    const levels=await slot(id).locator('.saved-character-levels').innerText();
    assert.match(levels,language==='zh'?/远程 85 · 防御 85 · 生命 85/:/Ranged 85 · Defence 85 · Hitpoints 85/);
    assert.doesNotMatch(levels,language==='zh'?/近战|魔法/:/Melee|Magic/);
@@ -114,7 +118,7 @@ try{
   for(const id of ['auto','manual'])assert.equal(await slot(id).evaluate(el=>!!(el.querySelector('.saved-character-levels').compareDocumentPosition(el.querySelector('.saved-equipment'))&Node.DOCUMENT_POSITION_FOLLOWING)),true);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await saved.screenshot({path:path.join(directory,`saved-${language}-${width}.png`)});
  }
- results.cases.push('Chinese/English desktop and 390px cards show latest best before saved, levels before equipment, no saved time or rank disclosure, and no overflow');
+ results.cases.push('Chinese/English desktop and 390px cards show latest best before saved, calculation time beside headings, levels before equipment, no saved time or rank disclosure, and no overflow');
 
  // Saved application restores target ranks independently of live inputs.
  await page.selectOption('#optimizer-goal','combatCollection');await page.selectOption('#optimizer-effort','fast');await page.locator('#mastery-total').fill('123');
