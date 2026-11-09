@@ -108,6 +108,8 @@ node --test tests/mastery.test.mjs tests/mastery-controls.test.mjs tests/mastery
 
 三页模拟状态标题栏专项：`node tests/simulation-heading-browser.mjs [输出目录]`，默认输出 `.test-artifacts/heading-status/`。覆盖战斗、采集、制造的双语桌面／390px状态位置、右对齐、长文换行、进度及失败显示，以及真实Worker完成后隐藏；错误与进度采用受控消息，不连接游戏账号。截图需审阅，不代替完整发布验收。
 
+制造按需模拟专项：`node tests/crafting-filter-browser.mjs [输出目录]`，默认输出 `.test-artifacts/crafting-filters/demand/`。验证分类与稀有度交集决定速率任务、搜索和只看已填写仅影响显示、缺失补算及同轮缓存、种子／起点保留、与原始模拟结果一致、全不选品质、运行中切换及旧Worker隔离、隐藏／跨技能／未执行订单仍计算，以及输入法不触发模拟、双语桌面／390px搜索右侧分类布局。需要本机服务和独立Chrome，正常结果使用真实Worker，隔离场景使用受控消息，不连接游戏账号。
+
 ## 制造订单专项
 
 `node --test tests/crafting-orders.test.mjs tests/crafting.test.mjs tests/crafting-display.test.mjs` 验证订单数量、批量操作、三项加工费、材料合并和独立模拟。`node tests/crafting-orders-browser.mjs [输出目录] [目标网址]` 使用本机服务和独立 Chrome，覆盖独立订单管理面板、无订单自动建单、默认勾选及空单状态保存、多配方订单、自动加入、隐藏项批量修改、整单选择、复制／删除、真实 Worker 按订单计费、库存一次抵扣、存档恢复与坏存档保护，以及双语桌面／390px。提供目标网址时不启动本机服务，直接验证该站点。默认输出 `.test-artifacts/crafting-orders/orders/`，截图须审阅；不连接游戏账号，不替代发布验收。制造表格及配置导入专项已使用新版订单存档，历史 `dvi-crafting-v1` 不作为新版输入。

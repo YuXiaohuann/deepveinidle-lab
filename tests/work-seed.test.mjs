@@ -95,10 +95,20 @@ function craftScheduler(){
 }
 test('crafting batches retain a round seed and rate cache while new rounds discard old results',()=>{
  const h=craftScheduler();h.context.startSimulation();const first=h.workers[0];assert.equal(first.data.seed,101);h.complete(first);
- assert.equal(h.read('rateCache.size'),5);h.context.startSimulation();assert.equal(h.workers.length,1);
- h.read("orders[0].plans={'61:0':10}");h.context.startSimulation();const second=h.workers[1];assert.equal(second.data.seed,101);assert.equal(second.data.plans.length,1);assert.equal(h.read('rateCache.size'),5);h.complete(second);
+ assert.equal(h.read('rateCache.size'),1);h.context.startSimulation();assert.equal(h.workers.length,1);
+ h.read("orders[0].plans={'61:0':10}");h.context.startSimulation();const second=h.workers[1];assert.equal(second.data.seed,101);assert.equal(second.data.plans.length,1);assert.equal(h.read('rateCache.size'),1);h.complete(second);
  h.context.schedule();assert.equal(h.read('rateCache.size'),0);assert.equal(h.read('cache.size'),0);h.flush();const third=h.workers[2];assert.equal(third.data.seed,102);assert.ok(third.data.plans.some(p=>p.mode==='rate'));assert.ok(third.data.plans.some(p=>!p.mode));
  second.onmessage({data:{result:{key:'stale',seed:101},done:true}});second.onerror();assert.equal(h.read('cache.has("stale")'),false);assert.equal(h.read('workerError'),null);assert.notEqual(third.terminated,true);
+});
+test('crafting category and rarity changes preserve the round seed, time and completed rate entries',()=>{
+ const h=craftScheduler();h.context.startSimulation();const first=h.workers[0];h.complete(first);
+ h.read('selectedTiers.add(2)');h.context.refreshTaskSelection();h.flush();const next=h.workers[1];
+ assert.equal(next.data.seed,first.data.seed);assert.equal(next.data.now,first.data.now);
+ assert.equal(next.data.plans.length,1);assert.equal(next.data.plans[0].tier,2);h.complete(next);
+ assert.equal(h.read('rateCache.size'),2);
+ h.read("group='missing'");h.context.refreshTaskSelection();h.flush();assert.equal(h.workers.length,2);
+ h.read("group='';query='no-match';filledOnly=true");h.context.refreshTaskSelection();h.flush();
+ assert.equal(h.workers.length,2);assert.equal(h.read('rateCache.size'),2);
 });
 test('crafting random-source failure is explicit and prevents redraw retry loops',()=>{
  const h=craftScheduler();h.context.randomSimulationSeed=()=>{throw Error('No randomness');};h.context.startSimulation();assert.equal(h.workers.length,0);assert.equal(h.read('workerError'),'No randomness');h.context.startSimulation();assert.equal(h.workers.length,0);

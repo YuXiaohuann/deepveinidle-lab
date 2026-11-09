@@ -77,7 +77,7 @@ test('recipe cost and value details show prices without editable fields',()=>{
 
 test('recipe toolbar retains filters while batch editing belongs to the order panel',()=>{
  const toolbar=source.slice(source.indexOf('<div class="toolbar craft-toolbar">'),source.indexOf('<p id="craft-notice"'));
- const controls=['id="craft-group"','id="craft-search"','${rarityFilters()}','id="craft-filled"'];
+ const controls=['id="craft-search"','id="craft-group"','${rarityFilters()}','id="craft-filled"'];
  for(let i=1;i<controls.length;i++)assert.ok(toolbar.indexOf(controls[i-1])<toolbar.indexOf(controls[i]));
  assert.doesNotMatch(toolbar,/craft-period/);
  assert.match(toolbar,/<button id="craft-filled"[^>]+aria-pressed/);
@@ -121,4 +121,22 @@ test('XP details use unrounded run totals, include burnt attempts and do not sca
  }
  vm.runInContext('rateFor(visibleJobs()[0]).result.completed=0;rateFor(visibleJobs()[0]).result.xp=0',p);
  assert.match(vm.runInContext('recipeRow(visibleJobs()[0])',p),/单次经验<\/span><span>—<\/span>/);
+});
+
+test('rate tasks follow category and rarity while search and filled-only remain display filters',()=>{
+ const p=page();
+ vm.runInContext("state.levels.cooking=1;selectedTiers.clear();selectedTiers.add(0)",p);
+ assert.equal(vm.runInContext("pendingSimulationPlans().filter(p=>p.mode==='rate').length",p),1);
+ vm.runInContext("query='no-such-item';filledOnly=true",p);assert.equal(vm.runInContext('visibleJobs().length',p),0);assert.equal(vm.runInContext('pendingSimulationPlans().length',p),1);vm.runInContext("filledOnly=false",p);
+ vm.runInContext("query=craftingJobs.find(j=>j.id===61).name;selectedTiers.add(2)",p);
+ assert.deepEqual(Array.from(vm.runInContext('pendingSimulationPlans().map(p=>p.key)',p)),['61:0','61:2']);
+ vm.runInContext("group='missing'",p);assert.equal(vm.runInContext('pendingSimulationPlans().length',p),0);
+ vm.runInContext("currentOrder().plans={'61:4':3};currentOrder().enabled=false",p);
+ assert.deepEqual(Array.from(vm.runInContext('pendingSimulationPlans().map(p=>[p.key,p.count,p.mode??null])',p),r=>Array.from(r)),[['61:4',3,null]]);
+ vm.runInContext("group='';query='';selectedTiers.clear()",p);
+ assert.equal(vm.runInContext('pendingSimulationPlans().length',p),1);
+ vm.runInContext("selectedTiers.add(4);query=craftingJobs.find(j=>j.id===61).name;const plan=visibleJobs()[0];rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{completed:10}})",p);
+ assert.equal(vm.runInContext('pendingSimulationPlans().length',p),1);
+ vm.runInContext("cache.set('61:4/3',{signature:signature({...visibleJobs()[0],count:3}),result:{completed:3}})",p);
+ assert.equal(vm.runInContext('pendingSimulationPlans().length',p),0);
 });
