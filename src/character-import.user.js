@@ -3,7 +3,7 @@
 // @name:en      Deep Vein Idle · Character import
 // @name:zh-cn   Deep Vein Idle · 角色配置导入
 // @namespace    https://dvi-lab.pages.dev/
-// @version      2.9.1
+// @version      2.9.2
 // @description  读取角色配置供实验室导入；不发送游戏指令。
 // @match        https://deepveinidle.com/*
 // @match        https://cn.deepveinidle.com/*
@@ -22,7 +22,7 @@
  if(['https://deepveinidle.com','https://cn.deepveinidle.com'].includes(location.origin)){
   const page=typeof unsafeWindow!=='undefined'?unsafeWindow:window,NativeSocket=page.WebSocket;
   const object=v=>v&&typeof v==='object'&&!Array.isArray(v);
-  const fields=['lastTick','skills','equipment','foodItemId','eatAt','foodMaxTier','foodPerTrip','brews','brewTier','brewBuckets','house','houseFurniture','masteries','perks','guildBonus','homeBank','ironman','bank','pack','overflow','collections','forgeLog'];
+  const fields=['lastTick','skills','equipment','foodItemId','eatAt','foodMaxTier','foodPerTrip','brews','brewTier','brewBuckets','house','houseFurniture','masteries','perks','guildBonus','homeBank','ironman','bank','bankLocked','pack','overflow','collections','forgeLog'];
   const clean=v=>JSON.parse(JSON.stringify(v,(k,value)=>/^(?:password|token|auth|authorization|cookie|email|chat)$/i.test(k)?undefined:value));
   let latestSocket,epoch=0,player,guild,worldBuffs,worldTick;
   let pending=null,saving=false,saveTimer=null,stopped=false,captured=false;

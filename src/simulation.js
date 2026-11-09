@@ -26,7 +26,7 @@ export function createScenario(raw,monster=null,{now=Date.now(),seed=0}={}){
  const foodId=game.withRarity(state.food.id,state.food.tier);
  Object.assign(p,{
   id:state.manual.playerId,x:bank.x,y:bank.y,homeBank:bank.id,skills:{...Object.fromEntries(game.allSkills.map(k=>[k,0])),...p.skills},
-  skillboss:null,skillbossBurn:{},skillbossFeedTicks:{},skillbossFed:{},masterySkills:{},masteryOther:null,toolSkins:[],toolSkinsOff:[],bossMarks:[],decosOwned:[],attacks:[],houseTrophies:{},houseDecos:{},alchemyLog:{},alchemy:{carry:{}},
+  skillboss:null,skillbossPending:[],skillbossBurn:{},skillbossFeedTicks:{},skillbossFed:{},masterySkills:{},masteryAway:{},toolSkins:[],toolSkinsOff:[],bossMarks:[],decosOwned:[],attacks:[],houseTrophies:{},houseDecos:{},alchemyLog:{},alchemy:{carry:{}},
   pack:[],bank:{[foodId]:1e9},overflow:{},bankOrder:[],bankLocked:[],route:null,enhance:null,order:null,plots:{},queue:[],tunics:[],guide:{},
   perks:{quick:0,rest:0,pockets:0,hands:0,...p.perks},housePoints:{},houseCells:[],houseBuild:null,houseUpgrades:{},
   quests:{day:0,week:0,daily:[],weekly:[]},path:null,streak:{},tally:{items:{},monsters:{},coinsEarned:0},collection:{},collections:{},forgeLog:{},achievements:{},titles:[],

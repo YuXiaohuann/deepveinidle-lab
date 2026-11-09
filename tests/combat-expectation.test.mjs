@@ -40,7 +40,7 @@ test('neutral kill rewards include all qualities, bonus, pet and shard quantitie
  close(r2.rareItems[208],.2*4);
 });
 
-test('kill expectations use event-time rarity windows, shrine only changes normal quality',()=>{
+test('kill expectations use event-time rarity windows, shrine changes both normal quality and bonus',()=>{
  const state=defaults();state.manual.hotSetting='off';
  const shrine=game.rooms.find(r=>r.bonus.kind==='rareChance');state.house[shrine.id]=20;
  const monster=game.monsters[0],{player,context}=createScenario(state,monster),engine=createCombatExpectation(monster);
@@ -48,11 +48,11 @@ test('kill expectations use event-time rarity windows, shrine only changes norma
  context.windows.push({fromTick:START_TICK+10,toTick:START_TICK+20,rarityMult:1.25});
  engine.kill(before,player,context,START_TICK+9);engine.kill(during,player,context,START_TICK+10);engine.kill(after,player,context,START_TICK+21);
  close(before.normalItems[4240],1.1/150000);close(during.normalItems[4240],1.35/150000);
- close(before.rareItems[201],.0004);close(during.rareItems[201],.0005);
+ close(before.rareItems[201],.00044);close(during.rareItems[201],.00054);
  assert.deepEqual(after,before);
  close(during.rareItems[280],before.rareItems[280]);close(during.rareItems[208],before.rareItems[208]);
  player.brews.hunter=Number.MAX_SAFE_INTEGER;player.brewTier.hunter=4;
- const hunter=result();engine.kill(hunter,player,context,START_TICK+9);close(hunter.rareItems[201],.0004*1.75);
+ const hunter=result();engine.kill(hunter,player,context,START_TICK+9);close(hunter.rareItems[201],.0004*1.85);
 });
 
 test('mount expectations use all attempts, base interval, luck qualities and ironman',()=>{

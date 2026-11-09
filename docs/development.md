@@ -83,11 +83,11 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 ## 上游版本适配专项
 
-`node --test tests/upstream-1212.test.mjs tests/upstream-1208.test.mjs tests/upstream-1205.test.mjs tests/upstream-1204.test.mjs tests/upstream-1203.test.mjs tests/upstream-1199.test.mjs tests/upstream-1196.test.mjs tests/upstream-1194.test.mjs tests/enhancement.test.mjs tests/mastery.test.mjs` 验证 1208 精通 200／家园 50 上限、越界旧配置与导入拒绝／警告、激活精通切页捕获，以及利维坦护符无总等级门槛提示／导入保留、升级容量原子性／批量成本，以及纯净煤矿任务／固定普通主产物／额外奖励品质、书台恢复、1198 缺字段配置迁移、统一碎片／经验、2.4 秒尝试与宠物机会恢复、深渊之眼商人特殊售价及等级缓存边界，以及烟花有效品质／定价／收藏排除、装备升级保留品质与强化编码、预测初始化以及强化目标 +20、既有 +100 编码／导入保留、精通 +50% 封顶及锻造录 +15 计点边界／15,662 总上限。
+`node --test tests/upstream-1214.test.mjs tests/upstream-1212.test.mjs tests/upstream-1208.test.mjs tests/upstream-1205.test.mjs tests/upstream-1204.test.mjs tests/upstream-1203.test.mjs tests/upstream-1199.test.mjs tests/upstream-1196.test.mjs tests/upstream-1194.test.mjs tests/enhancement.test.mjs tests/mastery.test.mjs` 验证 1208 精通 200／家园 50 上限、越界旧配置与导入拒绝／警告、激活精通切页捕获，以及利维坦护符无总等级门槛提示／导入保留、升级容量原子性／批量成本，以及纯净煤矿任务／固定普通主产物／额外奖励品质、书台恢复、1198 缺字段配置迁移、统一碎片／经验、2.4 秒尝试与宠物机会恢复、深渊之眼商人特殊售价及等级缓存边界，以及烟花有效品质／定价／收藏排除、装备升级保留品质与强化编码、预测初始化以及强化目标 +20、既有 +100 编码／导入保留、精通 +50% 封顶及锻造录 +15 计点边界／15,662 总上限。
 
 `node --test tests/upstream-1190.test.mjs` 覆盖迁移战斗区域、自动及两个指定仓库、巨像六件五品质材料、保存兼容与任务自动领奖隔离。独立离线对照使用 `scripts/native-questless.mjs` 按日边界分段保持空任务，以数学日／周编号独立于应用适配函数核验。
 
-`node tests/upstream-browser.mjs --out .test-artifacts/upstream-1212/browser` 检查双语桌面／390px 护符无总等级门槛提示／刷新保留、纯净煤矿任务／计算／刷新保存及战斗完成、来源版本、巨像材料／经验与库存计划刷新保存，书台恢复／保存与缺字段迁移、强化成功率、新旧目标与高强化存档、精通等级及家园控件上限、强化加成封顶、烟花有效品质／火药定价／计划保存，以及合成消息下的直接捕获（不提供 Worker／Blob API）；需要本机监听和 Chrome。指定 `--url https://dvi-lab.pages.dev --out <证据目录>` 时检查该实际目标四组页面，不把本地角色捕获专项当作生产测试。截图和机器结果落盘，仍需人工审阅。加 `--combat-only` 仅运行护符提示删除相关的战斗／精通检查，覆盖无其他问题时隐藏提示框、刷新恢复及其他等级不足提示保留。
+`node tests/upstream-browser.mjs --out .test-artifacts/upstream-1214/browser` 检查双语桌面／390px 护符无总等级门槛提示／刷新保留、纯净煤矿任务／计算／刷新保存及战斗完成、来源版本、巨像材料／经验与库存计划刷新保存，书台恢复／保存与缺字段迁移、强化成功率、新旧目标与高强化存档、精通等级及家园控件上限、强化加成封顶、烟花有效品质／火药定价／计划保存，以及合成消息下的直接捕获（不提供 Worker／Blob API）；需要本机监听和 Chrome。指定 `--url https://dvi-lab.pages.dev --out <证据目录>` 时检查该实际目标四组页面，不把本地角色捕获专项当作生产测试。截图和机器结果落盘，仍需人工审阅。加 `--combat-only` 仅运行护符提示删除相关的战斗／精通检查，覆盖无其他问题时隐藏提示框、刷新恢复及其他等级不足提示保留。
 
 ## 采集与制造表格专项
 
@@ -110,3 +110,5 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 技能装备专项：`node tests/upstream-1212-browser.mjs [输出目录] [目标网址]`，默认输出 `.test-artifacts/upstream-1212/browser/`。覆盖中英文桌面／390px 的 105 级工具、技能副手速度、套装经验、禁用品质／强化、保存恢复及新增升级订单真实 Worker；需要本机回环监听和独立 Chrome，不连接游戏账号。截图须人工审阅，不代替生产验收。独立原始计算入口同时对照无装备与新工具／副手／套装组合的采集点，以及带新装备的制造配方。
 
 上游新装备及价格选项专项提供目标网址时直接检查该网址，不启动本机服务；本机／预览通过不能代替本轮正式生产目标验收。
+
+1.0.1214 专项另覆盖全部升级五品质与 +0／+17／+100 编码、神龛与世界稀有叠加及代币概率封顶、空首领奖励队列／精通备用页及旧精通结果拒绝；`tests/character-import.test.mjs` 和 `tests/character-capture.test.mjs` 覆盖锁定食物与旧捕获提示。独立原始计算对照新增手算代币概率及升级编码检查。

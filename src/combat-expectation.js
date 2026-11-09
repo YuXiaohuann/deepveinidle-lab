@@ -22,9 +22,9 @@ export function createCombatExpectation(monster){
    const goldMultiplier=1+game.abyssalGoldBonus*game.brewScale(player,'abyssal');
    if(!goldCache.has(goldMultiplier))goldCache.set(goldMultiplier,expectedGold(monster,goldMultiplier));
    result.coins+=goldCache.get(goldMultiplier);
-   const luck=game.equipmentLuck(player.equipment),rare=game.combatRarityMultiplier(player,context,tick);
+   const luck=game.equipmentLuck(player.equipment),rare=game.combine(game.combatRarityMultiplier(player,context,tick),game.houseRarityMultiplier(player));
    const normalChance=monster.dropChance??1;
-   const qualities=rarityProbabilities((1+luck)*game.combine(rare,game.houseRarityMultiplier(player)));
+   const qualities=rarityProbabilities((1+luck)*rare);
    qualities.forEach((chance,tier)=>add(result.normalItems,game.withRarity(monster.drop,tier),normalChance*chance));
    add(result.rareItems,monster.bonus.itemId,Math.min(1,monster.bonus.chance*(1+luck)*rare));
    add(result.rareItems,game.combatPetItem(monster.id),game.combatPetChance);

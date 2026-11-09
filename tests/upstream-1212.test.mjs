@@ -14,7 +14,7 @@ const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-12,`${a} != ${b}`);
 
 test('1212 uses the complete reviewed build and retains disabled experimental features',()=>{
  const manifest=JSON.parse(fs.readFileSync('vendor/manifest.json'));
- assert.equal(manifest.changelogVersion,'1.0.1212');assert.equal(manifest.declarations.length,1447);assert.deepEqual(manifest.overrides,[]);
+ assert.equal(manifest.changelogVersion,'1.0.1214');assert.equal(manifest.declarations.length,1462);assert.deepEqual(manifest.overrides,[]);
  assert.deepEqual(game.features,{enhanceRedesign:false,alchemy:false,profiles:false});
  assert.equal(game.rooms.length,18);assert.equal(game.equipmentSlots.includes('flask'),true);
  assert.equal(game.items.length,1484);assert.equal(game.upgradeRecipes.length,27);
@@ -25,13 +25,13 @@ test('1212 uses the complete reviewed build and retains disabled experimental fe
  assert.deepEqual(prepared.alchemy.carry,{});
 });
 
-test('1212 ten forged tools preserve rarity, reset enhancement and inherit Meteoric cost tiers',()=>{
+test('1212 ten forged tools preserve rarity and enhancement and inherit Meteoric cost tiers',()=>{
  for(const [id,from]of tools){
   const job=craftingJobs.find(j=>j.upgrade?.to.includes(id));assert.ok(job);assert.equal(job.levelReq,105);
-  near(game.tool(id).bonus,.65);assert.equal(job.upgrade.startsAtZero,true);
+  near(game.tool(id).bonus,.65);assert.equal(job.upgrade.startsAtZero,undefined);
   for(let tier=0;tier<5;tier++){
    const base=game.encode(game.withRarity(from,tier),17),target=game.withRarity(id,tier);
-   assert.equal(game.upgradeResult(job.upgrade,base),target);
+   assert.equal(game.upgradeResult(job.upgrade,base),game.encode(target,17));
    assert.deepEqual(game.enhanceCost(game.encode(target,7)),game.enhanceCost(game.encode(game.withRarity(from,tier),7)));
    assert.equal(craftingMaterials(job,tier,2)[game.withRarity(from,tier)],2);
   }

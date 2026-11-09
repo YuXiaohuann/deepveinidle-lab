@@ -1,5 +1,5 @@
 import {questlessOffline,questlessTick} from './native-questless.mjs';
-// Independently extract the complete 1.0.1212 native engine for compatibility checks.
+// Independently extract the complete 1.0.1214 native engine for compatibility checks.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -29,7 +29,7 @@ for(const node of parse(source,{ecmaVersion:'latest',sourceType:'module',ranges:
   const entry={start:d.start,text:node.kind+' '+source.slice(d.start,d.end)+';'};ids.forEach(id=>declarations.set(id,entry));
  }
 }
-const exports={"world":"U","monsters":"bs","predict":"Qg","startFight":"tm","createContext":"QI","gear":"ma","armourMultiplier":"gF","masteryMultiplier":"Ca","restock":"v1o","offline":"K2","startWork":"ud","enhanceCost":"Zf","enhanceChance":"Kb","enhanceXp":"Zwo","enhanceTicks":"dn","skillPetChance":"sJ","hotSkill":"vO","startUpgrade":"QQ","tick":"g_"};
+const exports={"world":"U","monsters":"ps","predict":"tg","startFight":"um","createContext":"Q$","gear":"ga","armourMultiplier":"tF","masteryMultiplier":"za","restock":"WOo","offline":"oA","startWork":"On","enhanceCost":"im","enhanceChance":"Ug","enhanceXp":"pvo","enhanceTicks":"un","skillPetChance":"RJ","hotSkill":"KO","startUpgrade":"t_","tick":"yZ","killMonster":"Vpo","seededFloat":"$a","bonusSalt":"Jpo","upgradeResult":"kr","upgradeRecipes":"vs"};
 const selected=new Set(),allowed=new Set(['WeakSet','WeakMap','Uint8Array','Uint16Array','Uint32Array','Int16Array','Int32Array','Float64Array','Math','Map','Set','Number','Object','Array','String','Error','Date','Boolean','Infinity','undefined','JSON','RegExp','parseInt','parseFloat']);
 function collect(name){
  const d=declarations.get(name);if(!d)throw Error('Missing native declaration '+name);if(selected.has(d))return;selected.add(d);
@@ -37,12 +37,25 @@ function collect(name){
  for(const dep of new Set(refs))if(declarations.has(dep))collect(dep);else if(!allowed.has(dep))throw Error('Unexpected native dependency '+dep);
 }
 Object.values(exports).forEach(collect);
-const directory=fs.mkdtempSync(path.join(os.tmpdir(),'dvi-1212-audit-'));
+const directory=fs.mkdtempSync(path.join(os.tmpdir(),'dvi-1214-audit-'));
 try{
  const file=path.join(directory,'native.mjs');
  fs.writeFileSync(file,[...selected].sort((a,b)=>a.start-b.start).map(d=>d.text).join('\n')+'\nexport{'+Object.entries(exports).map(([alias,name])=>name+' as '+alias).join(',')+'};');
  const native=await import(pathToFileURL(file));
  assert.deepEqual(native.world,game.world);assert.deepEqual(native.monsters,game.monsters);
+ let tokenCases=0,upgradeEncodingCases=0;
+ for(const shrine of [0,20,50])for(const worldRare of [0,.25,10000])for(let seed=0;seed<64;seed++){
+  const state=preset('ranged');state.gear.amulet={id:0,tier:0,plus:0};state.brews.hunter=-1;state.manual.blessing=false;state.manual.hotSetting='off';state.manual.worldRarity=worldRare*100;state.house.shrine=shrine;
+  const monster={...game.monsters[0],bonus:{...game.monsters[0].bonus,chance:.5}};
+  const {player,context}=createScenario(state,monster,{seed});
+  const tick=START_TICK+1,roll=native.seededFloat(seed,context.secretAt,native.bonusSalt,player.id,1,tick),chance=Math.min(1,.5*(1+worldRare+.005*shrine)),events=[];
+  native.killMonster(player,context,monster,tick,events);
+  assert.equal(events.some(e=>e.kind==='bonus'),roll<chance);tokenCases++;
+ }
+ for(const upgrade of native.upgradeRecipes)for(const from of upgrade.from)for(let tier=0;tier<5;tier++)for(const plus of [0,17,100]){
+  const target=upgrade.to[upgrade.from.indexOf(from)];
+  assert.equal(native.upgradeResult(upgrade,game.encode(game.withRarity(from,tier),plus)),game.encode(game.withRarity(target,tier),plus));upgradeEncodingCases++;
+ }
  let count=0;
  function compare(state,monster){
   const {player}=createScenario(state,monster);
@@ -123,8 +136,9 @@ try{
   }
  }
  const schedule=forecast(Date.UTC(2026,9,13));for(const entry of [schedule.current,...schedule.entries])assert.deepEqual(entry,native.hotSkill(entry.from));
- if(process.argv[2])fs.writeFileSync(process.argv[2],JSON.stringify({predictions:count,gearVariants:105,gatheringSites:gatheringCount,craftingCases:craftingCount,upgradeCases:upgradeCount,enhancementCosts:costs,enhancementCases,forecastSlots:49})+'\n');
+ if(process.argv[2])fs.writeFileSync(process.argv[2],JSON.stringify({tokenCases,upgradeEncodingCases,predictions:count,gearVariants:105,gatheringSites:gatheringCount,craftingCases:craftingCount,upgradeCases:upgradeCount,enhancementCosts:costs,enhancementCases,forecastSlots:49})+'\n');
+ console.log(`Token drops: ${tokenCases} seeded cases matched manual shrine/world probabilities; ${upgradeEncodingCases} upgrade encodings preserved rarity and enhancement.`);
  console.log(`Enhancing: ${enhancementCases} item/rarity/level/mastery/plus cases matched independent native chance, costs and XP; duration and pet chance matched.`);
  console.log(`Other pages: ${gatheringCount} gathering sites, ${craftingCount} ordinary recipe/quality cases, ${upgradeCount} upgrade/quality cases, ${costs} enhancement costs and 49 forecast slots matched independent native code.`);
- console.log(`Native 1.0.1212 comparison: ${count}/${count} complete 1-hour predictions matched; world geometry, monsters and 105 new-gear variants matched.`);
+ console.log(`Native 1.0.1214 comparison: ${count}/${count} complete 1-hour predictions matched; world geometry, monsters and 105 new-gear variants matched.`);
 }finally{fs.rmSync(directory,{recursive:true});}

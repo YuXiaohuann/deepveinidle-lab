@@ -7,7 +7,7 @@ import vm from 'node:vm';
 import {captureHarness} from './helpers/capture-harness.mjs';
 import {importCharacter,importWarningText} from '../src/character-import.js';
 import {game,defaults,preset,slots,normalize} from '../src/model.js';
-const fixture=()=>({version:2,worldBuffsVersion:1,capturedAt:Date.now(),player:{lastTick:100,skills:{melee:game.levelXp(37)+20,ranged:game.levelXp(82),magic:0,defence:game.levelXp(42),hitpoints:game.levelXp(51)},equipment:Object.fromEntries(slots.map(k=>[k,null])),foodItemId:game.withRarity(64,2),eatAt:.75,foodMaxTier:3,foodPerTrip:-2,brews:{warrior:200,haste:100,fed:200,rooted:99,blessing:200},brewTier:{warrior:2},house:{post:49,storeroom:4,target:50},houseFurniture:{post:{placed:true}},masteries:{xp:9,move:7},perks:{pockets:3,meals:4,rest:2},guildBonus:.12,homeBank:null,ironman:true}});
+const fixture=()=>({version:2,worldBuffsVersion:1,capturedAt:Date.now(),player:{bankLocked:[],lastTick:100,skills:{melee:game.levelXp(37)+20,ranged:game.levelXp(82),magic:0,defence:game.levelXp(42),hitpoints:game.levelXp(51)},equipment:Object.fromEntries(slots.map(k=>[k,null])),foodItemId:game.withRarity(64,2),eatAt:.75,foodMaxTier:3,foodPerTrip:-2,brews:{warrior:200,haste:100,fed:200,rooted:99,blessing:200},brewTier:{warrior:2},house:{post:49,storeroom:4,target:50},houseFurniture:{post:{placed:true}},masteries:{xp:9,move:7},perks:{pockets:3,meals:4,rest:2},guildBonus:.12,homeBank:null,ironman:true}});
 test('nine categories import into existing manual rules, including sparse maps and inactive buffs',()=>{
  const old=preset('ranged');old.manual.weeklyXp=17;old.manual.simulationHours=6;old.manual.customSimulation=true;old.manual.hotSetting='off';old.manual.enemySelection=`monster-${game.monsters[0].id}`;old.manual.vendorValues=true;old.manual.valuationMode='vendor';
  const result=importCharacter(old,fixture()),s=result.state;
@@ -132,7 +132,7 @@ test('success badge hides after five seconds without reappearing on redraws or l
  g.frame(socket,fixture().player);await new Promise(resolve=>setImmediate(resolve));
  assert.equal(g.stored.length,2);assert.equal(g.badge(),null);
  new g.page.WebSocket('wss://deepveinidle.com/ws');assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');
- assert.match(script,/^\/\/ @version\s+2\.9\.1$/m);
+ assert.match(script,/^\/\/ @version\s+2\.9\.2$/m);
 });
 
 const weeklyWindow=(label='Weekly goal: gathered',fromTick=100,toTick=200,xpMult=1.1)=>({label,fromTick,toTick,xpMult});
@@ -385,4 +385,18 @@ test('shared character importer reads configuration and inventory once through t
  const errors=[],updater=createCharacterUpdater({storage:{getItem:()=>null,setItem(){}},page:'craft',inventory:true,read:()=>page.requestCharacter('read'),onBusy:value=>busy=value,onError:error=>errors.push(error.message),apply:(snapshot,flags)=>{assert.deepEqual(flags,{config:true,inventory:true});inventory=readCharacterInventory(snapshot);}});
  updater.configure({inventory:false});updater.setActive(true);await updater.read({config:true,inventory:true});
  assert.deepEqual(errors,[]);assert.deepEqual(inventory.items,{1:5});assert.equal(busy,false);assert.equal(count,1);
+});
+
+
+test('automatic food skips locked stacks and preserves food on legacy or invalid lock data',()=>{
+ const old=preset('ranged');old.food={id:64,tier:4};
+ const snap=fixture(),rare=game.withRarity(64,2);snap.player.bank={64:10,[rare]:10};snap.player.foodItemId=null;
+ snap.player.bankLocked=[rare];assert.deepEqual(importCharacter(old,snap).state.food,{id:64,tier:0});
+ snap.player.foodItemId=-2;snap.player.bankLocked=[64];assert.deepEqual(importCharacter(old,snap).state.food,{id:64,tier:2});
+ for(const [locks,warning]of [[[64,rare],'food.noCandidate'],[undefined,'food.bankLockedMissing'],[null,'food.bankLockedInvalid'],[['64'],'food.bankLockedInvalid'],[[999999999],'food.bankLockedInvalid']]){
+  snap.player.bankLocked=locks;const actual=importCharacter(old,snap);
+  assert.deepEqual(actual.state.food,old.food);assert.ok(actual.warnings.includes(`food: ${warning}`));
+ }
+ assert.match(importWarningText('zh',['food: food.bankLockedMissing']),/更新角色脚本/);
+ assert.match(importWarningText('en',['food: food.bankLockedMissing']),/update the character script/);
 });

@@ -26,7 +26,9 @@ test('original chances, costs, XP and multipliers match independent vectors',()=
  step=enhancementSteps(config({itemId:328,tier:4,level:32,lectern:7,mastery:11,target:20}))[19];near(step.chance,.2*1.062*1.07*1.0275);assert.equal(step.gold,3000000);assert.equal(step.shards,60);assert.equal(step.xp,10000);
  for(const [tier,multiplier]of [1,3,8,20,50].entries())assert.equal(enhancementSteps(config({itemId:328,tier,target:1}))[0].gold,3000*multiplier);
  const levels=[15,30,50,75,90],bases=[100,300,1000,3000,8000,20000];
- for(const item of enhanceableItems){const recipe=game.recipes.find(x=>x.output.itemId===item.id),upgrade=game.upgradeRecipes.find(r=>r.to.includes(item.id)),level=upgrade?.startsAtZero?game.recipes.find(r=>r.output.itemId===upgrade.from[0])?.levelReq:recipe?.levelReq??upgrade?.levelReq,base=level===undefined?3000:bases[levels.filter(x=>level>=x).length];assert.equal(enhancementSteps(config({itemId:item.id,target:1}))[0].gold,base);}
+ // Reviewed level-105 tools retain the Meteoric (level 85) enhancement cost tier.
+ const forgedTools=new Set([698,699,572,573,575,576,711,712,718,719]);
+ for(const item of enhanceableItems){const recipe=game.recipes.find(x=>x.output.itemId===item.id),upgrade=game.upgradeRecipes.find(r=>r.to.includes(item.id)),level=forgedTools.has(item.id)?85:recipe?.levelReq??upgrade?.levelReq,base=level===undefined?3000:bases[levels.filter(x=>level>=x).length];assert.equal(enhancementSteps(config({itemId:item.id,target:1}))[0].gold,base);}
 });
 test('protection uses current +2 and only charges a scroll on failure',()=>{
  const steps=enhancementSteps(config({protect:true,target:4}));assert.equal(steps[1].protected,false);assert.equal(steps[2].protected,true);assert.equal(steps[2].failTo,1);assert.equal(steps[3].failTo,2);

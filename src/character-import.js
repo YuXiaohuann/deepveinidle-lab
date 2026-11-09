@@ -6,7 +6,7 @@ const importTypes=[['skills','技能','Skills'],['equipment','装备','Equipment
 export function importWarningText(language,warnings=[]){
  const zh=language==='zh',categories=new Set(warnings.filter(item=>item!=='guild: worldBuffs.upgrade').map(item=>item.split(': ')[0])),lines=[];
  if(categories.has('food')){
-  const reasons=[['food.bankMissing','仓库数据缺失','Warehouse data is missing'],['food.bankInvalid','仓库数据异常','Warehouse data is invalid'],['food.noCandidate','仓库没有符合策略及稀有度上限的食物','No warehouse food matches the strategy and rarity cap'],['foodMaxTier','自动进食稀有度上限无效','The automatic food rarity cap is invalid']];
+  const reasons=[['food.bankMissing','仓库数据缺失','Warehouse data is missing'],['food.bankInvalid','仓库数据异常','Warehouse data is invalid'],['food.bankLockedMissing','缺少仓库锁定数据，请更新角色脚本并刷新游戏重新捕获','Warehouse lock data is missing; update the character script and refresh the game to capture again'],['food.bankLockedInvalid','仓库锁定数据异常','Warehouse lock data is invalid'],['food.noCandidate','仓库没有符合策略及稀有度上限的食物','No warehouse food matches the strategy and rarity cap'],['foodMaxTier','自动进食稀有度上限无效','The automatic food rarity cap is invalid']];
   const details=reasons.filter(([key])=>warnings.includes(`food: ${key}`)).map(r=>r[zh?1:2]);
   lines.push((zh?'【食物】部分配置未导入，已保留原值，请手动检查':'[Food] Some settings were not imported; previous values were kept. Please check manually.')+(details.length?(zh?'：': ' ')+details.join(zh?'；':'; '):''));
  }
@@ -25,6 +25,8 @@ function warehouseFood(player){
   if(!int(id,1)||String(id)!==key||!int(qty))return {warning:'food.bankInvalid'};
   try{game.item(id);}catch{return {warning:'food.bankInvalid'};}
  }
+ if(player.bankLocked===undefined)return {warning:'food.bankLockedMissing'};
+ if(!Array.isArray(player.bankLocked)||!player.bankLocked.every(id=>{if(!int(id,1))return false;try{game.item(id);return true;}catch{return false;}}))return {warning:'food.bankLockedInvalid'};
  const id=game.preferredBankFood(player);
  if(id===null)return {warning:'food.noCandidate'};
  if(!foods.some(f=>f.id===game.baseItemId(id))||!int(game.itemTier(id),0,4))return {warning:'food.bankInvalid'};

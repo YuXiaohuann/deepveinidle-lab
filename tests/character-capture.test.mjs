@@ -9,7 +9,7 @@ import {masteryDefaults,importMastery} from '../src/mastery.js';
 import {gatheringDefaults,importGathering} from '../src/gathering-model.js';
 import {craftingDefaults,importCrafting} from '../src/crafting-model.js';
 const key='dvi-character-snapshot-v2',marketKey='dvi-market-quotes-v1';
-const player=()=>({lastTick:100,skills:Object.fromEntries(['melee','ranged','magic','defence','hitpoints','enhancing','mining','fishing','woodcutting','thieving','cooking','smithing','fletching','herblore','crafting'].map(k=>[k,game.levelXp(30)])),equipment:{weapon:null,mount:null},foodItemId:null,eatAt:.75,foodMaxTier:0,foodPerTrip:-1,brews:{},brewTier:{},brewBuckets:{},house:{lectern:2},houseFurniture:{lectern:{cell:1}},masteries:{},perks:{},guildBonus:0,homeBank:null,ironman:false,bank:{64:100,110:1},pack:[{itemId:80,qty:1}],overflow:{81:1},collections:{64:25},forgeLog:{0:1},name:'not needed',history:Array(100).fill('not needed'),token:'secret'});
+const player=()=>({lastTick:100,skills:Object.fromEntries(['melee','ranged','magic','defence','hitpoints','enhancing','mining','fishing','woodcutting','thieving','cooking','smithing','fletching','herblore','crafting'].map(k=>[k,game.levelXp(30)])),equipment:{weapon:null,mount:null},foodItemId:null,eatAt:.75,foodMaxTier:0,foodPerTrip:-1,brews:{},brewTier:{},brewBuckets:{},house:{lectern:2},houseFurniture:{lectern:{cell:1}},masteries:{},perks:{},guildBonus:0,homeBank:null,ironman:false,bank:{64:100,110:1},bankLocked:[64],pack:[{itemId:80,qty:1}],overflow:{81:1},collections:{64:25},forgeLog:{0:1},name:'not needed',history:Array(100).fill('not needed'),token:'secret'});
 
 for(const hasUnsafeWindow of [true,false])test(`capture ${hasUnsafeWindow?'prefers unsafeWindow over a separate window':'falls back to page window when unsafeWindow is absent'}`,async()=>{
  const h=captureHarness(undefined,{hasUnsafeWindow});
@@ -34,6 +34,7 @@ test('field selection preserves all five import consumers and removes unrelated 
  const h=captureHarness(),s=new h.page.WebSocket('wss://deepveinidle.com/ws');
  const you=player(),windows=[{label:'Weekly goal: gathered',fromTick:0,toTick:200,xpMult:1.1,token:'secret'}],guild={name:'Guild',tag:'G',members:['private']};
  s.receive([{t:'welcome',you,windows,guild}],100);await flush();
+ assert.deepEqual(h.storage.get(key).player.bankLocked,[64]);
  const snapshot=h.storage.get(key),original={...snapshot,player:you,worldBuffs:windows};
  for(const [read,config]of [[importCharacter,defaults()],[importEnhancement,enhancementDefaults()],[importMastery,masteryDefaults()],[importGathering,gatheringDefaults()],[importCrafting,craftingDefaults()]])assert.deepEqual(read(config,snapshot),read(config,original));
  for(const field of ['bank','pack','overflow','collections','forgeLog'])assert.deepEqual(snapshot.player[field],you[field]);
