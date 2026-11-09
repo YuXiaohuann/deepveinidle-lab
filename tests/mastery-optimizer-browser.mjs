@@ -1,57 +1,28 @@
+import {openMasteryBrowser,masteryBrowserBuild} from './helpers/mastery-browser.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import net from 'node:net';
-import {spawn} from 'node:child_process';
-import {once} from 'node:events';
 import assert from 'node:assert/strict';
-import {chromium} from 'playwright-core';
-import {browserPath} from '../scripts/release-common.mjs';
-import {preset,game} from '../src/model.js';
-import {priceDefaults} from '../src/item-prices.js';
+import {game} from '../src/model.js';
 import {translatedName} from '../src/i18n.js';
 import {selectSearchOption} from './helpers/search-select.mjs';
-import {gatheringDefaults,gatheringJobs} from '../src/gathering-model.js';
+import {gatheringJobs} from '../src/gathering-model.js';
 import {masteryDefaults} from '../src/mastery.js';
 import {combatIncomeItems} from '../src/mastery-optimizer.js';
 
 const directory=path.resolve(process.argv[2]??'.test-artifacts/mastery-optimizer');await fs.mkdir(directory,{recursive:true});
-let server,baseURL=process.argv[3]?.replace(/\/$/,'');
-const results={base:baseURL??'local',cases:[],errors:[]};let browser;
+const baseURL=process.argv[3]?.replace(/\/$/,'');
+const results={base:baseURL??'local',cases:[],errors:[]};let session;
 try{
- if(!baseURL){
-  const socket=net.createServer();socket.listen(0,'127.0.0.1');await once(socket,'listening');const port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
-  server=spawn(process.execPath,['scripts/serve.mjs'],{env:{...process.env,PORT:String(port)},stdio:['ignore','pipe','pipe']});
-  await Promise.race([once(server.stdout,'data'),once(server,'exit').then(([code])=>{throw Error('Server exited: '+code);})]);
-  baseURL='http://127.0.0.1:'+port;results.base=baseURL;
- }
- browser=await chromium.launch({headless:true,executablePath:await browserPath()});
- const context=await browser.newContext({viewport:{width:1440,height:1100}});
- const combat=preset('ranged');combat.manual.simulationHours=1;combat.manual.enemySelection='monster-7';combat.manual.hotSetting='off';
- const gathering=gatheringDefaults();gathering.simulationHours=1/60;gathering.hotSetting='off';
- const mastery=masteryDefaults();mastery.totalPoints=123;mastery.current.maxhit=1;mastery.target.maxhit=1;
- const prices=priceDefaults();prices.preferences.autoImport=false;
+ const build=masteryBrowserBuild(),{combat,mastery,prices}=build;
  const ids=combatIncomeItems(combat,game.monsters.find(m=>m.id===7));
  for(const id of ids)prices.prices[id]={price:100,locked:true,source:'manual',updatedAt:Date.now(),quoteCapturedAt:null};
- await context.addInitScript(({combat,mastery,prices,gathering})=>{
-  if(!localStorage.getItem('dvi-simulator-v1'))localStorage.setItem('dvi-simulator-v1',JSON.stringify({language:'zh',state:combat}));
-  if(!localStorage.getItem('dvi-gathering-v1'))localStorage.setItem('dvi-gathering-v1',JSON.stringify(gathering));
-  if(!localStorage.getItem('dvi-mastery-v1'))localStorage.setItem('dvi-mastery-v1',JSON.stringify(mastery));
-  if(!localStorage.getItem('dvi-item-prices-v1'))localStorage.setItem('dvi-item-prices-v1',JSON.stringify(prices));
-  window.optimizerWorkers=[];const OriginalWorker=Worker;
-  window.Worker=class extends OriginalWorker{
-   constructor(url,options){super(url,options);this.optimizer=String(url).includes('mastery-optimizer-worker.js');if(this.optimizer){window.optimizerWorkers.push(this);this.addEventListener('message',({data})=>{if(data.result)this.result=data.result;});}}
-   postMessage(data,...rest){if(this.optimizer){this.request=structuredClone(data);if(window.optimizerMode==='wait')return;if(window.optimizerMode==='error'){setTimeout(()=>this.onmessage({data:{error:'controlled failure'}}),0);return;}}return super.postMessage(data,...rest);}
-   terminate(){this.wasTerminated=true;return super.terminate();}
-  };
- },{combat,mastery,prices,gathering});
- const page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>results.errors.push(e.message));
+ session=await openMasteryBrowser({url:baseURL,results,build});const {page,context}=session;
  const ranksInFields=kind=>kind==='current'?page.locator('[data-mastery-current]').evaluateAll(elements=>Object.fromEntries(elements.map(el=>[el.dataset.masteryCurrent,Number(el.textContent.replaceAll(',',''))]))):page.locator(`[data-mastery-field="${kind}"]`).evaluateAll(inputs=>Object.fromEntries(inputs.map(input=>[input.dataset.masteryId,Number(input.value)])));
  const importCurrentRanks=async ranks=>{
   const total=await page.locator('#mastery-total').inputValue();
   await page.evaluate(async ranks=>{const {applyMasteryImport,renderMastery}=await import('/src/mastery-controls.js');applyMasteryImport({version:2,capturedAt:Date.now(),player:{masteries:ranks,collections:{},forgeLog:{29:1073741823}}});renderMastery(document.documentElement.lang==='zh-CN'?'zh':'en');},ranks);
   await page.locator('#mastery-total').fill(total);
  };
- await page.goto(`${baseURL}/mastery`);
  assert.equal(await page.locator('#optimizer-effort').inputValue(),'standard');
  assert.deepEqual(await page.locator('#optimizer-effort option').evaluateAll(es=>es.map(e=>e.value)),['fast','standard','deep','comprehensive']);
  assert.deepEqual(await page.locator('#optimizer-effort option').allTextContents(),['快速：最多 60 个配置','标准：最多 120 个配置','深入：最多 360 个配置','全面：最多 720 个配置']);
@@ -102,7 +73,7 @@ try{
  results.cases.push('monster options are stably ordered by descending level, default to Abyssal Horror, and both modes use one start label');
  const saved=await page.evaluate(()=>localStorage.getItem('dvi-mastery-v1'));
  const combatBefore=await page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-simulator-v1')).state);
- await page.click('#optimizer-start');await page.waitForSelector('.optimizer-plan');
+ await page.click('#optimizer-start');await page.waitForFunction(()=>!!window.optimizerWorkers.at(-1)?.result&&document.querySelector('#optimizer-start').textContent!=='取消计算'&&document.querySelector('#optimizer-start').textContent!=='Cancel calculation'&&document.querySelector('[data-optimizer-apply="0"]')?.disabled);
  assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.open),true);
  assert.notEqual(await page.evaluate(()=>localStorage.getItem('dvi-mastery-v1')),saved);
  assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-simulator-v1')).state),combatBefore);
@@ -115,12 +86,12 @@ try{
  assert.equal(await page.locator('#optimizer-output [data-optimizer-save]').count(),resetPlan.plans.length);
  assert.equal(await page.locator('[data-optimizer-copy]').count(),0);
  assert.equal(await page.locator('.optimizer-ranks').count(),0);
- assert.deepEqual(await page.locator('.optimizer-plan').first().locator('dt').allTextContents(),['收入','投入','差异（较原配置）']);
+ assert.deepEqual(await page.locator('.optimizer-plan').first().locator('dt').allTextContents(),['方案总投入','当前剩余','计算时收入']);
  assert.deepEqual(await ranksInFields('target'),resetPlan.plans[0].ranks);assert.deepEqual(await ranksInFields('current'),mastery.current);
  let appliedBuild=await page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-mastery-v1')));
  assert.deepEqual(appliedBuild.target,resetPlan.plans[0].ranks);assert.deepEqual(appliedBuild.current,mastery.current);assert.equal(appliedBuild.totalPoints,123);
  assert.equal(await page.locator('[data-optimizer-apply="0"]').isDisabled(),true);
- results.cases.push('reset search auto-applies best target ranks without changing current ranks, preserves Combat, and shows only income/investment/difference plus apply controls');
+ results.cases.push('reset search auto-applies best target ranks without changing current ranks, preserves Combat, and shows current allocation cost/budget and historical income plus apply controls');
  assert.ok(resetPlan.plans.length>1);await page.click('[data-optimizer-apply="1"]');
  assert.deepEqual(await ranksInFields('target'),resetPlan.plans[1].ranks);assert.equal(await page.locator('.optimizer-plan').count(),resetPlan.plans.length);
  await page.evaluate(result=>window.optimizerWorkers.at(-1).onmessage({data:{result}}),resetPlan);assert.deepEqual(await ranksInFields('target'),resetPlan.plans[1].ranks);
@@ -132,22 +103,22 @@ try{
  assert.deepEqual(await page.locator('#mastery-summary .stat strong').allTextContents(),[123,resetPlan.plans[0].cost,123-resetPlan.plans[0].cost].map(n=>n.toLocaleString('zh-CN')));
  results.cases.push('applying alternatives updates targets, cost and storage without clearing candidates; editing targets re-enables apply and language redraw never auto-applies again');
  await page.locator('#mastery-optimizer').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(directory,'reset-zh-1440.png')});
- await page.selectOption('#optimizer-allocation-mode','remaining');assert.equal(await page.locator('.optimizer-plan').count(),0);
+ await page.selectOption('#optimizer-allocation-mode','remaining');assert.equal(await page.locator('.optimizer-plan').count(),resetPlan.plans.length);
  assert.equal(await page.locator('#optimizer-start').textContent(),'开始计算');
- await page.click('#optimizer-start');await page.waitForSelector('.optimizer-plan');assert.equal(await page.locator('[data-optimizer-apply="0"]').isDisabled(),true);
+ await page.click('#optimizer-start');await page.waitForFunction(()=>!!window.optimizerWorkers.at(-1)?.result&&document.querySelector('#optimizer-start').textContent!=='取消计算'&&document.querySelector('#optimizer-start').textContent!=='Cancel calculation'&&document.querySelector('[data-optimizer-apply="0"]')?.disabled);assert.equal(await page.locator('[data-optimizer-apply="0"]').isDisabled(),true);
  assert.deepEqual(await ranksInFields('target'),await page.evaluate(()=>window.optimizerWorkers.at(-1).result.plans[0].ranks));
  assert.doesNotMatch(await page.locator('#optimizer-status').innerText(),/应用失败|unavailable/);
  await importCurrentRanks({maxhit:1,gather:1});
  assert.match(await page.locator('#optimizer-scenario').innerText(),/当前投入 80 · 本模式可分配点数 43/);
  const remainingSaved=await page.evaluate(()=>localStorage.getItem('dvi-mastery-v1'));
- await page.click('#optimizer-start');await page.waitForSelector('.optimizer-plan');
+ await page.click('#optimizer-start');await page.waitForFunction(()=>!!window.optimizerWorkers.at(-1)?.result&&document.querySelector('#optimizer-start').textContent!=='取消计算'&&document.querySelector('#optimizer-start').textContent!=='Cancel calculation'&&document.querySelector('[data-optimizer-apply="0"]')?.disabled);
  const remainingPlan=await page.evaluate(()=>window.optimizerWorkers.at(-1).result);
  assert.equal(remainingPlan.allocationMode,'remaining');assert.equal(remainingPlan.availablePoints,43);assert.equal(remainingPlan.baseline.cost,80);
  for(const plan of remainingPlan.plans){
   for(const [id,rank]of Object.entries(remainingPlan.baseline.ranks))assert.ok(plan.ranks[id]>=rank);
   assert.equal(plan.ranks.gather,1);assert.equal(plan.additionalCost,plan.cost-80);assert.ok(plan.additionalCost<=43);assert.equal(plan.remaining,123-plan.cost);
  }
- assert.match(await page.locator('#optimizer-output').innerText(),/新增/);
+ assert.match(await page.locator('#optimizer-output').innerText(),/方案总投入/);
  assert.deepEqual(await ranksInFields('target'),remainingPlan.plans[0].ranks);
  assert.deepEqual(await ranksInFields('current'),JSON.parse(remainingSaved).current);
  assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-mastery-v1')).target),remainingPlan.plans[0].ranks);
@@ -155,7 +126,7 @@ try{
  assert.equal(await page.locator('#optimizer-output [data-optimizer-save]').count(),remainingPlan.plans.length);
  assert.equal(await page.locator('[data-optimizer-copy]').count(),0);
  assert.equal(await page.locator('[data-optimizer-apply="0"]').isDisabled(),true);
- results.cases.push('remaining-points search auto-applies best targets while preserving current ranks and non-combat investment; compact investment includes added cost');
+ results.cases.push('remaining-points search auto-applies best targets while preserving current ranks and non-combat investment; current-budget metrics reflect the saved allocation');
  const beforeSaveFailure=await page.evaluate(()=>localStorage.getItem('dvi-mastery-v1'));
  await page.evaluate(()=>{window.originalStorageSet=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key==='dvi-mastery-v1')throw Error('quota');return window.originalStorageSet.call(this,key,value);};});
  await page.click('[data-optimizer-apply="1"]');assert.deepEqual(await ranksInFields('target'),remainingPlan.plans[1].ranks);
@@ -168,7 +139,7 @@ try{
  await page.evaluate(async id=>{const service=await import('/src/price-service.js');service.setPrice(id,105);},priceItemId);
  assert.equal(await page.locator('#optimizer-output').innerHTML(),frozenOutput);
  assert.equal(await page.evaluate(()=>window.optimizerWorkers.length),completedWorkerCount);
- assert.match(await page.locator('#optimizer-status').innerText(),/价格已变化/);
+ assert.doesNotMatch(await page.locator('#optimizer-status').innerText(),/价格已变化/);
  for(const width of [1440,390])for(const language of ['zh','en']){
   await page.setViewportSize({width,height:1100});await page.selectOption('#language',language);
   assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.open),true);
@@ -181,7 +152,7 @@ try{
   assert.equal(await page.locator('[data-optimizer-copy]').count(),0);
   assert.equal(await page.locator('[data-optimizer-apply="0"]').innerText(),language==='zh'?'已应用':'Applied');
   assert.equal(await page.locator('#optimizer-start').textContent(),language==='zh'?'开始计算':'Start calculation');
-  assert.match(await page.locator('#optimizer-status').innerText(),language==='zh'?/价格已变化/:/Prices changed/);
+  assert.doesNotMatch(await page.locator('#optimizer-status').innerText(),/价格已变化|Prices changed/);
   await page.locator('#mastery-optimizer').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(directory,`${language}-${width}.png`)});
   await page.locator('.optimizer-plan').first().scrollIntoViewIfNeeded();await page.screenshot({path:path.join(directory,`${language}-${width}-result.png`)});
  }
@@ -192,12 +163,12 @@ try{
  await page.evaluate(async id=>{const service=await import('/src/price-service.js');service.setPrice(id,107);},priceItemId);
  assert.equal(await page.locator('#optimizer-start').textContent(),'Cancel calculation');assert.ok(!await page.evaluate(()=>window.optimizerWorkers.at(-1).wasTerminated));
  await page.evaluate(()=>window.optimizerWorkers.at(-1).onmessage({data:{progress:{phase:'search',candidates:3,maxCandidates:120,simulations:6}}}));
- assert.match(await page.locator('#optimizer-status').innerText(),/Searching.*Prices changed/);
+ assert.match(await page.locator('#optimizer-status').innerText(),/Searching/);
  await page.evaluate(result=>window.optimizerWorkers.at(-1).onmessage({data:{result}}),remainingPlan);
- assert.match(await page.locator('#optimizer-status').innerText(),/Prices changed/);assert.ok(await page.locator('.optimizer-plan').count()>0);
+ assert.doesNotMatch(await page.locator('#optimizer-status').innerText(),/Prices changed/);assert.ok(await page.locator('.optimizer-plan').count()>0);
  await page.click('#optimizer-start');assert.doesNotMatch(await page.locator('#optimizer-status').innerText(),/Prices changed/);
  assert.equal(await page.evaluate(id=>window.optimizerWorkers.at(-1).request.prices[id].price,priceItemId),107);await page.click('#optimizer-start');
- results.cases.push('price changes preserve completed results and running Workers; warning survives progress, completion and language redraw; rerun clears it and captures latest prices');
+ results.cases.push('price changes preserve completed results and running Workers; no stale-price warning; rerun captures latest prices');
  await page.selectOption('#language','zh');
  await page.evaluate(()=>window.optimizerMode='wait');await page.click('#optimizer-start');
  assert.equal(await page.locator('#optimizer-start').textContent(),'取消计算');assert.equal(await page.locator('#optimizer-start').isEnabled(),true);
@@ -211,19 +182,19 @@ try{
  assert.equal(await page.locator('#optimizer-allocation-mode').inputValue(),'remaining');
  const beforeCancelledResult=await page.evaluate(()=>localStorage.getItem('dvi-mastery-v1'));
  await page.click('#optimizer-start');assert.equal(await page.locator('#optimizer-start').isEnabled(),true);assert.equal(await page.locator('#optimizer-start').textContent(),'Start calculation');
- await page.evaluate(()=>window.optimizerWorkers.at(-1).onmessage({data:{result:{invalid:true}}}));assert.equal(await page.locator('.optimizer-plan').count(),0);assert.match(await page.locator('#optimizer-status').innerText(),/cancelled/);
+ await page.evaluate(()=>window.optimizerWorkers.at(-1).onmessage({data:{result:{invalid:true}}}));assert.equal(await page.locator('.optimizer-plan').count(),remainingPlan.plans.length);assert.match(await page.locator('#optimizer-status').innerText(),/cancelled/);
  assert.equal(await page.evaluate(()=>localStorage.getItem('dvi-mastery-v1')),beforeCancelledResult);
  await page.click('#optimizer-start');await page.evaluate(()=>window.previousOptimizerWorker=window.optimizerWorkers.at(-1));
  await page.selectOption('#optimizer-allocation-mode','reset');assert.ok(await page.evaluate(()=>window.previousOptimizerWorker.wasTerminated));assert.equal(await page.locator('#optimizer-start').isEnabled(),true);
- await page.click('#optimizer-start');await page.evaluate(()=>window.previousOptimizerWorker.onmessage({data:{result:{invalid:true}}}));assert.equal(await page.locator('#optimizer-start').textContent(),'Cancel calculation');assert.equal(await page.locator('.optimizer-plan').count(),0);await page.click('#optimizer-start');
+ await page.click('#optimizer-start');await page.evaluate(()=>window.previousOptimizerWorker.onmessage({data:{result:{invalid:true}}}));assert.equal(await page.locator('#optimizer-start').textContent(),'Cancel calculation');assert.equal(await page.locator('.optimizer-plan').count(),remainingPlan.plans.length);await page.click('#optimizer-start');
  await page.selectOption('#optimizer-allocation-mode','remaining');await page.locator('#mastery-total').fill('79');
  const blockedWorkers=await page.evaluate(()=>window.optimizerWorkers.length);await page.click('#optimizer-start');assert.match(await page.locator('#optimizer-status').innerText(),/investment exceeds total points/);assert.equal(await page.evaluate(()=>window.optimizerWorkers.length),blockedWorkers);
- await page.locator('#mastery-total').fill('80');await page.evaluate(()=>window.optimizerMode=undefined);await page.click('#optimizer-start');await page.waitForSelector('.optimizer-plan');
+ await page.locator('#mastery-total').fill('80');await page.evaluate(()=>window.optimizerMode=undefined);await page.click('#optimizer-start');await page.waitForFunction(()=>!!window.optimizerWorkers.at(-1)?.result&&document.querySelector('#optimizer-start').textContent!=='取消计算'&&document.querySelector('#optimizer-start').textContent!=='Cancel calculation'&&document.querySelector('[data-optimizer-apply="0"]')?.disabled);
  const noSpare=await page.evaluate(()=>window.optimizerWorkers.at(-1).result);assert.equal(noSpare.availablePoints,0);assert.equal(noSpare.screened,1);assert.equal(noSpare.plans[0].additionalCost,0);assert.deepEqual(noSpare.plans[0].ranks,noSpare.baseline.ranks);
  await page.locator('#mastery-total').fill('123');await page.selectOption('#optimizer-allocation-mode','reset');await page.evaluate(()=>window.optimizerMode='wait');
  results.cases.push('switching allocation mode cancels and isolates stale results; over-budget existing ranks block remaining mode; no-spare search returns unchanged current allocation');
- await page.click('#optimizer-start');await page.locator('#mastery-total').fill('124');assert.ok(await page.evaluate(()=>window.optimizerWorkers.at(-1).wasTerminated));assert.match(await page.locator('#optimizer-status').innerText(),/Settings changed/);
- await page.click('#optimizer-start');await importCurrentRanks({maxhit:2,gather:1});assert.match(await page.locator('#optimizer-status').innerText(),/Settings changed/);await importCurrentRanks({maxhit:1,gather:1});
+ await page.click('#optimizer-start');await page.locator('#mastery-total').fill('124');assert.ok(await page.evaluate(()=>window.optimizerWorkers.at(-1).wasTerminated));assert.match(await page.locator('#optimizer-status').innerText(),/Inputs updated/);
+ await page.click('#optimizer-start');await importCurrentRanks({maxhit:2,gather:1});assert.match(await page.locator('#optimizer-status').innerText(),/Inputs updated/);await importCurrentRanks({maxhit:1,gather:1});
  results.cases.push('one enabled button toggles between start and cancel in Chinese/English, survives redraw, cancels and restarts, ignores late messages and restores start after input changes');
  await page.locator('#mastery-total').fill('');await page.click('#optimizer-start');assert.match(await page.locator('#optimizer-status').innerText(),/integer total points/);await page.locator('#mastery-total').fill('123');
  // Manual target drafts do not block the independent reset calculation.
@@ -231,17 +202,17 @@ try{
  // Changing a target does not invalidate frozen search inputs.
  await page.locator('[data-mastery-row="maxhit"] [data-mastery-field="target"]').fill('2');assert.equal(await page.locator('#optimizer-start').textContent(),'Cancel calculation');
  await page.click('#optimizer-start');
- await page.click('#optimizer-start');await page.evaluate(async()=>{const service=await import('/src/price-service.js');service.setPrice(6,999);});assert.match(await page.locator('#optimizer-status').innerText(),/Prices changed/);assert.equal(await page.locator('#optimizer-start').textContent(),'Cancel calculation');await page.click('#optimizer-start');
+ await page.click('#optimizer-start');await page.evaluate(async()=>{const service=await import('/src/price-service.js');service.setPrice(6,999);});assert.doesNotMatch(await page.locator('#optimizer-status').innerText(),/Prices changed/);assert.equal(await page.locator('#optimizer-start').textContent(),'Cancel calculation');await page.click('#optimizer-start');
  const missingId=ids.find(id=>!game.isPet(id));
  await page.evaluate(async id=>{const service=await import('/src/price-service.js');service.setPrice(id,null);},missingId);const workers=await page.evaluate(()=>window.optimizerWorkers.length);await page.click('#optimizer-start');assert.match(await page.locator('#optimizer-status').innerText(),/possible rewards/);assert.equal(await page.evaluate(()=>window.optimizerWorkers.length),workers);
  await page.evaluate(async id=>{const service=await import('/src/price-service.js');service.setPrice(id,0);},missingId);await page.click('#optimizer-start');assert.equal(await page.locator('#optimizer-start').textContent(),'Cancel calculation');await page.click('#optimizer-start');
- results.cases.push('invalid budget and missing prices block start; zero price is accepted; target drafts are independent; live prices only warn');
+ results.cases.push('invalid budget and missing prices block start; zero price is accepted; target drafts are independent; live prices leave frozen estimates intact');
  await page.evaluate(()=>window.optimizerMode='error');await page.click('#optimizer-start');await page.waitForFunction(()=>document.querySelector('#optimizer-status').textContent.includes('controlled failure'));assert.equal(await page.locator('#optimizer-start').isEnabled(),true);
- await page.evaluate(()=>window.optimizerMode='wait');await page.click('#optimizer-start');await page.click('#optimizer-edit-combat');await page.waitForURL('**/combat');assert.ok(await page.evaluate(()=>window.optimizerWorkers.at(-1).wasTerminated));await page.click('[data-preset="melee"]');await page.click('#mastery-nav');assert.match(await page.locator('#optimizer-scenario').innerText(),/Melee/);assert.equal(await page.locator('.optimizer-plan').count(),0);
+ await page.evaluate(()=>window.optimizerMode='wait');await page.click('#optimizer-start');await page.click('#optimizer-edit-combat');await page.waitForURL('**/combat');assert.ok(await page.evaluate(()=>window.optimizerWorkers.at(-1).wasTerminated));await page.click('[data-preset="melee"]');await page.click('#mastery-nav');assert.match(await page.locator('#optimizer-scenario').innerText(),/Melee/);assert.ok(await page.locator('.optimizer-plan').count()>0);
  results.cases.push('Worker errors restore controls; leaving cancels; edited Combat build is read on return without overwriting mastery settings');
- await page.click('#combat-nav');await page.click('[data-preset="ranged"]');await page.click('#mastery-nav');await page.locator('#mastery-total').fill('0');await selectSearchOption(page,'optimizer-monster',game.monsters.find(m=>m.id===7));await page.evaluate(()=>window.optimizerMode=undefined);await page.click('#optimizer-start');await page.waitForSelector('.optimizer-plan');assert.match(await page.locator('#optimizer-output').innerText(),/exceeds budget/);
+ await page.click('#combat-nav');await page.click('[data-preset="ranged"]');await page.click('#mastery-nav');await page.locator('#mastery-total').fill('0');await selectSearchOption(page,'optimizer-monster',game.monsters.find(m=>m.id===7));await page.evaluate(()=>window.optimizerMode=undefined);await page.click('#optimizer-start');await page.waitForFunction(()=>!!window.optimizerWorkers.at(-1)?.result&&document.querySelector('#optimizer-start').textContent!=='取消计算'&&document.querySelector('#optimizer-start').textContent!=='Cancel calculation'&&document.querySelector('[data-optimizer-apply="0"]')?.disabled);assert.match(await page.locator('#optimizer-output').innerText(),/exceeded its budget/);
  for(const effort of ['fast','deep','comprehensive']){
-  await page.selectOption('#optimizer-effort',effort);await page.click('#optimizer-start');await page.waitForSelector('.optimizer-plan');
+  await page.selectOption('#optimizer-effort',effort);await page.click('#optimizer-start');await page.waitForFunction(()=>!!window.optimizerWorkers.at(-1)?.result&&document.querySelector('#optimizer-start').textContent!=='取消计算'&&document.querySelector('#optimizer-start').textContent!=='Cancel calculation'&&document.querySelector('[data-optimizer-apply="0"]')?.disabled);
   assert.equal(await page.evaluate(()=>window.optimizerWorkers.at(-1).request.effort),effort);assert.equal(await page.evaluate(()=>window.optimizerWorkers.at(-1).result.effort),effort);
  }
  results.cases.push('four effort options default to standard and all four travel through the real Worker without changing application rules');
@@ -273,13 +244,13 @@ try{
    const input=optimizerInput({objective:'gatherIncome',gathering:getGatheringConfig(),jobId,totalPoints:0,current:masteryDefaults().current,effort:'fast',now:Date.now()});
    for(const id of optimizerIncomeItems(input))setPrice(id,100);
   });
-  await page.click('#optimizer-start');await page.waitForSelector('.optimizer-plan');
+  await page.click('#optimizer-start');await page.waitForFunction(()=>!!window.optimizerWorkers.at(-1)?.result&&document.querySelector('#optimizer-start').textContent!=='取消计算'&&document.querySelector('#optimizer-start').textContent!=='Cancel calculation'&&document.querySelector('[data-optimizer-apply="0"]')?.disabled);
   const actual=await page.evaluate(()=>window.optimizerWorkers.at(-1).result);
   assert.equal(actual.objective,objective);assert.equal(actual.hours,24);
   await page.waitForFunction(objective=>JSON.parse(localStorage.getItem('dvi-mastery-results-v1')).auto.input.objective===objective,objective);
   const role=await page.locator('[data-saved-slot="auto"] .saved-character-levels').innerText();
   if(gathering){assert.match(role,/采矿|Mining/);assert.doesNotMatch(role,/远程|防御|生命|Ranged|Defence|Hitpoints/);}
-  assert.equal(await page.locator('.optimizer-plan dt').first().textContent(),objective.endsWith('Collection')?'精通产出评分':'收入');
+  assert.equal(await page.locator('.optimizer-plan').first().locator('dt').nth(2).textContent(),objective.endsWith('Collection')?'计算时评分':'计算时收入');
   assert.deepEqual(await ranksInFields('target'),actual.plans[0].ranks);
   for(const language of ['en','zh']){
    await page.selectOption('#language',language);assert.equal(await page.locator('#optimizer-goal').inputValue(),objective);
@@ -288,22 +259,20 @@ try{
   }
   await page.setViewportSize({width:1440,height:1000});
  }
- // A saved income card combines concurrent configuration and price notices.
+ // Historical income survives budget and live-price changes.
+ const historicalMetric=await page.locator('[data-saved-slot="auto"] dd').nth(2).innerText();
  await page.locator('#mastery-total').fill('124');
  await page.evaluate(async()=>{const record=JSON.parse(localStorage.getItem('dvi-mastery-results-v1')).auto;const {setPrice}=await import('/src/price-service.js');const [id,value]=Object.entries(record.input.prices).find(([,v])=>v.price>0);setPrice(Number(id),value.price+1);});
- const warning=page.locator('[data-saved-slot="auto"] .saved-result-warning');assert.equal(await warning.count(),1);
- assert.equal(await warning.innerText(),'配置已变化，需重新计算 · 价格已变化，沿用计算时价格');assert.equal(await warning.locator('br').count(),0);
- const oneLine=await warning.evaluate(el=>el.getBoundingClientRect().height<=parseFloat(getComputedStyle(el).lineHeight)+1);assert.equal(oneLine,true);
- await page.setViewportSize({width:390,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
- await page.locator('[data-saved-slot="auto"]').screenshot({path:path.join(directory,'combined-notices-zh-390.png')});await page.setViewportSize({width:1440,height:1000});
- results.cases.push('saved income configuration and price notices share one paragraph and line on desktop, with natural mobile wrapping');
+ assert.equal(await page.locator('[data-saved-slot="auto"] dd').nth(2).innerText(),historicalMetric);
+ assert.doesNotMatch(await page.locator('#optimizer-status').innerText(),/配置已变化|价格已变化/);
+ results.cases.push('saved income remains historical when budget and live prices change');
  assert.deepEqual(await page.evaluate(()=>({combat:localStorage.getItem('dvi-simulator-v1'),gather:localStorage.getItem('dvi-gathering-v1')})),sourceBefore);
  results.cases.push('three new objectives use real Workers, correct configuration and metrics, preserve source pages and apply only target ranks; bilingual mobile redraw keeps the selected goal');
  await page.selectOption('#optimizer-goal','gatherCollection');await page.evaluate(()=>window.optimizerMode='wait');await page.click('#optimizer-start');
- await page.selectOption('#optimizer-goal','combatCollection');assert.ok(await page.evaluate(()=>window.optimizerWorkers.at(-1).wasTerminated));assert.equal(await page.locator('.optimizer-plan').count(),0);
+ await page.selectOption('#optimizer-goal','combatCollection');assert.ok(await page.evaluate(()=>window.optimizerWorkers.at(-1).wasTerminated));assert.ok(await page.locator('.optimizer-plan').count()>0);
  await page.selectOption('#optimizer-goal','gatherCollection');await page.click('#optimizer-start');await page.click('#optimizer-edit-combat');await page.waitForURL('**/gather');assert.ok(await page.evaluate(()=>window.optimizerWorkers.at(-1).wasTerminated));
  results.cases.push('changing objective cancels the previous Worker; gathering edit link opens the Gathering page and cancels running calculation');
  assert.deepEqual(results.errors,[]);await context.close();
 }catch(error){results.errors.push(error.stack??String(error));console.error(error.stack??String(error));process.exitCode=1;}
-finally{await fs.writeFile(path.join(directory,'results.json'),JSON.stringify(results,null,2)+'\n');server?.kill();if(browser)await browser.close();}
+finally{await fs.writeFile(path.join(directory,'results.json'),JSON.stringify(results,null,2)+'\n');await session?.close();}
 console.log(JSON.stringify(results,null,2));

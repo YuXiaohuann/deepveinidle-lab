@@ -3,15 +3,15 @@ import {masteryValue} from './model.js';
 import {renderMasteryOptimizer} from './mastery-optimizer-controls.js';
 import {translatedName} from './i18n.js';
 import {masteryTracks,masteryLimit,masteryDefaults,validateMastery,calculateMastery,highestAffordableMastery,readMasterySettings,writeMasterySettings,importMastery} from './mastery.js';
-let state=masteryDefaults(),language='zh',saveOK=true,loadFailed=false,status=null,busy=false,probeStarted=false;
+let state=masteryDefaults(),language='zh',saveOK=true,loadFailed=false,invalidDraft=false,status=null,busy=false,probeStarted=false;
 try{state=readMasterySettings(localStorage);}catch{loadFailed=true;}
 const text=(zh,en)=>language==='zh'?zh:en;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const name=s=>translatedName(s,language);
 const format=n=>n.toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:2});
 const bonus=(m,rank)=>`+${format(masteryValue(m.id,rank))}${m.unit==='hours'?text(' 小时',' h'):'%'}`;
-const errorText=code=>({invalidInteger:text(`等级须为 0–${format(masteryLimit)} 的整数；总点数须为非负安全整数，不能留空。`,`Ranks must be integers from 0 to ${format(masteryLimit)}; total points must be a nonnegative safe integer. Fields cannot be blank.`),targetBelowCurrent:text('目标等级不能低于当前等级。','Target ranks cannot be below current ranks.'),invalidConfiguration:text('配置无效，请清空后重新填写。','Invalid settings. Reset and enter your plan again.')}[code]??code);
-function save(){try{writeMasterySettings(localStorage,state);saveOK=true;loadFailed=false;}catch{saveOK=false;}}
+const errorText=code=>({invalidInteger:text(`等级须为 0–${format(masteryLimit)} 的整数；总点数须为非负安全整数，不能留空。`,`Ranks must be integers from 0 to ${format(masteryLimit)}; total points must be a nonnegative safe integer. Fields cannot be blank.`),invalidConfiguration:text('配置无效，请清空后重新填写。','Invalid settings. Reset and enter your plan again.')}[code]??code);
+function save(){invalidDraft=false;try{writeMasterySettings(localStorage,state);saveOK=true;loadFailed=false;}catch{saveOK=false;}}
 function renderImportStatus(){
  const host=document.getElementById('mastery-content');if(!host)return;
  host.querySelector('#mastery-import-status').textContent=importStatusText(language,status,busy);
@@ -20,12 +20,13 @@ function renderImportStatus(){
 export function applyMasteryImport(snapshot){
  const result=importMastery(state,snapshot);state=result.state;status={capturedAt:result.capturedAt};save();return {...status,saveOK};
 }
-export function applyMasteryRecommendation({allocationMode,ranks}){
- if(!['reset','remaining'].includes(allocationMode))throw Error('invalidOptimizerMode');
- const next=validateMastery({...state,target:ranks});
- if(allocationMode==='remaining'&&masteryTracks.some(m=>next.target[m.id]<next.current[m.id]))throw Error('targetBelowCurrent');
- if(calculateMastery(next).targetCost>next.totalPoints)throw Error('optimizerPlanOverBudget');
- state=next;save();renderMastery(language);return {saveOK};
+export function applyMasteryRecommendation({ranks}){
+ if(!ranks||Object.keys(ranks).length!==masteryTracks.length||masteryTracks.some(m=>!Object.hasOwn(ranks,m.id)))throw Error('invalidConfiguration');
+ const target=validateMastery({...masteryDefaults(),target:ranks}).target;
+ state={...state,target,planned:true};
+ try{validateMastery(state);invalidDraft=false;}catch{invalidDraft=true;}
+ if(!invalidDraft)save();
+ renderMastery(language);return {saveOK:!invalidDraft&&saveOK,invalidSettings:invalidDraft};
 }
 function updateResults(){
  const host=document.getElementById('mastery-content');if(!host)return;
@@ -40,7 +41,7 @@ function updateResults(){
  }
  const limited=state.mode==='limited';
  host.querySelectorAll('[data-mastery-action="max"]').forEach(el=>el.hidden=!limited);
- host.querySelector('#mastery-save-note').textContent=loadFailed?text('已保存的精通配置无法读取，已恢复默认；请检查浏览器存储。','Saved mastery settings could not be read. Defaults restored; check browser storage.'):saveOK?text('● 精通方案独立保存在此浏览器','● Mastery plan saved separately in this browser'):text('浏览器存储不可用，精通方案无法保存。','Browser storage unavailable; mastery plan cannot be saved.');
+ host.querySelector('#mastery-save-note').textContent=invalidDraft?text('目标已填入，请填写有效总点数后保存。','Targets filled. Enter valid total points to save.'):loadFailed?text('已保存的精通配置无法读取，已恢复默认；请检查浏览器存储。','Saved mastery settings could not be read. Defaults restored; check browser storage.'):saveOK?text('● 精通方案独立保存在此浏览器','● Mastery plan saved separately in this browser'):text('浏览器存储不可用，精通方案无法保存。','Browser storage unavailable; mastery plan cannot be saved.');
  let r;try{r=calculateMastery(state);}catch(error){
   host.querySelector('#mastery-summary').innerHTML='';host.querySelector('#mastery-issue').textContent=errorText(error.message);
   host.querySelectorAll('[data-mastery-value]').forEach(el=>el.textContent='—');host.querySelectorAll('[data-mastery-status]').forEach(el=>el.textContent='');host.querySelectorAll('[data-mastery-action]').forEach(el=>el.disabled=true);return;
@@ -72,16 +73,16 @@ export function renderMastery(nextLanguage){
  <div class="mastery-cards">${masteryTracks.map(m=>`<article class="panel mastery-card" data-mastery-row="${m.id}" aria-labelledby="mastery-title-${m.id}"><div class="mastery-card-heading"><div><h3 id="mastery-title-${m.id}">${esc(name(m.name))}</h3></div><div class="mastery-card-cost"><span>${text('本次所需点数','Upgrade points')}</span><strong data-mastery-value="cost"></strong></div></div><div class="mastery-current"><div class="mastery-current-rank"><span>${text('当前等级','Current rank')}</span><div class="mastery-current-values"><strong data-mastery-current="${m.id}">${format(Number(state.current[m.id]))}</strong><strong data-mastery-delta></strong></div></div><div class="mastery-bonus"><span>${text('目标加成','Target bonus')}</span><strong data-mastery-value="target"></strong></div></div><div class="mastery-target"><p class="mastery-label">${text('目标等级','Target rank')}</p><div class="mastery-rank-controls">${field(m.id,state.target[m.id])}<button data-mastery-action="plus" aria-label="${esc(name(m.name)+' '+text('增加目标一级','increase target rank'))}">+1</button><button data-mastery-action="minus" aria-label="${esc(name(m.name)+' '+text('降低目标一级','decrease target rank'))}">−1</button><button data-mastery-action="max" aria-label="${esc(name(m.name)+' '+text('升到可负担最高等级','highest affordable rank'))}" title="${text('升到可负担最高等级','Highest affordable rank')}">MAX</button></div></div><div class="mastery-card-footer"><span data-mastery-value="next"></span><span class="mastery-card-note" data-mastery-status role="status"></span></div></article>`).join('')}</div>
  <p class="table-note">${text('依据 2026-11-09 已核验游戏 1.0.1214 源码：升到第 n 级消耗 38 + 2n 点，每项上限 200 级。重置分配建议不保证全局最优，不会应用到其他页面。','Based on verified game 1.0.1214 source from 2026-11-09: rank n costs 38 + 2n points, with a 200-rank limit per mastery. Reset allocation suggestions do not guarantee a global optimum and do not change other pages.')}</p></div>`;
  host.oninput=e=>{
-  const el=e.target;if(el.id==='mastery-total')state.totalPoints=el.value;else if(el.dataset.masteryField==='target'&&Object.hasOwn(state.target,el.dataset.masteryId))state.target[el.dataset.masteryId]=el.value;else return;
+  const el=e.target;if(el.id==='mastery-total')state.totalPoints=el.value;else if(el.dataset.masteryField==='target'&&Object.hasOwn(state.target,el.dataset.masteryId)){state.target[el.dataset.masteryId]=el.value;state.planned=true;}else return;
   try{validateMastery(state);save();}catch{}updateResults();
  };
  host.querySelector('#mastery-mode').onchange=e=>{state.mode=e.target.value;try{validateMastery(state);save();}catch{}updateResults();};
  host.onclick=e=>{
-  if(e.target.closest('#mastery-zero-ranks')){const defaults=masteryDefaults();state.current=defaults.current;state.target=defaults.target;try{validateMastery(state);save();}catch{}renderMastery(language);return;}
+  if(e.target.closest('#mastery-zero-ranks')){const defaults=masteryDefaults();state.current=defaults.current;state.target=defaults.target;state.planned=true;try{validateMastery(state);save();}catch{}renderMastery(language);return;}
   if(e.target.closest('#mastery-reset')){state=masteryDefaults();status=null;save();renderMastery(language);return;}
-  if(e.target.closest('#mastery-revert')){state.target={...state.current};try{validateMastery(state);save();}catch{}renderMastery(language);return;}
+  if(e.target.closest('#mastery-revert')){state.target={...state.current};state.planned=true;try{validateMastery(state);save();}catch{}renderMastery(language);return;}
   const button=e.target.closest('[data-mastery-action]');if(!button||button.disabled)return;
-  const id=button.closest('[data-mastery-row]').dataset.masteryRow;state.target[id]=button.dataset.masteryAction==='max'?highestAffordableMastery(state,id):Number(state.target[id])+(button.dataset.masteryAction==='plus'?1:-1);
+  state.planned=true;const id=button.closest('[data-mastery-row]').dataset.masteryRow;state.target[id]=button.dataset.masteryAction==='max'?highestAffordableMastery(state,id):Number(state.target[id])+(button.dataset.masteryAction==='plus'?1:-1);
   host.querySelector(`[data-mastery-row="${id}"] [data-mastery-field="target"]`).value=state.target[id];save();updateResults();
  };
  host.querySelector('#mastery-import').onclick=()=>masteryUpdater.read({config:true,inventory:false});

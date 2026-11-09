@@ -2,7 +2,7 @@ import * as game from './upstream.js';
 export const masteryStorageKey='dvi-mastery-v1';
 export const masteryTracks=game.masteries;
 export const masteryLimit=game.masteryRankLimit;
-export function masteryDefaults(){return {mode:'limited',budget:0,totalPoints:0,current:Object.fromEntries(masteryTracks.map(m=>[m.id,0])),target:Object.fromEntries(masteryTracks.map(m=>[m.id,0]))};}
+export function masteryDefaults(){return {mode:'limited',budget:0,totalPoints:0,current:Object.fromEntries(masteryTracks.map(m=>[m.id,0])),target:Object.fromEntries(masteryTracks.map(m=>[m.id,0])),planned:false};}
 function integer(value,max){
  if((typeof value!=='number'&&typeof value!=='string')||String(value).trim()==='')throw Error('invalidInteger');
  const n=Number(value);if(!Number.isSafeInteger(n)||n<0||n>max)throw Error('invalidInteger');return n;
@@ -11,6 +11,8 @@ export function validateMastery(raw){
  if(!raw||!['limited','unlimited'].includes(raw.mode))throw Error('invalidConfiguration');
  const s={mode:raw.mode,budget:0,totalPoints:raw.totalPoints==null?null:integer(raw.totalPoints,Number.MAX_SAFE_INTEGER),current:{},target:{}};
  for(const m of masteryTracks){s.current[m.id]=integer(raw.current?.[m.id],masteryLimit);s.target[m.id]=integer(raw.target?.[m.id],masteryLimit);}
+ // Previous-version drafts have no flag; preserve their existing allocations.
+ s.planned=raw.planned===true||masteryTracks.some(m=>s.target[m.id]!==s.current[m.id])||raw.planned===undefined&&masteryTracks.some(m=>s.target[m.id]!==0);
  const currentCost=game.masteriesTotalCost(s.current);
  if(s.totalPoints===null)s.totalPoints=integer(currentCost+integer(raw.budget,Number.MAX_SAFE_INTEGER),Number.MAX_SAFE_INTEGER);
  s.budget=s.totalPoints-currentCost;
@@ -33,8 +35,8 @@ export function readMasterySettings(storage){
  const saved=storage.getItem(masteryStorageKey);return saved===null?masteryDefaults():validateMastery(JSON.parse(saved));
 }
 export function writeMasterySettings(storage,state){
- const {mode,totalPoints,current,target}=validateMastery(state);
- storage.setItem(masteryStorageKey,JSON.stringify({mode,totalPoints,current,target}));
+ const {mode,totalPoints,current,target,planned}=validateMastery(state);
+ storage.setItem(masteryStorageKey,JSON.stringify({mode,totalPoints,current,target,planned}));
 }
 
 export function importMastery(current,snapshot){
@@ -54,7 +56,8 @@ export function importMastery(current,snapshot){
  }
  const totalPoints=game.masteryEarnedPoints(p),allocated=game.masteriesTotalCost(ranks),budget=totalPoints-allocated;
  if(!Number.isSafeInteger(totalPoints)||totalPoints<0||!Number.isSafeInteger(budget)||budget<0)throw Error('invalidSnapshot');
- const state=validateMastery({mode:'limited',budget,totalPoints,current:ranks,target:{...ranks}});
+ const planned=current.planned===true||masteryTracks.some(m=>current.target[m.id]!==current.current[m.id]);
+ const state=validateMastery({mode:current.mode,budget,totalPoints,current:ranks,target:planned?current.target:{...ranks},planned});
  return {state,capturedAt:snapshot.capturedAt};
 }
 

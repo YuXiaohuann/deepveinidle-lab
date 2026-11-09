@@ -51,17 +51,24 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 ## 精通最优分配专项
 
-搜索选择专项：`node tests/mastery-search-browser.mjs [输出目录] [目标网址]`，默认 `.test-artifacts/mastery-search/search/`；覆盖目标怪物、采集任务和制造配方的完整排序、中英文及英文大小写搜索、无匹配、鼠标与方向键／回车确认、Escape／Tab／失焦恢复、未确认输入不取消运行、确认不同选择取消运行、Worker目标及语言重绘、中英文桌面／390px候选列表限高与触摸项尺寸。复用 `src/search-select.js`，共用控件单元回归为 `node --test tests/enhancement-items.test.mjs tests/mastery-controls.test.mjs`。真实计算、品质和保存／应用继续运行下列优化器与经验专项；截图需人工审阅，不代替发布验收。
+行为与验收以[精通页面](pages/mastery.md)为准。单元回归：
 
-经验目标专项：`node tests/mastery-xp-browser.mjs [输出目录] [目标网址]`，默认 `.test-artifacts/mastery-xp/browser/`；使用独立 Chrome、合成角色与真实 Worker，验证三个经验目标、经验指标、自动应用、自动／手动保存、刷新恢复、制造配方品质及匹配失效、前往制造页编辑、中英文390px无横向溢出与来源配置不变。须人工审阅截图，不代替发布验收。单元测试沿用下列精通测试，新增三个目标两种预算、无价格评分、24小时实际模拟经验对照（含装备升级）、无效经验与制造参数拒绝及保存兼容。
+```sh
+node --test tests/mastery.test.mjs tests/mastery-controls.test.mjs tests/mastery-result-store.test.mjs tests/mastery-optimizer.test.mjs
+```
 
-双栏保存专项：`node --test tests/mastery-result-store.test.mjs` 验证有效输入与价格快照、按完整输入组比较并排除无关字段、原存档兼容、选定推荐、两个栏位独立覆盖、坏存档／版本拒绝、保存失败和跨标签冲突。`node tests/mastery-result-slots-browser.mjs [输出目录] [目标网址]` 使用本机服务、独立 Chrome、合成角色和真实精通 Worker，覆盖手动选择／自动最优、刷新与导入保留、两套方案直接内嵌结果区、名称与显示顺序、角色等级先于装备、无保存时间及等级折叠区、查看不应用及保存／应用按钮同行同尺寸及五套卡片标题行／指标／次要信息布局统一、移除两条常驻短说明并保留完整口径折叠、卡片时间／等级摘要去重及集中反馈、保存卡片删除／应用顺序和最优方案无保存按钮、相同配置重复导入／来源筛选变更不失配及恢复原配置清除残留提示、运行状态与按钮间距／金色加粗及结束后恢复、取消／失败／迟到任务、保存失败仍可使用本次结果、条件匹配时应用、双语桌面／390px、跨标签及损坏存档恢复；提供目标网址时直接验证该目标、不启动本机服务；默认输出 `.test-artifacts/mastery-result-slots/browser/`，截图须人工审阅，不代替发布验收。
+覆盖成本与规划草稿、导入保留、计算策略与真实模拟对照、预算及搜索下限、新结果严格校验、合法分配恢复、历史指标与存储冲突。修改共用模拟、价格协议或搜索控件时，按影响范围补跑 `tests/simulation.test.mjs`、`tests/price-protocol.test.mjs`、`tests/enhancement-items.test.mjs`。
 
-`node --test tests/mastery-optimizer.test.mjs tests/mastery.test.mjs tests/mastery-controls.test.mjs` 覆盖四档生成策略与上限、停滞提前结束、高档继承候选、仅收入目标固定经验、初始属性阈值、重置／保留模式预算、十项等级下限、独立小预算穷举、跨级取整平台、原始战斗模拟与估值对照、种子／缓存／复核、缺价、死亡和异常；修改共用模拟或价格协议时按影响范围另选 `tests/simulation.test.mjs`、`tests/price-protocol.test.mjs`。`node tests/mastery-optimizer-browser.mjs [输出目录] [目标网址]` 启动本机服务及独立无头 Chrome，验证两种模式的真实优化 Worker、收入／投入／差异精简清单、无复制入口、自动应用最佳与手动应用备选、下方只读当前等级／目标等级／成本／存档同步、当前等级旁的增减级数、底部成本与缺点左右对齐、两模式应用保留当前等级、负成本差与刷新恢复、应用校验拒绝和保存失败提示、双语桌面／390px、默认折叠、键盘展开、折叠状态跨重绘／完成保留、开始／取消共用按钮及其双语状态、运行中语言切换、应用后重绘不重复应用、模式切换／取消与迟到消息、预算／导入当前等级变化失效及价格变化提示与结果保留、目标草稿独立及回到战斗页编辑。另检查怪物等级降序与默认深渊恐魔、两种模式统一开始按钮，以及价格提示跨进度／完成／语言切换保留、重算使用最新价格。四档选项默认标准，各档均验证真实 Worker 的请求与返回。保留模式额外检查非战斗精通投入、零余点和当前超预算拒绝。提供目标网址时直接验证该目标，不启动本机服务；默认日志摘要和截图输出至 `.test-artifacts/mastery-optimizer/`，人工审阅截图；需要回环监听和浏览器进程，不连接真实账号。完整日志可用重定向另行保存，不替代发布验收。
+四套浏览器专项统一使用 `node tests/<脚本> [输出目录] [目标网址]`：
 
-## 赞赏弹窗专项
+| 脚本 | 默认输出目录 | 主要范围 |
+| --- | --- | --- |
+| `mastery-optimizer-browser.mjs` | `.test-artifacts/mastery-optimizer/` | 原四目标、四档搜索与两种预算的真实Worker；目标应用、冻结价格、保留旧推荐、运行取消／迟到隔离及保存失败 |
+| `mastery-result-slots-browser.mjs` | `.test-artifacts/mastery-result-slots/browser/` | 双栏覆盖／删除／应用、导入刷新保留、超预算和低于当前恢复、旧引擎／异常辅助信息、无效点数草稿、跨标签冲突与卡片布局 |
+| `mastery-xp-browser.mjs` | `.test-artifacts/mastery-xp/browser/` | 三个经验目标的真实Worker、计算时指标、制造配方品质、自动应用与双栏恢复、来源配置保留 |
+| `mastery-search-browser.mjs` | `.test-artifacts/mastery-search/search/` | 三类候选排序与双语搜索、鼠标／键盘、无匹配和取消、仅确认不同选择取消任务、实际Worker请求目标 |
 
-运行 `node tests/appreciation-browser.mjs`，使用本机 Chrome 和临时回环服务，检查双语桌面／窄屏、各页面入口、弹窗交互、图片失败重试及静态资源交付，以及外部文案随机选择、失败隐藏、超时和关闭／重绘竞态（以请求替身验证，不依赖外部服务可用性）；结果与截图保存在 `.test-artifacts/appreciation/`。需要允许本机监听与浏览器进程，不下载浏览器、不连接支付服务。图片维护于 `src/assets/appreciation.jpg`，按原始字节纳入发行包；替换图片后重跑专项。
+四套共用 `tests/helpers/mastery-browser.mjs` 的临时服务、合成角色、价格隔离和Worker观测；默认关闭市场自动导入，不连接真实账号。真实完成使用实际Worker，取消／迟到／错误场景使用受控替身。包含中英文桌面与390px布局，日志和截图需落盘并人工审阅，不替代发布验收。需要回环监听和本机Chrome；传入目标网址时直接访问该目标，不启动本机服务。
 
 <a id="角色捕获-worker-专项"></a>
 
@@ -115,4 +122,4 @@ markdown-it 在 `package.json` 中以固定版本开发依赖管理，锁文件�
 
 上游新装备及价格选项专项提供目标网址时直接检查该网址，不启动本机服务；本机／预览通过不能代替本轮正式生产目标验收。
 
-1.0.1214 专项另覆盖全部升级五品质与 +0／+17／+100 编码、神龛与世界稀有叠加及代币概率封顶、空首领奖励队列／精通备用页及旧精通结果拒绝；`tests/character-import.test.mjs` 和 `tests/character-capture.test.mjs` 覆盖锁定食物与旧捕获提示。独立原始计算对照新增手算代币概率及升级编码检查。
+1.0.1214 专项另覆盖全部升级五品质与 +0／+17／+100 编码、神龛与世界稀有叠加及代币概率封顶、空首领奖励队列／精通备用页及新计算结果的引擎版本校验；`tests/character-import.test.mjs` 和 `tests/character-capture.test.mjs` 覆盖锁定食物与旧捕获提示。独立原始计算对照新增手算代币概率及升级编码检查。

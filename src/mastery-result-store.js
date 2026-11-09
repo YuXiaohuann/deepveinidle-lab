@@ -10,23 +10,24 @@ const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const integer=v=>Number.isSafeInteger(v)&&v>=0;
 const number=v=>(typeof v==='number'||typeof v==='string'&&v.trim()!=='')?Number(v):NaN;
 function requireValue(ok){if(!ok)throw Error('invalidSavedMasteryResult');}
-function ranks(value){requireValue(object(value)&&game.masteries.every(m=>integer(value[m.id])&&value[m.id]<=game.masteryRankLimit));}
+function ranks(value){requireValue(object(value)&&Object.keys(value).length===game.masteries.length&&game.masteries.every(m=>integer(value[m.id])&&value[m.id]<=game.masteryRankLimit));}
 function stats(value){requireValue(object(value)&&['mean','sd','se'].every(k=>Number.isFinite(value[k]))&&value.sd>=0&&value.se>=0);}
 function stable(value){
  if(Array.isArray(value))return value.map(stable);
  if(object(value))return Object.fromEntries(Object.keys(value).sort().map(k=>[k,stable(value[k])]));
  return value;
 }
-export function optimizerContext(raw){
+function optimizerContext(raw){
  const policy=optimizerPolicy(raw.objective),gathering=policy.gathering;
  return {objective:raw.objective,allocationMode:raw.allocationMode,totalPoints:number(raw.totalPoints),current:Object.fromEntries(game.masteries.map(m=>[m.id,number(raw.current?.[m.id])])),effort:raw.effort,
   ...(policy.crafting?{recipeId:raw.recipeId,tier:raw.tier,crafting:optimizerScenario(raw.objective,{...raw.crafting,skill:craftingJobs.find(j=>j.id===raw.recipeId)?.skill})}:gathering?{jobId:raw.jobId,gathering:optimizerScenario(raw.objective,{...raw.gathering,skill:gatheringJobs.find(j=>j.id===raw.jobId)?.skill})}:{monsterId:raw.monsterId,combat:optimizerScenario(raw.objective,raw.combat)})};
 }
 const pick=(value,keys)=>Object.fromEntries(keys.map(key=>[key,value[key]]));
-export function optimizerContextKey(raw){
+export function optimizerTaskKey(raw){
  const context=optimizerContext(raw),policy=optimizerPolicy(context.objective),gathering=policy.gathering,work=gathering||policy.crafting;
  const source=policy.crafting?context.crafting:gathering?context.gathering:context.combat,settings=work?source:source.manual;
- // Compare whole input groups, without source-page filters or overridden masteries.
+ // Only running tasks compare inputs; saved allocations never use this key.
+ // Compare whole groups, without source-page filters or overridden masteries.
  const scenario={...pick(source,['levels','gear','brews','house']),
   perks:work?source.perks:{...settings.perks,meals:source.meals},
   buffs:pick(settings,['guildXp','weeklyXp','worldRarity','blessing','hotSetting']),
@@ -34,7 +35,7 @@ export function optimizerContextKey(raw){
   ...(!work?{style:source.style,food:{...pick(source,['food','eatAt','fed','rooted']),...pick(settings,['foodRule','foodMaxTier','foodPerTrip'])}}:{})};
  return JSON.stringify(stable({...pick(context,['objective','allocationMode','totalPoints','current']),...(policy.crafting?{recipeId:context.recipeId,tier:context.tier}:gathering?{jobId:context.jobId}:{monsterId:context.monsterId}),scenario}));
 }
-export function validateMasteryResult(record){
+export function validateComputedMasteryResult(record){
  requireValue(object(record));
  if(record.engine!==masteryResultEngine)throw Error('savedMasteryVersion');
  requireValue(object(record.input)&&object(record.plan)&&object(record.baseline));
@@ -56,17 +57,31 @@ export function validateMasteryResult(record){
  }else requireValue(plan.additionalCost===null);
  return record;
 }
+export function validateSavedMasteryPlan(record){
+ // Historical inputs and metrics never gate recovery of a legal allocation.
+ requireValue(object(record)&&object(record.plan));ranks(record.plan.ranks);return record;
+}
+export function masteryResultHistory(record){
+ try{
+  requireValue(typeof record.engine==='string'&&record.engine.length>0&&object(record.input)&&object(record.baseline));
+  const input=record.input;requireValue(integer(input.now)&&input.now>0&&input.now<=8.64e15&&integer(input.totalPoints)&&['reset','remaining'].includes(input.allocationMode));
+  const policy=optimizerPolicy(input.objective);stats(record.plan.stats);requireValue(record.plan.stats.mean>=0);
+  if(record.plan.paired!==null)stats(record.plan.paired);
+  requireValue(typeof record.baseline.overBudget==='boolean'&&typeof record.baseline.viable==='boolean');
+  return {available:true,oldEngine:record.engine!==masteryResultEngine,input,plan:record.plan,baseline:record.baseline,policy};
+ }catch{return {available:false,oldEngine:record?.engine!==masteryResultEngine};}
+}
 export function createMasteryResult(request,result,index=0){
  requireValue(object(result)&&result.objective===request.objective&&result.allocationMode===request.allocationMode&&result.totalPoints===request.totalPoints&&Array.isArray(result.plans));
  const plan=result.plans[index];requireValue(object(plan));
  const input={...optimizerContext(request),now:request.now,prices:structuredClone(request.prices)};
- return structuredClone(validateMasteryResult({engine:masteryResultEngine,input,baseline:result.baseline,plan:{ranks:plan.ranks,cost:plan.cost,additionalCost:plan.additionalCost,stats:plan.stats,paired:plan.paired}}));
+ return structuredClone(validateComputedMasteryResult({engine:masteryResultEngine,input,baseline:result.baseline,plan:{ranks:plan.ranks,cost:plan.cost,additionalCost:plan.additionalCost,stats:plan.stats,paired:plan.paired}}));
 }
 export function emptyMasteryResults(){return {version:1,revision:0,manual:null,auto:null};}
 function validateStore(value){
  requireValue(object(value));if(value.version!==1)throw Error('savedMasteryVersion');
  requireValue(integer(value.revision));
- for(const slot of ['manual','auto'])if(value[slot]!==null)validateMasteryResult(value[slot]);
+ for(const slot of ['manual','auto'])if(value[slot]!==null)validateSavedMasteryPlan(value[slot]);
  return {version:1,revision:value.revision,manual:value.manual,auto:value.auto};
 }
 export function readMasteryResults(storage){

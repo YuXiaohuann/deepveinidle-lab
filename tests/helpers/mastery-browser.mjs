@@ -8,8 +8,16 @@ import {priceDefaults} from '../../src/item-prices.js';
 import {gatheringDefaults} from '../../src/gathering-model.js';
 import {masteryDefaults} from '../../src/mastery.js';
 
+export function masteryBrowserBuild(){
+ const combat=preset('ranged');combat.manual.simulationHours=1;combat.manual.enemySelection='monster-7';combat.manual.hotSetting='off';
+ const gathering=gatheringDefaults();gathering.simulationHours=1/60;gathering.hotSetting='off';
+ const mastery=masteryDefaults();mastery.totalPoints=123;mastery.current.maxhit=1;mastery.target.maxhit=1;
+ const prices=priceDefaults();prices.preferences.autoImport=false;
+ return {combat,gathering,mastery,prices};
+}
+
 // Isolated synthetic builds, disabled market auto-import, and observable Workers.
-export async function openMasteryBrowser({url,results}){
+export async function openMasteryBrowser({url,results,build=masteryBrowserBuild(),viewport={width:1440,height:1100}}){
  let baseURL=url,server,browser;
  const close=async()=>{server?.kill();if(browser)await browser.close();};
  try{
@@ -20,11 +28,7 @@ export async function openMasteryBrowser({url,results}){
    baseURL='http://127.0.0.1:'+port;results.base=baseURL;
   }
   browser=await chromium.launch({headless:true,executablePath:await browserPath()});
-  const context=await browser.newContext({viewport:{width:1440,height:1100}});
-  const combat=preset('ranged');combat.manual.simulationHours=1;combat.manual.enemySelection='monster-7';combat.manual.hotSetting='off';
-  const gathering=gatheringDefaults();gathering.simulationHours=1/60;gathering.hotSetting='off';
-  const mastery=masteryDefaults();mastery.totalPoints=123;mastery.current.maxhit=1;mastery.target.maxhit=1;
-  const prices=priceDefaults();prices.preferences.autoImport=false;
+  const context=await browser.newContext({viewport});
   await context.addInitScript(({combat,mastery,prices,gathering})=>{
    if(!localStorage.getItem('dvi-simulator-v1'))localStorage.setItem('dvi-simulator-v1',JSON.stringify({language:'zh',state:combat}));
    if(!localStorage.getItem('dvi-gathering-v1'))localStorage.setItem('dvi-gathering-v1',JSON.stringify(gathering));
@@ -33,10 +37,10 @@ export async function openMasteryBrowser({url,results}){
    window.optimizerWorkers=[];const OriginalWorker=Worker;
    window.Worker=class extends OriginalWorker{
     constructor(url,options){super(url,options);this.optimizer=String(url).includes('mastery-optimizer-worker.js');if(this.optimizer){window.optimizerWorkers.push(this);this.addEventListener('message',({data})=>{if(data.result)this.result=data.result;});}}
-    postMessage(data,...rest){if(this.optimizer){this.request=structuredClone(data);if(window.optimizerMode==='wait')return;}return super.postMessage(data,...rest);}
+    postMessage(data,...rest){if(this.optimizer){this.request=structuredClone(data);if(window.optimizerMode==='wait')return;if(window.optimizerMode==='error'){setTimeout(()=>this.onmessage({data:{error:'controlled failure'}}),0);return;}}return super.postMessage(data,...rest);}
     terminate(){this.wasTerminated=true;return super.terminate();}
    };
-  },{combat,mastery,prices,gathering});
+  },build);
   const page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>results.errors.push(e.message));
   await page.goto(`${baseURL}/mastery`);
   return {page,context,close};

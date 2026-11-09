@@ -54,7 +54,7 @@ test('independent storage round trips and rejects corruption and unavailable sto
  const data=new Map([['dvi-simulator-v1','existing combat settings']]);
  const storage={getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,value)};
  assert.deepEqual(readMasterySettings(storage),masteryDefaults());
- const s=masteryDefaults();s.target.xp=2;s.totalPoints=81;s.budget=81;writeMasterySettings(storage,s);assert.deepEqual(readMasterySettings(storage),s);
+ const s=masteryDefaults();s.target.xp=2;s.planned=true;s.totalPoints=81;s.budget=81;writeMasterySettings(storage,s);assert.deepEqual(readMasterySettings(storage),s);
  assert.equal(data.get('dvi-simulator-v1'),'existing combat settings');
  const lastSaved=data.get(masteryStorageKey);s.target.xp='';assert.throws(()=>writeMasterySettings(storage,s),/invalidInteger/);assert.equal(data.get(masteryStorageKey),lastSaved);
  data.set(masteryStorageKey,'{');assert.throws(()=>readMasterySettings(storage),SyntaxError);
@@ -64,13 +64,13 @@ test('independent storage round trips and rejects corruption and unavailable sto
  assert.equal(calculateMastery(masteryDefaults()).spent,0);
 });
 
-test('mastery import replaces ranks and points and resets targets and mode',async()=>{
+test('mastery import updates current ranks and points while preserving planned targets and mode',async()=>{
  const {importMastery}=await import('../src/mastery.js');
  const s=masteryDefaults();s.mode='unlimited';s.budget=1234;s.target.xp=99;
  const ranks=Object.fromEntries(game.masteries.map((m,i)=>[m.id,i]));
  const snapshot={version:2,capturedAt:Date.now(),player:{masteries:ranks,collections:{64:1},forgeLog:{29:1073741823},bank:{64:99}}};
- const result=importMastery(s,snapshot);assert.deepEqual(result.state.current,ranks);assert.deepEqual(result.state.target,ranks);assert.equal(result.state.mode,'limited');assert.equal(result.state.totalPoints,5337);assert.equal(result.state.budget,5337-game.masteriesTotalCost(ranks));assert.equal(result.capturedAt,snapshot.capturedAt);assert.equal(result.state.bank,undefined);assert.equal(calculateMastery(result.state).spent,0);assert.equal(s.target.xp,99);
- result.state.current.xp=10;assert.equal(snapshot.player.masteries.xp,0);assert.equal(result.state.target.xp,0);
+ const result=importMastery(s,snapshot);assert.deepEqual(result.state.current,ranks);assert.deepEqual(result.state.target,s.target);assert.equal(result.state.mode,'unlimited');assert.equal(result.state.planned,true);assert.equal(result.state.totalPoints,5337);assert.equal(result.state.budget,5337-game.masteriesTotalCost(ranks));assert.equal(result.capturedAt,snapshot.capturedAt);assert.equal(result.state.bank,undefined);assert.equal(calculateMastery(result.state).targetCost,game.masteriesTotalCost(s.target));assert.equal(s.target.xp,99);
+ result.state.current.xp=10;assert.equal(snapshot.player.masteries.xp,0);assert.equal(result.state.target.xp,99);
  snapshot.player.masteries={enhance:1,offline:2};const sparse=importMastery(s,snapshot).state;assert.equal(sparse.current.xp,0);assert.equal(sparse.current.enhance,1);assert.equal(sparse.current.offline,2);
 });
 test('bad mastery imports fail atomically instead of silently mapping invalid ranks to zero',async()=>{
@@ -116,4 +116,21 @@ test('reset targets preserve current ranks, signed costs and budget through stor
  const r=calculateMastery(s);assert.equal(r.currentCost,126);assert.equal(r.targetCost,122);assert.equal(r.spent,-4);assert.equal(r.remaining,78);assert.equal(r.rows.find(row=>row.id==='xp').cost,-86);
  assert.equal(highestAffordableMastery(s,'xp'),2);assert.equal(highestAffordableMastery(s,'rare'),3);
  const data=new Map(),storage={getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,value)};writeMasterySettings(storage,s);const restored=readMasterySettings(storage);assert.equal(restored.current.xp,3);assert.equal(restored.target.xp,1);assert.deepEqual(calculateMastery(restored),r);
+});
+
+test('unplanned imports initialize targets; explicit zero, undo and previous-version plans survive later imports',async()=>{
+ const {importMastery}=await import('../src/mastery.js');
+ const snapshot={version:2,capturedAt:Date.now(),player:{masteries:{xp:2},collections:{},forgeLog:{29:1073741823}}};
+ const first=importMastery(masteryDefaults(),snapshot).state;
+ assert.deepEqual(first.target,first.current);assert.equal(first.planned,false);
+ const next={...snapshot,player:{...snapshot.player,masteries:{xp:3}}};
+ assert.equal(importMastery(first,next).state.target.xp,3);
+ const zero={...first,target:masteryDefaults().target,planned:true};
+ assert.equal(importMastery(zero,next).state.target.xp,0);
+ assert.equal(importMastery({...first,planned:true},next).state.target.xp,2);
+ const old={...first};delete old.planned;
+ const db=new Map([[masteryStorageKey,JSON.stringify(old)]]),storage={getItem:k=>db.get(k)??null,setItem:(k,v)=>db.set(k,v)};
+ const restored=readMasterySettings(storage);assert.equal(restored.planned,true);
+ assert.equal(importMastery(restored,next).state.target.xp,2);
+ writeMasterySettings(storage,zero);assert.equal(importMastery(readMasterySettings(storage),next).state.target.xp,0);
 });

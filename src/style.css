@@ -301,6 +301,7 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
 .mastery-saved-results{min-width:0;overflow-wrap:anywhere}
 .mastery-saved-results p{line-height:1.6}.saved-plan-context{margin-top:12px}
 .mastery-saved-results .optimizer-actions button{width:auto;max-width:100%;white-space:normal}
+.plan-budget-shortage{color:var(--gold)}
 .saved-result-warning{font-size:13px;color:var(--gold);line-height:1.6}
 #optimizer-status{margin:12px 0 16px;color:var(--muted);font-size:13px;line-height:1.6}#optimizer-status[data-kind="warning"],#optimizer-status[data-running="true"]{color:var(--gold)}#optimizer-status[data-running="true"]{font-weight:650}#optimizer-status:empty{display:none}
 .optimizer-plan,.saved-result-card{border-top:1px solid var(--line);padding:16px 0;min-width:0}

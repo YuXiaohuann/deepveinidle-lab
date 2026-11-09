@@ -28,8 +28,8 @@ try{
   await page.click('#optimizer-start');
   await page.waitForFunction(objective=>window.optimizerWorkers.at(-1)?.result?.objective===objective,objective,{timeout:120000});
   await page.waitForFunction(objective=>JSON.parse(localStorage.getItem('dvi-mastery-results-v1'))?.auto?.input.objective===objective,objective);
-  assert.equal(await page.locator('.optimizer-plan dt').first().innerText(),'经验');
-  assert.equal(await page.locator('[data-saved-slot="auto"] dt').first().innerText(),'经验');
+  assert.equal(await page.locator('.optimizer-plan').first().locator('dt').nth(2).innerText(),'计算时经验');
+  assert.equal(await page.locator('[data-saved-slot="auto"] dt').nth(2).innerText(),'计算时经验');
   assert.equal(await page.locator('#optimizer-output [data-optimizer-apply="0"]').innerText(),'已应用');
   const record=await page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-mastery-results-v1')).auto);
   assert.deepEqual(record.input.prices,{});assert.ok(record.plan.stats.mean>0);
@@ -39,7 +39,7 @@ try{
   for(const lang of ['en','zh']){
    await page.selectOption('#language',lang);await page.setViewportSize({width:390,height:1000});
    assert.equal(await page.locator('#optimizer-goal').inputValue(),objective);
-   assert.equal(await page.locator('.optimizer-plan dt').first().innerText(),lang==='zh'?'经验':'XP');
+   assert.equal(await page.locator('.optimizer-plan').first().locator('dt').nth(2).innerText(),lang==='zh'?'计算时经验':'XP at calculation');
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
    await page.locator('#mastery-optimizer').screenshot({path:path.join(directory,`${objective}-${lang}-390.png`)});
   }
@@ -52,9 +52,9 @@ try{
  await page.selectOption('#optimizer-goal','craftXp');await selectSearchOption(page,'optimizer-recipe',craftingJobs.find(j=>j.levelReq===1));await page.selectOption('#optimizer-tier','1');
  assert.equal(await page.locator('[data-saved-slot="auto"] .saved-result-warning').count(),0);
  await page.selectOption('#optimizer-tier','0');
- assert.match(await page.locator('[data-saved-slot="auto"] .saved-result-warning').innerText(),/配置已变化/);
+ assert.equal(await page.locator('[data-saved-slot="auto"] .saved-result-warning').count(),0);
  await page.click('#optimizer-edit-combat');await page.waitForURL('**/craft');
- results.cases.push('source settings unchanged; reload restores XP records; crafting rarity mismatch and edit navigation');
+ results.cases.push('source settings unchanged; reload restores XP records; crafting rarity changes preserve plans and edit navigation');
  assert.deepEqual(results.errors,[]);await context.close();
 }catch(error){results.errors.push(error.stack??String(error));console.error(error.stack??String(error));process.exitCode=1;}
 finally{await fs.writeFile(path.join(directory,'results.json'),JSON.stringify(results,null,2)+'\n');await session?.close();}

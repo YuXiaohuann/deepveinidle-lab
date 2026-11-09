@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {game,defaults} from '../src/model.js';
 import {createScenario,START_TICK} from '../src/simulation.js';
 import {createCombatExpectation} from '../src/combat-expectation.js';
-import {masteryResultEngine,validateMasteryResult} from '../src/mastery-result-store.js';
+import {masteryResultEngine,validateComputedMasteryResult} from '../src/mastery-result-store.js';
 const result=()=>({coins:0,normalItems:{},rareItems:{}});
 
 test('1214 synthetic prediction retains empty boss rewards and mastery pages',()=>{
@@ -12,7 +12,7 @@ test('1214 synthetic prediction retains empty boss rewards and mastery pages',()
  assert.deepEqual(prepared.skillbossPending,[]);assert.deepEqual(prepared.masteryAway,{});
  assert.equal(prepared.skillboss,null);assert.deepEqual(prepared.masterySkills,{});
  assert.equal(masteryResultEngine,'mastery-1/game-1.0.1214');
- assert.throws(()=>validateMasteryResult({engine:'mastery-1/game-1.0.1212'}),/savedMasteryVersion/);
+ assert.throws(()=>validateComputedMasteryResult({engine:'mastery-1/game-1.0.1212'}),/savedMasteryVersion/);
 });
 
 test('1214 all upgrades preserve full quality and enhancement encoding',()=>{
