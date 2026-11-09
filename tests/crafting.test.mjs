@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
 import {START_TICK} from '../src/simulation.js';
-import {craftingDefaults,craftingTiers,normalizeCrafting,craftingJobs,craftingSkills,craftingPlan,craftingMaterials,materialRequirements,materialBudget,priceItems,craftingPlayer,craftingStats,importCrafting,planKey} from '../src/crafting-model.js';
+import {craftingDefaults,craftingTiers,normalizeCrafting,craftingJobs,craftingSkills,craftingPlan,craftingMaterials,materialRequirements,materialBudget,priceItems,craftingPlayer,craftingJobStats,craftingStats,importCrafting,planKey} from '../src/crafting-model.js';
 import {createCraftingScenario,simulateCrafting,MAX_CRAFT_TICKS} from '../src/crafting-simulation.js';
 import {combatHot,combatHotWindows} from '../src/combat-hot.js';
 import {setItemPrice,priceDefaults} from '../src/item-prices.js';
@@ -101,4 +101,21 @@ test('24-hour rates include native XP, products and consumption independently of
  assert.equal(result.completed,events.filter(e=>['produced','burnt'].includes(e.kind)).length);
  assert.deepEqual(result.consumed,craftingMaterials(job,0,result.completed));
  s.plans[planKey(job.id,0)]=1;assert.deepEqual(simulateCraftingWindow(s,job,0),result);
+});
+
+test('starting work details use native recipe chances and deterministic upgrade durations',()=>{
+ const state=craftingDefaults();
+ for(const skill of craftingSkills)state.levels[skill]=110;
+ const {player}=craftingPlayer(state);
+ for(const job of craftingJobs){
+  const stats=craftingJobStats(state,job);
+  if(job.upgrade){
+   assert.equal(stats.chance,null);
+   const result=simulateCrafting(state,job,0,1);
+   assert.ok(Math.abs(stats.seconds-result.workingTicks*game.tickMs/1000)<1e-9);
+  }else{
+   assert.equal(stats.chance,game.workChance(job,player));
+   assert.equal(stats.seconds,game.tickMs/1000/stats.chance);
+  }
+ }
 });

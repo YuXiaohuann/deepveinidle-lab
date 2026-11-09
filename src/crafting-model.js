@@ -95,6 +95,11 @@ export function craftingPlayer(raw){
  if(s.blessing)p.brews.blessing=Number.MAX_SAFE_INTEGER;
  return {state:s,player:p};
 }
+export function craftingJobStats(raw,job){
+ const {player}=craftingPlayer(raw);
+ if(job.upgrade)return {chance:null,seconds:game.tickMs/1000*game.upgradeWorkTicks(player,job.upgrade)};
+ const chance=game.workChance(job,player);return {chance,seconds:game.tickMs/1000/chance};
+}
 export function craftingStats(raw){
  const {state:s,player:p}=craftingPlayer(raw);return {level:s.levels[s.skill],speedBonus:game.workModifiers(p,s.skill).combined-1,
  xpBonus:game.combine(game.workXpMultiplier(p,false,s.skill),game.masteryMultiplier(p.masteries,'xp'),1+s.weeklyXp/100)-1,

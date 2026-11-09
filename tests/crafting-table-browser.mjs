@@ -55,13 +55,19 @@ try{
  const xpDetail=page.locator('#craft-61\\:0-xp');await xpDetail.locator('summary').click();
  assert.equal(await xpDetail.locator('.loot-line span').last().innerText(),(data.xp/data.completed).toLocaleString('zh-CN',{maximumFractionDigits:2}));
  const countCell=()=>page.locator('.craft-table [data-craft-count="61:0"]').locator('xpath=ancestor::tr').locator('td').nth(3);
- assert.equal(await countCell().innerText(),data.completed.toLocaleString('zh-CN',{maximumFractionDigits:0}));
+ assert.equal(await countCell().locator('summary').innerText(),data.completed.toLocaleString('zh-CN',{maximumFractionDigits:0}));
  assert.equal(await page.locator('#craft-period').count(),0);assert.deepEqual(await headers(),daily);assert.equal(await page.evaluate(()=>window.craftRuns.length),runs);
  assert.equal(await xpDetail.getAttribute('open'),'');
+ const workDetail=page.locator('#craft-61\\:0-completed');await workDetail.locator('summary').click();assert.match(await workDetail.innerText(),/平均制造耗时/);assert.match(await workDetail.innerText(),/每刻完成概率/);
  await page.locator('#craft-search').fill('no-such-recipe');await checkRows();assert.equal(await table().locator('.empty-results').getAttribute('colspan'),'7');await page.locator('#craft-search').fill('');
  results.cases.push('daily headers and rounded counts match real Worker result; language, filters and empty results preserve cache');
  for(const width of [1440,390])for(const language of ['zh','en']){
   await page.setViewportSize({width,height:1000});await page.selectOption('#language',language);await checkRows();await checkLayout();
+  assert.equal(await table().locator('.enemy-name').evaluateAll(nodes=>nodes.every(n=>getComputedStyle(n).whiteSpace==='nowrap')),true);
+  const warning=table().locator('td:first-child .craft-level-warning').first();
+  assert.equal(await warning.innerText(),language==='zh'?'等级不足':'Level too low');
+  assert.ok(await warning.evaluate(el=>{const box=el.getBoundingClientRect(),level=el.parentElement.getBoundingClientRect();return el.parentElement.tagName==='SMALL'&&box.left>level.left&&box.top>=level.top-1&&box.bottom<=level.bottom+1;}));
+  assert.equal(await table().locator('td:first-child>.death-note').count(),0);
   assert.equal(await xpDetail.locator('.loot-line span').first().innerText(),language==='zh'?'平均单次经验':'Average XP per action');assert.equal(await xpDetail.locator('p').count(),0);assert.equal(await recipe.getAttribute('open'),'');
   if(language==='en')assert.deepEqual(await headers(),['Recipe','XP/day','Profit/day','Crafts/day','Material cost / craft','Product value / craft','Order crafts']);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
@@ -88,7 +94,8 @@ try{
  await page.waitForFunction(()=>window.craftRuns.at(-1)?.input?.state.simulationHours===1&&window.craftRuns.at(-1).results.some(r=>r.mode==='rate'&&r.result.key==='upgrade-271:0'));
  await upgrade.locator('td').nth(1).locator('summary').waitFor();await checkRows();
  const upgradeResult=await page.evaluate(()=>window.craftRuns.at(-1).results.find(r=>r.mode==='rate'&&r.result.key==='upgrade-271:0').result);
- assert.equal(await upgrade.locator('td').nth(3).innerText(),(24*upgradeResult.completed).toLocaleString('zh-CN'));
+ assert.equal(await upgrade.locator('td').nth(3).locator('summary').innerText(),(24*upgradeResult.completed).toLocaleString('zh-CN'));
+ await upgrade.locator('td').nth(3).locator('summary').click();assert.match(await upgrade.locator('td').nth(3).innerText(),/固定耗时，无随机完成判定/);
  const before=await upgrade.innerText();await page.selectOption('#language','en');await page.selectOption('#language','zh');assert.equal(await upgrade.innerText(),before);
  await page.locator('[data-craft-sort="xp"]').click();await checkRows();await page.selectOption('#language','en');
  await upgrade.locator('td').nth(1).locator('summary').click();assert.match(await upgrade.locator('td').nth(1).innerText(),/Average XP per action/);

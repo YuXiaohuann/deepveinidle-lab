@@ -115,7 +115,8 @@ try{
  for(const width of [1440,390])for(const lang of ['zh','en']){
   await page.setViewportSize({width,height:1000});await page.selectOption('#language',lang);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-  const alignments=await page.locator('.craft-table th:first-child,.craft-table td:first-child,.craft-order-recipes th:nth-child(2),.craft-order-recipes td:nth-child(2),.craft-execution-table th:nth-child(2),.craft-execution-table td:nth-child(2)').evaluateAll(cells=>cells.map(cell=>getComputedStyle(cell).textAlign));assert.ok(alignments.length>6);assert.ok(alignments.every(value=>value==='right'));
+  const recipeAlignments=await page.locator('.craft-table th:first-child,.craft-table td:first-child').evaluateAll(cells=>cells.map(cell=>getComputedStyle(cell).textAlign));assert.ok(recipeAlignments.every(value=>value==='left'));
+  const alignments=await page.locator('.craft-order-recipes th:nth-child(2),.craft-order-recipes td:nth-child(2),.craft-execution-table th:nth-child(2),.craft-execution-table td:nth-child(2)').evaluateAll(cells=>cells.map(cell=>getComputedStyle(cell).textAlign));assert.ok(alignments.length>=4);assert.ok(alignments.every(value=>value==='right'));
   if(width===1440){const ys=await page.locator('.craft-order-fields input').evaluateAll(inputs=>inputs.map(input=>input.getBoundingClientRect().y));assert.equal(ys.length,4);assert.ok(ys.every(y=>Math.abs(y-ys[0])<1));}
   await page.locator('.craft-order-heading').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(directory,`editor-${lang}-${width}.png`)});
   await page.locator('.craft-orders-table').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(directory,`orders-${lang}-${width}.png`)});
@@ -125,7 +126,7 @@ try{
   await page.setViewportSize({width,height:1000});const longName='测试订单与长名称 '.repeat(10);await change('#craft-order-name',longName);assert.equal(await page.locator('.craft-editing-order').innerText(),longName.trim());assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.locator('.craft-recipe-heading').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(directory,`title-long-${width}.png`)});
  }
  await change('#craft-order-name','订单 A');
- check('recipe heading includes live order name; row click and keyboard selection; four fields on one row; recipe columns right aligned; no bulk controls or selector; no plan-summary panel; bilingual desktop/390px and long-name screenshots recorded');
+ check('recipe heading includes live order name; row click and keyboard selection; four fields on one row; selection recipe column left aligned and order/execution recipe columns right aligned; no bulk controls or selector; no plan-summary panel; bilingual desktop/390px and long-name screenshots recorded');
  await page.selectOption('#language','zh');await rowFor(a).locator('td').nth(1).click();await change('#craft-batch-'+a,0);
  page.once('dialog',d=>d.dismiss());await page.locator('#craft-batch').click();assert.equal(Object.keys((await read()).orders[0].plans).length,2);
  page.once('dialog',d=>d.accept());await page.locator('#craft-batch').click();saved=await read();assert.deepEqual(saved.orders[0].plans,{});assert.equal(saved.orders[0].enabled,true);

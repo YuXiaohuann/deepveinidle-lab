@@ -151,7 +151,8 @@
     "recipeOutput": "Kh",
     "collectionExcluded": "cQ",
     "startUpgrade": "t_",
-    "upgradeSiteJob": "qF"
+    "upgradeSiteJob": "qF",
+    "upgradeWorkTicks": "EO"
   },
   "declarations": [
     {

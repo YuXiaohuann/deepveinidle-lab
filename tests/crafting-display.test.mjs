@@ -34,7 +34,7 @@ test('legacy period values do not change daily columns or per-craft values',()=>
  const cells=s=>s.match(/<td[^>]*>.*?<\/td>/g);
  assert.deepEqual(cells(hour).slice(4),cells(day).slice(4));
  assert.equal(cells(hour)[0],cells(day)[0]);
- assert.equal(cells(hour)[3],'<td>240</td>');assert.equal(cells(day)[3],'<td>240</td>');
+ assert.match(cells(hour)[3],/<summary>240<\/summary>/);assert.equal(cells(hour)[3],cells(day)[3]);
  assert.match(cells(hour)[1],/>480</);assert.match(cells(day)[1],/>480</);
  vm.runInContext("state.plans={'61:0':90}",p);assert.equal(vm.runInContext('!!rateFor(visibleJobs()[0])',p),true);
  assert.match(vm.runInContext('headers()',p),/制造次数\/天/);
@@ -102,7 +102,7 @@ test('daily craft count rounds for display while sorting retains raw counts',()=
  const p=page();vm.runInContext(`const plan=visibleJobs()[0];rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{completed:241.6,xp:480,items:{40:240},consumed:{20:240}}});`,p);
  for(const [period,expected]of [['day','242'],['hour','242']]){
   vm.runInContext(`state.period='${period}'`,p);const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
-  assert.equal(row.match(/<td[^>]*>.*?<\/td>/g)[3],`<td>${expected}</td>`);
+  assert.ok(row.match(/<td[^>]*>.*?<\/td>/g)[3].includes(`<summary>${expected}</summary>`));
  }
  assert.equal(vm.runInContext('rateFor(visibleJobs()[0]).result.completed',p),241.6);
 });

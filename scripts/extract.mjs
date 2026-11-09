@@ -168,7 +168,8 @@ const exportsMap={
   "recipeOutput": "Kh",
   "collectionExcluded": "cQ",
   "startUpgrade": "t_",
-  "upgradeSiteJob": "qF"
+  "upgradeSiteJob": "qF",
+  "upgradeWorkTicks": "EO"
 };
 const selected=new Set(); const allowed=new Set(['WeakSet','WeakMap','Uint8Array','Uint16Array','Uint32Array','Int16Array','Int32Array','Float64Array','Math','Map','Set','Number','Object','Array','String','Error','Date','Boolean','Infinity','undefined','JSON','RegExp','parseInt','parseFloat']);
 function collect(name){

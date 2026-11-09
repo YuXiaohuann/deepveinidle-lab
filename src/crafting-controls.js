@@ -11,7 +11,7 @@ import {valuationPrice,validPrice} from './item-prices.js';
 import {registerCharacterUpdates,characterImportPanel,probeCharacter,importStatusText} from './import-controls.js';
 import {worldBuffWarningText} from './world-buffs.js';
 import {randomSimulationSeed} from './simulation-seed.js';
-import {craftingStorageKey,craftingDefaults,craftingTiers,normalizeCrafting,craftingSkills,craftingToolSlots,craftingJobs,craftingPotions,craftingRooms,craftingMasteries,craftingPerks,planKey,validQuantity,craftingPlan,craftingMaterials,priceItems,craftingStats,importCrafting} from './crafting-model.js';
+import {craftingStorageKey,craftingDefaults,craftingTiers,normalizeCrafting,craftingSkills,craftingToolSlots,craftingJobs,craftingPotions,craftingRooms,craftingMasteries,craftingPerks,planKey,validQuantity,craftingPlan,craftingMaterials,priceItems,craftingJobStats,craftingStats,importCrafting} from './crafting-model.js';
 
 let state=craftingDefaults(),language='zh',query='',group='',filledOnly=false,sort='levelReq',direction='desc',notice='',importStatus=null,importBusy=false,saveOK=true,active=false,probeStarted=false;
 let worker=null,timer=null,renderTimer=null,generation=0,running=false,progress=null,workerError=null,clock=Date.now(),roundSeed=null;
@@ -88,15 +88,16 @@ function recipeRow(plan){
  const {job,tier,key,count}=plan,locked=state.levels[job.skill]<job.levelReq;
  const seed=rateFor(plan)?.result?.seed??resultFor(plan)?.result?.seed;
  const recipeInfo=[[text('单次产量','Output per craft'),format(job.output.qty)],[text('基础经验 / 次','Base XP / craft'),format(job.xp)],...(job.burn?[[text('安全等级','No-burn level'),job.burn.safeAtLevel]]:[]),...(seed===undefined?[]:[[text('随机种子','Random seed'),seed]])].map(([label,value])=>detailLine(label,value)).join('');
- const lead=`<tr><td class="column-highlight">${detail(`${key}-recipe`,`<span class="enemy-name"><span><strong>${esc(name(job.name))} · ${rarities()[tier]}</strong><small>${text('所需等级','Level')} ${job.levelReq}</small></span></span>`,recipeInfo)}${locked?`<small class="death-note">${errorText('levelTooLow')}</small>`:''}</td>`;
+ const lead=`<tr><td class="column-highlight">${detail(`${key}-recipe`,`<span class="enemy-name"><span><strong>${esc(name(job.name))} · ${rarities()[tier]}</strong><small>${text('所需等级','Level')} ${job.levelReq}${locked?`<span class="craft-level-warning">${errorText('levelTooLow')}</span>`:''}</small></span></span>`,recipeInfo)}</td>`;
  const input=`<td><input ${!currentOrder()?'disabled':''} id="craft-count-${job.id}-${tier}" class="craft-quantity" type="number" min="0" max="${Number.MAX_SAFE_INTEGER}" step="1" data-craft-count="${key}" value="${count}" aria-label="${esc(name(job.name)+' '+rarities()[tier]+' '+text('计划制造次数','planned crafts'))}"></td>`;
  try{
   const materials=craftingMaterials(job,tier,1),cost=priceItems(materials,getSnapshot()),products={[game.withRarity(job.output.itemId,tier)]:job.output.qty},value=priceItems(products,getSnapshot()),entry=rateFor(plan),r=entry?.result,factor=24/state.simulationHours;
+  const preview=craftingJobStats(state,job),workInfo=detailLine(text('平均制造耗时','Average crafting time'),format(preview.seconds,2)+' '+text('秒','s'))+detailLine(text('每刻完成概率','Completion chance per tick'),preview.chance===null?text('固定耗时，无随机完成判定','Fixed duration; no random completion check'):format(preview.chance*100,2)+'%');
   const unitValues=`<td>${detail(`${key}-cost`,warn(cost.missing)+format(cost.value,2),itemLines(materials,{prices:true}))}</td><td>${detail(`${key}-value`,warn(value.missing)+format(value.value,2),itemLines(products,{prices:true}))}</td>`;
   const label=locked?errorText('levelTooLow'):entry?.error?errorText(entry.error):r?.error?errorText(r.error):text('计算中…','Calculating…');
   const output=r?priceItems(r.items,getSnapshot(),{expected:true}):null,consumed=r?priceItems(r.consumed,getSnapshot()):null;
   const profit=r?output.value-consumed.value:0,missing=r?[...output.missing,...consumed.missing]:[];
-  return lead+`<td class="column-highlight">${r&&!r.error?detail(`${key}-xp`,format(r.xp*factor,2),detailLine(text('平均单次经验','Average XP per action'),r.completed>0?format(r.xp/r.completed,2):'—')):label}</td><td class="column-highlight">${r&&!r.error?warn(missing)+format(profit*factor,2):label}</td><td>${r&&!r.error?format(r.completed*factor):label}</td>`+unitValues+input+'</tr>';
+  return lead+`<td class="column-highlight">${r&&!r.error?detail(`${key}-xp`,format(r.xp*factor,2),detailLine(text('平均单次经验','Average XP per action'),r.completed>0?format(r.xp/r.completed,2):'—')):label}</td><td class="column-highlight">${r&&!r.error?warn(missing)+format(profit*factor,2):label}</td><td>${r&&!r.error?detail(`${key}-completed`,format(r.completed*factor),workInfo):label}</td>`+unitValues+input+'</tr>';
  }catch(error){return lead+['column-highlight','column-highlight','hourly-muted','hourly-muted','hourly-muted'].map(style=>`<td class="${style}">${esc(errorText(error.message))}</td>`).join('')+input+'</tr>';}
 }
 function craftingProgress(){

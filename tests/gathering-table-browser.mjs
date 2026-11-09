@@ -47,8 +47,9 @@ try{
  const levels=()=>page.locator('#gather-results .gather-table td:first-child small').allTextContents().then(values=>values.map(value=>Number(value.match(/\d+/)[0])));
  assert.ok((await page.locator('#gather-results .gather-table td:first-child small').allTextContents()).every(label=>label.startsWith('等级 ')&&!label.includes('所需')));
  let values=await levels();assert.deepEqual(values,[...values].sort((a,b)=>b-a));
- const job=page.locator('#gather-results .gather-table td:first-child details').last();const id=await job.getAttribute('id');await job.locator('summary').click();
- assert.equal(await job.locator('.loot-line').count(),2);
+ assert.equal(await page.locator('#gather-results .gather-table td:first-child details').count(),0);
+ const job=page.locator(`#gather-${sample.jobId}-completed`);const id=await job.getAttribute('id');await job.locator('summary').click();
+ assert.equal(await job.locator('.loot-line').count(),2);assert.match(await job.innerText(),/平均采集耗时/);assert.match(await job.innerText(),/每刻完成概率/);
  await page.locator('[data-gather-sort="levelReq"]').click();values=await levels();assert.deepEqual(values,[...values].sort((a,b)=>a-b));assert.equal(await page.locator(`#${id}`).getAttribute('open'),'');
  results.cases.push('10-column order, name/level merge, default and ascending level sorting, highlighted data and locked rows');
  await page.locator('#gather-simulation').evaluate(el=>el.open=true);
@@ -119,7 +120,7 @@ try{
  results.cases.push('controlled waiting and failed Worker rows retain column alignment and site details');
  await page.evaluate(()=>{const state=JSON.parse(localStorage.getItem('dvi-gathering-v1'));state.simulationHours=1;localStorage.setItem('dvi-gathering-v1',JSON.stringify(state));});await page.reload();await page.waitForFunction(()=>window.gatherRuns.at(-1)?.done);await checkRows();assert.equal((await headers()).length,10);assert.equal((await headers())[1],'经验/天');
  await page.locator('#gather-search').fill('no-such-task');assert.equal(await page.locator('#gather-results .empty-results').getAttribute('colspan'),'10');await page.locator('#gather-search').fill('');
- await page.locator('[data-gather-skill="thieving"]').click();await page.waitForFunction(()=>window.gatherRuns.at(-1)?.done);assert.equal(await page.locator('#gather-results .gather-table td:first-child details').last().locator('.loot-line').count(),3);
+ await page.locator('[data-gather-skill="thieving"]').click();await page.waitForFunction(()=>window.gatherRuns.at(-1)?.done);assert.equal(await page.locator('#gather-results .gather-table td:first-child details').last().locator('.loot-line').count(),1);
  results.cases.push('short-duration daily scaling, empty rows and thieving catch detail');
  assert.deepEqual(results.errors,[]);await context.close();
 }catch(error){results.errors.push(error.stack??String(error));process.exitCode=1;}
