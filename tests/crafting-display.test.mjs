@@ -9,7 +9,7 @@ import {valuationPrice} from '../src/item-prices.js';
 const source=fs.readFileSync(new URL('../src/crafting-controls.js',import.meta.url),'utf8');
 function page(language='zh'){
  const context=vm.createContext({registerCharacterUpdates:()=>({read(){}}),...model,...ordersModel,game,valuationPrice,localStorage:{getItem(){return null;},removeItem(){}},translatedName:n=>n,translatedItemName:id=>String(id),getSnapshot:()=>({}),subscribe(){}});
- vm.runInContext(source.replaceAll('import.meta.url',"'http://localhost/'").replace(/^import .*;\n/gm,'').replace('export function renderCrafting','function renderCrafting'),context);
+ vm.runInContext(source.replaceAll('import.meta.url',"'http://localhost/'").replace(/^import .*;\n/gm,'').replaceAll('export function','function'),context);
  vm.runInContext(`language=${JSON.stringify(language)};state.levels.cooking=100;orders=[createOrder('test','Test')];currentOrderId='test';[1,2,3,4].forEach(t=>selectedTiers.add(t));`,context);return context;
 }
 test('all five rarities appear independently, with XP and profit first and plan input last',()=>{

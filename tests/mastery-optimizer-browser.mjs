@@ -8,7 +8,9 @@ import {chromium} from 'playwright-core';
 import {browserPath} from '../scripts/release-common.mjs';
 import {preset,game} from '../src/model.js';
 import {priceDefaults} from '../src/item-prices.js';
-import {gatheringDefaults} from '../src/gathering-model.js';
+import {translatedName} from '../src/i18n.js';
+import {selectSearchOption} from './helpers/search-select.mjs';
+import {gatheringDefaults,gatheringJobs} from '../src/gathering-model.js';
 import {masteryDefaults} from '../src/mastery.js';
 import {combatIncomeItems} from '../src/mastery-optimizer.js';
 
@@ -87,13 +89,14 @@ try{
  assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.open),false);
  await page.locator('#mastery-optimizer>summary').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.open),true);
  results.cases.push('optimizer is a native details panel, collapsed on first load and expandable by keyboard');
- assert.equal(await page.locator('#optimizer-goal option:disabled').count(),2);
+ assert.equal(await page.locator('#optimizer-goal option:disabled').count(),0);
  assert.equal(await page.getByLabel('计算模式').inputValue(),'reset');
  await page.selectOption('#optimizer-allocation-mode','reset');
- assert.equal(await page.locator('#optimizer-monster').inputValue(),'7');
- assert.match(await page.locator('#optimizer-monster option:checked').innerText(),/深渊恐魔/);
- const expectedMonsterOrder=[...game.monsters].sort((a,b)=>b.level-a.level).map(m=>String(m.id));
- assert.deepEqual(await page.locator('#optimizer-monster option').evaluateAll(options=>options.map(option=>option.value)),expectedMonsterOrder);
+ assert.match(await page.locator('#optimizer-monster').inputValue(),/深渊恐魔/);
+ const expectedMonsterOrder=[...game.monsters].sort((a,b)=>b.level-a.level).map(m=>`${translatedName(m.name,'zh')} · ${m.level}`);
+ await page.locator('#optimizer-monster').focus();
+ assert.deepEqual(await page.locator('#optimizer-monster-list [role=option]').allTextContents(),expectedMonsterOrder);
+ await page.keyboard.press('Escape');
  assert.equal(await page.locator('#optimizer-start').textContent(),'开始计算');
  assert.equal(await page.locator('#optimizer-cancel').count(),0);
  results.cases.push('monster options are stably ordered by descending level, default to Abyssal Horror, and both modes use one start label');
@@ -170,7 +173,7 @@ try{
   await page.setViewportSize({width,height:1100});await page.selectOption('#language',language);
   assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.open),true);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-  assert.equal(await page.locator('#optimizer-goal option:disabled').count(),2);
+  assert.equal(await page.locator('#optimizer-goal option:disabled').count(),0);
   assert.equal(await page.locator('#optimizer-allocation-mode').inputValue(),'remaining');
   assert.equal(await page.getByLabel(language==='zh'?'计算模式':'Calculation mode').count(),1);
   assert.equal(await page.locator('#optimizer-output [data-optimizer-apply]').count(),remainingPlan.plans.length);
@@ -236,7 +239,7 @@ try{
  await page.evaluate(()=>window.optimizerMode='error');await page.click('#optimizer-start');await page.waitForFunction(()=>document.querySelector('#optimizer-status').textContent.includes('controlled failure'));assert.equal(await page.locator('#optimizer-start').isEnabled(),true);
  await page.evaluate(()=>window.optimizerMode='wait');await page.click('#optimizer-start');await page.click('#optimizer-edit-combat');await page.waitForURL('**/combat');assert.ok(await page.evaluate(()=>window.optimizerWorkers.at(-1).wasTerminated));await page.click('[data-preset="melee"]');await page.click('#mastery-nav');assert.match(await page.locator('#optimizer-scenario').innerText(),/Melee/);assert.equal(await page.locator('.optimizer-plan').count(),0);
  results.cases.push('Worker errors restore controls; leaving cancels; edited Combat build is read on return without overwriting mastery settings');
- await page.click('#combat-nav');await page.click('[data-preset="ranged"]');await page.click('#mastery-nav');await page.locator('#mastery-total').fill('0');await page.selectOption('#optimizer-monster','7');await page.evaluate(()=>window.optimizerMode=undefined);await page.click('#optimizer-start');await page.waitForSelector('.optimizer-plan');assert.match(await page.locator('#optimizer-output').innerText(),/exceeds budget/);
+ await page.click('#combat-nav');await page.click('[data-preset="ranged"]');await page.click('#mastery-nav');await page.locator('#mastery-total').fill('0');await selectSearchOption(page,'optimizer-monster',game.monsters.find(m=>m.id===7));await page.evaluate(()=>window.optimizerMode=undefined);await page.click('#optimizer-start');await page.waitForSelector('.optimizer-plan');assert.match(await page.locator('#optimizer-output').innerText(),/exceeds budget/);
  for(const effort of ['fast','deep','comprehensive']){
   await page.selectOption('#optimizer-effort',effort);await page.click('#optimizer-start');await page.waitForSelector('.optimizer-plan');
   assert.equal(await page.evaluate(()=>window.optimizerWorkers.at(-1).request.effort),effort);assert.equal(await page.evaluate(()=>window.optimizerWorkers.at(-1).result.effort),effort);
@@ -245,8 +248,8 @@ try{
  await page.reload();assert.deepEqual(await ranksInFields('current'),{...masteryDefaults().current,maxhit:1,gather:1});assert.ok(Object.values(await ranksInFields('target')).every(rank=>rank===0));assert.equal(await page.locator('[data-mastery-row="maxhit"] [data-mastery-value="cost"]').textContent(),'-40');assert.equal(await page.locator('.optimizer-plan').count(),0);assert.equal(await page.locator('#mastery-total').inputValue(),'0');
  assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.open),false);await page.locator('#mastery-optimizer>summary').click();
  assert.equal(await page.locator('#optimizer-allocation-mode').inputValue(),'reset');
- assert.equal(await page.locator('#optimizer-monster').inputValue(),'7');
- await page.selectOption('#optimizer-monster','6');await page.selectOption('#language','zh');assert.equal(await page.locator('#optimizer-monster').inputValue(),'6');
+ assert.equal(await page.locator('#optimizer-monster').inputValue(),`${game.monsters.find(m=>m.id===7).name} · ${game.monsters.find(m=>m.id===7).level}`);
+ await selectSearchOption(page,'optimizer-monster',game.monsters.find(m=>m.id===6));await page.selectOption('#language','zh');assert.equal(await page.locator('#optimizer-monster').inputValue(),`${translatedName(game.monsters.find(m=>m.id===6).name,'zh')} · ${game.monsters.find(m=>m.id===6).level}`);
  assert.equal(await page.locator('#optimizer-start').textContent(),'开始计算');
  results.cases.push('zero-point search permits an over-budget baseline reference and reload restores manual settings without cached recommendations');
 
@@ -259,14 +262,14 @@ try{
   assert.equal(await page.locator('#optimizer-monster').count(),gathering?0:1);
   if(gathering){
    const job=await page.evaluate(async()=>{const {gatheringJobs}=await import('/src/gathering-model.js');return gatheringJobs.find(j=>j.skill==='mining'&&j.levelReq===1).id;});
-   await page.selectOption('#optimizer-job',String(job));
+   await selectSearchOption(page,'optimizer-job',gatheringJobs.find(j=>j.id===job));
    assert.equal(await page.locator('#optimizer-edit-combat').getAttribute('href'),'/gather');
-  }else await page.selectOption('#optimizer-monster','7');
+  }else await selectSearchOption(page,'optimizer-monster',game.monsters.find(m=>m.id===7));
   if(objective==='gatherIncome')await page.evaluate(async()=>{
    const {optimizerInput,optimizerIncomeItems}=await import('/src/mastery-optimizer.js');
    const {getGatheringConfig}=await import('/src/gathering-controls.js');
    const {masteryDefaults}=await import('/src/mastery.js');const {setPrice}=await import('/src/price-service.js');
-   const jobId=Number(document.querySelector('#optimizer-job').value);
+   const {gatheringJobs}=await import('/src/gathering-model.js');const jobId=gatheringJobs.find(j=>j.skill==='mining'&&j.levelReq===1).id;
    const input=optimizerInput({objective:'gatherIncome',gathering:getGatheringConfig(),jobId,totalPoints:0,current:masteryDefaults().current,effort:'fast',now:Date.now()});
    for(const id of optimizerIncomeItems(input))setPrice(id,100);
   });

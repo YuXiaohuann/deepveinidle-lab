@@ -3,6 +3,8 @@ import {normalize,makePlayer} from './model.js';
 import {simulateMonster} from './simulation.js';
 import {normalizeGathering,gatheringJobs} from './gathering-model.js';
 import {simulateGatheringJob} from './gathering-simulation.js';
+import {normalizeCrafting,craftingJobs,craftingTiers} from './crafting-model.js';
+import {simulateCraftingWindow} from './crafting-simulation.js';
 import {valueRewards,validPrice} from './item-prices.js';
 
 const optimizerTracks=['xp','move','hp','maxhit','accuracy','rare'];
@@ -15,6 +17,9 @@ const searchSettings={
  comprehensive:{beam:4,directions:5,donors:5,starts:5,pairs:true,patience:3,flatStages:6},
 };
 export function optimizerPolicy(objective){
+ if(objective==='combatXp')return {tracks:['xp','maxhit','accuracy','move','hp','rare'],experience:true};
+ if(objective==='gatherXp')return {tracks:['gather','move','rare','xp'],gathering:true,experience:true};
+ if(objective==='craftXp')return {tracks:['craft','xp','move'],crafting:true,experience:true};
  if(['combatIncome','combatCollection'].includes(objective))return {tracks:['maxhit','accuracy','rare','move','hp'],ignoreLevelUpsForGeneration:true,collection:objective==='combatCollection'};
  if(['gatherIncome','gatherCollection'].includes(objective))return {tracks:['gather','move','rare','xp'],gathering:true,collection:objective==='gatherCollection'};
  throw Error('unsupportedObjective');
@@ -62,6 +67,7 @@ export function affordableRank(points){
  return lo;
 }
 export function optimizerScenario(objective,raw){
+ if(optimizerPolicy(objective).crafting)return normalizeCrafting({...raw,simulationHours:optimizerHours,plans:{},owned:{},tiers:{}});
  return optimizerPolicy(objective).gathering
   ?normalizeGathering({...raw,simulationHours:optimizerHours,customSimulation:false})
   :normalize({...raw,manual:{...raw?.manual,simulationHours:optimizerHours,customSimulation:false}});
@@ -73,6 +79,14 @@ export function optimizerInput(raw){
  const current=readRanks(raw.current),allocationMode=raw.allocationMode===undefined?'reset':raw.allocationMode;
  const floor=allocationFloor(allocationMode,current,raw.totalPoints);
  if(!Number.isSafeInteger(raw.now)||raw.now<=0)throw Error('invalidOptimizerScenario');
+ if(policy.crafting){
+  if(!raw.crafting||typeof raw.crafting!=='object')throw Error('invalidOptimizerCrafting');
+  const job=craftingJobs.find(j=>j.id===raw.recipeId);if(!job)throw Error('invalidOptimizerRecipe');
+  if(!craftingTiers(job).includes(raw.tier))throw Error('invalidOptimizerTier');
+  const crafting=optimizerScenario(raw.objective,{...raw.crafting,skill:job.skill});
+  if(crafting.levels[job.skill]<job.levelReq)throw Error('levelTooLow');
+  return {...raw,allocationMode,current,availablePoints:raw.totalPoints-cost(floor),crafting,job};
+ }
  if(policy.gathering){
   if(!raw.gathering||typeof raw.gathering!=='object')throw Error('invalidOptimizerGathering');
   const job=gatheringJobs.find(j=>j.id===raw.jobId);if(!job)throw Error('invalidOptimizerJob');
@@ -92,7 +106,7 @@ export function combatIncomeItems(combat,monster){
 }
 export function optimizerIncomeItems(input){
  const policy=optimizerPolicy(input.objective);
- if(policy.collection)return [];
+ if(policy.collection||policy.experience)return [];
  if(!policy.gathering)return combatIncomeItems(input.combat,input.monster);
  const ids=new Set(),add=(id,plain=false,minTier=0)=>{if(id===game.coinItemId)return;for(let tier=minTier;tier<=(plain||!game.itemSupportsRarity(id)?0:4);tier++)ids.add(game.withRarity(id,tier));};
  add(input.job.output.itemId,input.job.plain);
@@ -217,16 +231,19 @@ export function searchMasteryAllocations({totalPoints,current,allocationMode='re
 export function optimizeMastery(raw,{simulate,onProgress=()=>{}}={}){
  const input=optimizerInput(raw);checkOptimizerPrices(input,input.prices);
  const policy=optimizerPolicy(input.objective);
- const run=simulate??(policy.gathering?simulateGatheringJob:simulateMonster);
+ const run=simulate??(policy.crafting?simulateCraftingWindow:policy.gathering?simulateGatheringJob:simulateMonster);
  const cache=new Map();let simulations=0,excluded=0;
  const maxCandidates=optimizerEfforts[input.effort];
  const progress=(phase,candidates)=>onProgress({phase,candidates,maxCandidates,simulations,excluded});
  function trial(ranks,seed){
   const id=`${key(ranks)}:${seed}`;if(cache.has(id))return cache.get(id);
-  const result=run({...(policy.gathering?input.gathering:input.combat),masteries:{...ranks}},policy.gathering?input.job:input.monster,{seed,now:input.now,...(policy.gathering?{rewardMode:policy.collection?'collection':'income',collectSamples:false}:{})});simulations++;
+  const state={...(policy.crafting?input.crafting:policy.gathering?input.gathering:input.combat),masteries:{...ranks}};
+  const options={seed,now:input.now,...(policy.gathering?{rewardMode:policy.collection?'collection':'income',collectSamples:false}:{})};
+  const result=policy.crafting?run(state,input.job,input.tier,options):run(state,policy.gathering?input.job:input.monster,options);simulations++;
   let value=null;
-  if((policy.gathering||result.deaths===0)&&!result.endedEarly){
-   if(policy.collection)value=collectionScore(result);
+  if((policy.gathering||policy.crafting||result.deaths===0)&&!result.endedEarly&&(!policy.crafting||result.complete&&!result.error)){
+   if(policy.experience){if(!Number.isFinite(result.xp)||result.xp<0)throw Error('invalidOptimizerXp');value=result.xp;}
+   else if(policy.collection)value=collectionScore(result);
    else {
     const valued=valueRewards(result,input.prices);
     if(valued.missingPrices.length){const error=Error('missingOptimizerPrices');error.itemIds=valued.missingPrices;throw error;}

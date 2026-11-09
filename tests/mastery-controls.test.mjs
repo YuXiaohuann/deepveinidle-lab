@@ -6,7 +6,7 @@ test('mastery controls import and apply plans atomically, preserving valid setti
  const original={document:globalThis.document,localStorage:Object.getOwnPropertyDescriptor(globalThis,'localStorage'),CustomEvent:globalThis.CustomEvent};
  const elements=new Map(),storage=new Map([['dvi-simulator-v1','combat sentinel']]);let failStorage=false;
  const initial=masteryDefaults();initial.mode='unlimited';initial.budget=500;initial.target.xp=8;storage.set(masteryStorageKey,JSON.stringify(initial));
- class Element{innerHTML='';textContent='';open=false;disabled=false;value='';hidden=false;dataset={};children=new Map();querySelector(selector){if(!this.children.has(selector))this.children.set(selector,new Element());return this.children.get(selector);}querySelectorAll(selector){return selector==='details[id]'?[this.querySelector('#mastery-import-settings')]:[];}}
+ class Element{setAttribute(){}removeAttribute(){}scrollIntoView(){}innerHTML='';textContent='';open=false;disabled=false;value='';hidden=false;dataset={};children=new Map();querySelector(selector){if(!this.children.has(selector))this.children.set(selector,new Element());return this.children.get(selector);}querySelectorAll(selector){return selector==='details[id]'?[this.querySelector('#mastery-import-settings')]:[];}}
  class Document extends EventTarget{getElementById(id){if(!elements.has(id))elements.set(id,new Element());return elements.get(id);}}
  const document=new Document();globalThis.document=document;globalThis.CustomEvent=class extends Event{constructor(type,args){super(type);this.detail=args.detail;}};
  globalThis.localStorage={getItem:key=>storage.get(key)??null,setItem:(key,value)=>{if(failStorage)throw Error('quota');storage.set(key,value);}};

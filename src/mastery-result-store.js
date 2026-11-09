@@ -1,5 +1,6 @@
 import {game} from './model.js';
 import {optimizerInput,optimizerScenario,optimizerPolicy,checkOptimizerPrices} from './mastery-optimizer.js';
+import {craftingJobs} from './crafting-model.js';
 import {gatheringJobs} from './gathering-model.js';
 
 export const masteryResultStorageKey='dvi-mastery-results-v1';
@@ -17,21 +18,21 @@ function stable(value){
  return value;
 }
 export function optimizerContext(raw){
- const gathering=optimizerPolicy(raw.objective).gathering;
+ const policy=optimizerPolicy(raw.objective),gathering=policy.gathering;
  return {objective:raw.objective,allocationMode:raw.allocationMode,totalPoints:number(raw.totalPoints),current:Object.fromEntries(game.masteries.map(m=>[m.id,number(raw.current?.[m.id])])),effort:raw.effort,
-  ...(gathering?{jobId:raw.jobId,gathering:optimizerScenario(raw.objective,{...raw.gathering,skill:gatheringJobs.find(j=>j.id===raw.jobId)?.skill})}:{monsterId:raw.monsterId,combat:optimizerScenario(raw.objective,raw.combat)})};
+  ...(policy.crafting?{recipeId:raw.recipeId,tier:raw.tier,crafting:optimizerScenario(raw.objective,{...raw.crafting,skill:craftingJobs.find(j=>j.id===raw.recipeId)?.skill})}:gathering?{jobId:raw.jobId,gathering:optimizerScenario(raw.objective,{...raw.gathering,skill:gatheringJobs.find(j=>j.id===raw.jobId)?.skill})}:{monsterId:raw.monsterId,combat:optimizerScenario(raw.objective,raw.combat)})};
 }
 const pick=(value,keys)=>Object.fromEntries(keys.map(key=>[key,value[key]]));
 export function optimizerContextKey(raw){
- const context=optimizerContext(raw),gathering=optimizerPolicy(context.objective).gathering;
- const source=gathering?context.gathering:context.combat,settings=gathering?source:source.manual;
+ const context=optimizerContext(raw),policy=optimizerPolicy(context.objective),gathering=policy.gathering,work=gathering||policy.crafting;
+ const source=policy.crafting?context.crafting:gathering?context.gathering:context.combat,settings=work?source:source.manual;
  // Compare whole input groups, without source-page filters or overridden masteries.
  const scenario={...pick(source,['levels','gear','brews','house']),
-  perks:gathering?source.perks:{...settings.perks,meals:source.meals},
+  perks:work?source.perks:{...settings.perks,meals:source.meals},
   buffs:pick(settings,['guildXp','weeklyXp','worldRarity','blessing','hotSetting']),
   supplies:{homeBank:source.homeBank,ironman:settings.ironman,...(gathering?{discardGathered:source.discardGathered}:{coins:settings.coins,bankSlotsBought:settings.bankSlotsBought,unlimitedBank:settings.unlimitedBank})},
-  ...(!gathering?{style:source.style,food:{...pick(source,['food','eatAt','fed','rooted']),...pick(settings,['foodRule','foodMaxTier','foodPerTrip'])}}:{})};
- return JSON.stringify(stable({...pick(context,['objective','allocationMode','totalPoints','current']),...(gathering?{jobId:context.jobId}:{monsterId:context.monsterId}),scenario}));
+  ...(!work?{style:source.style,food:{...pick(source,['food','eatAt','fed','rooted']),...pick(settings,['foodRule','foodMaxTier','foodPerTrip'])}}:{})};
+ return JSON.stringify(stable({...pick(context,['objective','allocationMode','totalPoints','current']),...(policy.crafting?{recipeId:context.recipeId,tier:context.tier}:gathering?{jobId:context.jobId}:{monsterId:context.monsterId}),scenario}));
 }
 export function validateMasteryResult(record){
  requireValue(object(record));

@@ -99,3 +99,23 @@ test('1.9.10 character and mastery saves remain untouched when the new result st
  assert.deepEqual(readMasteryResults(db),emptyMasteryResults());assert.equal(db.getItem(masteryResultStorageKey),null);
  assert.equal(db.getItem('dvi-simulator-v1'),character);assert.equal(db.getItem('dvi-mastery-v1'),mastery);
 });
+
+import {craftingDefaults,craftingJobs} from '../src/crafting-model.js';
+test('XP records round-trip without prices; crafting context tracks recipe, rarity and build, excluding orders',()=>{
+ for(const objective of ['combatXp','gatherXp','craftXp']){
+  const {request,result}=fixture();request.objective=result.objective=objective;
+  request.jobId=gatheringJobs.find(j=>j.levelReq===1).id;
+  request.crafting=craftingDefaults();request.recipeId=craftingJobs.find(j=>j.levelReq===1).id;request.tier=0;
+  const record=createMasteryResult(request,result),db=storage();
+  writeMasteryResults(db,emptyMasteryResults(),{...emptyMasteryResults(),auto:record,manual:record});
+  assert.deepEqual(readMasteryResults(db).auto,record);
+  assert.deepEqual(record.input.prices,{});
+  if(objective!=='craftXp')continue;
+  const key=optimizerContextKey(record.input),changed=structuredClone(record.input);
+  changed.crafting.plans={'1:0':999};changed.crafting.owned={1:100};changed.crafting.tiers={1:4};changed.crafting.simulationHours=1;
+  assert.equal(optimizerContextKey(changed),key);
+  changed.tier=1;assert.notEqual(optimizerContextKey(changed),key);changed.tier=0;
+  changed.crafting.levels.cooking=2;assert.notEqual(optimizerContextKey(changed),key);
+  assert.equal(record.input.combat,undefined);assert.equal(record.input.gathering,undefined);
+ }
+});

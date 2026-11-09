@@ -264,3 +264,5 @@ function renderHot(){
  const hot=document.getElementById('craft-hot-schedule');if(!hot)return;
  try{hot.innerHTML=state.hotSetting==='current'?combatHotMarkup(combatHot(clock,state.simulationHours,state.skill),language,esc,skillName(state.skill)):state.hotSetting==='game'?`<p class="micro">${text('沿用游戏内置预测的热门规则。','Uses the in-game predictor hot bonus rules.')}</p>`:'';}catch(error){hot.textContent=errorText(error.message);}
 }
+
+export function getCraftingConfig(){return structuredClone(state);}

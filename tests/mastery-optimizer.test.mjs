@@ -284,3 +284,58 @@ test('all optimizer goals freeze 24 hours regardless of source duration without 
   assert.equal(result.hours,24);assert.deepEqual(raw,before);
  }
 });
+
+test('XP goals search XP without prices and preserve budget floors in both modes',()=>{
+ for(const objective of ['combatXp','gatherXp','craftXp'])for(const allocationMode of ['reset','remaining']){
+  const raw=xpInput(objective,82);raw.current.enhance=1;raw.allocationMode=allocationMode;
+  const before=structuredClone(raw),calls=[];
+  const result=optimizeMastery(raw,{simulate:(state,job,tierOrOptions,options)=>{
+   calls.push(state.masteries);assert.equal((objective==='combatXp'?state.manual:state).simulationHours,24);
+   if(objective==='craftXp'){assert.equal(tierOrOptions,0);assert.ok(options.seed);}
+   return {xp:100+state.masteries.xp*1000,deaths:0,endedEarly:false,complete:true,error:null};
+  }});
+  assert.equal(result.plans[0].ranks.xp,allocationMode==='reset'?2:1);
+  assert.equal(result.plans[0].stats.mean,allocationMode==='reset'?2100:1100);
+  assert.ok(calls.some(r=>r.xp>0));assert.deepEqual(optimizerIncomeItems(optimizerInput(raw)),[]);
+  assert.ok(!optimizerPolicy(objective).ignoreLevelUpsForGeneration);
+  for(const p of result.plans){assert.ok(p.cost<=82);assert.equal(p.ranks.enhance,allocationMode==='reset'?0:1);}
+  assert.deepEqual(raw,before);
+ }
+});
+
+import {craftingDefaults,craftingJobs,craftingTiers} from '../src/crafting-model.js';
+import {simulateCraftingWindow} from '../src/crafting-simulation.js';
+function xpInput(objective,points=0){
+ if(objective==='gatherXp')return {...gatheringInput(objective,points),prices:{}};
+ if(objective==='combatXp')return {...input(points),objective,prices:{}};
+ const crafting=craftingDefaults();crafting.simulationHours=1;crafting.hotSetting='off';
+ return {objective,totalPoints:points,current:zero(),effort:'fast',recipeId:craftingJobs.find(j=>j.levelReq===1).id,tier:0,crafting,prices:{},now:1792713600000};
+}
+test('real 24-hour XP scores equal source simulators for combat, gathering, crafting and upgrades',()=>{
+ const upgrade=craftingJobs.find(j=>j.upgrade);
+ for(const objective of ['combatXp','gatherXp','craftXp','upgrade']){
+  const raw=xpInput(objective==='upgrade'?'craftXp':objective);
+  if(objective==='upgrade'){raw.recipeId=upgrade.id;raw.crafting.levels[upgrade.skill]=upgrade.levelReq;raw.tier=4;}
+  const before=structuredClone(raw),validated=optimizerInput(raw),result=optimizeMastery(raw);
+  const values=reviewSeeds.map(seed=>{
+   const options={seed,now:raw.now};
+   if(raw.objective==='craftXp')return simulateCraftingWindow({...validated.crafting,masteries:zero()},validated.job,raw.tier,options).xp;
+   if(raw.objective==='gatherXp')return simulateGatheringJob({...validated.gathering,masteries:zero()},validated.job,options).xp;
+   const sample=simulateMonster({...validated.combat,masteries:zero()},validated.monster,options);
+   assert.equal(sample.xp,Object.values(sample.bySkill).reduce((a,b)=>a+b,0));return sample.xp;
+  });
+  assert.ok(result.plans[0].stats.mean>0);assert.equal(result.plans[0].stats.mean,sampleStats(values).mean);assert.deepEqual(raw,before);
+ }
+});
+test('XP goals reject invalid gains and incomplete runs; crafting validates recipe, tier and level',()=>{
+ for(const objective of ['combatXp','gatherXp','craftXp']){
+  const raw=xpInput(objective);
+  for(const xp of [NaN,Infinity,-1,undefined])assert.throws(()=>optimizeMastery(raw,{simulate:()=>({xp,deaths:0,complete:true})}),/invalidOptimizerXp/);
+  assert.throws(()=>optimizeMastery(raw,{simulate:()=>({xp:100,deaths:0,endedEarly:true,complete:false})}),/noViableOptimizerPlan/);
+ }
+ const raw=xpInput('craftXp');assert.throws(()=>optimizerInput({...raw,crafting:null}),/invalidOptimizerCrafting/);
+ assert.throws(()=>optimizerInput({...raw,recipeId:-1}),/invalidOptimizerRecipe/);
+ assert.throws(()=>optimizerInput({...raw,tier:5}),/invalidOptimizerTier/);
+ const high=craftingJobs.find(j=>j.levelReq>1);assert.throws(()=>optimizerInput({...raw,recipeId:high.id,tier:craftingTiers(high)[0]}),/levelTooLow/);
+ assert.throws(()=>optimizeMastery(raw,{simulate:()=>({xp:100,complete:true,error:'routeStopped'})}),/noViableOptimizerPlan/);
+});
