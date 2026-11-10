@@ -32,7 +32,7 @@ export async function verifyBrowser(base,version,directory){
   for(const width of [1280,390])for(const language of ['zh','en']){
    await page.setViewportSize({width,height:900});await page.selectOption('#language',language);
    for(const id of pages){
-    if(['debug'].includes(id)){await page.goto(new URL('/'+id,base).href,{waitUntil:'networkidle'});await page.selectOption('#language',language);}
+    if(['formulas','debug'].includes(id)){await page.goto(new URL('/'+id,base).href,{waitUntil:'networkidle'});await page.selectOption('#language',language);}
     else await page.locator(`#${id}-nav`).click();
     await page.locator(`#${id}-section`).waitFor({state:'visible'});
     if(id==='formulas')await page.locator('.formula-article h1').waitFor();
