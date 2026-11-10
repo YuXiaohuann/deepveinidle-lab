@@ -39,8 +39,10 @@ try{
  await page.goto(base+'/combat');
  await page.waitForFunction(()=>document.querySelector('#simulation-status').hidden);
  assert.equal(requests,0);
+ assert.equal(await page.locator('#formulas-nav').count(),0);
+ await page.goto(base+'/formulas');
+ await page.waitForFunction(()=>document.querySelector('#simulation-status').hidden);
  const workerCount=await page.evaluate(()=>window.combatWorkerCount);
- await page.locator('#formulas-nav').click();
  await page.locator('.formula-status[role="alert"]').waitFor();
  assert.match(await page.locator('.formula-error').innerText(),/HTTP 503/);
  fail=false;await page.getByRole('button',{name:'重新加载',exact:true}).click();
@@ -56,15 +58,22 @@ try{
  assert.equal(await page.evaluate(()=>document.activeElement.id),secondHash.slice(1));
  result.cases.push('generated directory, chapter focus and history');
  await page.selectOption('#language','en');await page.locator('.formula-article h1').waitFor();
+ assert.equal(await page.locator('#formulas-nav').count(),0);
+ assert.equal(await page.getByRole('region',{name:'公式',exact:true}).count(),1);
+ result.cases.push('formula menu hidden in Chinese and English, accessible page name retained');
  assert.equal(await page.locator('.formula-article h1').innerText(),'战斗公式');
  assert.equal(await page.locator('#formulas-section').getAttribute('lang'),'zh-CN');
  assert.equal(new URL(page.url()).hash,secondHash);assert.equal(requests,2);
- await page.locator('#combat-nav').click();await page.locator('#formulas-nav').click();await page.locator('.formula-article h1').waitFor();
+ await page.locator('#combat-nav').click();await page.goBack();await page.locator('.formula-article h1').waitFor();
  assert.equal(requests,2);assert.equal(await page.evaluate(()=>window.combatWorkerCount),workerCount);
  result.cases.push('Chinese content under English UI, cache and simulation preservation');
  for(const width of [1280,390]){
   await page.setViewportSize({width,height:900});
   if(width===390){await page.reload();await page.locator('.formula-article h1').waitFor();assert.equal(await page.locator('#formula-directory').evaluate(element=>element.open),false);}
+  for(const language of ['zh','en']){
+   await page.selectOption('#language',language);await page.locator('.formula-article h1').waitFor();
+   assert.equal(await page.locator('#formulas-nav').count(),0);
+  }
   await page.evaluate(()=>scrollTo(0,0));
   const layout=await page.evaluate(()=>({viewport:innerWidth,width:document.documentElement.scrollWidth,split:document.getElementById('app').classList.contains('split-scroll'),tables:[...document.querySelectorAll('.formula-table')].every(element=>getComputedStyle(element).overflowX==='auto'),formulas:[...document.querySelectorAll('.formula-article pre')].every(element=>element.tabIndex===0&&getComputedStyle(element).overflowX==='auto')}));
   assert.ok(layout.width<=width,JSON.stringify(layout));assert.equal(layout.split,false);assert.equal(layout.tables,true);assert.equal(layout.formulas,true);
@@ -91,7 +100,7 @@ try{
  await other.locator('#combat-nav').click();release();
  await other.waitForResponse(response=>response.url().endsWith('/combat.zh.md'));
  assert.equal(await other.locator('#formulas-section').isVisible(),false);
- await other.locator('#formulas-nav').click();await other.locator('.formula-article h1').waitFor();
+ await other.goBack();await other.locator('.formula-article h1').waitFor();
  result.cases.push('late content response cannot replace the active page');
  assert.deepEqual(result.errors,[]);result.status='passed';
  console.log(JSON.stringify({status:result.status,cases:result.cases.length,directory}));
