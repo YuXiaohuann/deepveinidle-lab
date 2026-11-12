@@ -16,6 +16,7 @@ try{
 
  await page.locator('#mastery-optimizer>summary').click();
  await page.locator('#mastery-total').fill('0');
+ assert.equal(await page.locator('#optimizer-effort').inputValue(),'deep');
  const cases=[
   {objective:'combatXp',id:'optimizer-monster',item:game.monsters.find(m=>m.id===7),key:'monsterId',catalog:[...game.monsters].sort((a,b)=>b.level-a.level)},
   {objective:'gatherXp',id:'optimizer-job',item:gatheringJobs.find(j=>j.skill==='mining'&&j.levelReq===1),key:'jobId',catalog:[...gatheringJobs].sort((a,b)=>gatheringSkills.indexOf(a.skill)-gatheringSkills.indexOf(b.skill)||b.levelReq-a.levelReq)},
@@ -26,6 +27,8 @@ try{
   await selectSearchOption(page,c.id,c.item);
   for(const language of ['zh','en']){
    await page.selectOption('#language',language);
+   assert.deepEqual(await page.locator('#optimizer-effort option').allTextContents(),language==='zh'?['快速：最多 120 个配置','标准：最多 360 个配置','全面：最多 720 个配置']:['Fast: up to 120 configurations','Standard: up to 360 configurations','Comprehensive: up to 720 configurations']);
+   assert.equal(await page.locator('#optimizer-effort').inputValue(),'deep');
    const input=page.locator(`#${c.id}`),list=page.locator(`#${c.id}-list`);
    const selected=`${translatedName(c.item.name,language)} · ${c.item.levelReq??c.item.level}`;
    assert.equal(await input.getAttribute('role'),'combobox');assert.equal(await input.inputValue(),selected);
@@ -48,6 +51,12 @@ try{
    for(const width of [1440,390]){
     await page.setViewportSize({width,height:1000});await page.locator(`#${c.id}`).click();
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    const ids=['optimizer-allocation-mode','optimizer-effort','optimizer-goal',c.id,...(c.objective==='craftXp'?['optimizer-tier']:[])];
+    assert.deepEqual(await page.locator('.optimizer-fields').evaluate(el=>[...el.querySelectorAll('select,input[role=combobox]')].map(e=>e.id)),ids);
+    if(width===1440){
+     const tops=await page.locator('.optimizer-fields').evaluate(el=>[...el.children].map(e=>e.getBoundingClientRect().top));
+     assert.ok(tops.every(top=>Math.abs(top-tops[0])<1),'all calculation options share one desktop row');
+    }
     assert.ok(await list.evaluate(el=>el.clientHeight<=260&&el.scrollHeight>=el.clientHeight));
     assert.ok(await list.getByRole('option').first().evaluate(el=>el.getBoundingClientRect().height>=44));
     await page.locator('#mastery-optimizer').screenshot({path:path.join(directory,`${c.id}-${language}-${width}.png`)});
@@ -57,6 +66,7 @@ try{
   await page.setViewportSize({width:1440,height:1100});await page.selectOption('#language','zh');
   await page.evaluate(()=>window.optimizerMode='wait');await page.click('#optimizer-start');
   assert.equal(await page.evaluate(key=>window.optimizerWorkers.at(-1).request[key],c.key),c.item.id);
+  assert.equal(await page.evaluate(()=>window.optimizerWorkers.at(-1).request.effort),'deep');
   await page.locator(`#${c.id}`).fill('unmatched-example-xyz');
   assert.equal(await page.evaluate(()=>window.optimizerWorkers.at(-1).wasTerminated===true),false);
   await page.locator(`#${c.id}`).press('Escape');
@@ -67,6 +77,9 @@ try{
   await page.selectOption('#language','en');assert.equal(await page.locator(`#${c.id}`).inputValue(),`${alternative.name} · ${alternative.levelReq??alternative.level}`);
   results.cases.push(`${c.id}: sorted complete catalog; bilingual case-insensitive search; keyboard, no-match, escape, tab and blur; desktop/mobile; confirmed-only cancellation and correct Worker target`);
  }
+ await page.selectOption('#optimizer-effort','standard');await page.selectOption('#language','zh');assert.equal(await page.locator('#optimizer-effort').inputValue(),'standard');
+ await page.reload();await page.locator('#mastery-optimizer>summary').click();assert.equal(await page.locator('#optimizer-effort').inputValue(),'deep');
+ results.cases.push('three bilingual search allowances; default 360, session selection and refresh; ordered options share a desktop row and fit mobile');
  assert.deepEqual(results.errors,[]);await context.close();
 }catch(error){results.errors.push(error.stack??String(error));console.error(error.stack??String(error));process.exitCode=1;}
 finally{await fs.writeFile(path.join(directory,'results.json'),JSON.stringify(results,null,2)+'\n');await session?.close();}

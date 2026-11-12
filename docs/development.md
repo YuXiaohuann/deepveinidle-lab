@@ -63,7 +63,7 @@ node --test tests/mastery.test.mjs tests/mastery-controls.test.mjs tests/mastery
 
 | 脚本 | 默认输出目录 | 主要范围 |
 | --- | --- | --- |
-| `mastery-optimizer-browser.mjs` | `.test-artifacts/mastery-optimizer/` | 原四目标、四档搜索与两种预算的真实Worker；目标应用、冻结价格、保留旧推荐、运行取消／迟到隔离及保存失败 |
+| `mastery-optimizer-browser.mjs` | `.test-artifacts/mastery-optimizer/` | 原四目标、三档搜索与两种预算的真实Worker；目标应用、冻结价格、保留旧推荐、运行取消／迟到隔离及保存失败 |
 | `mastery-result-slots-browser.mjs` | `.test-artifacts/mastery-result-slots/browser/` | 双栏覆盖／删除／应用、导入刷新保留、超预算和低于当前恢复、旧引擎／异常辅助信息、无效点数草稿、跨标签冲突与卡片布局 |
 | `mastery-xp-browser.mjs` | `.test-artifacts/mastery-xp/browser/` | 三个经验目标的真实Worker、计算时指标、制造配方品质、自动应用与双栏恢复、来源配置保留 |
 | `mastery-search-browser.mjs` | `.test-artifacts/mastery-search/search/` | 三类候选排序与双语搜索、鼠标／键盘、无匹配和取消、仅确认不同选择取消任务、实际Worker请求目标 |

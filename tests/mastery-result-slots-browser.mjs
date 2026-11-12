@@ -27,7 +27,7 @@ try{
  await page.locator('#optimizer-explanation>summary').click();
  assert.equal(await page.locator('#optimizer-status').getAttribute('data-kind'),'normal');
  results.cases.push('top warning and current build remain unchanged; both brief explanations are removed while full keyboard-accessible calculation details preserve disclosure state');
- await page.selectOption('#optimizer-goal','combatCollection');assert.equal(await page.locator('#optimizer-method').count(),0);await page.locator('#mastery-optimizer').screenshot({path:path.join(directory,'panel-brief-zh-1440.png')});await page.selectOption('#optimizer-effort','fast');await complete();
+ await page.selectOption('#optimizer-goal','combatCollection');assert.equal(await page.locator('#optimizer-method').count(),0);await page.locator('#mastery-optimizer').screenshot({path:path.join(directory,'panel-brief-zh-1440.png')});await page.selectOption('#optimizer-effort','standard');await complete();
  await page.waitForFunction(key=>!!JSON.parse(localStorage.getItem(key)||'null')?.auto,key);
  assert.equal(await page.locator('#optimizer-status').getAttribute('data-running'),'false');
  const first=(await stored()).auto;assert.equal(first.input.objective,'combatCollection');assert.equal(first.plan.ranks.maxhit,Number(first.plan.ranks.maxhit));
@@ -121,7 +121,7 @@ try{
  results.cases.push('Chinese/English desktop and 390px cards show latest best before saved, calculation time beside headings, levels before equipment, no saved time or rank disclosure, and no overflow');
 
  // Saved application restores target ranks independently of live inputs.
- await page.selectOption('#optimizer-goal','combatCollection');await page.selectOption('#optimizer-effort','fast');await page.locator('#mastery-total').fill('123');
+ await page.selectOption('#optimizer-goal','combatCollection');await page.selectOption('#optimizer-effort','standard');await page.locator('#mastery-total').fill('123');
  assert.equal(await slot('manual').locator('[data-saved-action="apply"]').isEnabled(),true);
  const sourceBefore=await page.evaluate(()=>localStorage.getItem('dvi-simulator-v1'));
  await slot('manual').locator('[data-saved-action="apply"]').click();assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-mastery-v1')).target),manual.plan.ranks);
@@ -144,7 +144,7 @@ try{
  results.cases.push('another tab write is detected; stale clearing is rejected until explicit reload');
 
  // Automatic persistence failure still leaves a completed, applicable in-memory result.
- await page.selectOption('#optimizer-goal','combatCollection');await page.selectOption('#optimizer-effort','fast');await page.locator('#mastery-total').fill('123');
+ await page.selectOption('#optimizer-goal','combatCollection');await page.selectOption('#optimizer-effort','standard');await page.locator('#mastery-total').fill('123');
  const oldRecords=JSON.stringify(await stored());await page.evaluate(key=>{window.optimizerMode='wait';window.originalSet=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){if(k===key)throw Error('quota');return window.originalSet.call(this,k,v);};},key);
  await page.click('#optimizer-start');
  await page.evaluate(async record=>{const worker=window.optimizerWorkers.at(-1);await worker.onmessage({data:{result:{objective:'combatCollection',allocationMode:'reset',totalPoints:123,baseline:record.baseline,plans:[record.plan]}}});},first);
@@ -164,7 +164,7 @@ try{
  await page.evaluate(async()=>{const {applyMasteryImport,renderMastery}=await import('/src/mastery-controls.js');applyMasteryImport({...window.sameMasterySnapshot,capturedAt:Date.now()});renderMastery('en');});
  assert.equal(await slot('auto').locator('.saved-result-warning').count(),0);assert.ok(await page.locator('.optimizer-plan').count()>0);assert.doesNotMatch(await page.locator('#optimizer-status').innerText(),/Inputs updated/);
  await page.selectOption('#optimizer-effort','deep');assert.equal(await slot('auto').locator('.saved-result-warning').count(),0);
- await page.selectOption('#optimizer-effort','fast');await page.click('#optimizer-start');
+ await page.selectOption('#optimizer-effort','standard');await page.click('#optimizer-start');
  await page.evaluate(async()=>{const {invalidateMasteryOptimizer}=await import('/src/mastery-optimizer-controls.js');window.taskSource.levels.magic++;invalidateMasteryOptimizer();});
  assert.equal(await page.locator('#optimizer-start').textContent(),'Start calculation');assert.match(await page.locator('#optimizer-status').innerText(),/Inputs updated/);assert.equal(await slot('auto').locator('.saved-result-warning').count(),0);
  await page.evaluate(async()=>{const {invalidateMasteryOptimizer}=await import('/src/mastery-optimizer-controls.js');window.taskSource.levels.magic--;invalidateMasteryOptimizer();});

@@ -14,7 +14,7 @@ try{
 
  await page.locator('#mastery-optimizer>summary').click();
  await page.locator('#mastery-total').fill('40');
- await page.selectOption('#optimizer-effort','fast');
+ await page.selectOption('#optimizer-effort','standard');
  const sourceBefore=await page.evaluate(()=>({combat:localStorage.getItem('dvi-simulator-v1'),gather:localStorage.getItem('dvi-gathering-v1'),craft:localStorage.getItem('dvi-crafting-orders-v1')}));
  for(const objective of ['combatXp','gatherXp','craftXp']){
   await page.selectOption('#optimizer-goal',objective);

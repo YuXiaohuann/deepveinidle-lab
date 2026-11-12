@@ -23,9 +23,9 @@ try{
   await page.evaluate(async ranks=>{const {applyMasteryImport,renderMastery}=await import('/src/mastery-controls.js');applyMasteryImport({version:2,capturedAt:Date.now(),player:{masteries:ranks,collections:{},forgeLog:{29:1073741823}}});renderMastery(document.documentElement.lang==='zh-CN'?'zh':'en');},ranks);
   await page.locator('#mastery-total').fill(total);
  };
- assert.equal(await page.locator('#optimizer-effort').inputValue(),'standard');
- assert.deepEqual(await page.locator('#optimizer-effort option').evaluateAll(es=>es.map(e=>e.value)),['fast','standard','deep','comprehensive']);
- assert.deepEqual(await page.locator('#optimizer-effort option').allTextContents(),['快速：最多 60 个配置','标准：最多 120 个配置','深入：最多 360 个配置','全面：最多 720 个配置']);
+ assert.equal(await page.locator('#optimizer-effort').inputValue(),'deep');
+ assert.deepEqual(await page.locator('#optimizer-effort option').evaluateAll(es=>es.map(e=>e.value)),['standard','deep','comprehensive']);
+ assert.deepEqual(await page.locator('#optimizer-effort option').allTextContents(),['快速：最多 120 个配置','标准：最多 360 个配置','全面：最多 720 个配置']);
  assert.equal(await page.locator('[data-mastery-field="current"]').count(),0);
  const maxhitCard=page.locator('[data-mastery-row="maxhit"]');
  assert.equal(await maxhitCard.locator('[data-mastery-current]').textContent(),'1');
@@ -211,11 +211,11 @@ try{
  await page.evaluate(()=>window.optimizerMode='wait');await page.click('#optimizer-start');await page.click('#optimizer-edit-combat');await page.waitForURL('**/combat');assert.ok(await page.evaluate(()=>window.optimizerWorkers.at(-1).wasTerminated));await page.click('[data-preset="melee"]');await page.click('#mastery-nav');assert.match(await page.locator('#optimizer-scenario').innerText(),/Melee/);assert.ok(await page.locator('.optimizer-plan').count()>0);
  results.cases.push('Worker errors restore controls; leaving cancels; edited Combat build is read on return without overwriting mastery settings');
  await page.click('#combat-nav');await page.click('[data-preset="ranged"]');await page.click('#mastery-nav');await page.locator('#mastery-total').fill('0');await selectSearchOption(page,'optimizer-monster',game.monsters.find(m=>m.id===7));await page.evaluate(()=>window.optimizerMode=undefined);await page.click('#optimizer-start');await page.waitForFunction(()=>!!window.optimizerWorkers.at(-1)?.result&&document.querySelector('#optimizer-start').textContent!=='取消计算'&&document.querySelector('#optimizer-start').textContent!=='Cancel calculation'&&document.querySelector('[data-optimizer-apply="0"]')?.disabled);assert.match(await page.locator('#optimizer-output').innerText(),/exceeded its budget/);
- for(const effort of ['fast','deep','comprehensive']){
+ for(const effort of ['standard','deep','comprehensive']){
   await page.selectOption('#optimizer-effort',effort);await page.click('#optimizer-start');await page.waitForFunction(()=>!!window.optimizerWorkers.at(-1)?.result&&document.querySelector('#optimizer-start').textContent!=='取消计算'&&document.querySelector('#optimizer-start').textContent!=='Cancel calculation'&&document.querySelector('[data-optimizer-apply="0"]')?.disabled);
   assert.equal(await page.evaluate(()=>window.optimizerWorkers.at(-1).request.effort),effort);assert.equal(await page.evaluate(()=>window.optimizerWorkers.at(-1).result.effort),effort);
  }
- results.cases.push('four effort options default to standard and all four travel through the real Worker without changing application rules');
+ results.cases.push('three effort options default to the 360-candidate standard and all three travel through the real Worker without changing application rules');
  await page.reload();assert.deepEqual(await ranksInFields('current'),{...masteryDefaults().current,maxhit:1,gather:1});assert.ok(Object.values(await ranksInFields('target')).every(rank=>rank===0));assert.equal(await page.locator('[data-mastery-row="maxhit"] [data-mastery-value="cost"]').textContent(),'-40');assert.equal(await page.locator('.optimizer-plan').count(),0);assert.equal(await page.locator('#mastery-total').inputValue(),'0');
  assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.open),false);await page.locator('#mastery-optimizer>summary').click();
  assert.equal(await page.locator('#optimizer-allocation-mode').inputValue(),'reset');
