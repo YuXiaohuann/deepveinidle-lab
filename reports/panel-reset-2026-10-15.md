@@ -1,5 +1,7 @@
 # 制造与强化重置范围验证
 
+历史证据说明：以下本机日志、结果及截图路径未纳入版本管理，当前工作区已不再保留；本报告保留当时记录，不表示本次重跑或现存证据。
+
 日期：2026-10-15。针对本地 1.3.2 后待发布变更，不代表生产验收。
 
 ## 行为与实现
@@ -11,8 +13,8 @@
 
 ## 本轮实际验证
 
-- `node --test tests/crafting*.test.mjs tests/enhancement*.test.mjs`：43 项通过，无失败、取消或跳过。日志：[tests.log](../.test-artifacts/panel-reset/tests.log)。
-- 新增可复用专项：`node scripts/check-panel-reset-browser.mjs`，默认目标 `http://127.0.0.1:4173`，可传入目标和证据目录。结果：[results.json](../.test-artifacts/panel-reset/results.json)，日志：[browser.log](../.test-artifacts/panel-reset/browser.log)。
+- `node --test tests/crafting*.test.mjs tests/enhancement*.test.mjs`：43 项通过，无失败、取消或跳过。日志：tests.log（`.test-artifacts/panel-reset/tests.log`）。
+- 新增可复用专项：`node scripts/check-panel-reset-browser.mjs`，默认目标 `http://127.0.0.1:4173`，可传入目标和证据目录。结果：results.json（`.test-artifacts/panel-reset/results.json`），日志：browser.log（`.test-artifacts/panel-reset/browser.log`）。
 - 四组浏览器场景：中文／英文 × 1280／390px；各组覆盖制造与强化两页、左右范围隔离、制造跨技能／品质计划及隐藏库存、两处清空入口一致、分类／搜索／品质／只看已填写保留、迁移提示保留和清除、强化角色候选保留与清除、三项覆盖恢复全局价格、全局价格与锁定状态不变、保存和刷新、强化标题与按钮不重叠及页面无横向溢出。无页面脚本异常。
 - 已审阅两页双语桌面／窄屏截图，按钮可见；表格保留既有内部横向滚动。八张截图位于 `.test-artifacts/panel-reset/`。
 

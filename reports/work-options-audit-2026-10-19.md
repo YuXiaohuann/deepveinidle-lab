@@ -1,5 +1,7 @@
 # 采集／制造配置核查与补漏
 
+历史证据说明：以下本机日志、结果及截图路径未纳入版本管理，当前工作区已不再保留；本报告保留当时记录，不表示本次重跑或现存证据。
+
 日期：2026-10-19。本地实施，未发布；依据仓库已核验的游戏 1.0.1194 快照、适配层与设计文件，不声称核验了当日线上新资源。没有修改原始生成引擎、角色脚本或既有独立调研资料。
 
 ## 核查结论
@@ -25,10 +27,10 @@
 
 ## 本次验证
 
-- 52 项：`node --test tests/crafting-options.test.mjs tests/crafting.test.mjs tests/crafting-upgrades.test.mjs tests/crafting-display.test.mjs tests/gathering-world-buffs.test.mjs tests/combat-world-buffs.test.mjs` 全部通过，含全部普通制造配方五品质原始离线对照，以及本轮五技能世界经验／铁人模式原始离线对照。日志：[unit.log](../.test-artifacts/work-options-2026-10-19/unit.log)。
-- 71 项：`node --test tests/gathering.test.mjs tests/character-import.test.mjs tests/work-expectation.test.mjs` 全部通过。日志：[regression.log](../.test-artifacts/work-options-2026-10-19/regression.log)。
-- 制造 4 组：`node tests/crafting-options-browser.mjs`，中文／英文 × 1440px／390px，通过旧存档、小数导入与手填、铁人开关、真实速率及计划 Worker、刷新保存、技能／语言切换、旧／异常／空窗口提示、清空配置保留计划及材料；无脚本异常。[结果](../.test-artifacts/crafting-options/results.json)、[日志](../.test-artifacts/work-options-2026-10-19/crafting-browser.log)。四张制造截图已审阅：[中文桌面](../.test-artifacts/crafting-options/zh-1440.png)、[中文窄屏](../.test-artifacts/crafting-options/zh-390.png)、[英文桌面](../.test-artifacts/crafting-options/en-1440.png)、[英文窄屏](../.test-artifacts/crafting-options/en-390.png)。
-- 采集 4 组：`node tests/gathering-world-buffs-browser.mjs`，相同语言和宽度组合，共用导入、世界两项小数、保存重置、Worker 替换及丢弃兼容回归通过，无脚本异常。[结果](../.test-artifacts/gathering-world-buffs/results.json)、[日志](../.test-artifacts/work-options-2026-10-19/gathering-browser.log)。
+- 52 项：`node --test tests/crafting-options.test.mjs tests/crafting.test.mjs tests/crafting-upgrades.test.mjs tests/crafting-display.test.mjs tests/gathering-world-buffs.test.mjs tests/combat-world-buffs.test.mjs` 全部通过，含全部普通制造配方五品质原始离线对照，以及本轮五技能世界经验／铁人模式原始离线对照。日志：unit.log（`.test-artifacts/work-options-2026-10-19/unit.log`）。
+- 71 项：`node --test tests/gathering.test.mjs tests/character-import.test.mjs tests/work-expectation.test.mjs` 全部通过。日志：regression.log（`.test-artifacts/work-options-2026-10-19/regression.log`）。
+- 制造 4 组：`node tests/crafting-options-browser.mjs`，中文／英文 × 1440px／390px，通过旧存档、小数导入与手填、铁人开关、真实速率及计划 Worker、刷新保存、技能／语言切换、旧／异常／空窗口提示、清空配置保留计划及材料；无脚本异常。结果（`.test-artifacts/crafting-options/results.json`）、日志（`.test-artifacts/work-options-2026-10-19/crafting-browser.log`）。四张制造截图已审阅：中文桌面（`.test-artifacts/crafting-options/zh-1440.png`）、中文窄屏（`.test-artifacts/crafting-options/zh-390.png`）、英文桌面（`.test-artifacts/crafting-options/en-1440.png`）、英文窄屏（`.test-artifacts/crafting-options/en-390.png`）。
+- 采集 4 组：`node tests/gathering-world-buffs-browser.mjs`，相同语言和宽度组合，共用导入、世界两项小数、保存重置、Worker 替换及丢弃兼容回归通过，无脚本异常。结果（`.test-artifacts/gathering-world-buffs/results.json`）、日志（`.test-artifacts/work-options-2026-10-19/gathering-browser.log`）。
 - `git diff --check` 通过。
 
 浏览器测试首次受到沙箱本机监听限制，获准以临时本机服务和无头 Chrome 执行。制造验证脚本首次错误地将默认计划消息类型期望为显式 `plan`，修正为 `mode ?? 'plan'` 后四组通过；此为验证脚本修正，未据此更改产品行为。
