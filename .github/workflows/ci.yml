@@ -53,10 +53,10 @@ jobs:
         if: steps.deploy.outputs.deployed == 'true'
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
-        run: pnpm release:verify --evidence .test-artifacts/ci/check --package .test-artifacts/ci/package --url "$DEPLOYMENT_URL" --out .test-artifacts/ci/verify-exact
+        run: pnpm release:verify --evidence .test-artifacts/ci/check --package .test-artifacts/ci/package --url "$DEPLOYMENT_URL" --out .test-artifacts/ci/verify-exact --analytics exclude
       - name: Verify channel
         if: steps.deploy.outputs.deployed == 'true'
-        run: pnpm release:verify --evidence .test-artifacts/ci/check --package .test-artifacts/ci/package --url https://preview.dvi-lab.pages.dev --out .test-artifacts/ci/verify-channel
+        run: pnpm release:verify --evidence .test-artifacts/ci/check --package .test-artifacts/ci/package --url https://preview.dvi-lab.pages.dev --out .test-artifacts/ci/verify-channel --analytics exclude
       - name: Summarize result
         if: always()
         env:

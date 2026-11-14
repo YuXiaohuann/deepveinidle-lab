@@ -5,11 +5,13 @@ import {chromium} from 'playwright-core';
 import {pages,json,browserPath} from './release-common.mjs';
 import {game,preset} from '../src/model.js';
 import {priceDefaults} from '../src/item-prices.js';
+import {analyticsMode,configureAnalytics} from './release-analytics.mjs';
 
-export async function verifyBrowser(base,version,directory){
+export async function verifyBrowser(base,version,directory,{analytics='live'}={}){
+ analyticsMode(analytics);
  const executablePath=await browserPath(),browser=await chromium.launch({headless:true,executablePath});
  const results={base,version,browser:browser.version(),executablePath,cases:[],errors:[],combat:[]};
- const context=await browser.newContext();const page=await context.newPage();
+ const context=await browser.newContext();results.analytics=await configureAnalytics(context,analytics);const page=await context.newPage();
  page.setDefaultTimeout(20000);
  page.on('pageerror',e=>results.errors.push({type:'pageerror',message:e.message}));
  page.on('console',m=>{if(['error','warning'].includes(m.type()))results.errors.push({type:m.type(),message:m.text()});});
@@ -103,7 +105,7 @@ export async function verifyBrowser(base,version,directory){
    results.combat.push({language,width,targets:game.monsters.length,status:'passed'});
   }
   assert.equal(results.cases.length,pages.length*4);assert.deepEqual(results.errors,[],'Browser warnings/errors');
-  return {cases:results.cases.length,combatTargets:game.monsters.length,browser:results.browser,executablePath};
+  return {cases:results.cases.length,combatTargets:game.monsters.length,browser:results.browser,executablePath,analytics:results.analytics};
  }catch(error){results.failure=error.message;results.failureLayout=await page.evaluate(()=>({active:document.activeElement?.outerHTML.slice(0,300),columns:[...document.querySelectorAll('[data-scroll-column]')].filter(e=>!e.closest('[hidden]')).map(e=>({column:e.dataset.scrollColumn,top:e.scrollTop,height:e.scrollHeight,client:e.clientHeight}))})).catch(()=>null);await page.screenshot({path:path.join(directory,'browser-failure.png'),fullPage:true}).catch(e=>results.errors.push({type:'screenshot',message:e.message}));throw error;}
  finally{await json(path.join(directory,'browser.json'),results);await browser.close();}
 }

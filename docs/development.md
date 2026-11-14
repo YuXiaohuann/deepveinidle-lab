@@ -133,3 +133,5 @@ node --test tests/mastery.test.mjs tests/mastery-controls.test.mjs tests/mastery
 ## CI 发布开发
 
 工作流位于 `.github/workflows/`，共用安装及检查位于 `.github/actions/release-check/`；发布约定与远端凭证配置见[发布流程](release.md#github-actions-双通道发布)。`node --test tests/ci-release.test.mjs tests/release-tools.test.mjs` 验证正式标签、版本防倒退及候选证据失效；完整候选使用 `pnpm release:check`。本地不能证明 GitHub 事件、Environment、Linux runner 或 Cloudflare 上传成功，须分别实跑并保留证据。
+
+统计隔离专项：`node tests/release-analytics-browser.mjs .test-artifacts/analytics-isolation/result.json`，使用隔离 Chromium 和受控脚本响应，不访问真实统计服务；覆盖排除／真实模式、精确脚本匹配、版本与查询参数、其他脚本执行及错误保留，结果独立落盘。CI 在完整检查后执行该专项；线上验收边界见[发布流程](release.md#github-actions-双通道发布)。

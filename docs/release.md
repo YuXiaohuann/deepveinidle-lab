@@ -6,6 +6,8 @@
 
 日常 `pull_request` 执行完整 `release:check`，不接收部署凭证；`main` push 完成完整检查与打包后通过 Wrangler `--branch preview` 发布至 `https://preview.dvi-lab.pages.dev`。正式 GitHub Release 的 `published` 事件发布生产，排除预发布版本，标签须为 `v${package.json.version}` 且为正式三段版本，提交须属于 `main` 历史。草稿、标签 push 和普通 main push 不发布生产。两个工作流均只部署检出的确定提交，不自动修改版本或回写源码。
 
+Preview 与生产 CI 的两次线上浏览器验收均显式传入 `--analytics exclude`，仅在隔离测试浏览器中用空脚本替代 `https://static.cloudflareinsights.com/beacon.min.js`（含版本路径及查询参数），不执行或验证其上报。线上 HTML、统计设置与应用代码不变；HTTP 资源／HTML 一致性检查照常执行，其他浏览器警告、异常及资源错误仍严格失败。JSON、报告和 Actions 摘要标明统计模式及实际替代次数；CI 成功不证明访问统计正常。手工 `release:verify` 默认 `--analytics live`，可显式选择模式，无效值拒绝执行。CI 另用受控浏览器专项验证：排除模式不执行统计脚本、正常模式仍执行、其他脚本及其错误不被吞掉。
+
 每个部署在同一 job、同一 runner 内依次执行检查、打包、上传、精确部署地址验收及通道固定域名验收；线上全部通过才表示发布成功，Preview 不代替生产证据。环境固定为 Ubuntu 24.04、Node 24.13.0、pnpm 10.11.0、Wrangler 4.162.0，Chromium 使用项目固定的 playwright-core 安装。操作系统镜像仍可能更新，实际环境及浏览器摘要以本轮证据为准。候选输入包含 `.github/` 及 CI 配置。
 
 Preview 和生产使用独立并发组，运行中的部署不自动取消。Preview 上传前核对远端 main，过时任务跳过部署并明确输出；生产上传前读取 Pages 当前生产提交，拒绝版本倒退及相同版本不同提交，允许相同版本相同提交重跑；当前生产来源无法核验时明确失败，不推定可覆盖。并发等待可能合并待运行事件，不保证每个中间提交都上线。
@@ -64,7 +66,7 @@ pnpm release:verify --evidence .test-artifacts/release/candidate-check --package
 
 本机预览将 `/`、`/combat`、`/gather`、`/craft`、`/enhance`、`/mastery`、`/forecast`、`/formulas`、`/debug` 及各页面尾斜线形式映射到同一 `index.html`。未知路径通过 302 重定向到 `/combat`（托管规则放在已知路由、首页与静态资源保留规则之后；Cloudflare 重定向优先于静态文件）；HTTP 验收检查单层、多层及带查询参数的未知路径，浏览器验收检查最终地址及历史导航兜底。Cloudflare Pages 的 `_redirects` 对已知路由使用 200 代理到 `/`；不能代理到 `/index.html`，否则规范化跳转可能丢失页面路径。
 
-HTML 一致性检查仅允许已知 analytics loader、Cloudflare Web／Pages Analytics 边界注释及标签间空白。HTTP 与浏览器错误不得忽略；线上失败不改写发布前已通过的结果，正式版准备也不等于部署成功。
+HTML 一致性检查仅允许已知 analytics loader、Cloudflare Web／Pages Analytics 边界注释及标签间空白。除显式选择的第三方统计脚本替代外，HTTP 与浏览器错误不得忽略；线上失败不改写发布前已通过的结果，正式版准备也不等于部署成功。
 
 ## 发布工具与证据设计
 

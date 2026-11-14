@@ -14,9 +14,9 @@
 
 ## 本地待发布
 
-当前无本地待发布应用变更。新增 GitHub Actions 双通道配置：PR 完整检查、main 自动发布 Preview、正式 Release 自动发布生产；不改变应用版本。远端 `preview`、`production` Environment 已创建，分别限制 main 分支及 `v*` 标签，Account ID 已配置，两个环境的 `CLOUDFLARE_API_TOKEN` 已核对存在（未读取密钥值）。首轮 GitHub runner 完整检查及 Preview 上传已通过，Token 的上传权限已实测；精确地址的线上浏览器验收因统计上报 CORS 失败。后续复验和部署结果以 [Actions 本轮执行证据](https://github.com/yukixz/deepveinidle-lab/actions/workflows/ci.yml)为准，不由密钥存在推定通过。
+当前无本地待发布应用变更。新增 GitHub Actions 双通道配置：PR 完整检查、main 自动发布 Preview、正式 Release 自动发布生产；不改变应用版本。远端 `preview`、`production` Environment 已创建，分别限制 main 分支及 `v*` 标签，Account ID 已配置，两个环境的 `CLOUDFLARE_API_TOKEN` 已核对存在（未读取密钥值）。首轮 GitHub runner 完整检查及 Preview 上传已通过，Token 的上传权限已实测；精确地址的线上浏览器验收因统计上报 CORS 失败。用户已授权 Preview 与生产 CI 均显式排除第三方统计脚本，统计故障不再纳入 CI 浏览器验收；应用错误保持严格阻断，线上统计设置和应用代码不变。该边界的后续复验和部署结果以 [Actions 本轮执行证据](https://github.com/yukixz/deepveinidle-lab/actions/workflows/ci.yml)为准，不由密钥存在推定通过。
 
-本轮本地 actionlint 1.7.7、15 项发布工具专项、完整 630 项测试、独立原始计算对照、隔离提取、32 组浏览器基础验收及 75 文件白名单打包通过，证据在 `.test-artifacts/ci-final-20261114/`。该完整候选检查在本段状态文档收尾前执行，不能复用为后续 CI 发布证据；文档收尾另检引用及语法。生产 Release 工作流本次不触发，现有生产基线保持上节记录。
+CI 首轮接入时，本地 actionlint 1.7.7、15 项发布工具专项、完整 630 项测试、独立原始计算对照、隔离提取、32 组浏览器基础验收及 75 文件白名单打包通过，证据在 `.test-artifacts/ci-final-20261114/`。该完整候选检查在本段状态文档收尾前执行，不能复用为后续 CI 发布证据；文档收尾另检引用及语法。生产 Release 工作流本次不触发，现有生产基线保持上节记录。
 
 配置与操作规则见[发布流程](release.md#github-actions-双通道发布)。制造配方表可排序的“移动占比”已随 1.10.4 发布，规则见[制造页面](pages/crafting.md)；精通计算面板现为快速 120、标准 360（默认）、全面 720，桌面选项按计算模式、搜索次数、优化目标、目标及品质排列为一行，规则见[精通页面](pages/mastery.md)。现行命名、导航及图标规则见[共用页面](shared.md#项目命名)，公式仍可通过 `/formulas` 直接访问，阅读与导航规则见[公式页面](pages/formulas.md)。
 

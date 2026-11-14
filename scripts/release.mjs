@@ -3,13 +3,14 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import {inspect} from 'node:util';
 import {fileURLToPath} from 'node:url';
+import {analyticsMode} from './release-analytics.mjs';
 import {inputs,json,readJson,filesIn,packageFiles,freshDirectory,runLogged,tapSummary,assertReceipt,sameFiles,failureExcerpt} from './release-common.mjs';
 
 function options(argv){
- const result={};for(let i=0;i<argv.length;i+=2){assert.ok(['--out','--evidence','--package','--url'].includes(argv[i]),`Unknown option: ${argv[i]}`);assert.ok(argv[i+1]&&!argv[i+1].startsWith('--'),`Missing value: ${argv[i]}`);assert.ok(!(argv[i].slice(2) in result),`Repeated option: ${argv[i]}`);result[argv[i].slice(2)]=argv[i+1];}return result;
+ const result={};for(let i=0;i<argv.length;i+=2){assert.ok(['--out','--evidence','--package','--url','--analytics'].includes(argv[i]),`Unknown option: ${argv[i]}`);assert.ok(argv[i+1]&&!argv[i+1].startsWith('--'),`Missing value: ${argv[i]}`);assert.ok(!(argv[i].slice(2) in result),`Repeated option: ${argv[i]}`);result[argv[i].slice(2)]=argv[i+1];}return result;
 }
 async function report(directory,data,title){
- const text=`# ${title}\n\n版本：${data.version}。状态：${data.status}。输入摘要：\`${data.inputs?.id??data.inputId}\`。\n\n`+(data.steps??[]).map(s=>`- ${s.name}: ${s.status}，${(s.milliseconds/1000).toFixed(2)} 秒；日志 ${path.basename(s.log)}${s.summary?'；'+JSON.stringify(s.summary):''}`).join('\n')+(data.url?`\n\n目标：${data.url}。HTTP：${JSON.stringify(data.http??{})}。浏览器：${JSON.stringify(data.browser??{})}。`:'')+'\n\n自动检查不替代变更专项和必要的人工截图审阅；未执行的检查不得标为通过。本工具没有执行部署。\n';
+ const text=`# ${title}\n\n版本：${data.version}。状态：${data.status}。输入摘要：\`${data.inputs?.id??data.inputId}\`。\n\n`+(data.steps??[]).map(s=>`- ${s.name}: ${s.status}，${(s.milliseconds/1000).toFixed(2)} 秒；日志 ${path.basename(s.log)}${s.summary?'；'+JSON.stringify(s.summary):''}`).join('\n')+(data.url?`\n\n目标：${data.url}。HTTP：${JSON.stringify(data.http??{})}。浏览器：${JSON.stringify(data.browser??{})}。`:'')+(data.analytics?`\n\n统计脚本模式：${data.analytics}。${data.analytics==='exclude'?'仅测试浏览器排除 Cloudflare 统计脚本；不验证统计可用性。':'保留真实统计脚本。'}`:'')+'\n\n自动检查不替代变更专项和必要的人工截图审阅；未执行的检查不得标为通过。本工具没有执行部署。\n';
  await fs.writeFile(path.join(directory,'report.md'),text);
 }
 export async function check(root,out){
@@ -44,16 +45,17 @@ export async function buildPackage(root,evidence,out){
   console.log(`PASS release:package ${actual.length} files\nPackage: ${directory}\nManifest: ${path.join(evidence,'package.json')}`);return result;
  }catch(error){await fs.rm(directory,{recursive:true,force:true});throw error;}
 }
-export async function verify(root,evidence,packageDirectory,url,out){
+export async function verify(root,evidence,packageDirectory,url,out,{analytics='live'}={}){
+ analyticsMode(analytics);
  assert.ok(url,'--url is required; production is never selected implicitly');const receipt=await assertReceipt(root,evidence),manifest=await readJson(path.join(evidence,'package.json'));
  assert.equal(manifest.inputId,receipt.inputs.id,'Package was built for different inputs');assert.equal(path.resolve(packageDirectory),manifest.package,'Package directory differs from receipt');
  assert.deepEqual((await filesIn(packageDirectory)).sort(),manifest.files.map(f=>f.path).sort(),'Unexpected package files');sameFiles(await packageFiles(packageDirectory),manifest.files);
- const directory=await freshDirectory(root,out),result={schema:1,status:'running',version:receipt.version,inputId:receipt.inputs.id,url,startedAt:new Date().toISOString()};await json(path.join(directory,'verify.json'),result);
+ const directory=await freshDirectory(root,out),result={schema:1,status:'running',version:receipt.version,inputId:receipt.inputs.id,url,analytics,startedAt:new Date().toISOString()};await json(path.join(directory,'verify.json'),result);
  try{
   const log=path.join(directory,'verify.log');await fs.writeFile(log,`Target: ${url}\nHTTP verification started\n`);
   const {verifyHttp}=await import('./release-http.mjs'),{verifyBrowser}=await import('./release-browser.mjs');
   result.http=await verifyHttp(url,packageDirectory,manifest.files);await fs.appendFile(log,JSON.stringify(result.http)+'\nBrowser verification started\n');await json(path.join(directory,'verify.json'),result);
-  result.browser=await verifyBrowser(url,receipt.version,directory);await fs.appendFile(log,JSON.stringify(result.browser)+'\n');
+  result.browser=await verifyBrowser(url,receipt.version,directory,{analytics});await fs.appendFile(log,JSON.stringify(result.browser)+'\n');
   assert.equal((await inputs(root)).id,receipt.inputs.id,'Inputs changed during verification');sameFiles(await packageFiles(packageDirectory),manifest.files);
   result.status='passed';result.finishedAt=new Date().toISOString();await json(path.join(directory,'verify.json'),result);await report(directory,result,'部署目标验收');
   console.log(`PASS release:verify ${result.http.routes} routes, ${result.http.assets} assets, ${result.browser.cases} browser cases\nEvidence: ${directory}`);return result;
@@ -61,12 +63,12 @@ export async function verify(root,evidence,packageDirectory,url,out){
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const root=process.cwd();try{
-  const phase=process.argv[2];if(phase==='--help'||!phase){console.log('release:check --out <new evidence directory>\nrelease:package --evidence <check directory> --out <new package directory>\nrelease:verify --evidence <check directory> --package <package directory> --url <origin URL> --out <new verification directory>');}
+  const phase=process.argv[2];if(phase==='--help'||!phase){console.log('release:check --out <new evidence directory>\nrelease:package --evidence <check directory> --out <new package directory>\nrelease:verify --evidence <check directory> --package <package directory> --url <origin URL> --out <new verification directory> [--analytics live|exclude]');}
   else{
    const opts=options(process.argv.slice(3));assert.ok(opts.out,'--out is required (must be a new directory)');
    if(phase==='check'){assert.deepEqual(Object.keys(opts),['out']);await check(root,opts.out);}
-   else if(phase==='package'){assert.ok(opts.evidence,'--evidence required');assert.ok(!opts.url&&!opts.package,'Unexpected package option');await buildPackage(root,path.resolve(opts.evidence),opts.out);}
-   else if(phase==='verify'){assert.ok(opts.evidence&&opts.package,'--evidence and --package required');await verify(root,path.resolve(opts.evidence),path.resolve(opts.package),opts.url,opts.out);}
+   else if(phase==='package'){assert.ok(opts.evidence,'--evidence required');assert.ok(!opts.url&&!opts.package&&!opts.analytics,'Unexpected package option');await buildPackage(root,path.resolve(opts.evidence),opts.out);}
+   else if(phase==='verify'){assert.ok(opts.evidence&&opts.package,'--evidence and --package required');await verify(root,path.resolve(opts.evidence),path.resolve(opts.package),opts.url,opts.out,{analytics:opts.analytics});}
    else throw Error('Unknown release phase: '+phase);
   }
  }catch(error){console.error('FAIL '+error.message);process.exitCode=1;}
