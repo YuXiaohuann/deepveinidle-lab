@@ -1,0 +1,20 @@
+name: Release checks
+description: Install pinned tools and run the complete candidate checks
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      with:
+        node-version: 24.13.0
+    - name: Install tools and browser
+      shell: bash
+      run: |
+        npm install --global pnpm@10.11.0
+        pnpm install --frozen-lockfile
+        pnpm exec playwright-core install --with-deps chromium
+        echo "RELEASE_BROWSER=$(node --input-type=module -e 'import {chromium} from "playwright-core"; console.log(chromium.executablePath())')" >> "$GITHUB_ENV"
+        npm install --prefix "$RUNNER_TEMP/dvi-tools" --no-package-lock --no-audit --no-fund wrangler@4.162.0
+        echo "$RUNNER_TEMP/dvi-tools/node_modules/.bin" >> "$GITHUB_PATH"
+    - name: Check candidate
+      shell: bash
+      run: pnpm release:check --out .test-artifacts/ci/check

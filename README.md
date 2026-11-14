@@ -16,6 +16,8 @@ node scripts/serve.mjs
 
 打开 [本机页面](http://127.0.0.1:4173)。安装依赖、测试、原始代码提取与本机服务边界见 [本地开发](docs/development.md)；生产版本、部署与验证证据见[当前状态](docs/status.md)。
 
+日常 `main` 提交通过 GitHub Actions 发布至 [Preview](https://preview.dvi-lab.pages.dev/)；发布正式 GitHub Release 后自动检查并部署生产。凭证配置、验证及回退见[部署与发布](docs/release.md)。远端启用与实跑状态见[当前状态](docs/status.md)。
+
 ## 文档入口
 
 | 用途 | 文件 |

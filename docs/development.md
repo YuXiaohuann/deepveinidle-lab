@@ -129,3 +129,7 @@ node --test tests/mastery.test.mjs tests/mastery-controls.test.mjs tests/mastery
 上游新装备及价格选项专项提供目标网址时直接检查该网址，不启动本机服务；本机／预览通过不能代替本轮正式生产目标验收。
 
 1.0.1214 专项另覆盖全部升级五品质与 +0／+17／+100 编码、神龛与世界稀有叠加及代币概率封顶、空首领奖励队列／精通备用页及新计算结果的引擎版本校验；`tests/character-import.test.mjs` 和 `tests/character-capture.test.mjs` 覆盖锁定食物与旧捕获提示。独立原始计算对照新增手算代币概率及升级编码检查。
+
+## CI 发布开发
+
+工作流位于 `.github/workflows/`，共用安装及检查位于 `.github/actions/release-check/`；发布约定与远端凭证配置见[发布流程](release.md#github-actions-双通道发布)。`node --test tests/ci-release.test.mjs tests/release-tools.test.mjs` 验证正式标签、版本防倒退及候选证据失效；完整候选使用 `pnpm release:check`。本地不能证明 GitHub 事件、Environment、Linux runner 或 Cloudflare 上传成功，须分别实跑并保留证据。

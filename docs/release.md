@@ -2,6 +2,22 @@
 
 [本地开发](development.md) · [当前状态](status.md)
 
+## GitHub Actions 双通道发布
+
+日常 `pull_request` 执行完整 `release:check`，不接收部署凭证；`main` push 完成完整检查与打包后通过 Wrangler `--branch preview` 发布至 `https://preview.dvi-lab.pages.dev`。正式 GitHub Release 的 `published` 事件发布生产，排除预发布版本，标签须为 `v${package.json.version}` 且为正式三段版本，提交须属于 `main` 历史。草稿、标签 push 和普通 main push 不发布生产。两个工作流均只部署检出的确定提交，不自动修改版本或回写源码。
+
+每个部署在同一 job、同一 runner 内依次执行检查、打包、上传、精确部署地址验收及通道固定域名验收；线上全部通过才表示发布成功，Preview 不代替生产证据。环境固定为 Ubuntu 24.04、Node 24.13.0、pnpm 10.11.0、Wrangler 4.162.0，Chromium 使用项目固定的 playwright-core 安装。操作系统镜像仍可能更新，实际环境及浏览器摘要以本轮证据为准。候选输入包含 `.github/` 及 CI 配置。
+
+Preview 和生产使用独立并发组，运行中的部署不自动取消。Preview 上传前核对远端 main，过时任务跳过部署并明确输出；生产上传前读取 Pages 当前生产提交，拒绝版本倒退及相同版本不同提交，允许相同版本相同提交重跑；当前生产来源无法核验时明确失败，不推定可覆盖。并发等待可能合并待运行事件，不保证每个中间提交都上线。
+
+仓库管理员须创建 `preview`、`production` Environments，各配置 Secret `CLOUDFLARE_API_TOKEN` 和 Variable `CLOUDFLARE_ACCOUNT_ID`。在 Cloudflare API Tokens 创建 Custom Token，权限为 `Account → Cloudflare Pages → Edit`，Account Resources 选择 `Include → Specific account → Dazzy Ding`，Client IP 过滤留空；如设置到期日须到期前轮换 GitHub Secret。Token 限定目标 Cloudflare 账户，仅上传步骤接收；GitHub Environment 不提供 Cloudflare 通道级权限隔离。工作流 GitHub 权限为 `contents: read`，不自动改写 Release 或发布附件。Environment 分别限制 main 分支和 `v*` 标签；私有仓库的 Environment 功能受 GitHub 套餐限制，若账户不支持须先解决配置，不静默退回仓库级密钥。
+
+每轮日志、JSON、截图、包清单和报告通过 Actions artifact 保存 30 天，使用 `include-hidden-files` 收录 `.test-artifacts`；产物不含凭证或 node_modules。摘要记录候选、部署结果及证据入口。检查／打包失败不上传；上传后验收失败时站点可能已经更新，失败不等于自动回退。首期由管理员在 Cloudflare 回退上一成功部署，再对回退目标重新验收；常规 Release 工作流禁止作为降级入口。重跑重新检查，不复用过期证据。
+
+页面改动相关专项及必要人工截图审阅仍须在发布决策前完成并记录；基础自动检查不能代替。GitHub Release 发布代表启动生产发布，Actions 成功才表示生产验收通过。CI 不自动提交状态文档，本轮证据在 Actions 中保留，入库报告另行整理。
+
+本地命令仍可用于开发和故障处理；常规发布入口为上述工作流，手工部署须具有明确发布授权。
+
 ## 使用前准备
 
 先读当前状态及本次变更涉及的页面设计，完成版本号与发布范围调整，再对最终候选执行完整检查。安装固定开发依赖：`pnpm install --frozen-lockfile`；网页运行不需要这些依赖。

@@ -1,0 +1,73 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  pull-request:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/release-check
+      - name: Save evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: evidence-${{ github.workflow }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .test-artifacts/ci/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+  preview:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment:
+      name: preview
+      url: https://preview.dvi-lab.pages.dev
+    concurrency:
+      group: deploy-preview
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/release-check
+      - name: Package candidate
+        run: pnpm release:package --evidence .test-artifacts/ci/check --out .test-artifacts/ci/package
+      - name: Deploy and guard preview
+        id: deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ci-deploy.mjs preview
+      - name: Verify exact deployment
+        if: steps.deploy.outputs.deployed == 'true'
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        run: pnpm release:verify --evidence .test-artifacts/ci/check --package .test-artifacts/ci/package --url "$DEPLOYMENT_URL" --out .test-artifacts/ci/verify-exact
+      - name: Verify channel
+        if: steps.deploy.outputs.deployed == 'true'
+        run: pnpm release:verify --evidence .test-artifacts/ci/check --package .test-artifacts/ci/package --url https://preview.dvi-lab.pages.dev --out .test-artifacts/ci/verify-channel
+      - name: Summarize result
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: node scripts/ci-summary.mjs
+      - name: Save evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: evidence-${{ github.workflow }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .test-artifacts/ci/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30

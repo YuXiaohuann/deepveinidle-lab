@@ -41,7 +41,7 @@ export async function browserPath(){
 }
 export async function inputs(root){
  const names=['index.html','_redirects','package.json','pnpm-lock.yaml','README.md','DESIGN.md','AGENTS.md','.gitignore','.gitattributes'];
- for(const directory of ['src','vendor','tests','scripts','docs','reports'])names.push(...await filesIn(root,directory));
+ for(const directory of ['src','vendor','tests','scripts','docs','reports','.github'])names.push(...await filesIn(root,directory));
  const files=await digestFiles(root,names);
  const environment={node:process.version,platform:process.platform,arch:process.arch,browserOverride:process.env.RELEASE_BROWSER??null,dependencies:{}};
  const pkg=await readJson(path.join(root,'package.json'));
