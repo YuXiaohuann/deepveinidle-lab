@@ -14,7 +14,7 @@
 
 ## 本地待发布
 
-当前无本地待发布应用变更。新增 GitHub Actions 双通道配置：PR 完整检查、main 自动发布 Preview、正式 Release 自动发布生产；不改变应用版本。远端 `preview`、`production` Environment 已创建，分别限制 main 分支及 `v*` 标签，Account ID 已配置，两个环境的 `CLOUDFLARE_API_TOKEN` 已核对存在（未读取密钥值）。Token 实际权限和 GitHub runner／部署结果以 [Actions 本轮执行证据](https://github.com/yukixz/deepveinidle-lab/actions/workflows/ci.yml)为准，不由密钥存在推定通过。
+当前无本地待发布应用变更。新增 GitHub Actions 双通道配置：PR 完整检查、main 自动发布 Preview、正式 Release 自动发布生产；不改变应用版本。远端 `preview`、`production` Environment 已创建，分别限制 main 分支及 `v*` 标签，Account ID 已配置，两个环境的 `CLOUDFLARE_API_TOKEN` 已核对存在（未读取密钥值）。首轮 GitHub runner 完整检查及 Preview 上传已通过，Token 的上传权限已实测；精确地址的线上浏览器验收因统计上报 CORS 失败。后续复验和部署结果以 [Actions 本轮执行证据](https://github.com/yukixz/deepveinidle-lab/actions/workflows/ci.yml)为准，不由密钥存在推定通过。
 
 本轮本地 actionlint 1.7.7、15 项发布工具专项、完整 630 项测试、独立原始计算对照、隔离提取、32 组浏览器基础验收及 75 文件白名单打包通过，证据在 `.test-artifacts/ci-final-20261114/`。该完整候选检查在本段状态文档收尾前执行，不能复用为后续 CI 发布证据；文档收尾另检引用及语法。生产 Release 工作流本次不触发，现有生产基线保持上节记录。
 
@@ -24,7 +24,9 @@
 
 ## Preview 与历史
 
-已记录的 Preview 为 **1.9.0-preview.2**，候选提交 `e3f1359`，精确部署为 [2be971f9.dvi-lab.pages.dev](https://2be971f9.dvi-lab.pages.dev)，入口为 [Preview 精通页](https://preview.dvi-lab.pages.dev/mastery)。该候选的发布前检查通过，线上完整浏览器验收因 Cloudflare 统计请求 CORS 及伴随资源错误未通过；完整证据见[Preview.2 报告](../reports/v1.9.0-preview.2-release-2026-10-28.md)。Preview 不代替生产验收。
+Preview 现由 main push 自动更新，入口为 [Preview](https://preview.dvi-lab.pages.dev/)，当前版本、提交、精确部署地址和验收状态以 [CI 执行记录](https://github.com/yukixz/deepveinidle-lab/actions/workflows/ci.yml) 为准。首轮候选为 1.10.4、提交 `ed120a4`，上传至 [fce326d7.dvi-lab.pages.dev](https://fce326d7.dvi-lab.pages.dev)；HTTP 逐文件一致性通过，浏览器 32 组用例已执行，但统计请求 CORS 导致最终失败，不视为发布验收成功。证据见 [CI 接入报告](../reports/github-actions-setup-2026-11-14.md)。
+
+此前记录的 Preview 为 **1.9.0-preview.2**，候选提交 `e3f1359`，精确部署为 [2be971f9.dvi-lab.pages.dev](https://2be971f9.dvi-lab.pages.dev)，入口为 [Preview 精通页](https://preview.dvi-lab.pages.dev/mastery)。该候选的发布前检查通过，线上完整浏览器验收因 Cloudflare 统计请求 CORS 及伴随资源错误未通过；完整证据见[Preview.2 报告](../reports/v1.9.0-preview.2-release-2026-10-28.md)。Preview 不代替生产验收。
 
 逐版发布、实施和调研证据统一从[报告索引](../reports/README.md)查阅；[验证归档](../reports/validation-history.md)保留更早记录，不作为当前规则或本次验证结果。个人调研已迁出项目，保留于本机私有的 `../deepveinidle-play/archives/` 下三组 `local-research-20261023/`、`local-research-20261027/`、`local-research-20261106/` 归档，不纳入源码或发布包。公开源码准备已将 13 个个人评估报告、真实角色复现输入及页面对照文件移出版本库，并移除公开报告中的对应个人读数。本地 6 个开发分支及发布工作树的历史已完成重写，保留 267 个提交；逐提交核对应用源码、测试及构建文件未变，文档引用和 Git 对象完整性检查通过，未重跑应用测试。完整项目及工作树备份已迁至 `../deepveinidle-play/backups/project-backup-20261106/`，包含个人资料，不可随源码分享。本次迁移的 149 个文件（含完整备份包）均按文件大小和 SHA-256 核验一致，迁出后原归档及备份目录已不存在；归档入口和校验清单位于私有目标目录。用户已手动强制推送；2026-11-06 只读核对远端仅有 `main`、无标签，远端 `main` 与本地脱敏提交 `ce96243` 一致。提交作者姓名／邮箱及主动公开的昵称、交流群、赞赏码未在此次个人评估清理中删除；截图此前仅抽查，未完成全部历史图片的逐张隐私复核。
 
