@@ -48,7 +48,7 @@ export function registerCharacterUpdates(page,adapter){
  const updater=createCharacterUpdater({
   storage:{getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value)},
   page,read:()=>requestCharacter('read'),...callbacks,
-  apply:async(snapshot,flags)=>{await callbacks.apply(snapshot,flags);if(flags.config)drafts.delete(page);},
+  apply:async snapshot=>{await callbacks.apply(snapshot);drafts.delete(page);},
   hasDraft:()=>drafts.has(page)||hasDraft()||Boolean(document.getElementById(`${page}-section`)?.querySelector('input:invalid,select:invalid,[aria-invalid=true]')),
   onSettings:()=>updateCharacterOptions(page),
  });
@@ -59,8 +59,7 @@ export function setCharacterImportPage(page){
 }
 function characterUpdateOptions(page,language){
  const updater=updaters.get(page);if(!updater)return '';
- const flags=updater.options,kinds=['config'];
- const options=kinds.map(kind=>`<label class="check"><input type="checkbox" data-character-update="${kind}" data-character-page="${page}" ${flags[kind]?'checked':''}><span>${language==='zh'?'自动更新角色配置':'Automatically update character configuration'}</span></label>`).join('');
+ const options=`<label class="check"><input type="checkbox" data-character-update="config" data-character-page="${page}" ${updater.options.config?'checked':''}><span>${language==='zh'?'自动更新角色配置':'Automatically update character configuration'}</span></label>`;
  return `<div class="character-update-options">${options}</div><p class="micro import-status" data-character-settings-status="${page}" data-language="${language}" role="status">${settingsText(language,updater.settingsError)}</p>`;
 }
 function updateCharacterOptions(page){

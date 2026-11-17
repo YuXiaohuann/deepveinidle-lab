@@ -1,6 +1,6 @@
 export const characterUpdateStorageKey=page=>`dvi-character-auto-import-${page}-v1`;
 export function validateCharacterUpdates(raw){
- if(raw?.version!==1||typeof raw.config!=='boolean'||(raw.inventory!==undefined&&typeof raw.inventory!=='boolean'))throw Error('invalidAutoImport');
+ if(raw?.version!==1||typeof raw.config!=='boolean')throw Error('invalidAutoImport');
  return {version:1,config:raw.config};
 }
 export function loadCharacterUpdates(storage,page){
@@ -15,20 +15,19 @@ export function createCharacterUpdater({storage,page,read,apply,onError=()=>{},o
  try{options=loadCharacterUpdates(storage,page);}
  catch{options={version:1,config:false};settingsError='load';}
  let active=false,running=false,generation=0,retry=false;
- const automatic=()=>({config:options.config});
- async function run(flags=automatic(),manual=false){
-  if(running||busy()||!active||!flags.config||(!manual&&hasDraft()))return;
+ async function run(manual=false){
+  if(running||busy()||!active||(!manual&&!options.config)||(!manual&&hasDraft()))return;
   running=true;
   const token=generation,previous=revision();
-  onBusy(true,flags);
+  onBusy(true);
   try{
    const response=await read();
    if(!active||token!==generation||revision()!==previous||(!manual&&hasDraft()))return;
    if(!response.snapshot)throw Error('noSnapshot');
-   await apply(response.snapshot,flags);
-  }catch(error){if(active&&token===generation)onError(error,flags);}
+   await apply(response.snapshot);
+  }catch(error){if(active&&token===generation)onError(error);}
   finally{
-   running=false;onBusy(false,flags);
+   running=false;onBusy(false);
    if(retry){retry=false;void run();}
   }
  }
@@ -49,6 +48,6 @@ export function createCharacterUpdater({storage,page,read,apply,onError=()=>{},o
   },
   invalidate(){generation++;},
   trigger(){return run();},
-  read(flags){return run(flags,true);},
+  read(){return run(true);},
  };
 }

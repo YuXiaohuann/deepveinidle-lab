@@ -210,7 +210,7 @@ function applyCharacterImport(configuration){
  state=result.state;save();importStatus={...result,capturedAt:configuration.capturedAt};
  return {...importStatus,saveOK};
 }
-function runCharacterImport(){return combatUpdater.read({config:true});}
+function runCharacterImport(){return combatUpdater.read();}
 const combatUpdater=registerCharacterUpdates('combat',{
  busy:()=>importBusy,revision:()=>JSON.stringify(state),
  onBusy:value=>{importBusy=value;updateImportStatus();},

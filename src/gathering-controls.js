@@ -131,7 +131,7 @@ export function renderGathering(nextLanguage,{isActive=active}={}){
  });
  host.querySelectorAll('[data-gather-skill]').forEach(el=>el.onclick=()=>{state.skill=el.dataset.gatherSkill;state.jobSelection='all';save();renderGathering(language,{isActive:true});});
  document.getElementById('gather-reset').onclick=()=>{state=gatheringDefaults();status=null;save();renderGathering(language,{isActive:active});};
- document.getElementById('gather-import').onclick=()=>gatheringUpdater.read({config:true});
+ document.getElementById('gather-import').onclick=()=>gatheringUpdater.read();
  if(!probeStarted){probeStarted=true;probeCharacter().then(()=>{if(!status&&!busy){status={ready:true};renderStatus();}}).catch(error=>{if(!status&&!busy){status={error:error.message};renderStatus();}});}
  if(active)startSimulation();else renderResults();
  renderHot();

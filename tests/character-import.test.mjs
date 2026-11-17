@@ -381,8 +381,8 @@ test('userscripts match project preview channels and bridge on preview routes',a
 test('shared character importer reads configuration once through the userscript DOM bridge',async()=>{
  const doc=new EventTarget(),page=simulatorWorld(doc);let count=0,configuration,busy=false;
  userscriptWorld(doc,async()=>{count++;const s=fixture();s.player.bank={1:2};s.player.pack=[{itemId:1,qty:3}];return s;});
- const errors=[],updater=createCharacterUpdater({storage:{getItem:()=>null,setItem(){}},page:'craft',read:()=>page.requestCharacter('read'),onBusy:value=>busy=value,onError:error=>errors.push(error.message),apply:(snapshot,flags)=>{assert.equal(flags.config,true);configuration=importCharacter(defaults(),snapshot).state;}});
- updater.configure({config:false});updater.setActive(true);await updater.read({config:true});
+ const errors=[],updater=createCharacterUpdater({storage:{getItem:()=>null,setItem(){}},page:'craft',read:()=>page.requestCharacter('read'),onBusy:value=>busy=value,onError:error=>errors.push(error.message),apply:snapshot=>{configuration=importCharacter(defaults(),snapshot).state;}});
+ updater.configure({config:false});updater.setActive(true);await updater.read();
  assert.deepEqual(errors,[]);assert.equal(configuration.levels.melee,37);assert.equal(busy,false);assert.equal(count,1);
 });
 
