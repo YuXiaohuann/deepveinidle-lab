@@ -2,7 +2,6 @@ import {openMasteryBrowser} from './helpers/mastery-browser.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
-import {game} from '../src/model.js';
 import {selectSearchOption} from './helpers/search-select.mjs';
 import {craftingJobs} from '../src/crafting-model.js';
 

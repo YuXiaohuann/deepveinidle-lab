@@ -91,7 +91,7 @@ function craftScheduler(){
  h.context=vm.createContext({...h.ctx,...crafting,...store,game,registerCharacterUpdates:()=>({read(){}}),localStorage:{getItem:()=>null,removeItem:()=>{}},subscribe:()=>{},getSnapshot:()=>({})});
  vm.runInContext(source.replaceAll('import.meta.url',"'http://localhost/'").replace(/^import .*;\n/gm,'').replaceAll('export function','function'),h.context);
  vm.runInContext("renderResults=()=>{};active=true;",h.context);h.read=expr=>vm.runInContext(expr,h.context);
- h.complete=worker=>{for(const p of worker.data.plans)worker.onmessage({data:{result:{key:p.key,seed:worker.data.seed},mode:p.mode}});worker.onmessage({data:{done:true}});};return h;
+ h.complete=worker=>{for(const p of worker.data.recipes)worker.onmessage({data:{result:{key:p.key,seed:worker.data.seed}}});worker.onmessage({data:{done:true}});};return h;
 }
 test('crafting batches retain a round seed and rate cache while new rounds discard old results',()=>{
  const h=craftScheduler();h.context.startSimulation();const first=h.workers[0];assert.equal(first.data.seed,101);h.complete(first);
@@ -103,7 +103,7 @@ test('crafting category and rarity changes preserve the round seed, time and com
  const h=craftScheduler();h.context.startSimulation();const first=h.workers[0];h.complete(first);
  h.read('selectedTiers.add(2)');h.context.refreshTaskSelection();h.flush();const next=h.workers[1];
  assert.equal(next.data.seed,first.data.seed);assert.equal(next.data.now,first.data.now);
- assert.equal(next.data.plans.length,1);assert.equal(next.data.plans[0].tier,2);h.complete(next);
+ assert.equal(next.data.recipes.length,1);assert.equal(next.data.recipes[0].tier,2);h.complete(next);
  assert.equal(h.read('rateCache.size'),2);
  h.read("group='missing'");h.context.refreshTaskSelection();h.flush();assert.equal(h.workers.length,2);
  h.read("group='';query='no-match'");h.context.refreshTaskSelection();h.flush();
@@ -113,13 +113,13 @@ test('crafting random-source failure is explicit and prevents redraw retry loops
  const h=craftScheduler();h.context.randomSimulationSeed=()=>{throw Error('No randomness');};h.context.startSimulation();assert.equal(h.workers.length,0);assert.equal(h.read('workerError'),'No randomness');h.context.startSimulation();assert.equal(h.workers.length,0);
 });
 
-test('gathering and crafting workers forward their supplied seed to every task and mode',()=>{
+test('gathering and crafting workers forward their supplied seed to every work task',()=>{
  for(const type of ['gathering','crafting']){
   const source=fs.readFileSync(new URL(`../src/${type}-worker.js`,import.meta.url),'utf8'),seen=[],results=[];
-  const ctx=vm.createContext({...gathering,...crafting,self:{postMessage:m=>results.push(m)},performance:{now:()=>0},simulateGatheringJob:(state,job,o)=>{seen.push(o.seed);return {jobId:job.id,seed:o.seed};},simulateCrafting:(s,j,t,c,o)=>{seen.push(o.seed);return {key:crafting.planKey(j.id,t),seed:o.seed};},simulateCraftingWindow:(s,j,t,o)=>{seen.push(o.seed);return {key:crafting.planKey(j.id,t),seed:o.seed};}});
+  const ctx=vm.createContext({...gathering,...crafting,self:{postMessage:m=>results.push(m)},performance:{now:()=>0},simulateGatheringJob:(state,job,o)=>{seen.push(o.seed);return {jobId:job.id,seed:o.seed};},simulateCraftingWindow:(s,j,t,o)=>{seen.push(o.seed);return {key:crafting.recipeKey(j.id,t),seed:o.seed};}});
   vm.runInContext(source.replace(/^import .*;\n/gm,''),ctx);
   const state=gathering.gatheringDefaults();state.levels.mining=100;
-  ctx.self.onmessage({data:{state,seed:0xffffffff,plans:[{jobId:61,tier:0,count:10,key:'61:0'},{jobId:61,tier:1,count:0,key:'61:1',mode:'rate'}]}});
+  ctx.self.onmessage({data:{state,seed:0xffffffff,recipes:[{jobId:61,tier:0,key:'61:0'},{jobId:61,tier:1,key:'61:1'}]}});
   assert.ok(seen.length>=2);assert.ok(seen.every(seed=>seed===0xffffffff));assert.equal(results.at(-1).done,true);
  }
 });

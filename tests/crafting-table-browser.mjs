@@ -58,7 +58,7 @@ try{
  const field=page.locator('[data-craft-price="700"]').first();await field.locator('xpath=ancestor::details').evaluate(e=>e.open=true);await field.focus();
  await page.evaluate(()=>{window.focusedPrice=document.activeElement;window.craftWorker.onmessage({data:{progress:{completed:1,total:5}}});});
  await page.waitForFunction(()=>document.querySelector('.craft-progress').textContent.includes('1/5'));assert.ok(await page.evaluate(()=>document.activeElement===window.focusedPrice));
- await page.evaluate(()=>{const w=window.craftWorker;for(const p of w.run.input.plans)w.onmessage({data:{jobError:{key:p.key,message:'invalidRoute'}}});w.onmessage({data:{done:true}});});await ready();assert.match(await page.locator('.craft-table tbody').innerText(),/无法建立制造路线/);
+ await page.evaluate(()=>{const w=window.craftWorker;for(const p of w.run.input.recipes)w.onmessage({data:{jobError:{key:p.key,message:'invalidRoute'}}});w.onmessage({data:{done:true}});});await ready();assert.match(await page.locator('.craft-table tbody').innerText(),/无法建立制造路线/);
  assert.equal(await page.locator('.craft-table tbody tr').evaluateAll(rows=>rows.every(r=>r.cells.length===7)),true);
  results.cases.push('pending and failed seven-column rows; progress preserves exact focused price node');
  await page.locator('#craft-search').fill('no-such-item');assert.equal(await page.locator('.empty-results').getAttribute('colspan'),'7');

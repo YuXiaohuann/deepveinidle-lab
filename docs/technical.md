@@ -4,7 +4,7 @@
 
 战斗、采集、制造、强化、精通复用 characterImportPanel：统一 details/summary、import-body、安装链接、按钮与状态节点，参数控制节点标识、按钮及说明；状态为空隐藏，长文本换行。导入区域使用相同高亮容器、金色标题、边框、背景与展开间距，折叠遵循 [语言、布局与持久化](shared.md#22-语言布局与持久化)。
 
-角色自动更新统一使用 `src/character-auto-import.js` 管理各页角色配置选项、进入／焦点调度、忙碌合并与响应代际；`src/import-controls.js` 负责共用开关、页面激活、输入保护及只读桥接。各页面只提供角色配置应用适配器，手动导入也复用同一调度；旧制造库存开关兼容读取后忽略，不再调度库存读取。具体规则见[共用角色自动更新](shared.md#导入游戏角色与自动更新)。
+角色自动更新统一使用 `src/character-auto-import.js` 管理各页角色配置选项、进入／焦点调度、忙碌合并与响应代际；`src/import-controls.js` 负责共用开关、页面激活、输入保护及只读桥接。各页面只提供角色配置应用适配器，手动导入也复用同一调度；只调度角色配置读取。具体规则见[共用角色自动更新](shared.md#导入游戏角色与自动更新)。
 
 连接检测共用单次 probe 请求，各页分别保留状态，统一由 importStatusText 生成连接成功、读取中、捕获时间及缺失/旧版本/读取失败等双语提示。较晚 probe 不覆盖读取中或已有结果；读取期间禁用对应按钮，失败保留原配置。战斗额外保留字段警告。
 
@@ -59,7 +59,7 @@
 | `src/model.js` | 输入规范化、玩家状态适配、配置过滤、结果组合与排序 |
 | `src/simulation.js`、`src/simulation-worker.js` | 原始战斗函数状态适配、可配置时长统计及异步计算 |
 | `src/gathering-model.js`、`src/gathering-simulation.js`、`src/gathering-worker.js`、`src/gathering-controls.js` | 独立采集配置与导入、原始工作逐刻适配、最近点选择、异步进度及页面交互 |
-| `src/crafting-model.js`、`src/crafting-store.js`、`src/crafting-simulation.js`、`src/crafting-worker.js`、`src/crafting-controls.js` | 制造角色配置及旧存档迁移、配方速率模拟、材料消耗与产物估值及页面交互 |
+| `src/crafting-model.js`、`src/crafting-store.js`、`src/crafting-simulation.js`、`src/crafting-worker.js`、`src/crafting-controls.js` | 制造角色配置及旧存档迁移、配方速率模拟、材料消耗与产物估值及页面交互（Worker只接收配方／品质列表，不区分订单与速率模式） |
 | `src/work-expectation.js` | 采集／制造共用机会期望、品质、烧焦及奖励容量门槛；支持直接写入目标期望账本，使用最小背包状态调用原始容量校验，不改原始过程 |
 | `src/world-buffs.js` | 战斗、采集与制造共用世界增益窗口校验、捕获时汇总与旧捕获提示 |
 | `src/work-import.js` | 采集与制造共用角色导入校验及字段映射 |

@@ -1,6 +1,6 @@
 import {recordActivityTime} from './activity-timing.js';
 import * as game from './upstream.js';
-import {normalizeCrafting,craftingPlayer,craftingMaterials,planKey,validQuantity,safeAdd} from './crafting-model.js';
+import {normalizeCrafting,craftingPlayer,craftingMaterials,recipeKey,validQuantity,safeAdd} from './crafting-model.js';
 import {MAX_SIMULATION_MINUTES,manualWindows} from './manual-settings.js';
 import {simulationTicks,combatHot,combatHotWindows} from './combat-hot.js';
 import {START_TICK,simulationTick} from './simulation.js';
@@ -38,7 +38,7 @@ export function createCraftingScenario(raw,job,tier,count,{now=Date.now(),maxTic
 }
 export function simulateCrafting(raw,job,tier,count,{onProgress=()=>{},...options}={}){
  const {player:p,context,site,bank,maxTicks,materials,unitMaterials}=createCraftingScenario(raw,job,tier,count,options),initialXp=p.skills[job.skill];
- const r={key:planKey(job.id,tier),jobId:job.id,skill:job.skill,tier,count,completed:0,success:0,burnt:0,xp:0,items:{},sampleItems:{},consumed:{},materials,elapsedTicks:0,movingTicks:0,workingTicks:0,deposits:0,siteId:site.id,homeBank:bank.id,startLevel:game.level(initialXp),endLevel:game.level(initialXp),complete:false,error:null};
+ const r={key:recipeKey(job.id,tier),jobId:job.id,skill:job.skill,tier,count,completed:0,success:0,burnt:0,xp:0,items:{},sampleItems:{},consumed:{},materials,elapsedTicks:0,movingTicks:0,workingTicks:0,deposits:0,siteId:site.id,homeBank:bank.id,startLevel:game.level(initialXp),endLevel:game.level(initialXp),complete:false,error:null};
  r.seed=context.seed;
  for(let tick=1;tick<=maxTicks;tick++){
   recordActivityTime(r,p,START_TICK+tick);

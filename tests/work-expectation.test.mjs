@@ -73,7 +73,7 @@ test('bonus probability is unchanged by luck and pack capacity is checked before
  assert.equal(sumBonus(full),0);assert.ok(full[game.skillPet(job.skill).itemId]>0);
 });
 
-test('expected pricing and aggregation accept fractions without relaxing plan quantities',()=>{
+test('expected pricing and aggregation accept fractions without relaxing material quantities',()=>{
  assert.throws(()=>priceItems({1:.25},{}),/quantityOverflow/);
  close(priceItems({1:.25},{},{expected:true}).value,game.vendorPrice(1)*.25);
  for(const n of [-1,Infinity,NaN,Number.MAX_SAFE_INTEGER+1])assert.throws(()=>priceItems({1:n},{},{expected:true}),/quantityOverflow/);

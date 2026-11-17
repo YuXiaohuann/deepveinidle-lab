@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
-import {craftingDefaults,craftingJobs,craftingTiers,craftingMaterials,normalizeCrafting} from '../src/crafting-model.js';
+import {craftingDefaults,craftingJobs,craftingTiers,craftingMaterials} from '../src/crafting-model.js';
 import {createCraftingScenario,simulateCrafting} from '../src/crafting-simulation.js';
 import {validItemId,itemFamily,priceDefaults,setItemPrice,valuationPrice} from '../src/item-prices.js';
 import {translatedName} from '../src/i18n.js';
@@ -30,7 +30,6 @@ test('1196 fireworks preserve native inputs, output quantity and supported rarit
  }
  for(const tier of [1,2,3,4]){
   const job=fireworks[1];assert.throws(()=>craftingMaterials(job,tier,1),/invalidQuantity/);
-  assert.equal(normalizeCrafting({...state,plans:{[`421:${tier}`]:1}}).plans,undefined);
  }
 });
 test('1196 rockets support pricing and translations; powder has no invented market or vendor sell price',()=>{

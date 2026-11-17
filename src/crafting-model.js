@@ -16,13 +16,13 @@ export const craftingRooms=game.rooms.filter(r=>r.bonus.kind==='craftSpeed'&&cra
 export const craftingMasteries=game.masteries.filter(m=>['craft','xp','move'].includes(m.id));
 export const craftingPerks=game.perks.filter(p=>['pockets','quick','hands'].includes(p.id));
 export const craftingTiers=job=>Array.from({length:5},(_,tier)=>tier).filter(tier=>job.upgrade||game.recipeRarity(job,tier)===tier);
-export const planKey=(jobId,tier)=>`${jobId}:${tier}`;
+export const recipeKey=(jobId,tier)=>`${jobId}:${tier}`;
 export const validQuantity=value=>Number.isSafeInteger(value)&&value>=0;
 export const safeAdd=(a,b)=>{const value=a+b;if(!Number.isSafeInteger(value)||value<0)throw Error('quantityOverflow');return value;};
 const safeMultiply=(a,b)=>{const value=a*b;if(!Number.isSafeInteger(value)||value<0)throw Error('quantityOverflow');return value;};
 const integer=(v,min,max)=>Number.isFinite(Number(v))?Math.min(max,Math.max(min,Math.floor(Number(v)))):min;
 export function craftingDefaults(){return {
- period:'day',simulationHours:24,skill:'cooking',levels:Object.fromEntries(craftingSkills.map(k=>[k,1])),gear:Object.fromEntries(craftingSlots.map(k=>[k,{id:0,tier:0,plus:0}])),
+ simulationHours:24,skill:'cooking',levels:Object.fromEntries(craftingSkills.map(k=>[k,1])),gear:Object.fromEntries(craftingSlots.map(k=>[k,{id:0,tier:0,plus:0}])),
  brews:Object.fromEntries(craftingPotions.map(p=>[p.kind,-1])),house:Object.fromEntries(craftingRooms.map(r=>[r.id,0])),masteries:Object.fromEntries(craftingMasteries.map(m=>[m.id,0])),
  perks:Object.fromEntries(craftingPerks.map(p=>[p.id,0])),guild:null,guildXp:0,weeklyXp:0,ironman:false,blessing:false,homeBank:0,hotSetting:'game',
 };}

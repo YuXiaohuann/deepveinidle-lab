@@ -22,6 +22,6 @@ test('corruption and storage errors fail explicitly without overwriting the sour
  const source=JSON.stringify({version:1,build:craftingDefaults()});const storage=memory([['dvi-crafting-orders-v1',source]]);storage.setItem=()=>{throw Error('quota');};assert.throws(()=>loadCraftingConfig(storage),error=>error.message==='quota'&&error.craftingState.simulationHours===24);assert.equal(storage.getItem('dvi-crafting-orders-v1'),source);
 });
 test('normalization ignores removed fields, resets clear all manufacturing saves only',()=>{
- const raw={...craftingDefaults(),plans:{'retired:0':Number.MAX_SAFE_INTEGER},owned:{bad:1},tiers:{bad:4}};assert.deepEqual(normalizeCrafting(raw),craftingDefaults());
+ const raw={...craftingDefaults(),plans:{'retired:0':Number.MAX_SAFE_INTEGER},owned:{bad:1},tiers:{bad:4},period:'hour',upgradeMigration:true};assert.deepEqual(normalizeCrafting(raw),craftingDefaults());
  const storage=memory([['other','preserved'],['dvi-crafting-v1','legacy']]);saveCraftingConfig(storage,raw);resetCraftingConfig(storage);assert.deepEqual([...storage.data],[['other','preserved']]);
 });

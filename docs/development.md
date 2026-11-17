@@ -96,7 +96,7 @@ node --test tests/mastery.test.mjs tests/mastery-controls.test.mjs tests/mastery
 
 `node --test tests/upstream-1214.test.mjs tests/upstream-1212.test.mjs tests/upstream-1208.test.mjs tests/upstream-1205.test.mjs tests/upstream-1204.test.mjs tests/upstream-1203.test.mjs tests/upstream-1199.test.mjs tests/upstream-1196.test.mjs tests/upstream-1194.test.mjs tests/enhancement.test.mjs tests/mastery.test.mjs` 验证 1208 精通 200／家园 50 上限、越界旧配置与导入拒绝／警告、激活精通切页捕获，以及利维坦护符无总等级门槛提示／导入保留、升级容量原子性／批量成本，以及纯净煤矿任务／固定普通主产物／额外奖励品质、书台恢复、1198 缺字段配置迁移、统一碎片／经验、2.4 秒尝试与宠物机会恢复、深渊之眼商人特殊售价及等级缓存边界，以及烟花有效品质／定价／收藏排除、装备升级保留品质与强化编码、预测初始化以及强化目标 +20、既有 +100 编码／导入保留、精通 +50% 封顶及锻造录 +15 计点边界／15,662 总上限。
 
-`node --test tests/upstream-1190.test.mjs` 覆盖迁移战斗区域、自动及两个指定仓库、巨像六件五品质材料、保存兼容与任务自动领奖隔离。独立离线对照使用 `scripts/native-questless.mjs` 按日边界分段保持空任务，以数学日／周编号独立于应用适配函数核验。
+`node --test tests/upstream-1190.test.mjs` 覆盖迁移战斗区域、自动及两个指定仓库、巨像六件五品质材料与任务自动领奖隔离。独立离线对照使用 `scripts/native-questless.mjs` 按日边界分段保持空任务，以数学日／周编号独立于应用适配函数核验。
 
 `node tests/upstream-browser.mjs --out .test-artifacts/upstream-1214/browser` 检查双语桌面／390px 护符无总等级门槛提示／刷新保留、纯净煤矿任务／计算／刷新保存及战斗完成、来源版本、巨像材料／经验及角色配置刷新保存，书台恢复／保存与缺字段迁移、强化成功率、新旧目标与高强化存档、精通等级及家园控件上限、强化加成封顶、烟花有效品质／火药定价保存，以及合成消息下的直接捕获（不提供 Worker／Blob API）；需要本机监听和 Chrome。指定 `--url https://dvi-lab.pages.dev --out <证据目录>` 时检查该实际目标四组页面，不把本地角色捕获专项当作生产测试。截图和机器结果落盘，仍需人工审阅。加 `--combat-only` 仅运行护符提示删除相关的战斗／精通检查，覆盖无其他问题时隐藏提示框、刷新恢复及其他等级不足提示保留。
 
@@ -104,18 +104,15 @@ node --test tests/mastery.test.mjs tests/mastery-controls.test.mjs tests/mastery
 
 模拟配置专项：`node --test tests/work-simulation-settings.test.mjs` 验证时长规范化、旧存档、角色导入保留时长及制造实际窗口。`node tests/work-simulation-settings-browser.mjs [输出目录] [目标网址]` 验证双语桌面／390px 的整数小时输入、固定每天展示、热门日程、导入、刷新、重置及旧 Worker 隔离；默认输出 `.test-artifacts/work-settings/settings/`，提供目标网址时不启动本机服务。使用合成角色消息与真实工作 Worker，截图需审阅，不代替完整发布验收。
 
-`node --test tests/crafting-display.test.mjs` 验证配方列序、品质、周期换算、额外耗时与排序、制造次数取整、经验明细与异常行。浏览器专项使用 `node tests/gathering-table-browser.mjs [输出目录] [目标网址]`、`node tests/crafting-table-browser.mjs [输出目录] [目标网址]`，需要本机监听和 Chrome；默认分别输出至 `.test-artifacts/gathering-table/`、`.test-artifacts/crafting-table/`，复验时指定独立目录以保留历史证据。覆盖双语桌面／390px、排序、经验展开、采集／制造次数展开的起始耗时与完成概率（升级为固定耗时）、制造名称与品质不折行、固定每天展示及周期选择器移除、等待／失败及配方价格输入；正常计算使用真实 Worker，异常场景使用受控消息，不替代完整发布验收。
+`node --test tests/crafting-display.test.mjs` 验证配方列序、品质、固定每天折算、额外耗时与排序、制造次数取整、经验明细与异常行。浏览器专项使用 `node tests/gathering-table-browser.mjs [输出目录] [目标网址]`、`node tests/crafting-table-browser.mjs [输出目录] [目标网址]`，需要本机监听和 Chrome；默认分别输出至 `.test-artifacts/gathering-table/`、`.test-artifacts/crafting-table/`，复验时指定独立目录以保留历史证据。覆盖双语桌面／390px、排序、经验展开、采集／制造次数展开的起始耗时与完成概率（升级为固定耗时）、制造名称与品质不折行、固定每天展示及周期选择器移除、等待／失败及配方价格输入；正常计算使用真实 Worker，异常场景使用受控消息，不替代完整发布验收。
 
 上述表格专项及下述标题栏／按需任务专项传入目标网址时不启动本机服务，直接检查指定目标；本机通过不能代替生产验证。
 
 三页模拟状态标题栏专项：`node tests/simulation-heading-browser.mjs [输出目录] [目标网址]`，默认输出 `.test-artifacts/heading-status/`。覆盖战斗、采集、制造的双语桌面／390px状态位置、右对齐、长文换行、进度及失败显示，以及真实Worker完成后隐藏；错误与进度采用受控消息，不连接游戏账号。截图需审阅，不代替完整发布验收。
 
-制造按需模拟专项：`node tests/crafting-filter-browser.mjs [输出目录] [目标网址]`，默认输出 `.test-artifacts/crafting-filters/demand/`。验证分类与稀有度交集决定速率任务、搜索仅影响显示、缺失补算及同轮缓存、种子／起点保留、与原始模拟结果一致、全不选品质、运行中切换及旧Worker隔离、不再提交订单任务，以及输入法不触发模拟、双语桌面／390px搜索右侧分类布局。需要本机服务和独立Chrome，正常结果使用真实Worker，隔离场景使用受控消息，不连接游戏账号。
+制造按需模拟专项：`node tests/crafting-filter-browser.mjs [输出目录] [目标网址]`，默认输出 `.test-artifacts/crafting-filters/demand/`。验证分类与稀有度交集决定速率任务、搜索仅影响显示、缺失补算及同轮缓存、种子／起点保留、与原始模拟结果一致、全不选品质、运行中切换及旧Worker隔离，以及输入法不触发模拟、双语桌面／390px搜索右侧分类布局。需要本机服务和独立Chrome，正常结果使用真实Worker，隔离场景使用受控消息，不连接游戏账号。
 
-## 制造配置与速率专项
-
-`node --test tests/crafting.test.mjs tests/crafting-store.test.mjs tests/crafting-display.test.mjs` 验证原始制造计算、配置迁移、坏存档保护、七列表格、价格明细和速率调度。`node tests/crafting-table-browser.mjs [输出目录] [目标网址]` 验证裁剪后的七列页面、价格编辑、旧存档迁移、保存／重置、Worker结果、双语桌面／390px；`node tests/crafting-filter-browser.mjs [输出目录] [目标网址]` 验证分类品质任务、搜索、缓存、种子和过期响应。默认输出各自 `.test-artifacts/` 目录；使用合成配置，不连接游戏账号，不替代发布验收。
-
+制造配置及原始计算：`node --test tests/crafting.test.mjs tests/crafting-upgrades.test.mjs tests/crafting-store.test.mjs` 验证五技能与装备升级、材料映射、原始计算对照、配置迁移和坏存档保护。旧订单／库存／周期字段仅在兼容性测试中构造；普通功能测试使用当前配置与配方Worker协议。
 
 ## 共用角色自动更新专项
 

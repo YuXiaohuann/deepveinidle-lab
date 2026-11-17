@@ -23,7 +23,7 @@ try{
  browser=await chromium.launch({headless:true,executablePath:await browserPath()});
 
  for(const kind of ['gather','craft'])for(const language of ['zh','en'])for(const width of [1440,390]){
-  const initial=kind==='craft'?craftingDefaults():gatheringDefaults();initial.simulationHours=1.5;initial.hotSetting='off';initial.period='hour';
+  const initial=kind==='craft'?craftingDefaults():gatheringDefaults();initial.simulationHours=1.5;initial.hotSetting='off';
   const player=(kind==='craft'?craftingPlayer:gatheringPlayer)(initial).player;
   const snapshot={version:2,capturedAt:Date.now(),player,worldBuffsVersion:1,worldTick:100,worldBuffs:[]};
   const combat=defaults();combat.manual.simulationHours=1;combat.manual.enemySelection='monster-1';
@@ -35,7 +35,7 @@ try{
    localStorage.setItem('dvi-simulator-v1',JSON.stringify({state:combat,language}));localStorage.setItem('dvi-item-prices-v1',JSON.stringify(prices));
    window.snapshot=snapshot;window.runs=[];const Original=Worker;
    window.Worker=class extends Original{
-    constructor(url,options){super(url,options);if(String(url).includes(kind==='craft'?'crafting-worker':'gathering-worker')){this.run={rows:[]};window.runs.push(this.run);this.addEventListener('message',({data})=>{if(data.result)this.run.rows.push({mode:data.mode,result:data.result});if(data.done)this.run.done=true;});}}
+    constructor(url,options){super(url,options);if(String(url).includes(kind==='craft'?'crafting-worker':'gathering-worker')){this.run={rows:[]};window.runs.push(this.run);this.addEventListener('message',({data})=>{if(data.result)this.run.rows.push(data.result);if(data.done)this.run.done=true;});}}
     postMessage(data,...rest){if(this.run)this.run.input=data;return super.postMessage(data,...rest);}
     terminate(){if(this.run)this.run.terminated=true;return super.terminate();}
    };
@@ -50,7 +50,7 @@ try{
   assert.equal(await page.locator(`#${kind}-period,[data-${kind}-field="durationMode"]`).count(),0);
   assert.equal(await settings.locator(`[data-${kind}-field="homeBank"]`).count(),0);
   for(const value of ['0','1.5','1']){await hours.fill(value);await hours.blur();await ready(value==='1.5'?2:1);}
-  const row=await page.evaluate(()=>window.runs.at(-1).rows.find(r=>r.mode==='rate'||r.mode===undefined).result);
+  const row=await page.evaluate(()=>window.runs.at(-1).rows[0]);
   assert.equal(kind==='craft'?row.elapsedTicks:row.durationTicks,3600000/tickMs);
   const column=kind==='craft'?4:5;
   assert.equal(await page.locator(kind==='craft'?`[id="craft-${row.key}-recipe"]`:`#gather-${row.jobId}-level`).locator('xpath=ancestor::tr').locator('td').nth(column).innerText(),(row.completed*24).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:0}));

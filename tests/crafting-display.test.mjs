@@ -19,26 +19,11 @@ test('all five rarities appear independently, with XP and profit first and no qu
   assert.deepEqual(Array.from(rows.slice(0,5),r=>r.tier),[0,1,2,3,4]);
   const headers=vm.runInContext('headers()',p);assert.equal((headers.match(/<th /g)||[]).length,7);
   const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);assert.equal((row.match(/<td[ >]/g)||[]).length,7);
-  assert.doesNotMatch(row,/<select|data-craft-tier/);assert.doesNotMatch(row,/data-craft-count/);
+  assert.doesNotMatch(row,/<select/);
   assert.ok(headers.indexOf(lang==='zh'?'经验/天':'XP/day')<headers.indexOf(lang==='zh'?'单次材料成本':'Material cost / craft'));
   assert.match(row,lang==='zh'?/ · 普通<\/strong><small>所需等级 1/:/ · Normal<\/strong><small>Level 1/);
   assert.match(headers,/data-craft-sort="levelReq"/);
  }
-});
-test('legacy period values do not change daily columns or per-craft values',()=>{
- const p=page();vm.runInContext(`const plan=visibleJobs()[0];rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{seed:4294967295,completed:240,xp:480,items:{40:240},consumed:{20:240}}});`,p);
- vm.runInContext("state.period='hour'",p);
- const hour=vm.runInContext('recipeRow(visibleJobs()[0])',p);
- assert.doesNotMatch(hour,/随机种子<\/span><span>4294967295/);
- vm.runInContext("state.period='day'",p);const day=vm.runInContext('recipeRow(visibleJobs()[0])',p);
- const cells=s=>s.match(/<td[^>]*>.*?<\/td>/g);
- assert.deepEqual(cells(hour).slice(4),cells(day).slice(4));
- assert.equal(cells(hour)[0],cells(day)[0]);
- assert.match(cells(hour)[4],/<summary>240<\/summary>/);assert.equal(cells(hour)[4],cells(day)[4]);
- assert.match(cells(hour)[1],/>480</);assert.match(cells(day)[1],/>480</);
- vm.runInContext("state.plans={'61:0':90}",p);assert.equal(vm.runInContext('!!rateFor(visibleJobs()[0])',p),true);
- assert.match(vm.runInContext('headers()',p),/制造次数\/天/);
- vm.runInContext("language='en'",p);assert.doesNotMatch(vm.runInContext('recipeRow(visibleJobs()[0])',p),/Random seed<\/span><span>4294967295/);
 });
 
 test('rarity filter defaults to normal and combines with search',()=>{
@@ -71,15 +56,12 @@ test('recipe cost and value details show prices with editable prices',()=>{
  assert.match(row,/-cost/);assert.match(row,/-value/);
 });
 
-test('recipe toolbar only includes search, group, rarity and rerun',()=>{
- assert.doesNotMatch(source,/craft-filled|craft-batch|craft-order|craft-refresh-inventory/);
-});
 
 test('upgrades stay in the seven-column table without extra recipe notes and display daily simulation results',()=>{
  for(const lang of ['zh','en']){
   const p=page(lang);vm.runInContext("state.skill='smithing';query='Colossus blade';state.levels.smithing=99",p);
-  const plans=vm.runInContext('visibleJobs()',p);assert.equal(plans.length,5);
-  vm.runInContext(`const plan=visibleJobs()[0];rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{completed:12,xp:22800,items:{350:12},consumed:{114:12}}});`,p);
+  const recipes=vm.runInContext('visibleJobs()',p);assert.equal(recipes.length,5);
+  vm.runInContext(`const recipe=visibleJobs()[0];rateCache.set(recipe.key,{signature:signature(recipe),result:{completed:12,xp:22800,items:{350:12},consumed:{114:12}}});`,p);
   const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
   assert.equal((row.match(/<td[ >]/g)||[]).length,7);
   assert.doesNotMatch(row,/即时升级 · 底装 \+0|Instant upgrade · base \+0|gear-stats/);
@@ -88,26 +70,22 @@ test('upgrades stay in the seven-column table without extra recipe notes and dis
 });
 
 test('daily craft count rounds for display while sorting retains raw counts',()=>{
- const p=page();vm.runInContext(`const plan=visibleJobs()[0];rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{completed:241.6,xp:480,items:{40:240},consumed:{20:240}}});`,p);
- for(const [period,expected]of [['day','242'],['hour','242']]){
-  vm.runInContext(`state.period='${period}'`,p);const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
-  assert.ok(row.match(/<td[^>]*>.*?<\/td>/g)[4].includes(`<summary>${expected}</summary>`));
- }
+ const p=page();vm.runInContext(`const recipe=visibleJobs()[0];rateCache.set(recipe.key,{signature:signature(recipe),result:{completed:241.6,xp:480,items:{40:240},consumed:{20:240}}});`,p);
+ const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
+ assert.ok(row.match(/<td[^>]*>.*?<\/td>/g)[4].includes('<summary>242</summary>'));
  assert.equal(vm.runInContext('rateFor(visibleJobs()[0]).result.completed',p),241.6);
 });
 
-test('valuation errors preserve all seven cells, highlighted XP/profit and no plan input',()=>{
+test('valuation errors preserve all seven cells, highlighted XP/profit and highlighted recipe name',()=>{
  const p=page();vm.runInContext("priceItems=()=>{throw Error('priceOverflow')}",p);
  const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
- assert.equal((row.match(/<td[ >]/g)||[]).length,7);assert.equal((row.match(/class="column-highlight"/g)||[]).length,3);assert.doesNotMatch(row,/data-craft-count/);
+ assert.equal((row.match(/<td[ >]/g)||[]).length,7);assert.equal((row.match(/class="column-highlight"/g)||[]).length,3);
 });
 
-test('XP details use unrounded run totals, include burnt attempts and do not scale with period',()=>{
- const p=page();vm.runInContext(`const plan=visibleJobs()[0];rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{completed:4,success:3,burnt:1,xp:15,items:{},consumed:{}}});`,p);
- for(const period of ['day','hour']){
-  vm.runInContext(`state.period='${period}'`,p);const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
-  assert.match(row,/id="craft-61:0-xp"/);assert.match(row,/平均单次经验<\/span><span>3.75<\/span>/);assert.doesNotMatch(row,/本轮平均|Average for this run/);
- }
+test('XP details use unrounded run totals, include burnt attempts and handle zero completed actions',()=>{
+ const p=page();vm.runInContext(`const recipe=visibleJobs()[0];rateCache.set(recipe.key,{signature:signature(recipe),result:{completed:4,success:3,burnt:1,xp:15,items:{},consumed:{}}});`,p);
+ const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
+ assert.match(row,/id="craft-61:0-xp"/);assert.match(row,/平均单次经验<\/span><span>3.75<\/span>/);
  vm.runInContext('rateFor(visibleJobs()[0]).result.completed=0;rateFor(visibleJobs()[0]).result.xp=0',p);
  assert.match(vm.runInContext('recipeRow(visibleJobs()[0])',p),/单次经验<\/span><span>—<\/span>/);
 });
@@ -115,31 +93,31 @@ test('XP details use unrounded run totals, include burnt attempts and do not sca
 test('rate tasks follow category and rarity while search remains a display filter',()=>{
  const p=page();
  vm.runInContext("state.levels.cooking=1;selectedTiers.clear();selectedTiers.add(0)",p);
- assert.equal(vm.runInContext("pendingSimulationPlans().filter(p=>p.mode==='rate').length",p),1);
- vm.runInContext("query='no-such-item'",p);assert.equal(vm.runInContext('visibleJobs().length',p),0);assert.equal(vm.runInContext('pendingSimulationPlans().length',p),1);
+ assert.equal(vm.runInContext("pendingRecipes().length",p),1);
+ vm.runInContext("query='no-such-item'",p);assert.equal(vm.runInContext('visibleJobs().length',p),0);assert.equal(vm.runInContext('pendingRecipes().length',p),1);
  vm.runInContext("query=craftingJobs.find(j=>j.id===61).name;selectedTiers.add(2)",p);
- assert.deepEqual(Array.from(vm.runInContext('pendingSimulationPlans().map(p=>p.key)',p)),['61:0','61:2']);
- vm.runInContext("group='missing'",p);assert.equal(vm.runInContext('pendingSimulationPlans().length',p),0);
+ assert.deepEqual(Array.from(vm.runInContext('pendingRecipes().map(p=>p.key)',p)),['61:0','61:2']);
+ vm.runInContext("group='missing'",p);assert.equal(vm.runInContext('pendingRecipes().length',p),0);
  vm.runInContext("group='';query='';selectedTiers.clear()",p);
- assert.equal(vm.runInContext('pendingSimulationPlans().length',p),0);
- vm.runInContext("selectedTiers.add(4);query=craftingJobs.find(j=>j.id===61).name;const plan=visibleJobs()[0];rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{completed:10}})",p);
- assert.equal(vm.runInContext('pendingSimulationPlans().length',p),0);
+ assert.equal(vm.runInContext('pendingRecipes().length',p),0);
+ vm.runInContext("selectedTiers.add(4);query=craftingJobs.find(j=>j.id===61).name;const recipe=visibleJobs()[0];rateCache.set(recipe.key,{signature:signature(recipe),result:{completed:10}})",p);
+ assert.equal(vm.runInContext('pendingRecipes().length',p),0);
 });
 
 test('movement share uses unrounded elapsed ticks, handles zero time and sorts numerically',()=>{
  for(const lang of ['zh','en']){
   const p=page(lang);
-  vm.runInContext(`selectedTiers.clear();selectedTiers.add(0);selectedTiers.add(1);const plans=visibleJobs().slice(0,2);plans.forEach((plan,i)=>rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{completed:4,xp:15,items:{},consumed:{},extraTicks:i?1:2,elapsedTicks:i?3:6}}));`,p);
+  vm.runInContext(`selectedTiers.clear();selectedTiers.add(0);selectedTiers.add(1);const recipes=visibleJobs().slice(0,2);recipes.forEach((recipe,i)=>rateCache.set(recipe.key,{signature:signature(recipe),result:{completed:4,xp:15,items:{},consumed:{},extraTicks:i?1:2,elapsedTicks:i?3:6}}));`,p);
   const cell=()=>vm.runInContext('recipeRow(visibleJobs()[0])',p).match(/<td[^>]*>.*?<\/td>/g)[3];
   assert.match(cell(),/<summary>33.33%<\/summary>/);
   const headings=vm.runInContext('headers()',p);assert.ok(headings.indexOf('data-craft-sort="movingRatio"')<headings.indexOf('data-craft-sort="completed"'));
   vm.runInContext('state.simulationHours=1',p);
   // Refresh signatures after changing duration; percentages must not scale to a day.
-  vm.runInContext('plans.forEach(plan=>rateCache.get(plan.key).signature=signature({...plan,count:0}))',p);assert.match(cell(),/<summary>33.33%<\/summary>/);
-  vm.runInContext('rateFor(plans[0]).result.extraTicks=0',p);assert.match(cell(),/<summary>0%<\/summary>/);
+  vm.runInContext('recipes.forEach(recipe=>rateCache.get(recipe.key).signature=signature(recipe))',p);assert.match(cell(),/<summary>33.33%<\/summary>/);
+  vm.runInContext('rateFor(recipes[0]).result.extraTicks=0',p);assert.match(cell(),/<summary>0%<\/summary>/);
   vm.runInContext("sort='movingRatio';direction='desc'",p);assert.equal(vm.runInContext('sortedJobs()[0].tier',p),1);
   vm.runInContext("direction='asc'",p);assert.equal(vm.runInContext('sortedJobs()[0].tier',p),0);
-  vm.runInContext('rateFor(plans[0]).result.elapsedTicks=0',p);assert.equal(cell(),'<td>—</td>');assert.equal(vm.runInContext('sortedJobs()[0].tier',p),1);
+  vm.runInContext('rateFor(recipes[0]).result.elapsedTicks=0',p);assert.equal(cell(),'<td>—</td>');assert.equal(vm.runInContext('sortedJobs()[0].tier',p),1);
   vm.runInContext("rateCache.clear()",p);assert.equal(cell(),lang==='zh'?'<td>计算中…</td>':'<td>Calculating…</td>');
  }
 });

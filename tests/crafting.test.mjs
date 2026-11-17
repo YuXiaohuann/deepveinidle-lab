@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
 import {START_TICK} from '../src/simulation.js';
-import {craftingDefaults,craftingTiers,normalizeCrafting,craftingJobs,craftingSkills,craftingMaterials,priceItems,craftingPlayer,craftingJobStats,craftingStats,importCrafting,planKey} from '../src/crafting-model.js';
+import {craftingDefaults,craftingTiers,normalizeCrafting,craftingJobs,craftingSkills,craftingMaterials,priceItems,craftingPlayer,craftingJobStats,craftingStats,importCrafting} from '../src/crafting-model.js';
 import {createCraftingScenario,simulateCrafting,MAX_CRAFT_TICKS} from '../src/crafting-simulation.js';
 import {combatHot,combatHotWindows} from '../src/combat-hot.js';
 import {setItemPrice,priceDefaults} from '../src/item-prices.js';
@@ -14,13 +14,10 @@ function nativeResult(s,job,tier,count){
  const report=questlessOffline(game,player,context,START_TICK+60000);
  return {player,report,xp:player.skills[job.skill]-xp};
 }
-test('five crafting skills, default tiers, normalization and independent tools',()=>{
+test('five crafting skills, normalization and independent tools',()=>{
  assert.deepEqual(craftingSkills.map(s=>craftingJobs.filter(j=>j.skill===s).length),[8,71,40,8,77]);
- const d=craftingDefaults();assert.equal(d.plans,undefined);assert.equal(d.owned,undefined);
- assert.equal(d.period,'day');
- for(const period of [undefined,null,'bad','day'])assert.equal(normalizeCrafting({period}).period,'day');
- assert.equal(normalizeCrafting({period:'hour'}).period,'day');
- const s=normalizeCrafting({...d,skill:'smithing',levels:{smithing:50},gear:{hammer:{id:365,tier:3,plus:5}},plans:{'41:0':10,'61:1':20,'bad':10,'41:1':-1,'41:2':1.2,'41:3':Number.MAX_SAFE_INTEGER+1},owned:{1:7,1001:9,bad:1}});
+ const d=craftingDefaults();
+ const s=normalizeCrafting({...d,skill:'smithing',levels:{smithing:50},gear:{hammer:{id:365,tier:3,plus:5}}});
  const p=craftingPlayer(s).player;
  assert.equal(p.skills.smithing,game.levelXp(50));assert.equal(p.equipment.hammer,game.encode(game.withRarity(365,3),5));assert.equal(p.eatAt,0);assert.deepEqual(p.bank,{});
  assert.ok(craftingStats(s).speedBonus>0);assert.equal(d.levels.cooking,1);
@@ -47,7 +44,7 @@ for(const skill of craftingSkills)test(`${skill}: count-limited engine matches i
  assert.equal(actual.endLevel,game.level(native.player.skills[skill]));assert.equal(actual.elapsedTicks,native.player.lastStop.tick-START_TICK-1);
  assert.deepEqual(actual.consumed,craftingMaterials(job,2,500));assert.ok(actual.endLevel>actual.startLevel);if(skill==='cooking')assert.ok(actual.burnt>0);if(skill==='fletching'||skill==='crafting')assert.ok(actual.deposits>0);
 });
-test('every saved crafting recipe and rarity completes at unlocked level with original offline agreement',()=>{
+test('every supported crafting recipe and rarity completes at unlocked level with original offline agreement',()=>{
  const s=craftingDefaults();s.hotSetting='off';for(const k of craftingSkills)s.levels[k]=game.maxLevel;
  for(const job of craftingJobs.filter(j=>!j.upgrade))for(const tier of craftingTiers(job)){
   const actual=simulateCrafting(s,job,tier,3),native=nativeResult(s,job,tier,3);
@@ -59,7 +56,7 @@ test('burns award no XP; safe cooking levels remove burns; per-craft rounding pr
  s.levels.cooking=26;assert.equal(simulateCrafting(s,j,4,100).burnt,0);
  s.guildXp=10;const smith=simulateCrafting(s,first('smithing'),0,10);assert.equal(smith.xp,70);
 });
-test('manual depot, partial time limit and invalid plans preserve trustworthy results',()=>{
+test('manual depot, partial time limit and invalid simulation inputs preserve trustworthy results',()=>{
  const s=craftingDefaults();s.hotSetting='off';s.homeBank=game.world.banks.at(-1).id;s.levels.smithing=30;
  const scenario=createCraftingScenario(s,first('smithing'),0,20);assert.equal(scenario.bank.id,s.homeBank);assert.equal(scenario.player.homeBank,s.homeBank);
  const r=simulateCrafting(s,first('smithing'),0,100,{maxTicks:200});assert.equal(r.complete,false);assert.equal(r.error,'timeLimit');assert.equal(r.elapsedTicks,200);assert.ok(r.completed<100);
@@ -74,12 +71,12 @@ test('current-time hot windows are mapped to the crafting skill and change no ma
 test('character import uses shared protocol and retains failures and independent settings',()=>{
  const s=craftingDefaults();const p=craftingPlayer(s).player;p.skills.cooking=game.levelXp(40);p.equipment.pan=game.withRarity(360,2);p.house.range=8;p.houseFurniture.range={cell:0,slot:0};p.brews.elixir=p.lastTick+100;p.brewTier.elixir=2;
  const snapshot={version:2,capturedAt:Date.now(),player:p,worldTick:p.lastTick,worldBuffs:[]},result=importCrafting(s,snapshot);
- assert.equal(result.state.levels.cooking,40);assert.equal(result.state.gear.pan.id,360);assert.equal(result.state.gear.pan.tier,2);assert.equal(result.state.house.range,8);assert.equal(result.state.brews.elixir,2);assert.equal(result.state.plans,undefined);assert.equal(result.state.owned,undefined);assert.equal(result.state.hotSetting,'game');assert.equal(result.state.homeBank,0);
+ assert.equal(result.state.levels.cooking,40);assert.equal(result.state.gear.pan.id,360);assert.equal(result.state.gear.pan.tier,2);assert.equal(result.state.house.range,8);assert.equal(result.state.brews.elixir,2);assert.equal(result.state.hotSetting,'game');assert.equal(result.state.homeBank,0);
  delete p.skills.smithing;const partial=importCrafting(result.state,snapshot);assert.ok(partial.warnings.includes('skills.smithing'));assert.equal(partial.state.levels.smithing,result.state.levels.smithing);
  assert.throws(()=>importCrafting(s,{...snapshot,version:1}),/invalidSnapshot/);
 });
 
-test('24-hour rates include native XP, products and consumption independently of planned counts',async()=>{
+test('24-hour rates include native XP, products and consumption over the selected time window',async()=>{
  const {simulateCraftingWindow}=await import('../src/crafting-simulation.js');
  const s=craftingDefaults();s.hotSetting='off';const job=first('cooking'),ticks=24*3600000/game.tickMs;
  const result=simulateCraftingWindow(s,job,0);
@@ -90,7 +87,6 @@ test('24-hour rates include native XP, products and consumption independently of
  assert.equal(result.xp,player.skills[job.skill]-xp);
  assert.equal(result.completed,events.filter(e=>['produced','burnt'].includes(e.kind)).length);
  assert.deepEqual(result.consumed,craftingMaterials(job,0,result.completed));
- s.plans={[planKey(job.id,0)]:1};assert.deepEqual(simulateCraftingWindow(s,job,0),result);
 });
 
 test('starting work details use native recipe chances and deterministic upgrade durations',()=>{

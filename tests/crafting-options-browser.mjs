@@ -21,14 +21,14 @@ try{
  const snapshot={version:2,worldBuffsVersion:1,capturedAt:Date.now(),player,worldTick:100,worldBuffs:[{label:'Event',fromTick:100,toTick:200,xpMult:1.1},{label:'Event',fromTick:0,toTick:100,xpMult:1.2525,rarityMult:1.5},{fromTick:101,toTick:200,xpMult:4}]};
  for(const language of ['zh','en'])for(const width of [1440,390]){
   const context=await browser.newContext({viewport:{width,height:1000}}),page=await context.newPage();page.setDefaultTimeout(30000);page.on('pageerror',error=>results.errors.push(error.message));
-  const state={...craftingDefaults(),weeklyXp:12.3,hotSetting:'off',plans:{'61:0':3},owned:{20:2}};delete state.ironman;
+  const state={...craftingDefaults(),weeklyXp:12.3,hotSetting:'off'};delete state.ironman;
   const combat=defaults();combat.manual.simulationHours=1;combat.manual.enemySelection='monster-1';
   await context.addInitScript(({state,combat,language,snapshot})=>{
    if(!localStorage.getItem('dvi-crafting-config-v1'))localStorage.setItem('dvi-crafting-config-v1',JSON.stringify({version:1,build:state}));
    if(!localStorage.getItem('dvi-simulator-v1'))localStorage.setItem('dvi-simulator-v1',JSON.stringify({state:combat,language}));
    window.worldSnapshot=snapshot;window.craftRuns=[];const OriginalWorker=Worker;
    window.Worker=class extends OriginalWorker{
-    constructor(url,options){super(url,options);if(String(url).includes('crafting-worker.js')){this.run={results:[]};window.craftRuns.push(this.run);this.addEventListener('message',({data})=>{if(data.result)this.run.results.push({mode:data.mode,result:data.result});if(data.done)this.run.done=true;if(data.jobError||data.error)this.run.error=data.jobError??data.error;});}}
+    constructor(url,options){super(url,options);if(String(url).includes('crafting-worker.js')){this.run={results:[]};window.craftRuns.push(this.run);this.addEventListener('message',({data})=>{if(data.result)this.run.results.push(data.result);if(data.done)this.run.done=true;if(data.jobError||data.error)this.run.error=data.jobError??data.error;});}}
     postMessage(data,...rest){if(this.run)this.run.input=data.state;return super.postMessage(data,...rest);}
     terminate(){if(this.run)this.run.terminated=true;return super.terminate();}
    };
@@ -43,8 +43,8 @@ try{
   assert.equal(await xp.getAttribute('step'),'0.1');assert.equal(await xp.getAttribute('max'),'10000000');
   assert.equal(await xp.locator('xpath=../following-sibling::p[1]').innerText(),language==='zh'?'导入捕获时生效的世界增益，整个模拟周期保持生效。':'Imports world buffs active at capture; they remain active throughout the simulation.');
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await ironman.scrollIntoViewIfNeeded();await page.screenshot({path:path.join(directory,`${language}-${width}.png`)});
-  const runResults=await page.evaluate(()=>window.craftRuns.at(-1).results);assert.ok(runResults.some(r=>r.mode==='rate'));assert.ok(runResults.every(r=>r.mode==='rate'));
-  assert.ok(runResults.every(r=>!Object.keys(r.result.items).some(id=>game.baseItemId(Number(id))===game.mountItemId)));
+  const runResults=await page.evaluate(()=>window.craftRuns.at(-1).results);assert.ok(runResults.length>0);
+  assert.ok(runResults.every(r=>!Object.keys(r.items).some(id=>game.baseItemId(Number(id))===game.mountItemId)));
   await xp.fill('20.75');await xp.blur();await completed();
   await ironman.uncheck();await completed();assert.equal(await page.evaluate(()=>window.craftRuns.at(-1).input.ironman),false);
   assert.ok(await page.evaluate(()=>window.craftRuns.slice(0,-1).every(run=>run.terminated)));
@@ -58,7 +58,7 @@ try{
   await page.waitForFunction(()=>/数据缺失或无效|Missing or invalid data/.test(document.querySelector('#craft-import-status').textContent));assert.equal(await xp.inputValue(),'0');
   await page.evaluate(()=>window.worldSnapshot.worldBuffs=[]);await page.locator('#craft-import').click();await page.waitForFunction(()=>!/数据缺失或无效|Missing or invalid data/.test(document.querySelector('#craft-import-status').textContent));await completed();
   await xp.fill('10.5');await xp.blur();await page.locator('#craft-reset').click();await completed();assert.equal(await xp.inputValue(),'0');assert.equal(await ironman.isChecked(),false);
-  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-crafting-config-v1')));assert.equal(saved.orders,undefined);assert.equal(saved.build.owned,undefined);assert.equal(saved.inventory,undefined);
+  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-crafting-config-v1')));assert.deepEqual(saved,{version:1,build:craftingDefaults()});
   assert.ok(await page.evaluate(()=>window.craftRuns.every(run=>!run.error)));
   results.cases.push(`${language}/${width}: configuration storage, full XP import, fractions, ironman, rate invalidation, persistence, skill/language switch, legacy/invalid/empty captures and reset isolation`);await context.close();
  }

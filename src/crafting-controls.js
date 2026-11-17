@@ -11,7 +11,7 @@ import {valuationPrice,validPrice} from './item-prices.js';
 import {registerCharacterUpdates,characterImportPanel,probeCharacter,importStatusText} from './import-controls.js';
 import {worldBuffWarningText} from './world-buffs.js';
 import {randomSimulationSeed} from './simulation-seed.js';
-import {craftingDefaults,craftingTiers,normalizeCrafting,craftingSkills,craftingToolSlots,craftingJobs,craftingPotions,craftingRooms,craftingMasteries,craftingPerks,planKey,craftingMaterials,priceItems,craftingJobStats,craftingStats,importCrafting} from './crafting-model.js';
+import {craftingDefaults,craftingTiers,normalizeCrafting,craftingSkills,craftingToolSlots,craftingJobs,craftingPotions,craftingRooms,craftingMasteries,craftingPerks,recipeKey,craftingMaterials,priceItems,craftingJobStats,craftingStats,importCrafting} from './crafting-model.js';
 
 let state=craftingDefaults(),language='zh',query='',group='',sort='levelReq',direction='desc',notice='',importStatus=null,importBusy=false,saveOK=true,active=false,probeStarted=false;
 let worker=null,timer=null,renderTimer=null,generation=0,running=false,progress=null,workerError=null,clock=Date.now(),roundSeed=null;
@@ -27,7 +27,7 @@ const skillName=k=>name(skillNames[k]);
 const rarities=()=>text(['普通','罕见','稀有','史诗','传说'],['Normal','Uncommon','Rare','Epic','Legendary']);
 const format=(n,digits=0)=>n.toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:digits});
 const options=(values,current)=>values.map(([v,label])=>`<option value="${esc(v)}" ${String(v)===String(current)?'selected':''}>${esc(label)}</option>`).join('');
-const errors={saveFailed:['制造配置保存失败，当前内存配置仍可使用。','Crafting settings could not be saved; the in-memory build remains usable.'],invalidTime:['设备时间无效','Invalid device time'],invalidDuration:['模拟时长无效','Invalid duration'],savedInvalid:['已保存的制造配置无法读取，当前使用默认配置。','Saved crafting settings could not be read; defaults are shown.'],invalidQuantity:['请输入非负安全整数。','Enter a nonnegative safe integer.'],quantityOverflow:['数量超出可可靠计算的范围，请减少制造次数。','Quantity exceeds the safe calculation range; reduce crafting counts.'],priceOverflow:['金额超出可可靠计算的范围，请检查次数和单价。','Amount exceeds the safe calculation range; check counts and prices.'],invalidPrice:['请输入有效的非负价格。','Enter a valid nonnegative price.'],timeLimit:['达到计算时长上限，模拟未完成。','Reached the computation time limit; simulation is incomplete.'],levelTooLow:['等级不足','Level too low'],noSites:['没有有效制造点','No valid crafting site'],invalidRoute:['无法建立制造路线','Could not start crafting route'],unreachable:['无法到达制造点或仓库','Unreachable crafting site or depot'],'routeStopped:noMaterials':['材料不足，路线停止','Materials depleted; route stopped'],'routeStopped:storageFull':['仓库已满，路线停止','Storage full; route stopped'],'routeStopped:unreachable':['路线不可达','Route unreachable'],routeStopped:['路线提前停止','Route stopped early'],priceSaveFailed:['价格保存失败，当前内存价格仍可用。','Prices could not be saved; in-memory prices remain usable.'],priceReadFailed:['已保存的价格无法读取。','Saved prices could not be read.'],invalidPriceStorage:['已保存的价格格式无效。','Saved price format is invalid.'],workerFailed:['制造计算失败，请检查浏览器是否支持 Worker。','Crafting computation failed; check browser Worker support.']};
+const errors={saveFailed:['制造配置保存失败，当前内存配置仍可使用。','Crafting settings could not be saved; the in-memory build remains usable.'],invalidTime:['设备时间无效','Invalid device time'],invalidDuration:['模拟时长无效','Invalid duration'],savedInvalid:['已保存的制造配置无法读取，当前使用默认配置。','Saved crafting settings could not be read; defaults are shown.'],invalidQuantity:['配方品质或模拟材料数量无效。','Invalid recipe rarity or simulated material quantity.'],quantityOverflow:['模拟数量超出安全计算范围。','Simulated quantity exceeds the safe calculation range.'],priceOverflow:['金额超出安全计算范围，请检查单价。','Amount exceeds the safe calculation range; check item prices.'],invalidPrice:['请输入有效的非负价格。','Enter a valid nonnegative price.'],timeLimit:['达到计算时长上限，模拟未完成。','Reached the computation time limit; simulation is incomplete.'],levelTooLow:['等级不足','Level too low'],noSites:['没有有效制造点','No valid crafting site'],invalidRoute:['无法建立制造路线','Could not start crafting route'],unreachable:['无法到达制造点或仓库','Unreachable crafting site or depot'],'routeStopped:noMaterials':['材料不足，路线停止','Materials depleted; route stopped'],'routeStopped:storageFull':['仓库已满，路线停止','Storage full; route stopped'],'routeStopped:unreachable':['路线不可达','Route unreachable'],routeStopped:['路线提前停止','Route stopped early'],priceSaveFailed:['价格保存失败，当前内存价格仍可用。','Prices could not be saved; in-memory prices remain usable.'],priceReadFailed:['已保存的价格无法读取。','Saved prices could not be read.'],invalidPriceStorage:['已保存的价格格式无效。','Saved price format is invalid.'],workerFailed:['制造计算失败，请检查浏览器是否支持 Worker。','Crafting computation failed; check browser Worker support.']};
 const errorText=code=>(errors[code]??[code,code])[language==='zh'?0:1];
 const warn=missing=>missing?.length?`<span title="${text('部分物品未设置价格，采用商人价格计算','Some items have no configured price; vendor prices are used')}" aria-label="${text('缺价','Unset price')}">⚠</span> `:'';
 const itemLabel=id=>`${translatedItemName(id,language)} · ${rarities()[game.itemTier(id)]}`;
@@ -69,30 +69,30 @@ function itemLines(items,{prices=false,prefix='recipe'}={}){
 function selectedRateJobs(){
  return craftingJobs.filter(job=>job.skill===state.skill&&(!group||job.group===group))
   .flatMap(job=>craftingTiers(job).filter(tier=>selectedTiers.has(tier))
-   .map(tier=>({job,tier,key:planKey(job.id,tier),count:0})));
+   .map(tier=>({job,tier,key:recipeKey(job.id,tier)})));
 }
 function visibleJobs(){
  const search=query.toLowerCase();
  return selectedRateJobs().filter(p=>`${p.job.name} ${translatedName(p.job.name,'zh')}`.toLowerCase().includes(search));
 }
-function rateFor(plan){const entry=rateCache.get(plan.key);return entry?.signature===signature({...plan,count:0})?entry:null;}
+function rateFor(recipe){const entry=rateCache.get(recipe.key);return entry?.signature===signature(recipe)?entry:null;}
 function methodNote(){return text('制造次数、耗时、移动、回仓、经验及材料消耗来自<strong class="simulation-caveat">原始模拟</strong>；普通制造产物按指定稀有度计算，烹饪产物与稀有掉落为基于本次模拟机会的<strong class="simulation-caveat">数学期望</strong>，活动礼盒仍按原始模拟统计；利润结合产物期望、实际材料消耗及物品价格推算，不扣药水成本与市场手续费。装备升级按原始工位路线计时。','Craft counts, elapsed time, movement, banking, XP and material consumption come from the <strong class="simulation-caveat">original simulation</strong>; ordinary products use the selected rarity, while cooking products and rare drops are <strong class="simulation-caveat">mathematical expectations</strong> based on opportunities in this run. Event boxes still use simulated counts. Profit uses expected products, actual material consumption and item prices, excluding potion costs and market fees. Gear upgrades follow the original station route.');}
 function rarityFilters(){return `<div class="presets craft-rarity-filters" role="group" aria-label="${text('稀有度筛选','Rarity filter')}">${rarities().map((r,tier)=>`<button type="button" data-craft-rarity="${tier}" aria-pressed="${selectedTiers.has(tier)}" class="${selectedTiers.has(tier)?'selected':''}">${r}</button>`).join('')}</div>`;}
-function signature(plan){
- const skill=plan.job.skill;return JSON.stringify({count:plan.count,simulationHours:state.simulationHours,tier:plan.tier,level:state.levels[skill],tool:state.gear[craftingToolSlots[skill]],mount:state.gear.mount,workEquipment:['shield','helmet','body','legs'].map(k=>state.gear[k]),brews:state.brews,house:craftingRooms.filter(r=>r.bonus.skill===skill).map(r=>[r.id,state.house[r.id]]),masteries:state.masteries,perks:{pockets:state.perks.pockets,quick:state.perks.quick,hands:skill==='cooking'?state.perks.hands:0},guildXp:state.guildXp,weeklyXp:state.weeklyXp,ironman:state.ironman,blessing:state.blessing,homeBank:state.homeBank,hotSetting:state.hotSetting,clock:state.hotSetting==='current'?clock:null});
+function signature(recipe){
+ const skill=recipe.job.skill;return JSON.stringify({simulationHours:state.simulationHours,tier:recipe.tier,level:state.levels[skill],tool:state.gear[craftingToolSlots[skill]],mount:state.gear.mount,workEquipment:['shield','helmet','body','legs'].map(k=>state.gear[k]),brews:state.brews,house:craftingRooms.filter(r=>r.bonus.skill===skill).map(r=>[r.id,state.house[r.id]]),masteries:state.masteries,perks:{pockets:state.perks.pockets,quick:state.perks.quick,hands:skill==='cooking'?state.perks.hands:0},guildXp:state.guildXp,weeklyXp:state.weeklyXp,ironman:state.ironman,blessing:state.blessing,homeBank:state.homeBank,hotSetting:state.hotSetting,clock:state.hotSetting==='current'?clock:null});
 }
 function sortedJobs(){
  const metric=p=>{if(sort==='levelReq')return p.job.levelReq;try{const r=rateFor(p)?.result;return {xp:r?.xp,completed:r?.completed,movingRatio:r?.elapsedTicks>0?r.extraTicks/r.elapsedTicks:undefined,materialValue:priceItems(craftingMaterials(p.job,p.tier,1),getSnapshot()).value,outputValue:priceItems({[game.withRarity(p.job.output.itemId,p.tier)]:p.job.output.qty},getSnapshot()).value,profit:r?priceItems(r.items,getSnapshot(),{expected:true}).value-priceItems(r.consumed,getSnapshot()).value:undefined}[sort];}catch{return undefined;}};
  return visibleJobs().sort((a,b)=>{const x=metric(a),y=metric(b);if(x===undefined)return y===undefined?String(a.job.id).localeCompare(String(b.job.id))||a.tier-b.tier:1;if(y===undefined)return -1;return (x-y)*(direction==='asc'?1:-1)||String(a.job.id).localeCompare(String(b.job.id))||a.tier-b.tier;});
 }
-function headers(){const period=text('天','day');return [[text('配方','Recipe'),'levelReq'],[text('经验','XP')+'/'+period,'xp'],[text('利润','Profit')+'/'+period,'profit'],[text('额外耗时','Extra time'),'movingRatio'],[text('制造次数','Crafts')+'/'+period,'completed'],[text('单次材料成本','Material cost / craft'),'materialValue'],[text('单次产物价值','Product value / craft'),'outputValue']].map(([label,key])=>`<th ${key?`aria-sort="${sort===key?(direction==='asc'?'ascending':'descending'):'none'}"`:''}>${key?`<button class="sort-header" data-craft-sort="${key}">${label} <span class="sort-arrow">${sort===key?(direction==='asc'?'↑':'↓'):'↕'}</span></button>`:label}</th>`).join('');}
-function recipeRow(plan){
- const {job,tier,key}=plan,locked=state.levels[job.skill]<job.levelReq;
+function headers(){const day=text('天','day');return [[text('配方','Recipe'),'levelReq'],[text('经验','XP')+'/'+day,'xp'],[text('利润','Profit')+'/'+day,'profit'],[text('额外耗时','Extra time'),'movingRatio'],[text('制造次数','Crafts')+'/'+day,'completed'],[text('单次材料成本','Material cost / craft'),'materialValue'],[text('单次产物价值','Product value / craft'),'outputValue']].map(([label,key])=>`<th aria-sort="${sort===key?(direction==='asc'?'ascending':'descending'):'none'}"><button class="sort-header" data-craft-sort="${key}">${label} <span class="sort-arrow">${sort===key?(direction==='asc'?'↑':'↓'):'↕'}</span></button></th>`).join('');}
+function recipeRow(recipe){
+ const {job,tier,key}=recipe,locked=state.levels[job.skill]<job.levelReq;
  const recipeInfo=[[text('单次产量','Output per craft'),format(job.output.qty)],[text('基础经验 / 次','Base XP / craft'),format(job.xp)],...(job.burn?[[text('安全等级','No-burn level'),job.burn.safeAtLevel]]:[])].map(([label,value])=>detailLine(label,value)).join('');
  const lead=`<tr><td class="column-highlight">${detail(`${key}-recipe`,`<span class="enemy-name"><span><strong>${esc(name(job.name))} · ${rarities()[tier]}</strong><small>${text('所需等级','Level')} ${job.levelReq}${locked?`<span class="craft-level-warning">${errorText('levelTooLow')}</span>`:''}</small></span></span>`,recipeInfo)}</td>`;
 
  try{
-  const materials=craftingMaterials(job,tier,1),cost=priceItems(materials,getSnapshot()),products={[game.withRarity(job.output.itemId,tier)]:job.output.qty},value=priceItems(products,getSnapshot()),entry=rateFor(plan),r=entry?.result,factor=24/state.simulationHours;
+  const materials=craftingMaterials(job,tier,1),cost=priceItems(materials,getSnapshot()),products={[game.withRarity(job.output.itemId,tier)]:job.output.qty},value=priceItems(products,getSnapshot()),entry=rateFor(recipe),r=entry?.result,factor=24/state.simulationHours;
   const preview=craftingJobStats(state,job),workInfo=detailLine(text('平均制造耗时','Average crafting time'),format(preview.seconds,2)+' '+text('秒','s'))+detailLine(text('每刻完成概率','Completion chance per tick'),preview.chance===null?text('固定耗时，无随机完成判定','Fixed duration; no random completion check'):format(preview.chance*100,2)+'%');
   const unitValues=`<td>${detail(`${key}-cost`,warn(cost.missing)+format(cost.value,2),itemLines(materials,{prices:true,prefix:key+'-cost'}))}</td><td>${detail(`${key}-value`,warn(value.missing)+format(value.value,2),itemLines(products,{prices:true,prefix:key+'-value'}))}</td>`;
   const label=locked?errorText('levelTooLow'):entry?.error?errorText(entry.error):r?.error?errorText(r.error):text('计算中…','Calculating…');
@@ -127,14 +127,14 @@ function refreshTaskSelection(){
  if(active)timer=setTimeout(()=>{timer=null;startSimulation();},0);
  renderResults();
 }
-function pendingSimulationPlans(){
- return selectedRateJobs().filter(p=>state.levels[p.job.skill]>=p.job.levelReq&&!rateFor(p)).map(p=>({...p,mode:'rate'}));
+function pendingRecipes(){
+ return selectedRateJobs().filter(p=>state.levels[p.job.skill]>=p.job.levelReq&&!rateFor(p));
 }
 function schedule(){stopWorker();clearTimeout(timer);workerError=null;roundSeed=null;clock=Date.now();renderHot();rateCache.clear();if(active)timer=setTimeout(startSimulation,180);}
 function startSimulation(){
  if(workerError)return;
- clearTimeout(timer);timer=null;const plans=pendingSimulationPlans();
- if(!plans.length){renderResults({keepToolbar:true});return;}stopWorker();const token=generation,signatures=new Map(plans.map(p=>[p.key,signature(p)]));running=true;workerError=null;
+ clearTimeout(timer);timer=null;const recipes=pendingRecipes();
+ if(!recipes.length){renderResults({keepToolbar:true});return;}stopWorker();const token=generation,signatures=new Map(recipes.map(p=>[p.key,signature(p)]));running=true;workerError=null;
  try{
   roundSeed??=randomSimulationSeed();
   worker=new Worker(new URL('./crafting-worker.js',import.meta.url),{type:'module'});
@@ -148,7 +148,7 @@ function startSimulation(){
    else if(!renderTimer)renderTimer=setTimeout(()=>{renderTimer=null;renderResults({keepToolbar:true});},200);
   };
   worker.onerror=()=>{if(token!==generation)return;workerError='workerFailed';stopWorker();renderResults({keepToolbar:true});};
-  worker.postMessage({state,now:clock,seed:roundSeed??0,plans:plans.map(p=>({jobId:p.job.id,key:p.key,tier:p.tier,mode:'rate'}))});
+  worker.postMessage({state,now:clock,seed:roundSeed??0,recipes:recipes.map(p=>({jobId:p.job.id,key:p.key,tier:p.tier}))});
  }catch(error){workerError=String(error.message??error);stopWorker();console.error(error);}
  renderResults({keepToolbar:true});
 }
@@ -171,7 +171,7 @@ export function renderCrafting(lang,{isActive=false}={}){
   state=normalizeCrafting(state);clock=Date.now();save();schedule();renderCrafting(language,{isActive:active});
  });
  document.getElementById('craft-reset').onclick=()=>{state=craftingDefaults();importStatus=null;save();schedule();renderCrafting(language,{isActive:active});};
- document.getElementById('craft-import').onclick=()=>craftingUpdater.read({config:true});
+ document.getElementById('craft-import').onclick=()=>craftingUpdater.read();
  const reset=document.getElementById('craft-reset-storage');if(reset)reset.onclick=()=>{if(!confirm(text('删除制造存档并恢复默认配置？','Delete crafting storage and restore defaults?')))return;try{resetCraftingConfig(localStorage);}catch{notice='savedInvalid';renderNotice();return;}state=craftingDefaults();storageBlocked=false;notice='';importStatus=null;save();schedule();renderCrafting(language,{isActive:active});};
  if(active&&!probeStarted){probeStarted=true;probeCharacter().then(()=>{if(!importStatus)importStatus={ready:true};renderImport();}).catch(error=>{if(!importStatus)importStatus={error:error.message};renderImport();});}
  renderHot();

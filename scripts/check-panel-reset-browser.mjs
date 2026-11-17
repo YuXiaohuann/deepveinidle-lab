@@ -16,7 +16,7 @@ const browser=await chromium.launch({headless:true,executablePath:await browserP
 const results={base,cases:[],errors:[]};
 const prices=priceDefaults();for(const id of [20,110,208,359])prices.prices[id]={price:id+100,locked:true,source:'manual',updatedAt:Date.now(),quoteCapturedAt:null};
 prices.prices[game.encode(game.withRarity(328,4),0)]={price:777,locked:true,source:'manual',updatedAt:Date.now(),quoteCapturedAt:null};
-const craft={...craftingDefaults(),levels:{...craftingDefaults().levels,cooking:80,smithing:75},guild:{name:'Test',tag:'T'},guildXp:12,period:'day'};
+const craft={...craftingDefaults(),levels:{...craftingDefaults().levels,cooking:80,smithing:75},guild:{name:'Test',tag:'T'},guildXp:12};
 const enhance={...enhancementDefaults(),itemId:110,guild:{name:'Test',tag:'T'},level:60,lectern:8,mastery:12,tier:4,current:3,target:9,protect:false,protectFrom:5,shardPrice:100,scrollPrice:200,basePrice:300,priceModes:{shardPrice:'manual',scrollPrice:'manual',basePrice:'manual'},basePriceItem:game.encode(game.withRarity(110,4),3)};
 const snapshot={version:2,capturedAt:Date.now(),guild:enhance.guild,player:{skills:{enhancing:game.levelXp(60)},house:{lectern:8},houseFurniture:{lectern:{cell:1,slot:0}},masteries:{enhance:12},equipment:{mount:game.encode(game.withRarity(328,3),7)},bank:{},pack:[],overflow:{}}};
 const read=(page,key)=>page.evaluate(key=>JSON.parse(localStorage.getItem(key)),key);

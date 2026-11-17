@@ -21,7 +21,7 @@ for(const [name,defaults,normalize,importConfig,player] of [
   for(const hours of [1,2,48])assert.equal(importConfig({...defaults(),simulationHours:hours},snapshot).state.simulationHours,hours);
  });
 }
-test('craft: selected window controls actual ticks, independently from count plans',()=>{
+test('craft: selected window controls actual ticks, while finite-route simulation stays independent',()=>{
  const job=craftingJobs.find(j=>j.skill==='smithing'&&!j.upgrade),state={...craftingDefaults(),hotSetting:'off'};
  for(const hours of [1,2,48]){
   const s={...state,simulationHours:hours},ticks=simulationTicks(hours);

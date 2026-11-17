@@ -67,7 +67,7 @@ export function affordableRank(points){
  return lo;
 }
 export function optimizerScenario(objective,raw){
- if(optimizerPolicy(objective).crafting)return normalizeCrafting({...raw,simulationHours:optimizerHours,plans:{},owned:{},tiers:{}});
+ if(optimizerPolicy(objective).crafting)return normalizeCrafting({...raw,simulationHours:optimizerHours});
  return optimizerPolicy(objective).gathering
   ?normalizeGathering({...raw,simulationHours:optimizerHours,customSimulation:false})
   :normalize({...raw,manual:{...raw?.manual,simulationHours:optimizerHours,customSimulation:false}});

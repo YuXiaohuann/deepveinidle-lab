@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {game,defaults,preset} from '../src/model.js';
 import {createScenario,simulationTick,simulateMonster} from '../src/simulation.js';
 import {nativeDay} from './native-day.mjs';
-import {craftingDefaults,craftingJobs,craftingMaterials,normalizeCrafting} from '../src/crafting-model.js';
+import {craftingJobs,craftingMaterials} from '../src/crafting-model.js';
 import {gatheringDefaults,gatheringJobs,selectedGatheringSites} from '../src/gathering-model.js';
 import {createGatheringScenario,simulateGatheringSite} from '../src/gathering-simulation.js';
 import {questlessOffline} from '../scripts/native-questless.mjs';

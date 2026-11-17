@@ -1,14 +1,14 @@
 import {craftingJobs} from './crafting-model.js';
 import {simulateCraftingWindow} from './crafting-simulation.js';
 self.onmessage=({data})=>{
- const total=data.plans.length;let completed=0,lastProgress=0;
+ const total=data.recipes.length;let completed=0,lastProgress=0;
  try{
-  for(const plan of data.plans){
+  for(const recipe of data.recipes){
    try{
-    const job=craftingJobs.find(j=>j.id===plan.jobId);if(!job)throw Error('invalidRecipe');
-    const result=simulateCraftingWindow(data.state,job,plan.tier,{now:data.now,seed:data.seed,onProgress:row=>{const time=performance.now();if(time-lastProgress<250)return;lastProgress=time;self.postMessage({progress:{completed,total,key:plan.key,count:row.count,ticks:row.ticks,rowCompleted:row.completed}});}});
-    self.postMessage({result:{...result,key:plan.key},mode:'rate'});
-   }catch(error){self.postMessage({jobError:{key:plan.key,mode:'rate',message:String(error.message??error)}});}
+    const job=craftingJobs.find(j=>j.id===recipe.jobId);if(!job)throw Error('invalidRecipe');
+    const result=simulateCraftingWindow(data.state,job,recipe.tier,{now:data.now,seed:data.seed,onProgress:()=>{const time=performance.now();if(time-lastProgress<250)return;lastProgress=time;self.postMessage({progress:{completed,total,key:recipe.key}});}});
+    self.postMessage({result:{...result,key:recipe.key}});
+   }catch(error){self.postMessage({jobError:{key:recipe.key,message:String(error.message??error)}});}
    completed++;self.postMessage({progress:{completed,total}});
   }
   self.postMessage({done:true});

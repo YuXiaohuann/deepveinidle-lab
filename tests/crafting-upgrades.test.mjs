@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {game} from '../src/model.js';
-import {craftingJobs,craftingDefaults,normalizeCrafting,craftingMaterials,importCrafting,craftingPlayer} from '../src/crafting-model.js';
+import {craftingJobs,craftingDefaults,craftingMaterials} from '../src/crafting-model.js';
 import {simulateCrafting,simulateCraftingWindow} from '../src/crafting-simulation.js';
 
 const upgrades=craftingJobs.filter(j=>j.upgrade);
@@ -15,7 +15,6 @@ test('legendary upgrade materials include same-quality +0 base and exact extra q
  const blade=upgrades.find(j=>j.id==='upgrade-271'),bow=upgrades.find(j=>j.id==='upgrade-264');
  assert.deepEqual(craftingMaterials(blade,4,2),{4114:2,4252:4});
  assert.deepEqual(craftingMaterials(bow,4,3),{4145:3,4251:3});
-
 });
 test('every upgrade quality runs at a station, is deterministic, +0 and grants unmodified fixed XP',()=>{
  const s=craftingDefaults();for(const k of Object.keys(s.levels))s.levels[k]=105;
@@ -28,12 +27,10 @@ test('every upgrade quality runs at a station, is deterministic, +0 and grants u
   const rate=simulateCraftingWindow({...s,simulationHours:1},job,tier);assert.ok(rate.complete);assert.ok(rate.completed>3);assert.equal(rate.xp,job.xp*rate.completed);
  }
 });
-test('locked upgrades reject simulation, imports drop removed fields and overflow fails',()=>{
- const s=craftingDefaults(),job=upgrades[0];s.plans={[job.id+':4']:2};
+test('locked upgrades reject simulation and excessive quantities overflow',()=>{
+ const s=craftingDefaults(),job=upgrades[0];
  assert.ok(Object.keys(craftingMaterials(job,4,2)).length>0);assert.throws(()=>simulateCrafting(s,job,4,2),/levelTooLow/);
- const p=craftingPlayer(s).player,r=importCrafting(s,{version:2,capturedAt:Date.now(),player:p});assert.equal(r.state.plans,undefined);
  s.levels.smithing=99;assert.throws(()=>simulateCrafting(s,upgrades.find(j=>j.upgrade.id===271),0,Number.MAX_SAFE_INTEGER),/quantityOverflow/);
-
 });
 
 test('upgrade speed changes station time and a truncated run reports incomplete',()=>{
