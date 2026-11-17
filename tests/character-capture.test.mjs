@@ -30,7 +30,7 @@ for(const host of ['deepveinidle.com','cn.deepveinidle.com'])test(`${host} captu
  await flush();assert.deepEqual(h.storage.get(key).player.skills,player().skills);
 });
 
-test('field selection preserves all five import consumers and removes unrelated data',async()=>{
+test('complete you preserves unknown fields and all five import consumers',async()=>{
  const h=captureHarness(),s=new h.page.WebSocket('wss://deepveinidle.com/ws');
  const you=player(),windows=[{label:'Weekly goal: gathered',fromTick:0,toTick:200,xpMult:1.1,token:'secret'}],guild={name:'Guild',tag:'G',members:['private']};
  s.receive([{t:'welcome',you,windows,guild}],100);await flush();
@@ -38,7 +38,7 @@ test('field selection preserves all five import consumers and removes unrelated 
  const snapshot=h.storage.get(key),original={...snapshot,player:you,worldBuffs:windows};
  for(const [read,config]of [[importCharacter,defaults()],[importEnhancement,enhancementDefaults()],[importMastery,masteryDefaults()],[importGathering,gatheringDefaults()],[importCrafting,craftingDefaults()]])assert.deepEqual(read(config,snapshot),read(config,original));
  for(const field of ['bank','pack','overflow','collections','forgeLog'])assert.deepEqual(snapshot.player[field],you[field]);
- assert.equal(snapshot.player.name,undefined);assert.equal(snapshot.player.history,undefined);assert.equal(JSON.stringify(snapshot).includes('secret'),false);assert.deepEqual(snapshot.guild,{name:'Guild',tag:'G'});
+ assert.deepEqual(snapshot.player,you);assert.equal(snapshot.worldBuffs[0].token,undefined);assert.deepEqual(snapshot.guild,{name:'Guild',tag:'G'});
 });
 
 test('capture runs without Worker or Blob APIs',async()=>{
@@ -73,7 +73,7 @@ test('capture deadline is fixed while updates continue, then saves latest role',
 
 test('malformed JSON is ignored, incompatible role stops without showing success',async()=>{
  const h=captureHarness(),s=new h.page.WebSocket('wss://deepveinidle.com/ws');s.raw('not json');await flush();assert.match(h.badge().textContent,/Waiting/);
- s.receive([{t:'welcome',you:{}}]);await flush();assert.match(h.badge().textContent,/Incompatible/);assert.equal(h.storage.has(key),false);
+ s.receive([{t:'welcome',you:null}]);await flush();assert.match(h.badge().textContent,/Incompatible/);assert.equal(h.storage.has(key),false);
 });
 
 test('page exit clears pending saves and observers; hidden badge stops DOM observation',async()=>{
@@ -116,4 +116,50 @@ test('role success waits for storage and later snapshots do not repeat or extend
 test('role storage rejection is explicit',async()=>{
  const h=captureHarness(async()=>{throw Error('quota');}),s=new h.page.WebSocket('wss://deepveinidle.com/ws');
  s.receive([{t:'welcome',you:player()}]);await flush();assert.match(h.badge().textContent,/Character could not be saved/);
+});
+
+test('prototype hook preserves constructor, listener options, removal, return value and native exceptions',async()=>{
+ const h=captureHarness();assert.equal(h.page.WebSocket,h.NativeSocket);
+ const s=new h.page.WebSocket('wss://deepveinidle.com/ws',{listen:false});
+ let calls=0,receiver,eventSeen;const listener=function(event){calls++;receiver=this;eventSeen=event;};
+ assert.equal(s.addEventListener('message',listener,{once:true}),undefined);
+ s.addEventListener('message',listener,{once:true});
+ const removed=()=>assert.fail('removed listener was invoked');s.addEventListener('message',removed);s.removeEventListener('message',removed);
+ s.receive([{t:'welcome',you:player()}]);await flush();
+ s.receive([{t:'snapshot',you:player()}]);await flush();
+ assert.equal(calls,1);assert.equal(receiver,s);assert.equal(typeof eventSeen.data,'string');
+ assert.equal(h.writes.length,2);assert.equal([...h.timers.values()].filter(t=>t.ms===5000).length,1);
+ assert.throws(()=>h.page.WebSocket.prototype.addEventListener.call({},'message',()=>{}),TypeError);
+});
+
+test('discovery requires a message listener and old sockets cannot become current again',async()=>{
+ const h=captureHarness(),first=new h.page.WebSocket('wss://deepveinidle.com/ws',{listen:false});
+ first.addEventListener('open',()=>{});first.receive([{t:'welcome',you:player()}]);await flush();assert.equal(h.writes.length,0);
+ first.addEventListener('message',()=>{});first.receive([{t:'welcome',you:player()}]);await flush();
+ const second=new h.page.WebSocket('wss://deepveinidle.com/ws');
+ first.addEventListener('message',()=>{});first.receive([{t:'snapshot',you:null}]);
+ const you=player();you.lastTick=777;second.receive([{t:'welcome',you}]);await flush();
+ assert.equal(h.storage.get(key).player.lastTick,777);
+});
+
+test('unknown nested fields are preserved and sparse you replaces all old fields',async()=>{
+ const h=captureHarness(),s=new h.page.WebSocket('wss://deepveinidle.com/ws');
+ const you={future:{array:[{email:'raw value',unknown:42}]}};
+ s.receive([{t:'welcome',you:{...player(),...you}}]);await flush();
+ assert.deepEqual(h.storage.get(key).player.future,you.future);
+ s.receive([{t:'snapshot',you}]);await flush();assert.deepEqual(h.storage.get(key).player,you);
+ assert.throws(()=>importCharacter(defaults(),h.storage.get(key)),/invalidSnapshot/);
+});
+
+test('deferred DOM mount uses latest status and page exit removes readiness listener',async()=>{
+ const h=captureHarness(undefined,{ready:false});assert.equal(h.badge(),null);
+ const s=new h.page.WebSocket('wss://deepveinidle.com/ws');s.receive([{t:'welcome',you:player()}]);await flush();
+ h.ready();assert.match(h.badge().textContent,/Character captured/);
+ const exited=captureHarness(undefined,{ready:false});exited.pagehide();exited.ready();assert.equal(exited.badge(),null);
+});
+
+test('capture failure remains visible after success notice has hidden',async()=>{
+ const h=captureHarness(),s=new h.page.WebSocket('wss://deepveinidle.com/ws');
+ s.receive([{t:'welcome',you:player()}]);await flush();h.hideBadge();
+ s.receive([{t:'snapshot',you:[]}]);assert.match(h.badge().textContent,/Capture failed/);
 });

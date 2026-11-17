@@ -3,7 +3,7 @@
 // @name:en      Deep Vein Idle · Character import
 // @name:zh-cn   Deep Vein Idle · 角色配置导入
 // @namespace    https://dvi-lab.pages.dev/
-// @version      2.9.2
+// @version      2.10.0
 // @description  读取角色配置供实验室导入；不发送游戏指令。
 // @match        https://deepveinidle.com/*
 // @match        https://cn.deepveinidle.com/*
@@ -20,23 +20,22 @@
  'use strict';
  const key='dvi-character-snapshot-v2';
  if(['https://deepveinidle.com','https://cn.deepveinidle.com'].includes(location.origin)){
-  const page=typeof unsafeWindow!=='undefined'?unsafeWindow:window,NativeSocket=page.WebSocket;
+  const page=typeof unsafeWindow!=='undefined'?unsafeWindow:window,socketPrototype=page.WebSocket.prototype,addListener=socketPrototype.addEventListener;
   const object=v=>v&&typeof v==='object'&&!Array.isArray(v);
-  const fields=['lastTick','skills','equipment','foodItemId','eatAt','foodMaxTier','foodPerTrip','brews','brewTier','brewBuckets','house','houseFurniture','masteries','perks','guildBonus','homeBank','ironman','bank','bankLocked','pack','overflow','collections','forgeLog'];
-  const clean=v=>JSON.parse(JSON.stringify(v,(k,value)=>/^(?:password|token|auth|authorization|cookie|email|chat)$/i.test(k)?undefined:value));
-  let latestSocket,epoch=0,player,guild,worldBuffs,worldTick;
-  let pending=null,saving=false,saveTimer=null,stopped=false,captured=false;
+  const attached=new WeakSet();
+  let current;
+  let pending=null,saving=false,saveTimer=null,stopped=false;
   let visible=true,hideTimer=null,status='等待游戏数据 / Waiting for game data';
-  const observer=new MutationObserver(()=>{if(visible&&!document.getElementById('dvi-character-capture'))mount();});
-  function paint(){if(visible)observer.observe(document,{childList:true,subtree:true});mount();const el=document.getElementById('dvi-character-capture');if(el&&el.textContent!==status)el.textContent=status;}
+  let badge;
+  function paint(){if(visible&&badge?.isConnected&&badge.textContent!==status)badge.textContent=status;}
   function showCaptured(){
-   if(captured||stopped)return;captured=true;
+   if(current.captured||stopped)return;current.captured=true;
    status='角色配置已读取 / Character captured';
-   hideTimer=setTimeout(()=>{visible=false;observer.disconnect();document.getElementById('dvi-character-capture')?.remove();},5000);paint();
+   hideTimer=setTimeout(()=>{visible=false;badge?.remove();},5000);paint();
   }
   function failure(error){
    if(stopped)return;stopped=true;pending=null;clearTimeout(saveTimer);clearTimeout(hideTimer);visible=true;
-   status=`读取失败 / Capture failed: ${error.message}。请刷新游戏 / Refresh the game`;paint();console.error('[DVI character import]',error);
+   status=`读取失败 / Capture failed: ${error.message}。请刷新游戏 / Refresh the game`;mount();paint();console.error('[DVI character import]',error);
   }
   function scheduleSave(){
    if(stopped||saving||saveTimer!==null||!pending)return;
@@ -45,16 +44,17 @@
   async function save(){
    saveTimer=null;
    if(stopped||!pending)return;
-   const snapshot=pending,connection=epoch;pending=null;saving=true;
+   const snapshot=pending,connection=current;pending=null;saving=true;
    try{
     await GM_setValue(key,snapshot);
-    if(connection===epoch&&!stopped)showCaptured();
+    if(connection===current&&!stopped)showCaptured();
    }catch(error){
-    if(connection===epoch)failure(Error(`角色配置保存失败 / Character could not be saved: ${error.message}`));
+    if(connection===current)failure(Error(`角色配置保存失败 / Character could not be saved: ${error.message}`));
     else console.error('[DVI character import: previous connection save failed]',error);
    }finally{saving=false;scheduleSave();}
   }
   function frame(raw){
+   let {player,guild,worldBuffs,worldTick}=current;
    let f;try{f=JSON.parse(raw);}catch{return;}
    if(!Number.isInteger(f?.tick)||!Array.isArray(f.m))return;
    let changed=false,own;
@@ -65,34 +65,46 @@
     }
     if(m?.t==='welcome'||m?.t==='snapshot'){
      const you=m.you;
-     if(!object(you)||!object(you.skills)||!object(you.equipment)||!Number.isSafeInteger(you.lastTick))throw Error('角色数据结构不兼容 / Incompatible character data');
+     if(!object(you))throw Error('角色数据结构不兼容 / Incompatible character data');
      own=you;
     }else if(m?.t!=='windows'&&m?.t!=='guild')continue;
     worldTick=f.tick;
     if(Object.hasOwn(m,'windows'))worldBuffs=Array.isArray(m.windows)?m.windows.map(w=>object(w)?Object.fromEntries(['label','fromTick','toTick','xpMult','rarityMult'].filter(k=>Object.hasOwn(w,k)).map(k=>[k,w[k]])):w):undefined;
     if(player||own)changed=true;
    }
+   if(own)player=own;
+   Object.assign(current,{player,guild,worldBuffs,worldTick});
    if(!changed)return;
-   if(own)player=clean(Object.fromEntries(fields.filter(k=>Object.hasOwn(own,k)).map(k=>[k,own[k]])));
    pending={version:2,capturedAt:Date.now(),player,guild,worldBuffs,worldTick,worldBuffsVersion:1};
    scheduleSave();
   }
-  page.WebSocket=new Proxy(NativeSocket,{construct(target,args){
-   const socket=Reflect.construct(target,args),url=new URL(String(args[0]),location.href);
-   if(url.host===location.host&&url.pathname==='/ws'){
-    latestSocket=socket;epoch++;player=guild=worldBuffs=worldTick=undefined;pending=null;captured=false;
-    clearTimeout(saveTimer);saveTimer=null;clearTimeout(hideTimer);
-    if(!stopped){visible=true;status='等待游戏数据 / Waiting for game data';paint();}
-    socket.addEventListener('message',event=>{
-     if(stopped||socket!==latestSocket||typeof event.data!=='string')return;
-     try{frame(event.data);}catch(error){failure(error);}
-    });
-   }
-   return socket;
-  }});
-  function mount(){if(!visible||!document.documentElement||document.getElementById('dvi-character-capture'))return;const el=document.createElement('div');el.id='dvi-character-capture';el.setAttribute('role','status');el.style.cssText='position:fixed;bottom:8px;left:8px;z-index:99999;max-width:calc(100vw - 32px);padding:6px 10px;border:1px solid #756440;border-radius:6px;background:#171c24;color:#e6d6ae;font:12px sans-serif;white-space:pre-line;pointer-events:none';el.textContent=status;document.documentElement.append(el);}
-  paint();
-  page.addEventListener('pagehide',()=>{stopped=true;pending=null;clearTimeout(saveTimer);clearTimeout(hideTimer);observer.disconnect();},{once:true});
+  socketPrototype.addEventListener=function(type,...args){
+   const result=Reflect.apply(addListener,this,[type,...args]);
+   if(stopped||type!=='message'||attached.has(this))return result;
+   const url=new URL(this.url);
+   if(url.origin!==location.origin.replace(/^http/,'ws')||url.pathname!=='/ws')return result;
+   const socket=this,connection={socket,captured:false};
+   Reflect.apply(addListener,socket,['message',event=>{
+    if(stopped||current!==connection||typeof event.data!=='string')return;
+    try{frame(event.data);}catch(error){failure(error);}
+   }]);
+   attached.add(socket);current=connection;pending=null;
+   clearTimeout(saveTimer);saveTimer=null;clearTimeout(hideTimer);
+   visible=true;status='等待游戏数据 / Waiting for game data';
+   // A new connection starts a new notice; removed notices are not otherwise rebuilt.
+   mount();paint();
+   return result;
+  };
+  function mount(){
+   if(!visible||!document.documentElement)return;
+   badge=document.getElementById('dvi-character-capture');
+   if(badge){paint();return;}
+   badge=document.createElement('div');badge.id='dvi-character-capture';badge.setAttribute('role','status');
+   badge.style.cssText='position:fixed;bottom:8px;left:8px;z-index:99999;max-width:calc(100vw - 32px);padding:6px 10px;border:1px solid #756440;border-radius:6px;background:#171c24;color:#e6d6ae;font:12px sans-serif;white-space:pre-line;pointer-events:none';
+   badge.textContent=status;document.documentElement.append(badge);
+  }
+  if(document.documentElement)mount();else document.addEventListener('DOMContentLoaded',mount,{once:true});
+  page.addEventListener('pagehide',()=>{stopped=true;pending=null;clearTimeout(saveTimer);clearTimeout(hideTimer);document.removeEventListener('DOMContentLoaded',mount);},{once:true});
  }else{
   // The document is shared across userscript/page worlds; window identities are not.
   document.addEventListener('dvi-character-request',async event=>{

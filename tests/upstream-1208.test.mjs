@@ -44,12 +44,12 @@ test('1208 partial imports warn and retain invalid fields, strict imports reject
  assert.equal(importEnhancement(current,valid).state.lectern,50);
 });
 
-test('1208 capture follows active masteries across page switches without importing the other page',async()=>{
+test('1208 capture retains both mastery pages while tracking active masteries',async()=>{
  const h=captureHarness(),ws=new h.page.WebSocket('wss://deepveinidle.com/ws');
  const player={lastTick:1,skills:{},equipment:{},pack:[],bank:{},overflow:{},masteries:{xp:1},masteryOther:{xp:2},masteryPage:1};
  ws.receive([{t:'welcome',you:player}],1);await flushCapture();
  assert.equal(h.writes.at(-1).value.player.masteries.xp,1);
- assert.equal(Object.hasOwn(h.writes.at(-1).value.player,'masteryOther'),false);
+ assert.deepEqual(h.writes.at(-1).value.player.masteryOther,{xp:2});assert.equal(h.writes.at(-1).value.player.masteryPage,1);
  // The public client swaps masteries and masteryOther when switching pages.
  ws.receive([{t:'snapshot',you:{...player,lastTick:2,masteries:{xp:2},masteryOther:{xp:1},masteryPage:2}}],2);await flushCapture();
  assert.equal(h.writes.at(-1).value.player.masteries.xp,2);

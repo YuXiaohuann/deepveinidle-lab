@@ -81,5 +81,5 @@ test('1212 skilling gear, active mastery changes and legacy protocol survive cha
  ws.receive([{t:'welcome',you:p}],1);await flushCapture();
  const saved=h.writes.at(-1).value;assert.equal(saved.version,2);assert.equal(saved.player.equipment.shield,p.equipment.shield);assert.equal(saved.player.equipment.helmet,741);
  ws.receive([{t:'snapshot',you:{...p,lastTick:2,masteries:{xp:7},masterySkills:{cooking:2}}}],2);await flushCapture();
- assert.deepEqual(h.writes.at(-1).value.player.masteries,{xp:7});assert.equal('masterySkills' in h.writes.at(-1).value.player,false);
+ assert.deepEqual(h.writes.at(-1).value.player.masteries,{xp:7});assert.deepEqual(h.writes.at(-1).value.player.masterySkills,{cooking:2});
 });

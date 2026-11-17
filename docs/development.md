@@ -74,7 +74,7 @@ node --test tests/mastery.test.mjs tests/mastery-controls.test.mjs tests/mastery
 
 ## 角色捕获专项
 
-运行 `node --test tests/character-capture.test.mjs tests/character-import.test.mjs tests/market-import.test.mjs` 验证角色捕获、保存协调、市场捕获移除、角色桥接及官方市场价格适配。运行 `node scripts/check-capture-browser.mjs` 后，在 Chrome 打开 `http://127.0.0.1:4186/`，页面自动验证直接捕获（不提供 Worker／Blob API）、字段裁剪、慢存储合并、跨连接隔离和失败提示，完成后显示 PASS。此服务只暴露测试页与当前候选脚本，不连接游戏，GM 存储和 WebSocket 使用合成替身；`PORT` 可修改端口。源码变化后刷新重测，结束后停止服务。
+运行 `node --test tests/character-capture.test.mjs tests/character-import.test.mjs tests/market-import.test.mjs` 验证角色捕获、保存协调、市场捕获移除、角色桥接及官方市场价格适配。运行 `node scripts/check-capture-browser.mjs` 后，在 Chrome 打开 `http://127.0.0.1:4186/`，页面自动验证直接捕获（不提供 Worker／Blob API）、完整 you（含未知字段）、慢存储合并、跨连接隔离和失败提示，完成后显示 PASS。此服务只暴露测试页与当前候选脚本，不连接游戏，GM 存储和 WebSocket 使用合成替身；`PORT` 可修改端口。源码变化后刷新重测，结束后停止服务。
 
 本地合成消息验证不代表脚本管理器沙箱兼容或真实账号卡顿改善；安装／更新角色脚本后仍须刷新游戏和实验室（生产基线及本地候选见 [当前状态](status.md)），并单独记录该环境的验收。角色数据不兼容或保存失败时明确提示失败并要求刷新。
 

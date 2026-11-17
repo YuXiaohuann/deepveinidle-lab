@@ -66,12 +66,12 @@ function gameScript(save){
  const frame=(socket,you,t='snapshot',extra={},tick=100)=>socket.receive([{t,you,chat:['private'],...extra}],tick);
  return {...h,stored,frame,doc:h.context.document,hasHideTimer:()=>/captured/i.test(h.badge()?.textContent??'')&&[...h.timers.values()].some(t=>t.ms===5000)};
 }
-test('userscript captures required own-role fields without unrelated data or credentials',async()=>{
+test('userscript captures complete you without other message data',async()=>{
  const {page,stored,frame}=gameScript(),socket=new page.WebSocket('wss://deepveinidle.com/ws?c=secret');
  const p={...fixture().player,password:'secret',token:'secret',bank:{64:100},name:'Alice'};
  frame(socket,p,'enter');assert.equal(stored.length,0);frame(socket,p,'welcome');await new Promise(resolve=>setImmediate(resolve));assert.equal(stored.length,1);assert.equal(stored[0].prediction,undefined);
- assert.equal(stored[0].player.skills.melee,p.skills.melee);assert.equal(stored[0].player.password,undefined);assert.deepEqual(JSON.parse(JSON.stringify(stored[0].player.bank)),{64:100});assert.equal(stored[0].player.name,undefined);
- assert.equal(JSON.stringify(stored).includes('secret'),false);assert.equal(JSON.stringify(stored).includes('private'),false);
+ assert.equal(stored[0].player.skills.melee,p.skills.melee);assert.equal(stored[0].player.password,p.password);assert.deepEqual(JSON.parse(JSON.stringify(stored[0].player.bank)),{64:100});assert.equal(stored[0].player.name,p.name);
+ assert.deepEqual(stored[0].player,p);assert.equal(JSON.stringify(stored).includes('private'),false);
  assert.equal(importCharacter(preset('ranged'),structuredClone(stored[0])).applied.length,9);
 });
 test('new connections and characters replace snapshots rather than merging previous data',async()=>{
@@ -111,13 +111,12 @@ test('unanswered requests fail after the bounded deadline and stop retries',asyn
  const page=simulatorWorld(doc,{setInterval:()=>1,setTimeout:fn=>(timeout=fn,2),clearInterval:()=>cleared++,clearTimeout(){}});
  const response=page.requestCharacter('read');timeout();await assert.rejects(response,/scriptMissing/);assert.equal(cleared,1);
 });
-test('capture badge survives DOM removal and displays success only after storage is complete',async()=>{
+test('capture badge displays success after storage and is not rebuilt after removal',async()=>{
  let finish;const stored=new Promise(resolve=>finish=resolve);
  const g=gameScript(()=>stored),socket=new g.page.WebSocket('wss://deepveinidle.com/ws');
  assert.ok(g.badge());g.frame(socket,fixture().player,'welcome');await new Promise(resolve=>setImmediate(resolve));
  assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');assert.equal(g.hasHideTimer(),false);finish();await new Promise(resolve=>setImmediate(resolve));
- assert.equal(g.badge().textContent,'角色配置已读取 / Character captured');g.removeBadge();assert.match(g.badge().textContent,/角色配置已读取/);
- assert.equal(g.badge().id,'dvi-character-capture');
+ assert.equal(g.badge().textContent,'角色配置已读取 / Character captured');g.removeBadge();assert.equal(g.badge(),null);
 });
 test('script metadata provides English and simplified Chinese names',()=>{
  assert.match(script,/^\/\/ @name:en\s+Deep Vein Idle · Character import$/m);
@@ -132,7 +131,7 @@ test('success badge hides after five seconds without reappearing on redraws or l
  g.frame(socket,fixture().player);await new Promise(resolve=>setImmediate(resolve));
  assert.equal(g.stored.length,2);assert.equal(g.badge(),null);
  new g.page.WebSocket('wss://deepveinidle.com/ws');assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');
- assert.match(script,/^\/\/ @version\s+2\.9\.2$/m);
+ assert.match(script,/^\/\/ @version\s+2\.10\.0$/m);
 });
 
 const weeklyWindow=(label='Weekly goal: gathered',fromTick=100,toTick=200,xpMult=1.1)=>({label,fromTick,toTick,xpMult});
@@ -162,14 +161,13 @@ test('userscript captures complete world windows and refreshes standalone window
  g.frame(socket,fixture().player,'welcome');await new Promise(resolve=>setImmediate(resolve));assert.equal(g.stored.at(-1).worldBuffs,undefined);
 });
 
-test('waiting badge persists before game data and storage, including page redraws',async()=>{
+test('waiting badge persists before game data and storage',async()=>{
  let finish;const g=gameScript(()=>new Promise(resolve=>finish=resolve));
  assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');assert.equal(g.hasHideTimer(),false);
- g.removeBadge();assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');
  const socket=new g.page.WebSocket('wss://deepveinidle.com/ws');
  g.frame(socket,fixture().player,'enter');assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');assert.equal(g.hasHideTimer(),false);
  g.frame(socket,fixture().player,'welcome');await new Promise(resolve=>setImmediate(resolve));
- g.removeBadge();assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');assert.equal(g.hasHideTimer(),false);
+ assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');assert.equal(g.hasHideTimer(),false);
  finish();await new Promise(resolve=>setImmediate(resolve));assert.match(g.badge().textContent,/角色配置已读取/);
  g.hideBadge();assert.equal(g.badge(),null);
 });
