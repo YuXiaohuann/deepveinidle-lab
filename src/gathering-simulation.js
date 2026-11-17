@@ -1,3 +1,4 @@
+import {recordActivityTime} from './activity-timing.js';
 import * as game from './upstream.js';
 import {gatheringPlayer,gatheringPotions,selectedGatheringSites} from './gathering-model.js';
 import {simulationTicks,combatHot,combatHotWindows} from './combat-hot.js';
@@ -45,6 +46,7 @@ export function simulateGatheringSite(raw,job,site,options={}){
   if(income)addExpected(discardGathered&&job.bonus&&game.baseItemId(id)===game.baseItemId(job.bonus.itemId)?pendingBonus:result.rareItems,id,qty);
  };
  for(let tick=1;tick<=durationTicks;tick++){
+  recordActivityTime(result,p,START_TICK+tick);
   if(p.activity==='walking')result.movingTicks++;
   if(p.activity==='working'){if(START_TICK+tick<p.stunUntil)result.stunnedTicks++;else result.workingTicks++;}
   const at=START_TICK+tick,before=beforeWork(p,job,at),events=[];simulationTick(p,context,at,events);
@@ -81,5 +83,5 @@ export function simulateGatheringJob(raw,job,{onSite=()=>{},...options}={}){
  try{result=simulateGatheringSite(raw,job,site,options);}
  catch(error){onSite({siteId:site.id,x:site.x,y:site.y,error:String(error.message??error)});throw error;}
  onSite(result);
- return {key:`job-${job.id}`,jobId:job.id,...result,sites:[result],movingRatio:result.elapsedTicks?result.movingTicks/result.elapsedTicks:null};
+ return {key:`job-${job.id}`,jobId:job.id,...result,sites:[result],movingRatio:result.elapsedTicks?result.extraTicks/result.elapsedTicks:null};
 }

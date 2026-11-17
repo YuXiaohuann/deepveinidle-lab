@@ -1,3 +1,4 @@
+import {recordActivityTime} from './activity-timing.js';
 import * as game from './upstream.js';
 import {normalizeCrafting,craftingPlayer,craftingMaterials,planKey,validQuantity,safeAdd} from './crafting-model.js';
 import {MAX_SIMULATION_MINUTES,manualWindows} from './manual-settings.js';
@@ -40,6 +41,7 @@ export function simulateCrafting(raw,job,tier,count,{onProgress=()=>{},...option
  const r={key:planKey(job.id,tier),jobId:job.id,skill:job.skill,tier,count,completed:0,success:0,burnt:0,xp:0,items:{},sampleItems:{},consumed:{},materials,elapsedTicks:0,movingTicks:0,workingTicks:0,deposits:0,siteId:site.id,homeBank:bank.id,startLevel:game.level(initialXp),endLevel:game.level(initialXp),complete:false,error:null};
  r.seed=context.seed;
  for(let tick=1;tick<=maxTicks;tick++){
+  recordActivityTime(r,p,START_TICK+tick);
   if(p.activity==='walking')r.movingTicks++;
   if(p.activity==='working')r.workingTicks++;
   const at=START_TICK+tick,before=job.upgrade?null:beforeWork(p,job,at),events=[];simulationTick(p,context,at,events);

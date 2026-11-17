@@ -1,3 +1,4 @@
+import {recordActivityTime} from './activity-timing.js';
 import {DAY_TICKS,simulationTicks,combatHot,combatHotWindows} from './combat-hot.js';
 import {manualWindows} from './manual-settings.js';
 import {game,makePlayer} from './model.js';
@@ -58,6 +59,7 @@ export function simulateMonster(raw,monster,options={}){
  const expectation=createCombatExpectation(monster);
  result.seed=context.seed;
  for(let tick=1;tick<=durationTicks;tick++){
+  recordActivityTime(result,p,START_TICK+tick);
   if(p.activity==='walking')result.movingTicks++;
   const events=[];
   simulationTick(p,context,START_TICK+tick,events);

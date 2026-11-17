@@ -53,6 +53,10 @@ test('budget zero, fallback warnings and quantity/money overflow fail explicitly
 for(const skill of craftingSkills)test(`${skill}: count-limited engine matches independent original offline XP, products, burning and banking`,()=>{
  const s=craftingDefaults();s.skill=skill;s.hotSetting='off';s.brews.elixir=2;s.masteries.xp=40;s.masteries.craft=10;s.perks.quick=5;s.house={...s.house,[{cooking:'range',smithing:'forge',fletching:'fletchrack',herblore:'herbrack',crafting:'loom'}[skill]]:5};
  const job=first(skill),actual=simulateCrafting(s,job,2,500),native=nativeResult(s,job,2,500);
+ assert.equal(Object.values(actual.activityTicks).reduce((a,b)=>a+b,0),actual.elapsedTicks);
+ assert.equal(actual.extraTicks+actual.activityTicks.working,actual.elapsedTicks);
+ assert.equal(actual.activityTicks.walking,actual.movingTicks);
+ assert.ok(actual.extraTicks>=actual.movingTicks);
  assert.equal(actual.complete,true);assert.equal(actual.completed,500);assert.equal(actual.success+actual.burnt,500);assert.equal(actual.xp,native.xp);assert.deepEqual(actual.sampleItems,native.report.itemsGained);assert.equal(actual.deposits,native.report.deposits);assert.equal(actual.burnt,native.report.burnt);
  assert.equal(actual.endLevel,game.level(native.player.skills[skill]));assert.equal(actual.elapsedTicks,native.player.lastStop.tick-START_TICK-1);
  assert.deepEqual(actual.consumed,craftingMaterials(job,2,500));assert.ok(actual.endLevel>actual.startLevel);if(skill==='cooking')assert.ok(actual.burnt>0);if(skill==='fletching'||skill==='crafting')assert.ok(actual.deposits>0);

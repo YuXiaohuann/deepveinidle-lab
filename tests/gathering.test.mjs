@@ -46,6 +46,10 @@ for(const skill of gatheringSkills)test(`${skill}: discard follows original rout
  const actual=simulateGatheringSite(s,job,site,{seed:0}),inventory={...p.bank};
  for(const item of p.pack)inventory[item.itemId]=(inventory[item.itemId]??0)+item.qty;
  for(const [id,qty]of Object.entries(p.overflow))inventory[id]=(inventory[id]??0)+qty;
+ assert.equal(Object.values(actual.activityTicks).reduce((a,b)=>a+b,0),actual.elapsedTicks);
+ assert.equal(actual.extraTicks+actual.activityTicks.working,actual.elapsedTicks);
+ assert.equal(actual.activityTicks.walking,actual.movingTicks);
+ assert.ok(actual.extraTicks>=actual.movingTicks);
  assert.equal(actual.xp,p.skills[skill]-initialXp);assert.equal(actual.completed,counts.produced);
  assert.equal(actual.movingTicks,moving);assert.equal(actual.deposits,counts.deposited??0);assert.deepEqual(actual.sampleItems,gross);
  assert.equal(actual.totalIncome,actual.coins+actual.normalValue+actual.rareValue);
