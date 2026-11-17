@@ -45,12 +45,12 @@ try{
     [...cells].slice(1).every(cell=>style(cell).textAlign==='right'&&style(cell).verticalAlign==='middle')&&
     cells[7].querySelector('input').getBoundingClientRect().height===36);
  }));
- const daily=['配方','经验/天','利润/天','移动占比','制造次数/天','单次材料成本','单次产物价值','订单制造次数'];
+ const daily=['配方','经验/天','利润/天','额外耗时','制造次数/天','单次材料成本','单次产物价值','订单制造次数'];
  assert.deepEqual(await headers(),daily);await checkRows();assert.equal(await page.locator('.craft-recipe-heading h2 span').count(),0);
  assert.ok(await table().locator('tbody tr').evaluateAll(rows=>rows.every(row=>[...row.cells].flatMap((cell,i)=>cell.classList.contains('column-highlight')?[i]:[]).join(',')==='0,1,2')));
  const levels=()=>table().locator('td:first-child .enemy-name small').allTextContents().then(values=>values.map(value=>Number(value.match(/\d+/)[0])));
  let values=await levels();assert.deepEqual(values,[...values].sort((a,b)=>b-a));
- const recipe=page.locator('#craft-61\\:0-recipe');assert.match(await recipe.locator('summary').innerText(),/ · 普通\n所需等级 1/);await recipe.locator('summary').click();assert.equal(await recipe.locator('.loot-line').count(),4);
+ const recipe=page.locator('#craft-61\\:0-recipe');assert.match(await recipe.locator('summary').innerText(),/ · 普通\n所需等级 1/);await recipe.locator('summary').click();assert.equal(await recipe.locator('.loot-line').count(),3);
  await page.locator('[data-craft-sort="levelReq"]').click();values=await levels();assert.deepEqual(values,[...values].sort((a,b)=>a-b));assert.equal(await recipe.getAttribute('open'),'');
  await page.locator('[data-craft-rarity="2"]').click();await page.waitForFunction(()=>window.craftRuns.some(run=>run.done&&run.results.some(r=>r.mode==='rate'&&r.result.key==='61:2')));assert.match(await page.locator('#craft-61\\:2-recipe summary').innerText(),/ · 稀有/);
  results.cases.push('eight columns, name/rarity and level, default/ascending sorting, highlighted values and locked rows, independent quality rows');
@@ -59,7 +59,10 @@ try{
  const xpDetail=page.locator('#craft-61\\:0-xp');await xpDetail.locator('summary').click();
  assert.equal(await xpDetail.locator('.loot-line span').last().innerText(),(data.xp/data.completed).toLocaleString('zh-CN',{maximumFractionDigits:2}));
  const movementCell=()=>page.locator('.craft-table [data-craft-count="61:0"]').locator('xpath=ancestor::tr').locator('td').nth(3);
- assert.equal(await movementCell().innerText(),(data.movingTicks/data.elapsedTicks*100).toLocaleString('zh-CN',{maximumFractionDigits:2})+'%');
+ assert.equal(await movementCell().locator("summary").innerText(),(data.extraTicks/data.elapsedTicks*100).toLocaleString('zh-CN',{maximumFractionDigits:2})+'%');
+ await movementCell().locator('summary').click();
+ assert.match(await movementCell().innerText(),/实际模拟/);assert.match(await movementCell().innerText(),/制造耗时/);
+ assert.doesNotMatch(await movementCell().innerText(),/随机种子|工位|坐标/);
  await page.locator('[data-craft-sort="movingRatio"]').click();
  assert.equal(await table().locator('th').nth(3).getAttribute('aria-sort'),'ascending');
  const countCell=()=>page.locator('.craft-table [data-craft-count="61:0"]').locator('xpath=ancestor::tr').locator('td').nth(4);
@@ -77,7 +80,7 @@ try{
   assert.ok(await warning.evaluate(el=>{const box=el.getBoundingClientRect(),level=el.parentElement.getBoundingClientRect();return el.parentElement.tagName==='SMALL'&&box.left>level.left&&box.top>=level.top-1&&box.bottom<=level.bottom+1;}));
   assert.equal(await table().locator('td:first-child>.death-note').count(),0);
   assert.equal(await xpDetail.locator('.loot-line span').first().innerText(),language==='zh'?'平均单次经验':'Average XP per action');assert.equal(await xpDetail.locator('p').count(),0);assert.equal(await recipe.getAttribute('open'),'');
-  if(language==='en')assert.deepEqual(await headers(),['Recipe','XP/day','Profit/day','Moving share','Crafts/day','Material cost / craft','Product value / craft','Order crafts']);
+  if(language==='en')assert.deepEqual(await headers(),['Recipe','XP/day','Profit/day','Extra time','Crafts/day','Material cost / craft','Product value / craft','Order crafts']);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await table().evaluate(el=>el.parentElement.scrollLeft=0);await table().locator('thead').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(directory,`${language}-${width}.png`)});
   if(width===390){assert.ok(await table().evaluate(el=>el.parentElement.scrollWidth>el.parentElement.clientWidth));await table().evaluate(el=>el.parentElement.scrollLeft=el.parentElement.scrollWidth);}

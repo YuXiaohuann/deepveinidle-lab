@@ -1,3 +1,4 @@
+import {timingDetails} from '../src/activity-timing.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -8,7 +9,7 @@ import * as ordersModel from '../src/crafting-orders.js';
 import {valuationPrice} from '../src/item-prices.js';
 const source=fs.readFileSync(new URL('../src/crafting-controls.js',import.meta.url),'utf8');
 function page(language='zh'){
- const context=vm.createContext({registerCharacterUpdates:()=>({read(){}}),...model,...ordersModel,game,valuationPrice,localStorage:{getItem(){return null;},removeItem(){}},translatedName:n=>n,translatedItemName:id=>String(id),getSnapshot:()=>({}),subscribe(){}});
+ const context=vm.createContext({timingDetails,registerCharacterUpdates:()=>({read(){}}),...model,...ordersModel,game,valuationPrice,localStorage:{getItem(){return null;},removeItem(){}},translatedName:n=>n,translatedItemName:id=>String(id),getSnapshot:()=>({}),subscribe(){}});
  vm.runInContext(source.replaceAll('import.meta.url',"'http://localhost/'").replace(/^import .*;\n/gm,'').replaceAll('export function','function'),context);
  vm.runInContext(`language=${JSON.stringify(language)};state.levels.cooking=100;orders=[createOrder('test','Test')];currentOrderId='test';[1,2,3,4].forEach(t=>selectedTiers.add(t));`,context);return context;
 }
@@ -29,7 +30,7 @@ test('legacy period values do not change daily columns or per-craft values',()=>
  const p=page();vm.runInContext(`const plan=visibleJobs()[0];rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{seed:4294967295,completed:240,xp:480,items:{40:240},consumed:{20:240}}});`,p);
  vm.runInContext("state.period='hour'",p);
  const hour=vm.runInContext('recipeRow(visibleJobs()[0])',p);
- assert.match(hour,/随机种子<\/span><span>4294967295/);
+ assert.doesNotMatch(hour,/随机种子<\/span><span>4294967295/);
  vm.runInContext("state.period='day'",p);const day=vm.runInContext('recipeRow(visibleJobs()[0])',p);
  const cells=s=>s.match(/<td[^>]*>.*?<\/td>/g);
  assert.deepEqual(cells(hour).slice(4),cells(day).slice(4));
@@ -38,7 +39,7 @@ test('legacy period values do not change daily columns or per-craft values',()=>
  assert.match(cells(hour)[1],/>480</);assert.match(cells(day)[1],/>480</);
  vm.runInContext("state.plans={'61:0':90}",p);assert.equal(vm.runInContext('!!rateFor(visibleJobs()[0])',p),true);
  assert.match(vm.runInContext('headers()',p),/制造次数\/天/);
- vm.runInContext("language='en'",p);assert.match(vm.runInContext('recipeRow(visibleJobs()[0])',p),/Random seed<\/span><span>4294967295/);
+ vm.runInContext("language='en'",p);assert.doesNotMatch(vm.runInContext('recipeRow(visibleJobs()[0])',p),/Random seed<\/span><span>4294967295/);
 });
 
 test('rarity filter defaults to normal, combines with search and retains plans and totals',()=>{
@@ -144,14 +145,14 @@ test('rate tasks follow category and rarity while search and filled-only remain 
 test('movement share uses unrounded elapsed ticks, handles zero time and sorts numerically',()=>{
  for(const lang of ['zh','en']){
   const p=page(lang);
-  vm.runInContext(`selectedTiers.clear();selectedTiers.add(0);selectedTiers.add(1);const plans=visibleJobs().slice(0,2);plans.forEach((plan,i)=>rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{completed:4,xp:15,items:{},consumed:{},movingTicks:i?1:2,elapsedTicks:i?3:6}}));`,p);
+  vm.runInContext(`selectedTiers.clear();selectedTiers.add(0);selectedTiers.add(1);const plans=visibleJobs().slice(0,2);plans.forEach((plan,i)=>rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{completed:4,xp:15,items:{},consumed:{},extraTicks:i?1:2,elapsedTicks:i?3:6}}));`,p);
   const cell=()=>vm.runInContext('recipeRow(visibleJobs()[0])',p).match(/<td[^>]*>.*?<\/td>/g)[3];
-  assert.equal(cell(),'<td>33.33%</td>');
+  assert.match(cell(),/<summary>33.33%<\/summary>/);
   const headings=vm.runInContext('headers()',p);assert.ok(headings.indexOf('data-craft-sort="movingRatio"')<headings.indexOf('data-craft-sort="completed"'));
   vm.runInContext('state.simulationHours=1',p);
   // Refresh signatures after changing duration; percentages must not scale to a day.
-  vm.runInContext('plans.forEach(plan=>rateCache.get(plan.key).signature=signature({...plan,count:0}))',p);assert.equal(cell(),'<td>33.33%</td>');
-  vm.runInContext('rateFor(plans[0]).result.movingTicks=0',p);assert.equal(cell(),'<td>0%</td>');
+  vm.runInContext('plans.forEach(plan=>rateCache.get(plan.key).signature=signature({...plan,count:0}))',p);assert.match(cell(),/<summary>33.33%<\/summary>/);
+  vm.runInContext('rateFor(plans[0]).result.extraTicks=0',p);assert.match(cell(),/<summary>0%<\/summary>/);
   vm.runInContext("sort='movingRatio';direction='desc'",p);assert.equal(vm.runInContext('sortedJobs()[0].tier',p),1);
   vm.runInContext("direction='asc'",p);assert.equal(vm.runInContext('sortedJobs()[0].tier',p),0);
   vm.runInContext('rateFor(plans[0]).result.elapsedTicks=0',p);assert.equal(cell(),'<td>—</td>');assert.equal(vm.runInContext('sortedJobs()[0].tier',p),1);
