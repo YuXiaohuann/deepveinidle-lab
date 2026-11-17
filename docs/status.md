@@ -14,21 +14,13 @@
 
 ## 本地待发布
 
-本地待发布角色 userscript **2.10.0**：移除 WebSocket 构造器 Proxy，改为包装原型 addEventListener 接入同源 `/ws` 消息；原样保存完整 you，取消角色字段白名单、递归过滤及重复复制。连接状态统一管理，保留串行合并保存；删除 DOM 观察器，支持延迟挂载，外部移除节点不自动重建，新连接或失败时挂载提示。桥接 2.4、数据协议 2、存储键和页面导入映射不变。升级后需刷新游戏和实验室并重新捕获；完整 you 将进入本地存储、桥接和调试导出。
+候选 **1.10.5**，角色 userscript **2.10.1**，游戏资源 **1.0.1214**、桥接 **2.4**、数据协议 **2**。范围为完整角色捕获重构、助手本地化名称及 GitHub Actions 双通道发布；更新脚本后须刷新游戏和实验室并重新捕获。默认名称、命名空间、安装路径及存储键保持兼容，完整 you 进入本地存储、桥接与调试导出。
 
-提交前重跑的 79 项角色捕获／导入／市场及上游兼容专项全部通过，Chrome 合成消息浏览器专项通过；浏览器覆盖完整未知字段、市场消息忽略、慢存储合并、跨连接写入及失败提示。完整测试首轮执行 637 项，632 项通过，2 项旧字段裁剪断言不符合本次完整捕获规则、3 项本机 HTTP 测试受沙箱端口权限限制；更新断言并在允许监听本机端口的环境中重跑这四个相关测试文件，23 项全部通过。未再次执行整套测试，不将首轮记录记为全绿。脚本语法、diff 空白及文档引用检查通过（164 份文档、885 个引用）。日志、结果及截图在 `.test-artifacts/userscript-refactor-20261117/`。真实脚本管理器、真实账号和长时性能未验证；尚未部署，生产基线仍为上节记录。
-
-另有 GitHub Actions 双通道配置：PR 完整检查、main 自动发布 Preview、正式 Release 自动发布生产；不改变应用版本。远端 `preview`、`production` Environment 已创建，分别限制 main 分支及 `v*` 标签，Account ID 已配置，两个环境的 `CLOUDFLARE_API_TOKEN` 已核对存在（未读取密钥值）。首轮 GitHub runner 完整检查及 Preview 上传已通过，Token 的上传权限已实测；精确地址的线上浏览器验收因统计上报 CORS 失败。用户已授权 Preview 与生产 CI 均显式排除第三方统计脚本，统计故障不再纳入 CI 浏览器验收；应用错误保持严格阻断，线上统计设置和应用代码不变。该边界的后续复验和部署结果以 [Actions 本轮执行证据](https://github.com/yukixz/deepveinidle-lab/actions/workflows/ci.yml)为准，不由密钥存在推定通过。
-
-CI 首轮接入时，本地 actionlint 1.7.7、15 项发布工具专项、完整 630 项测试、独立原始计算对照、隔离提取、32 组浏览器基础验收及 75 文件白名单打包通过，证据在 `.test-artifacts/ci-final-20261114/`。该完整候选检查在本段状态文档收尾前执行，不能复用为后续 CI 发布证据；文档收尾另检引用及语法。生产 Release 工作流本次不触发，现有生产基线保持上节记录。
-
-配置与操作规则见[发布流程](release.md#github-actions-双通道发布)。制造配方表可排序的“移动占比”已随 1.10.4 发布，规则见[制造页面](pages/crafting.md)；精通计算面板现为快速 120、标准 360（默认）、全面 720，桌面选项按计算模式、搜索次数、优化目标、目标及品质排列为一行，规则见[精通页面](pages/mastery.md)。现行命名、导航及图标规则见[共用页面](shared.md#项目命名)，公式仍可通过 `/formulas` 直接访问，阅读与导航规则见[公式页面](pages/formulas.md)。
-
-自动食物导入仍需使用2.9.2角色脚本并刷新游戏重新捕获，旧捕获缺锁定数据时保留食物选择并提示。游戏资源1.0.1214、桥接2.4、数据协议2不变。后续发布遵循[发布流程](release.md)，不能将已有证据用于不同候选。
+变更清单、此前阶段验证及本轮实际发布证据集中在 [1.10.5 发布报告](../reports/v1.10.5-release-2026-11-17.md)。候选尚未部署；上节生产基线保持有效。操作遵循[发布流程](release.md)，现行行为按页面设计维护。
 
 ## Preview 与历史
 
-Preview 现由 main push 自动更新，入口为 [Preview](https://preview.dvi-lab.pages.dev/)，当前版本、提交、精确部署地址和验收状态以 [CI 执行记录](https://github.com/yukixz/deepveinidle-lab/actions/workflows/ci.yml) 为准。首轮候选为 1.10.4、提交 `ed120a4`，上传至 [fce326d7.dvi-lab.pages.dev](https://fce326d7.dvi-lab.pages.dev)；HTTP 逐文件一致性通过，浏览器 32 组用例已执行，但统计请求 CORS 导致最终失败，不视为发布验收成功。证据见 [CI 接入报告](../reports/github-actions-setup-2026-11-14.md)。
+Preview 现由 main push 自动更新，入口为 [Preview](https://preview.dvi-lab.pages.dev/)，修正统计验收边界后的工作流 [43581584123](https://github.com/yukixz/deepveinidle-lab/actions/runs/43581584123) 已成功；当前版本、提交、精确部署地址和验收状态以 [CI 执行记录](https://github.com/yukixz/deepveinidle-lab/actions/workflows/ci.yml) 为准。首轮候选为 1.10.4、提交 `ed120a4`，上传至 [fce326d7.dvi-lab.pages.dev](https://fce326d7.dvi-lab.pages.dev)；HTTP 逐文件一致性通过，浏览器 32 组用例已执行，但统计请求 CORS 导致最终失败，不视为发布验收成功。证据见 [CI 接入报告](../reports/github-actions-setup-2026-11-14.md)。
 
 此前记录的 Preview 为 **1.9.0-preview.2**，候选提交 `e3f1359`，精确部署为 [2be971f9.dvi-lab.pages.dev](https://2be971f9.dvi-lab.pages.dev)，入口为 [Preview 精通页](https://preview.dvi-lab.pages.dev/mastery)。该候选的发布前检查通过，线上完整浏览器验收因 Cloudflare 统计请求 CORS 及伴随资源错误未通过；完整证据见[Preview.2 报告](../reports/v1.9.0-preview.2-release-2026-10-28.md)。Preview 不代替生产验收。
 
