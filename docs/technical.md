@@ -4,7 +4,7 @@
 
 战斗、采集、制造、强化、精通复用 characterImportPanel：统一 details/summary、import-body、安装链接、按钮与状态节点，参数控制节点标识、按钮及说明；状态为空隐藏，长文本换行。导入区域使用相同高亮容器、金色标题、边框、背景与展开间距，折叠遵循 [语言、布局与持久化](shared.md#22-语言布局与持久化)。
 
-角色自动更新统一使用 `src/character-auto-import.js` 管理各页角色配置选项及制造页独立库存选项、进入／焦点调度、忙碌合并与响应代际；`src/import-controls.js` 负责共用开关、页面激活、输入保护及只读桥接。各页面只提供配置／库存应用适配器，手动导入也复用同一调度；库存解析仍独立于调度，由 `src/character-inventory.js` 供制造使用。具体规则见[共用角色自动更新](shared.md#导入游戏角色与自动更新)。
+角色自动更新统一使用 `src/character-auto-import.js` 管理各页角色配置选项、进入／焦点调度、忙碌合并与响应代际；`src/import-controls.js` 负责共用开关、页面激活、输入保护及只读桥接。各页面只提供角色配置应用适配器，手动导入也复用同一调度；旧制造库存开关兼容读取后忽略，不再调度库存读取。具体规则见[共用角色自动更新](shared.md#导入游戏角色与自动更新)。
 
 连接检测共用单次 probe 请求，各页分别保留状态，统一由 importStatusText 生成连接成功、读取中、捕获时间及缺失/旧版本/读取失败等双语提示。较晚 probe 不覆盖读取中或已有结果；读取期间禁用对应按钮，失败保留原配置。战斗额外保留字段警告。
 
@@ -59,9 +59,8 @@
 | `src/model.js` | 输入规范化、玩家状态适配、配置过滤、结果组合与排序 |
 | `src/simulation.js`、`src/simulation-worker.js` | 原始战斗函数状态适配、可配置时长统计及异步计算 |
 | `src/gathering-model.js`、`src/gathering-simulation.js`、`src/gathering-worker.js`、`src/gathering-controls.js` | 独立采集配置与导入、原始工作逐刻适配、最近点选择、异步进度及页面交互 |
-| `src/crafting-model.js`、`src/crafting-orders.js`、`src/crafting-simulation.js`、`src/crafting-worker.js`、`src/crafting-controls.js` | 制造角色与多配方订单、独立加工费、执行计划与材料预算、原始限次模拟及页面交互 |
+| `src/crafting-model.js`、`src/crafting-store.js`、`src/crafting-simulation.js`、`src/crafting-worker.js`、`src/crafting-controls.js` | 制造角色配置及旧存档迁移、配方速率模拟、材料消耗与产物估值及页面交互 |
 | `src/work-expectation.js` | 采集／制造共用机会期望、品质、烧焦及奖励容量门槛；支持直接写入目标期望账本，使用最小背包状态调用原始容量校验，不改原始过程 |
-| `src/character-inventory.js` | 制造使用的共用仓库／背包校验、重复堆叠合并与完整物品 ID 库存快照；制造另校验捕获时间 |
 | `src/world-buffs.js` | 战斗、采集与制造共用世界增益窗口校验、捕获时汇总与旧捕获提示 |
 | `src/work-import.js` | 采集与制造共用角色导入校验及字段映射 |
 | `tests/crafting.test.mjs` | 有效配方／品质原始离线对照、烧焦／升级／限次、材料预算、窗口速率与导入回归 |
@@ -76,8 +75,8 @@
 | `src/search-select.js` | 可搜索选择框与键盘交互 |
 | `src/i18n.js` | 上游翻译整合与缺失名称补充 |
 | `src/character-import.user.js` | 角色配置读取与脚本管理器本地存储桥接 |
-| `src/character-import.js`、`src/import-controls.js`、`src/character-auto-import.js` | 全部支持字段校验与转换、共用角色导入面板、独立配置／库存选项、手动／自动读取调度、页面／输入保护及跨页面请求 |
-| `tests/character-import.test.mjs`、`tests/character-auto-import.test.mjs`、`tests/character-inventory.test.mjs`、`tests/character-auto-import-browser.mjs` | 字段映射、角色脚本桥接、共用配置／库存自动更新、独立库存解析、页面生命周期与输入保护回归 |
+| `src/character-import.js`、`src/import-controls.js`、`src/character-auto-import.js` | 全部支持字段校验与转换、共用角色导入面板、各页独立配置选项、手动／自动读取调度、页面／输入保护及跨页面请求 |
+| `tests/character-import.test.mjs`、`tests/character-auto-import.test.mjs`、`tests/character-auto-import-browser.mjs` | 字段映射、角色脚本桥接、共用角色配置自动更新及旧设置兼容、页面生命周期与输入保护回归 |
 | `src/debug-controls.js`、`tests/debug-controls.test.mjs` | 隐藏调试页、角色配置 JSON 文件下载与战斗／强化两个共用导入入口、文件往返及失败状态验证 |
 | `src/mastery.js`、`src/mastery-controls.js` | 独立精通预算、升级成本、配置校验与双语交互 |
 | `src/mastery-optimizer.js`、`src/mastery-optimizer-worker.js`、`src/mastery-optimizer-controls.js` | 目标策略、有界搜索、独立复核与专用 Worker；冻结输入、运行任务输入检查与迟到消息隔离；任务重置与已完成推荐独立，应用只填入本页目标。具体预算、评分和交互见[精通优化设计](pages/mastery.md#计算最优分配方案) |

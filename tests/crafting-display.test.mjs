@@ -5,25 +5,24 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import * as game from '../src/upstream.js';
 import * as model from '../src/crafting-model.js';
-import * as ordersModel from '../src/crafting-orders.js';
+import * as store from '../src/crafting-store.js';
 import {valuationPrice} from '../src/item-prices.js';
 const source=fs.readFileSync(new URL('../src/crafting-controls.js',import.meta.url),'utf8');
 function page(language='zh'){
- const context=vm.createContext({timingDetails,registerCharacterUpdates:()=>({read(){}}),...model,...ordersModel,game,valuationPrice,localStorage:{getItem(){return null;},removeItem(){}},translatedName:n=>n,translatedItemName:id=>String(id),getSnapshot:()=>({}),subscribe(){}});
+ const context=vm.createContext({timingDetails,registerCharacterUpdates:()=>({read(){}}),...model,...store,game,valuationPrice,localStorage:{getItem(){return null;},removeItem(){}},translatedName:n=>n,translatedItemName:id=>String(id),getSnapshot:()=>({getItem:()=>({price:null,vendorPrice:0})}),subscribe(){}});
  vm.runInContext(source.replaceAll('import.meta.url',"'http://localhost/'").replace(/^import .*;\n/gm,'').replaceAll('export function','function'),context);
- vm.runInContext(`language=${JSON.stringify(language)};state.levels.cooking=100;orders=[createOrder('test','Test')];currentOrderId='test';[1,2,3,4].forEach(t=>selectedTiers.add(t));`,context);return context;
+ vm.runInContext(`language=${JSON.stringify(language)};state.levels.cooking=100;[1,2,3,4].forEach(t=>selectedTiers.add(t));`,context);return context;
 }
-test('all five rarities appear independently, with XP and profit first and plan input last',()=>{
+test('all five rarities appear independently, with XP and profit first and no quantity input',()=>{
  for(const lang of ['zh','en']){
   const p=page(lang),rows=vm.runInContext('visibleJobs()',p);assert.equal(rows.length,40);
   assert.deepEqual(Array.from(rows.slice(0,5),r=>r.tier),[0,1,2,3,4]);
-  const headers=vm.runInContext('headers()',p);assert.equal((headers.match(/<th /g)||[]).length,8);
-  const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);assert.equal((row.match(/<td[ >]/g)||[]).length,8);
-  assert.doesNotMatch(row,/<select|data-craft-tier/);assert.match(row,/<td><input[^>]+data-craft-count="61:0"[^>]+value="0"[^>]*><\/td><\/tr>$/);
+  const headers=vm.runInContext('headers()',p);assert.equal((headers.match(/<th /g)||[]).length,7);
+  const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);assert.equal((row.match(/<td[ >]/g)||[]).length,7);
+  assert.doesNotMatch(row,/<select|data-craft-tier/);assert.doesNotMatch(row,/data-craft-count/);
   assert.ok(headers.indexOf(lang==='zh'?'经验/天':'XP/day')<headers.indexOf(lang==='zh'?'单次材料成本':'Material cost / craft'));
   assert.match(row,lang==='zh'?/ · 普通<\/strong><small>所需等级 1/:/ · Normal<\/strong><small>Level 1/);
   assert.match(headers,/data-craft-sort="levelReq"/);
-  vm.runInContext("currentOrder().plans={'61:2':7};filledOnly=true",p);assert.equal(vm.runInContext('visibleJobs()[0].tier',p),2);assert.equal(vm.runInContext('visibleJobs().length',p),1);
  }
 });
 test('legacy period values do not change daily columns or per-craft values',()=>{
@@ -42,20 +41,17 @@ test('legacy period values do not change daily columns or per-craft values',()=>
  vm.runInContext("language='en'",p);assert.doesNotMatch(vm.runInContext('recipeRow(visibleJobs()[0])',p),/Random seed<\/span><span>4294967295/);
 });
 
-test('rarity filter defaults to normal, combines with search and retains plans and totals',()=>{
- const p=page();vm.runInContext("selectedTiers.clear();selectedTiers.add(0);state.plans={'61:0':2,'61:2':7}",p);
+test('rarity filter defaults to normal and combines with search',()=>{
+ const p=page();vm.runInContext("selectedTiers.clear();selectedTiers.add(0)",p);
  // Use the actual upstream recipe name to avoid translation assumptions.
  vm.runInContext("query=craftingJobs.find(j=>j.id===61).name",p);
  assert.equal(vm.runInContext('visibleJobs().length',p),1);
  assert.equal(vm.runInContext('visibleJobs()[0].tier',p),0);
- const before=vm.runInContext('JSON.stringify(materialRequirements(state))',p);
  vm.runInContext('selectedTiers.add(2)',p);
  assert.deepEqual(Array.from(vm.runInContext('visibleJobs().map(p=>p.tier)',p)),[0,2]);
- assert.equal(vm.runInContext('JSON.stringify(materialRequirements(state))',p),before);
  const html=vm.runInContext('rarityFilters()',p);assert.equal((html.match(/aria-pressed="true"/g)||[]).length,2);
  vm.runInContext('selectedTiers.clear()',p);
  assert.equal(vm.runInContext('visibleJobs().length',p),0);
- assert.equal(vm.runInContext("state.plans['61:2']",p),7);
  assert.match(source,/const selectedTiers=new Set\(\[0\]\)/);
 });
 
@@ -69,33 +65,25 @@ test('calculation status keeps its layout slot when idle, running and failed',()
  assert.doesNotMatch(source,/<p class="table-note gather-progress"/);
 });
 
-test('recipe cost and value details show prices without editable fields',()=>{
+test('recipe cost and value details show prices with editable prices',()=>{
  const p=page(),row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
- assert.doesNotMatch(row,/data-craft-price|craft-price-input/);
- assert.equal((row.match(/<input /g)||[]).length,1);
+ assert.match(row,/data-craft-price|craft-price-input/);
  assert.match(row,/-cost/);assert.match(row,/-value/);
 });
 
-test('recipe toolbar retains filters while batch editing belongs to the order panel',()=>{
- const toolbar=source.slice(source.indexOf('<div class="toolbar craft-toolbar">'),source.indexOf('<p id="craft-notice"'));
- const controls=['id="craft-search"','id="craft-group"','${rarityFilters()}','id="craft-filled"'];
- for(let i=1;i<controls.length;i++)assert.ok(toolbar.indexOf(controls[i-1])<toolbar.indexOf(controls[i]));
- assert.doesNotMatch(toolbar,/craft-period/);
- assert.match(toolbar,/<button id="craft-filled"[^>]+aria-pressed/);
- assert.doesNotMatch(toolbar,/craft-batch|data-craft-tier/);
- assert.match(source,/id="craft-batch"/);
+test('recipe toolbar only includes search, group, rarity and rerun',()=>{
+ assert.doesNotMatch(source,/craft-filled|craft-batch|craft-order|craft-refresh-inventory/);
 });
 
-test('upgrades stay in the eight-column table without extra recipe notes and display daily simulation results',()=>{
+test('upgrades stay in the seven-column table without extra recipe notes and display daily simulation results',()=>{
  for(const lang of ['zh','en']){
   const p=page(lang);vm.runInContext("state.skill='smithing';query='Colossus blade';state.levels.smithing=99",p);
   const plans=vm.runInContext('visibleJobs()',p);assert.equal(plans.length,5);
   vm.runInContext(`const plan=visibleJobs()[0];rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{completed:12,xp:22800,items:{350:12},consumed:{114:12}}});`,p);
   const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
-  assert.equal((row.match(/<td[ >]/g)||[]).length,8);
+  assert.equal((row.match(/<td[ >]/g)||[]).length,7);
   assert.doesNotMatch(row,/即时升级 · 底装 \+0|Instant upgrade · base \+0|gear-stats/);
   assert.match(row,/22,800/);assert.match(row,lang==='zh'?/平均单次经验/:/Average XP per action/);
-  assert.match(row,/data-craft-count="upgrade-271:0"/);assert.doesNotMatch(row,/data-craft-upgrade-plus/);
  }
 });
 
@@ -108,10 +96,10 @@ test('daily craft count rounds for display while sorting retains raw counts',()=
  assert.equal(vm.runInContext('rateFor(visibleJobs()[0]).result.completed',p),241.6);
 });
 
-test('valuation errors preserve all eight cells, highlighted XP/profit and plan input',()=>{
+test('valuation errors preserve all seven cells, highlighted XP/profit and no plan input',()=>{
  const p=page();vm.runInContext("priceItems=()=>{throw Error('priceOverflow')}",p);
  const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
- assert.equal((row.match(/<td[ >]/g)||[]).length,8);assert.equal((row.match(/class="column-highlight"/g)||[]).length,3);assert.match(row,/data-craft-count/);
+ assert.equal((row.match(/<td[ >]/g)||[]).length,7);assert.equal((row.match(/class="column-highlight"/g)||[]).length,3);assert.doesNotMatch(row,/data-craft-count/);
 });
 
 test('XP details use unrounded run totals, include burnt attempts and do not scale with period',()=>{
@@ -124,21 +112,17 @@ test('XP details use unrounded run totals, include burnt attempts and do not sca
  assert.match(vm.runInContext('recipeRow(visibleJobs()[0])',p),/单次经验<\/span><span>—<\/span>/);
 });
 
-test('rate tasks follow category and rarity while search and filled-only remain display filters',()=>{
+test('rate tasks follow category and rarity while search remains a display filter',()=>{
  const p=page();
  vm.runInContext("state.levels.cooking=1;selectedTiers.clear();selectedTiers.add(0)",p);
  assert.equal(vm.runInContext("pendingSimulationPlans().filter(p=>p.mode==='rate').length",p),1);
- vm.runInContext("query='no-such-item';filledOnly=true",p);assert.equal(vm.runInContext('visibleJobs().length',p),0);assert.equal(vm.runInContext('pendingSimulationPlans().length',p),1);vm.runInContext("filledOnly=false",p);
+ vm.runInContext("query='no-such-item'",p);assert.equal(vm.runInContext('visibleJobs().length',p),0);assert.equal(vm.runInContext('pendingSimulationPlans().length',p),1);
  vm.runInContext("query=craftingJobs.find(j=>j.id===61).name;selectedTiers.add(2)",p);
  assert.deepEqual(Array.from(vm.runInContext('pendingSimulationPlans().map(p=>p.key)',p)),['61:0','61:2']);
  vm.runInContext("group='missing'",p);assert.equal(vm.runInContext('pendingSimulationPlans().length',p),0);
- vm.runInContext("currentOrder().plans={'61:4':3};currentOrder().enabled=false",p);
- assert.deepEqual(Array.from(vm.runInContext('pendingSimulationPlans().map(p=>[p.key,p.count,p.mode??null])',p),r=>Array.from(r)),[['61:4',3,null]]);
  vm.runInContext("group='';query='';selectedTiers.clear()",p);
- assert.equal(vm.runInContext('pendingSimulationPlans().length',p),1);
+ assert.equal(vm.runInContext('pendingSimulationPlans().length',p),0);
  vm.runInContext("selectedTiers.add(4);query=craftingJobs.find(j=>j.id===61).name;const plan=visibleJobs()[0];rateCache.set(plan.key,{signature:signature({...plan,count:0}),result:{completed:10}})",p);
- assert.equal(vm.runInContext('pendingSimulationPlans().length',p),1);
- vm.runInContext("cache.set('61:4/3',{signature:signature({...visibleJobs()[0],count:3}),result:{completed:3}})",p);
  assert.equal(vm.runInContext('pendingSimulationPlans().length',p),0);
 });
 

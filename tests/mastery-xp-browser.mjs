@@ -15,7 +15,7 @@ try{
  await page.locator('#mastery-optimizer>summary').click();
  await page.locator('#mastery-total').fill('40');
  await page.selectOption('#optimizer-effort','standard');
- const sourceBefore=await page.evaluate(()=>({combat:localStorage.getItem('dvi-simulator-v1'),gather:localStorage.getItem('dvi-gathering-v1'),craft:localStorage.getItem('dvi-crafting-orders-v1')}));
+ const sourceBefore=await page.evaluate(()=>({combat:localStorage.getItem('dvi-simulator-v1'),gather:localStorage.getItem('dvi-gathering-v1'),craft:localStorage.getItem('dvi-crafting-config-v1')}));
  for(const objective of ['combatXp','gatherXp','craftXp']){
   await page.selectOption('#optimizer-goal',objective);
   if(objective==='craftXp'){
@@ -46,7 +46,7 @@ try{
   await page.setViewportSize({width:1440,height:1100});
   results.cases.push(objective+' real Worker, XP metric, automatic apply, two saved slots, bilingual mobile layout');
  }
- assert.deepEqual(await page.evaluate(()=>({combat:localStorage.getItem('dvi-simulator-v1'),gather:localStorage.getItem('dvi-gathering-v1'),craft:localStorage.getItem('dvi-crafting-orders-v1')})),sourceBefore);
+ assert.deepEqual(await page.evaluate(()=>({combat:localStorage.getItem('dvi-simulator-v1'),gather:localStorage.getItem('dvi-gathering-v1'),craft:localStorage.getItem('dvi-crafting-config-v1')})),sourceBefore);
  await page.reload();await page.locator('#mastery-optimizer>summary').click();
  assert.match(await page.locator('[data-saved-slot="auto"]').innerText(),/制造经验/);
  await page.selectOption('#optimizer-goal','craftXp');await selectSearchOption(page,'optimizer-recipe',craftingJobs.find(j=>j.levelReq===1));await page.selectOption('#optimizer-tier','1');

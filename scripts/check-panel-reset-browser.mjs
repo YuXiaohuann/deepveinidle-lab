@@ -1,4 +1,4 @@
-import {craftingOrdersStorageKey as craftingStorageKey} from '../src/crafting-orders.js';
+import {craftingStorageKey} from '../src/crafting-model.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -16,7 +16,7 @@ const browser=await chromium.launch({headless:true,executablePath:await browserP
 const results={base,cases:[],errors:[]};
 const prices=priceDefaults();for(const id of [20,110,208,359])prices.prices[id]={price:id+100,locked:true,source:'manual',updatedAt:Date.now(),quoteCapturedAt:null};
 prices.prices[game.encode(game.withRarity(328,4),0)]={price:777,locked:true,source:'manual',updatedAt:Date.now(),quoteCapturedAt:null};
-const craft={...craftingDefaults(),levels:{...craftingDefaults().levels,cooking:80,smithing:75},guild:{name:'Test',tag:'T'},guildXp:12,plans:{'61:0':2,'61:4':3,'upgrade-271:2':4},owned:{20:100,21:7},upgradeMigration:true,period:'hour'};
+const craft={...craftingDefaults(),levels:{...craftingDefaults().levels,cooking:80,smithing:75},guild:{name:'Test',tag:'T'},guildXp:12,period:'day'};
 const enhance={...enhancementDefaults(),itemId:110,guild:{name:'Test',tag:'T'},level:60,lectern:8,mastery:12,tier:4,current:3,target:9,protect:false,protectFrom:5,shardPrice:100,scrollPrice:200,basePrice:300,priceModes:{shardPrice:'manual',scrollPrice:'manual',basePrice:'manual'},basePriceItem:game.encode(game.withRarity(110,4),3)};
 const snapshot={version:2,capturedAt:Date.now(),guild:enhance.guild,player:{skills:{enhancing:game.levelXp(60)},house:{lectern:8},houseFurniture:{lectern:{cell:1,slot:0}},masteries:{enhance:12},equipment:{mount:game.encode(game.withRarity(328,3),7)},bank:{},pack:[],overflow:{}}};
 const read=(page,key)=>page.evaluate(key=>JSON.parse(localStorage.getItem(key)),key);
@@ -33,26 +33,22 @@ try{
   await freshContext.close();
   const context=await browser.newContext({viewport:{width,height:900}});
   await context.addInitScript(({craft,enhance,prices,language,craftingStorageKey,enhancementStorageKey,priceStorageKey})=>{
-   const values={[craftingStorageKey]:{version:1,build:{...craft,plans:{}},orders:[{id:"reset",name:"Reset order",enabled:true,plans:craft.plans,fees:{fixed:10,percent:2,minute:3}}],currentOrderId:"reset",inventory:{capturedAt:Date.now(),items:craft.owned}},[enhancementStorageKey]:enhance,[priceStorageKey]:prices,'dvi-simulator-v1':{language}};
+   const values={[craftingStorageKey]:{version:1,build:craft},[enhancementStorageKey]:enhance,[priceStorageKey]:prices,'dvi-simulator-v1':{language}};
    for(const [key,value]of Object.entries(values))if(localStorage.getItem(key)===null)localStorage.setItem(key,JSON.stringify(value));
   },{craft,enhance,prices,language,craftingStorageKey,enhancementStorageKey,priceStorageKey});
   const page=await context.newPage();page.on('pageerror',e=>results.errors.push(e.message));
   await page.goto(base+'/craft');
   await page.locator('[data-craft-skill="smithing"]').click();
   await page.locator('#craft-search').fill('Shrimp');
-  await page.locator('#craft-filled').click();
   await page.locator('[data-craft-rarity="4"]').click();
   const group=await page.locator('#craft-group option').nth(1).getAttribute('value');
   await page.selectOption('#craft-group',group);
   await page.locator('#craft-reset').click();
   const left=await read(page,craftingStorageKey);
-  assert.deepEqual(left.build,craftingDefaults());assert.deepEqual(left.inventory.items,craft.owned);
-  assert.deepEqual(left.orders[0].plans,craft.plans);assert.deepEqual(left.orders[0].fees,{fixed:10,percent:2,minute:3});assert.equal(left.orders[0].enabled,true);
+  assert.deepEqual(left,{version:1,build:craftingDefaults()});
   assert.equal(await page.inputValue('#craft-search'),'Shrimp');assert.equal(await page.inputValue('#craft-group'),group);
-  assert.equal(await page.locator('#craft-filled').getAttribute('aria-pressed'),'true');
   assert.equal(await page.locator('[data-craft-rarity="4"]').getAttribute('aria-pressed'),'true');
-  await page.locator('[data-craft-order-enabled="reset"]').uncheck();
-  const cleared=await read(page,craftingStorageKey);assert.equal(cleared.orders[0].enabled,false);assert.deepEqual(cleared.orders[0].plans,craft.plans);assert.deepEqual(cleared.inventory.items,craft.owned);
+  const cleared=left;
   assert.deepEqual(await read(page,priceStorageKey),prices);await page.reload();assert.deepEqual(await read(page,craftingStorageKey),cleared);
   await page.screenshot({path:path.join(directory,`craft-${language}-${width}.png`),fullPage:true});
   await page.goto(base+'/enhance');
@@ -79,7 +75,7 @@ try{
   const layout=await page.locator('.enhance-equipment .panel-heading').evaluate(el=>{const [title,button]=el.children,a=title.getBoundingClientRect(),b=button.getBoundingClientRect();return {overlap:a.right>b.left,overflow:document.documentElement.scrollWidth>innerWidth,buttonRight:b.right,titleLeft:a.left};});
   assert.equal(layout.overlap,false);assert.equal(layout.overflow,false);
   await page.screenshot({path:path.join(directory,`enhance-${language}-${width}.png`),fullPage:true});
-  results.cases.push({width,language,status:'passed',checks:['craft left isolation','order deselection preserves recipes and stock','initial enhancement defaults','enhance left/right isolation','character item shortcut removed','global prices preserved','reload','layout']});
+  results.cases.push({width,language,status:'passed',checks:['craft left isolation','craft reset removes all former order and stock fields','initial enhancement defaults','enhance left/right isolation','character item shortcut removed','global prices preserved','reload','layout']});
   await context.close();
  }
  assert.deepEqual(results.errors,[]);console.log(JSON.stringify(results));

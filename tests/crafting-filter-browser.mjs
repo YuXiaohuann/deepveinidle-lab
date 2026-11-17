@@ -25,7 +25,7 @@ try{
  const prices=priceDefaults();prices.preferences.autoImport=false;
  await context.addInitScript(({state,prices})=>{
   localStorage.setItem('dvi-item-prices-v1',JSON.stringify(prices));
-  localStorage.setItem('dvi-crafting-orders-v1',JSON.stringify({version:1,build:state,orders:[{id:'filters',name:'Filters',enabled:false,plans:{'61:4':2},fees:{fixed:null,percent:null,minute:1}}],currentOrderId:'filters',inventory:null}));
+  localStorage.setItem('dvi-crafting-config-v1',JSON.stringify({version:1,build:state}));
   window.filterRuns=[];const OriginalWorker=Worker;
   window.Worker=class extends OriginalWorker{
    constructor(url,options){super(url,options);if(String(url).includes('crafting-worker')){this.run={results:[],worker:this};window.filterRuns.push(this.run);this.addEventListener('message',({data})=>{if(data.result)this.run.results.push(data);if(data.done)this.run.done=true;});}}
@@ -41,15 +41,15 @@ try{
  const query=page.locator('#craft-search'),group=page.locator('#craft-group');
  await settle();const initial=await last();
  assert.deepEqual(rateKeys(initial).sort(),craftingJobs.filter(j=>j.skill==='smithing'&&j.levelReq<=110).map(j=>`${j.id}:0`).sort());
- assert.ok(initial.plans.some(p=>p.key==='61:4/2'&&p.mode!=='rate'));results.cases.push('initial rates only normal quality; disabled cross-skill legendary order still computes');
+ assert.ok(initial.plans.every(p=>p.mode==='rate'));results.cases.push('initial rates only normal quality; no order tasks');
  let count=await runCount();await query.fill('Bronze bar');await settle();assert.equal(await runCount(),count);
- await query.fill('no-such-item');await page.locator('#craft-filled').click();await settle();assert.equal(await runCount(),count);await page.locator('#craft-filled').click();await query.fill('Bronze bar');
+ await query.fill('no-such-item');await settle();assert.equal(await runCount(),count);await query.fill('Bronze bar');
  await group.selectOption('Bars');await settle();assert.equal(await runCount(),count);
  await page.locator('[data-craft-rarity="2"]').click();await settle();const rare=await last();
  assert.deepEqual(rateKeys(rare).sort(),craftingJobs.filter(j=>j.skill==='smithing'&&j.group==='Bars').map(j=>`${j.id}:2`).sort());assert.equal(rare.seed,initial.seed);assert.equal(rare.now,initial.now);
  const comparison=await page.evaluate(async()=>{const input=window.filterRuns.at(-1).input,actual=window.filterRuns.at(-1).results.find(r=>r.mode==='rate'&&r.result.key==='41:2').result;const {simulateCraftingWindow}=await import('/src/crafting-simulation.js'),{craftingJobs}=await import('/src/crafting-model.js');return {actual,expected:simulateCraftingWindow(input.state,craftingJobs.find(j=>j.id===41),2,{seed:input.seed,now:input.now})};});assert.deepEqual(comparison.actual,comparison.expected);
  count=await runCount();await page.locator('[data-craft-rarity="2"]').click();await settle();await page.locator('[data-craft-rarity="2"]').click();await settle();assert.equal(await runCount(),count);
- results.cases.push('category and rarity intersect; search/filled-only never change tasks; exact engine result and fixed seed/time; cache survives toggles');
+ results.cases.push('category and rarity intersect; search never change tasks; exact engine result and fixed seed/time; cache survives toggles');
  await group.selectOption('Upgrades');await settle();assert.deepEqual(rateKeys(await last()).sort(),craftingJobs.filter(j=>j.skill==='smithing'&&j.group==='Upgrades').map(j=>`${j.id}:2`).sort());
  count=await runCount();await query.fill('Colossus blade');await settle();await query.fill('巨像之剑');await settle();assert.equal(await runCount(),count);assert.equal(await page.locator('.craft-table tbody tr').count(),2);
  await page.locator('[data-craft-rarity="0"]').click();await page.locator('[data-craft-rarity="2"]').click();await settle();assert.equal(await runCount(),count);
@@ -62,8 +62,8 @@ try{
  count=await runCount();await query.evaluate(el=>{window.filterSearchNode=el;el.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}));el.value='Bronze bar';el.dispatchEvent(new InputEvent('input',{bubbles:true,isComposing:true}));});await page.waitForTimeout(250);assert.equal(await runCount(),count);
  await query.evaluate(el=>el.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true})));await settle();assert.equal(await runCount(),count);assert.ok(await page.evaluate(()=>window.filterSearchNode===document.getElementById('craft-search')));
  results.cases.push('search does not cancel in-flight simulation; category cancellation rejects stale Worker; IME never starts work and input node survives');
- await query.fill('no-such-item');await page.locator('[data-craft-rarity="4"]').click();await page.locator('#craft-rerun').click();await settle();const hidden=await last();assert.equal(rateKeys(hidden).length,0);assert.ok(hidden.plans.some(p=>p.key==='61:4/2'));
- results.cases.push('rerun with no selected quality still computes hidden disabled order');
+ await query.fill('no-such-item');await page.locator('[data-craft-rarity="4"]').click();const beforeEmpty=await runCount();await page.locator('#craft-rerun').click();await settle();assert.equal(await runCount(),beforeEmpty);
+ results.cases.push('rerun with no selected quality sends no work');
  await query.fill('');await group.selectOption('');await page.locator('[data-craft-rarity="0"]').click();await settle();
  for(const width of [1440,390])for(const language of ['zh','en']){
   await page.setViewportSize({width,height:1000});await page.selectOption('#language',language);await settle();

@@ -98,33 +98,32 @@ node --test tests/mastery.test.mjs tests/mastery-controls.test.mjs tests/mastery
 
 `node --test tests/upstream-1190.test.mjs` 覆盖迁移战斗区域、自动及两个指定仓库、巨像六件五品质材料、保存兼容与任务自动领奖隔离。独立离线对照使用 `scripts/native-questless.mjs` 按日边界分段保持空任务，以数学日／周编号独立于应用适配函数核验。
 
-`node tests/upstream-browser.mjs --out .test-artifacts/upstream-1214/browser` 检查双语桌面／390px 护符无总等级门槛提示／刷新保留、纯净煤矿任务／计算／刷新保存及战斗完成、来源版本、巨像材料／经验与库存计划刷新保存，书台恢复／保存与缺字段迁移、强化成功率、新旧目标与高强化存档、精通等级及家园控件上限、强化加成封顶、烟花有效品质／火药定价／计划保存，以及合成消息下的直接捕获（不提供 Worker／Blob API）；需要本机监听和 Chrome。指定 `--url https://dvi-lab.pages.dev --out <证据目录>` 时检查该实际目标四组页面，不把本地角色捕获专项当作生产测试。截图和机器结果落盘，仍需人工审阅。加 `--combat-only` 仅运行护符提示删除相关的战斗／精通检查，覆盖无其他问题时隐藏提示框、刷新恢复及其他等级不足提示保留。
+`node tests/upstream-browser.mjs --out .test-artifacts/upstream-1214/browser` 检查双语桌面／390px 护符无总等级门槛提示／刷新保留、纯净煤矿任务／计算／刷新保存及战斗完成、来源版本、巨像材料／经验及角色配置刷新保存，书台恢复／保存与缺字段迁移、强化成功率、新旧目标与高强化存档、精通等级及家园控件上限、强化加成封顶、烟花有效品质／火药定价保存，以及合成消息下的直接捕获（不提供 Worker／Blob API）；需要本机监听和 Chrome。指定 `--url https://dvi-lab.pages.dev --out <证据目录>` 时检查该实际目标四组页面，不把本地角色捕获专项当作生产测试。截图和机器结果落盘，仍需人工审阅。加 `--combat-only` 仅运行护符提示删除相关的战斗／精通检查，覆盖无其他问题时隐藏提示框、刷新恢复及其他等级不足提示保留。
 
 ## 采集与制造表格专项
 
 模拟配置专项：`node --test tests/work-simulation-settings.test.mjs` 验证时长规范化、旧存档、角色导入保留时长及制造实际窗口。`node tests/work-simulation-settings-browser.mjs [输出目录] [目标网址]` 验证双语桌面／390px 的整数小时输入、固定每天展示、热门日程、导入、刷新、重置及旧 Worker 隔离；默认输出 `.test-artifacts/work-settings/settings/`，提供目标网址时不启动本机服务。使用合成角色消息与真实工作 Worker，截图需审阅，不代替完整发布验收。
 
-`node --test tests/crafting-display.test.mjs` 验证配方列序、品质、周期换算、移动占比与排序、制造次数取整、经验明细与异常行。浏览器专项使用 `node tests/gathering-table-browser.mjs [输出目录] [目标网址]`、`node tests/crafting-table-browser.mjs [输出目录] [目标网址]`，需要本机监听和 Chrome；默认分别输出至 `.test-artifacts/gathering-table/`、`.test-artifacts/crafting-table/`，复验时指定独立目录以保留历史证据。覆盖双语桌面／390px、排序、经验展开、采集／制造次数展开的起始耗时与完成概率（升级为固定耗时）、制造名称与品质不折行、固定每天展示及周期选择器移除、等待／失败及计划输入；正常计算使用真实 Worker，异常场景使用受控消息，不替代完整发布验收。
+`node --test tests/crafting-display.test.mjs` 验证配方列序、品质、周期换算、额外耗时与排序、制造次数取整、经验明细与异常行。浏览器专项使用 `node tests/gathering-table-browser.mjs [输出目录] [目标网址]`、`node tests/crafting-table-browser.mjs [输出目录] [目标网址]`，需要本机监听和 Chrome；默认分别输出至 `.test-artifacts/gathering-table/`、`.test-artifacts/crafting-table/`，复验时指定独立目录以保留历史证据。覆盖双语桌面／390px、排序、经验展开、采集／制造次数展开的起始耗时与完成概率（升级为固定耗时）、制造名称与品质不折行、固定每天展示及周期选择器移除、等待／失败及配方价格输入；正常计算使用真实 Worker，异常场景使用受控消息，不替代完整发布验收。
 
 上述表格专项及下述标题栏／按需任务专项传入目标网址时不启动本机服务，直接检查指定目标；本机通过不能代替生产验证。
 
 三页模拟状态标题栏专项：`node tests/simulation-heading-browser.mjs [输出目录] [目标网址]`，默认输出 `.test-artifacts/heading-status/`。覆盖战斗、采集、制造的双语桌面／390px状态位置、右对齐、长文换行、进度及失败显示，以及真实Worker完成后隐藏；错误与进度采用受控消息，不连接游戏账号。截图需审阅，不代替完整发布验收。
 
-制造按需模拟专项：`node tests/crafting-filter-browser.mjs [输出目录] [目标网址]`，默认输出 `.test-artifacts/crafting-filters/demand/`。验证分类与稀有度交集决定速率任务、搜索和只看已填写仅影响显示、缺失补算及同轮缓存、种子／起点保留、与原始模拟结果一致、全不选品质、运行中切换及旧Worker隔离、隐藏／跨技能／未执行订单仍计算，以及输入法不触发模拟、双语桌面／390px搜索右侧分类布局。需要本机服务和独立Chrome，正常结果使用真实Worker，隔离场景使用受控消息，不连接游戏账号。
+制造按需模拟专项：`node tests/crafting-filter-browser.mjs [输出目录] [目标网址]`，默认输出 `.test-artifacts/crafting-filters/demand/`。验证分类与稀有度交集决定速率任务、搜索仅影响显示、缺失补算及同轮缓存、种子／起点保留、与原始模拟结果一致、全不选品质、运行中切换及旧Worker隔离、不再提交订单任务，以及输入法不触发模拟、双语桌面／390px搜索右侧分类布局。需要本机服务和独立Chrome，正常结果使用真实Worker，隔离场景使用受控消息，不连接游戏账号。
 
-## 制造订单专项
+## 制造配置与速率专项
 
-`node --test tests/crafting-orders.test.mjs tests/crafting.test.mjs tests/crafting-display.test.mjs` 验证订单数量、批量操作、三项加工费、材料合并和独立模拟。`node tests/crafting-orders-browser.mjs [输出目录] [目标网址]` 使用本机服务和独立 Chrome，覆盖独立订单管理面板、无订单自动建单、默认勾选及空单状态保存、多配方订单、自动加入、隐藏项批量修改、整单选择、复制／删除、真实 Worker 按订单计费、库存一次抵扣、存档恢复与坏存档保护，以及双语桌面／390px。提供目标网址时不启动本机服务，直接验证该站点。默认输出 `.test-artifacts/crafting-orders/orders/`，截图须审阅；不连接游戏账号，不替代发布验收。制造表格及配置导入专项已使用新版订单存档，历史 `dvi-crafting-v1` 不作为新版输入。
+`node --test tests/crafting.test.mjs tests/crafting-store.test.mjs tests/crafting-display.test.mjs` 验证原始制造计算、配置迁移、坏存档保护、七列表格、价格明细和速率调度。`node tests/crafting-table-browser.mjs [输出目录] [目标网址]` 验证裁剪后的七列页面、价格编辑、旧存档迁移、保存／重置、Worker结果、双语桌面／390px；`node tests/crafting-filter-browser.mjs [输出目录] [目标网址]` 验证分类品质任务、搜索、缓存、种子和过期响应。默认输出各自 `.test-artifacts/` 目录；使用合成配置，不连接游戏账号，不替代发布验收。
 
-制造库存专项：`node --test tests/character-inventory.test.mjs tests/crafting-orders.test.mjs tests/character-import.test.mjs`；`node tests/crafting-inventory-browser.mjs [输出目录]` 验证进入／聚焦自动读取、只读仓库与背包合计、未知库存、失败／倒退保留、切页迟到隔离、角色导入原子更新、缓存及双语桌面／390px。默认输出 `.test-artifacts/crafting-inventory/`，使用受控角色桥接与真实制造 Worker，不连接游戏账号。
 
 ## 共用角色自动更新专项
 
-`node --test tests/character-auto-import.test.mjs tests/character-inventory.test.mjs tests/character-import.test.mjs tests/crafting-orders.test.mjs tests/crafting-display.test.mjs` 验证配置／库存独立导入、偏好与坏存档保护、生命周期和并发；`node tests/character-auto-import-browser.mjs [输出目录]` 使用独立 Chrome 和本机服务验证五页配置开关、制造库存开关、每页保存、焦点合并、重绘稳定、配置／库存隔离及双语桌面／390px。默认输出 `.test-artifacts/character-auto-import/browser/`，角色与市场均用受控响应，不连接游戏账号；配合制造库存专项回归，不替代发布验收。
+`node --test tests/character-auto-import.test.mjs tests/character-import.test.mjs tests/crafting-store.test.mjs tests/crafting-display.test.mjs` 验证配置导入、偏好、坏存档保护及并发。`node tests/character-auto-import-browser.mjs [输出目录]` 验证五页配置开关、独立保存、焦点合并、重绘、制造忽略无效库存及双语桌面／390px；默认输出 `.test-artifacts/character-auto-import/browser/`，使用受控桥接，不连接游戏账号，不替代发布验收。
 
 1208 上限与旧存档浏览器专项：`node tests/upstream-browser.mjs --caps-only --out .test-artifacts/upstream-1208/caps-browser`。覆盖中英文桌面／390px 下战斗、采集、制造的家园控件、强化书台及精通等级上限、越界输入提示和恢复合法值、强化／精通越界存档明确提示且原存储保留。此选项仅执行该专项，不代表完整页面或发布验收。
 
-技能装备专项：`node tests/upstream-1212-browser.mjs [输出目录] [目标网址]`，默认输出 `.test-artifacts/upstream-1212/browser/`。覆盖中英文桌面／390px 的 105 级工具、技能副手速度、套装经验、禁用品质／强化、保存恢复及新增升级订单真实 Worker；需要本机回环监听和独立 Chrome，不连接游戏账号。截图须人工审阅，不代替生产验收。独立原始计算入口同时对照无装备与新工具／副手／套装组合的采集点，以及带新装备的制造配方。
+技能装备专项：`node tests/upstream-1212-browser.mjs [输出目录] [目标网址]`，默认输出 `.test-artifacts/upstream-1212/browser/`。覆盖中英文桌面／390px 的 105 级工具、技能副手速度、套装经验、禁用品质／强化、保存恢复及新增升级配方真实 Worker；需要本机回环监听和独立 Chrome，不连接游戏账号。截图须人工审阅，不代替生产验收。独立原始计算入口同时对照无装备与新工具／副手／套装组合的采集点，以及带新装备的制造配方。
 
 上游新装备及价格选项专项提供目标网址时直接检查该网址，不启动本机服务；本机／预览通过不能代替本轮正式生产目标验收。
 

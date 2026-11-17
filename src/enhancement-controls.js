@@ -113,7 +113,7 @@ export function renderEnhancement(nextLanguage){
  bindSearchSelect({id:'enhance-item-search',options:itemOptions(),value:state.itemId,selectedLabel:id=>name(game.item(id).name),onSelect:id=>{state.itemId=id;resetBaseOverride();save();renderEnhancement(language);},emptyText:text('没有匹配的装备或工具','No matching equipment or tools'),countText:count=>text(`${count} 件匹配物品`,`${count} matching items`)});
  document.getElementById('enhance-reset').onclick=()=>{const {guild,level,lectern,mastery}=enhancementDefaults();state={...state,guild,level,lectern,mastery};status=null;save();renderEnhancement(language);};
  document.getElementById('enhance-equipment-reset').onclick=()=>{const {guild,level,lectern,mastery}=state;state={...enhancementDefaults(),guild,level,lectern,mastery};save();renderEnhancement(language);};
- document.getElementById('enhance-import').onclick=()=>enhancementUpdater.read({config:true,inventory:false});
+ document.getElementById('enhance-import').onclick=()=>enhancementUpdater.read({config:true});
  if(!probeStarted){probeStarted=true;probeCharacter().then(()=>{if(!status&&!busy){status={ready:true};renderStatus();}}).catch(error=>{if(!status&&!busy){status={error:error.message};renderStatus();}});}
  renderStatus();renderResults();for(const [id,open]of openDetails){const el=document.getElementById(id);if(el)el.open=open;}
 }

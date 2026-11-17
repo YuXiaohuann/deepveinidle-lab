@@ -8,7 +8,7 @@ import {chromium} from 'playwright-core';
 import {browserPath} from '../scripts/release-common.mjs';
 import {gatheringDefaults,gatheringStorageKey} from '../src/gathering-model.js';
 import {craftingDefaults} from '../src/crafting-model.js';
-import {craftingOrdersStorageKey} from '../src/crafting-orders.js';
+import {craftingStorageKey} from '../src/crafting-model.js';
 import {priceDefaults} from '../src/item-prices.js';
 const output=path.resolve(process.argv[2]??'.test-artifacts/upstream-1212/browser');
 await fs.mkdir(output,{recursive:true});
@@ -34,8 +34,8 @@ try{
    if(localStorage.getItem('upstream-1212-initialized'))return;
    localStorage.setItem('upstream-1212-initialized','1');localStorage.setItem('dvi-simulator-v1',JSON.stringify({language,state:{manual:{simulationHours:1,enemySelection:'monster-11'}}}));
    localStorage.setItem('dvi-item-prices-v1',JSON.stringify(prices));localStorage.setItem(gatherKey,JSON.stringify(gather));
-   localStorage.setItem(craftKey,JSON.stringify({version:1,build:craft,orders:[{id:'new-tool',name:'105 tools',enabled:true,plans:{'upgrade-281:4':2},fees:{fixed:null,percent:null,minute:null}}],currentOrderId:'new-tool',inventory:null}));
-  },{language,gather,craft,prices,gatherKey:gatheringStorageKey,craftKey:craftingOrdersStorageKey});
+   localStorage.setItem(craftKey,JSON.stringify({version:1,build:craft}));
+  },{language,gather,craft,prices,gatherKey:gatheringStorageKey,craftKey:craftingStorageKey});
   for(const [route,prefix,tool,shield]of [['gather','gather','pickaxe','720'],['craft','craft','hammer','721']]){
    await page.goto(base+'/'+route);await page.locator(`#${prefix}-equipment`).evaluate(e=>e.open=true);
    const field=k=>page.locator(`[data-${prefix}-field="gear.${k}"]`);
@@ -50,11 +50,11 @@ try{
    await page.reload();assert.equal(await field('shield.id').inputValue(),shield);assert.equal(await field('helmet.id').inputValue(),'741');
    await page.locator(`#${prefix}-equipment`).evaluate(e=>e.open=true);
    if(route==='gather'){
-    await page.waitForFunction(()=>document.querySelector('#gather-results tbody')?.textContent.includes('395'));
+    await page.waitForFunction(()=>document.getElementById('gather-344-level')&&document.querySelector('#gather-results .gather-progress')?.hidden&&!/计算中|Calculating/.test(document.querySelector('#gather-results tbody').textContent));
     assert.doesNotMatch(await page.locator('#gather-results').innerText(),/模拟失败|Simulation failed|invalidRoute/);
    }else{
-    await page.locator('#craft-filled').click();await page.locator('[data-craft-rarity="4"]').click();
-    await page.waitForFunction(()=>{const rows=document.querySelectorAll('#craft-results tbody tr');return rows.length>0&&[...rows].some(r=>r.querySelector('[data-craft-count="upgrade-281:4"]'))&&!/计算中|Calculating/.test(document.querySelector('#craft-results tbody')?.textContent??'');},null,{timeout:180000});
+    await page.locator('[data-craft-rarity="4"]').click();
+    await page.waitForFunction(()=>{const rows=document.querySelectorAll('#craft-results tbody tr');return rows.length>0&&[...rows].some(r=>r.querySelector('[id="craft-upgrade-281:4-recipe"]'))&&!/计算中|Calculating/.test(document.querySelector('#craft-results tbody')?.textContent??'');},null,{timeout:180000});
     assert.doesNotMatch(await page.locator('#craft-results tbody').first().innerText(),/模拟失败|Simulation failed|invalidRoute|未解锁|Locked/);
    }
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);

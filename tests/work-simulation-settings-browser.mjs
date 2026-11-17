@@ -30,8 +30,8 @@ try{
   const prices=priceDefaults();prices.preferences.autoImport=false;
   const context=await browser.newContext({viewport:{width,height:1000}}),page=await context.newPage();page.setDefaultTimeout(30000);page.on('pageerror',e=>results.errors.push(e.message));
   await context.addInitScript(({kind,initial,combat,language,prices,snapshot})=>{
-   const key=kind==='craft'?'dvi-crafting-orders-v1':'dvi-gathering-v1';
-   if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify(kind==='craft'?{version:1,build:initial,orders:[],currentOrderId:null,inventory:null}:initial));
+   const key=kind==='craft'?'dvi-crafting-config-v1':'dvi-gathering-v1';
+   if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify(kind==='craft'?{version:1,build:initial}:initial));
    localStorage.setItem('dvi-simulator-v1',JSON.stringify({state:combat,language}));localStorage.setItem('dvi-item-prices-v1',JSON.stringify(prices));
    window.snapshot=snapshot;window.runs=[];const Original=Worker;
    window.Worker=class extends Original{
@@ -52,8 +52,8 @@ try{
   for(const value of ['0','1.5','1']){await hours.fill(value);await hours.blur();await ready(value==='1.5'?2:1);}
   const row=await page.evaluate(()=>window.runs.at(-1).rows.find(r=>r.mode==='rate'||r.mode===undefined).result);
   assert.equal(kind==='craft'?row.elapsedTicks:row.durationTicks,3600000/tickMs);
-  const column=kind==='craft'?3:5;
-  assert.equal(await page.locator(kind==='craft'?`.craft-table [data-craft-count="${row.key}"]`:`#gather-${row.jobId}-level`).locator('xpath=ancestor::tr').locator('td').nth(column).innerText(),(row.completed*24).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:0}));
+  const column=kind==='craft'?4:5;
+  assert.equal(await page.locator(kind==='craft'?`[id="craft-${row.key}-recipe"]`:`#gather-${row.jobId}-level`).locator('xpath=ancestor::tr').locator('td').nth(column).innerText(),(row.completed*24).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:0}));
   await hot.selectOption('current');await ready(1);assert.match(await page.locator(`#${kind}-hot-schedule`).innerText(),language==='zh'?/模拟区间/:/Simulation window/);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await settings.scrollIntoViewIfNeeded();await page.screenshot({path:path.join(directory,`${kind}-${language}-${width}.png`)});
   await hot.selectOption('game');await ready(1);assert.match(await page.locator(`#${kind}-hot-schedule`).innerText(),language==='zh'?/内置预测/:/in-game predictor/);

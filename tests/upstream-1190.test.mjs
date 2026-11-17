@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {game,defaults,preset} from '../src/model.js';
 import {createScenario,simulationTick,simulateMonster} from '../src/simulation.js';
 import {nativeDay} from './native-day.mjs';
-import {craftingDefaults,craftingJobs,craftingMaterials,normalizeCrafting,materialBudget} from '../src/crafting-model.js';
+import {craftingDefaults,craftingJobs,craftingMaterials,normalizeCrafting} from '../src/crafting-model.js';
 import {gatheringDefaults,gatheringJobs,selectedGatheringSites} from '../src/gathering-model.js';
 import {createGatheringScenario,simulateGatheringSite} from '../src/gathering-simulation.js';
 import {questlessOffline} from '../scripts/native-questless.mjs';
@@ -30,16 +30,12 @@ test('all three moved combat zones match native routes with automatic and both f
  }
 });
 
-test('six Colossus recipes at every quality retain base and chips without bars; stored stock survives',()=>{
+test('six Colossus recipes at every quality retain base and chips without bars',()=>{
  for(const [recipe,base,chips]of [[271,114,2],[272,394,3],[273,119,2],[274,124,1],[275,129,3],[276,134,2]]){
   const job=craftingJobs.find(j=>j.id===`upgrade-${recipe}`);
   for(let tier=0;tier<5;tier++)assert.deepEqual(craftingMaterials(job,tier,2),{[base+tier*1000]:2,[252+tier*1000]:chips*2});
  }
- const s=normalizeCrafting({...craftingDefaults(),plans:{'upgrade-271:4':2},owned:{4044:6,4114:1,4252:1}});
- assert.deepEqual(normalizeCrafting(JSON.parse(JSON.stringify(s))),s);
- const budget=materialBudget(s,{4114:{price:10},4252:{price:3},4044:{price:100}});
- assert.ok(!budget.rows.some(r=>r.id===4044));assert.equal(s.owned[4044],6);
- assert.equal(budget.rows.find(r=>r.id===4114).purchase,1);assert.equal(budget.rows.find(r=>r.id===4252).purchase,3);
+
 });
 
 test('synthetic quests remain empty through daily and weekly reset while raw engine creates tasks',()=>{

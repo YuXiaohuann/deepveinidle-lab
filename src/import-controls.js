@@ -27,7 +27,7 @@ export function importControls(language){
  return characterImportPanel(language,{id:'character-import-settings',statusId:'import-status',buttons:[{id:'import-character',label:zh?'导入配置':'Import configuration'}]});
 }
 
-const importErrors={inventoryOutdated:['游戏库存早于已保存数据，请重新捕获角色。','Game inventory is older than the saved stock; recapture the character.'],savedGatheringInvalid:['已保存的采集配置无法读取，当前使用默认配置。','Saved gathering settings could not be read; defaults are shown.'],savedInvalid:['已保存的强化配置无法读取，当前使用默认配置。','Saved enhancement settings could not be read; defaults are shown.'],scriptOutdated:['请更新至 2.4 脚本并刷新游戏。','Update to script 2.4 and refresh the game.'],incompleteSnapshot:['角色数据不完整或缺少必要字段，请更新脚本、刷新游戏并重新读取。','Character data is incomplete or missing required fields. Update the script, refresh the game and recapture.'],scriptMissing:['未连接到脚本，请安装或更新至最新版本，确认此网址已启用脚本后刷新模拟器。','Script not connected. Install or update it, enable it on this URL, then refresh the simulator.'],scriptReadFailed:['脚本存储读取失败，请检查脚本管理器。','Script storage could not be read. Check your userscript manager.'],noSnapshot:['没有角色数据，请安装脚本后刷新游戏并等待“角色配置已读取”。','No character data. Refresh the game after installing the script and wait for “Character captured”.'],invalidSnapshot:['角色数据格式不兼容，已有配置保留。','Incompatible character data; existing configuration was kept.']};
+const importErrors={savedGatheringInvalid:['已保存的采集配置无法读取，当前使用默认配置。','Saved gathering settings could not be read; defaults are shown.'],savedInvalid:['已保存的强化配置无法读取，当前使用默认配置。','Saved enhancement settings could not be read; defaults are shown.'],scriptOutdated:['请更新至 2.4 脚本并刷新游戏。','Update to script 2.4 and refresh the game.'],incompleteSnapshot:['角色数据不完整或缺少必要字段，请更新脚本、刷新游戏并重新读取。','Character data is incomplete or missing required fields. Update the script, refresh the game and recapture.'],scriptMissing:['未连接到脚本，请安装或更新至最新版本，确认此网址已启用脚本后刷新模拟器。','Script not connected. Install or update it, enable it on this URL, then refresh the simulator.'],scriptReadFailed:['脚本存储读取失败，请检查脚本管理器。','Script storage could not be read. Check your userscript manager.'],noSnapshot:['没有角色数据，请安装脚本后刷新游戏并等待“角色配置已读取”。','No character data. Refresh the game after installing the script and wait for “Character captured”.'],invalidSnapshot:['角色数据格式不兼容，已有配置保留。','Incompatible character data; existing configuration was kept.']};
 let connectionProbe;
 export function probeCharacter(){return connectionProbe??=requestCharacter('probe');}
 export function importStatusText(language,status,busy=false){
@@ -59,8 +59,8 @@ export function setCharacterImportPage(page){
 }
 function characterUpdateOptions(page,language){
  const updater=updaters.get(page);if(!updater)return '';
- const flags=updater.options,kinds=['config',...(page==='craft'?['inventory']:[])];
- const options=kinds.map(kind=>`<label class="check"><input type="checkbox" data-character-update="${kind}" data-character-page="${page}" ${flags[kind]?'checked':''}><span>${language==='zh'?(kind==='config'?'自动更新角色配置':'自动更新角色库存'):(kind==='config'?'Automatically update character configuration':'Automatically update character inventory')}</span></label>`).join('');
+ const flags=updater.options,kinds=['config'];
+ const options=kinds.map(kind=>`<label class="check"><input type="checkbox" data-character-update="${kind}" data-character-page="${page}" ${flags[kind]?'checked':''}><span>${language==='zh'?'自动更新角色配置':'Automatically update character configuration'}</span></label>`).join('');
  return `<div class="character-update-options">${options}</div><p class="micro import-status" data-character-settings-status="${page}" data-language="${language}" role="status">${settingsText(language,updater.settingsError)}</p>`;
 }
 function updateCharacterOptions(page){

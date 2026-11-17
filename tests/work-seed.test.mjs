@@ -7,7 +7,7 @@ import {parse} from 'acorn';
 import * as game from '../src/upstream.js';
 import * as gathering from '../src/gathering-model.js';
 import * as crafting from '../src/crafting-model.js';
-import * as orders from '../src/crafting-orders.js';
+import * as store from '../src/crafting-store.js';
 import {createGatheringScenario,simulateGatheringSite,simulateGatheringJob} from '../src/gathering-simulation.js';
 import {createCraftingScenario,simulateCrafting,simulateCraftingWindow} from '../src/crafting-simulation.js';
 import {START_TICK} from '../src/simulation.js';
@@ -88,17 +88,16 @@ test('gathering random-source failure is explicit and does not start a fallback 
 
 function craftScheduler(){
  const h=harness(),source=fs.readFileSync(new URL('../src/crafting-controls.js',import.meta.url),'utf8');
- h.context=vm.createContext({...h.ctx,...crafting,...orders,game,registerCharacterUpdates:()=>({read(){}}),localStorage:{getItem:()=>null,removeItem:()=>{}},subscribe:()=>{},getSnapshot:()=>({})});
+ h.context=vm.createContext({...h.ctx,...crafting,...store,game,registerCharacterUpdates:()=>({read(){}}),localStorage:{getItem:()=>null,removeItem:()=>{}},subscribe:()=>{},getSnapshot:()=>({})});
  vm.runInContext(source.replaceAll('import.meta.url',"'http://localhost/'").replace(/^import .*;\n/gm,'').replaceAll('export function','function'),h.context);
- vm.runInContext("renderResults=()=>{};active=true;orders=[createOrder('test','Test order')];currentOrderId='test';",h.context);h.read=expr=>vm.runInContext(expr,h.context);
+ vm.runInContext("renderResults=()=>{};active=true;",h.context);h.read=expr=>vm.runInContext(expr,h.context);
  h.complete=worker=>{for(const p of worker.data.plans)worker.onmessage({data:{result:{key:p.key,seed:worker.data.seed},mode:p.mode}});worker.onmessage({data:{done:true}});};return h;
 }
 test('crafting batches retain a round seed and rate cache while new rounds discard old results',()=>{
  const h=craftScheduler();h.context.startSimulation();const first=h.workers[0];assert.equal(first.data.seed,101);h.complete(first);
  assert.equal(h.read('rateCache.size'),1);h.context.startSimulation();assert.equal(h.workers.length,1);
- h.read("orders[0].plans={'61:0':10}");h.context.startSimulation();const second=h.workers[1];assert.equal(second.data.seed,101);assert.equal(second.data.plans.length,1);assert.equal(h.read('rateCache.size'),1);h.complete(second);
- h.context.schedule();assert.equal(h.read('rateCache.size'),0);assert.equal(h.read('cache.size'),0);h.flush();const third=h.workers[2];assert.equal(third.data.seed,102);assert.ok(third.data.plans.some(p=>p.mode==='rate'));assert.ok(third.data.plans.some(p=>!p.mode));
- second.onmessage({data:{result:{key:'stale',seed:101},done:true}});second.onerror();assert.equal(h.read('cache.has("stale")'),false);assert.equal(h.read('workerError'),null);assert.notEqual(third.terminated,true);
+ h.context.schedule();assert.equal(h.read('rateCache.size'),0);h.flush();const next=h.workers[1];assert.equal(next.data.seed,102);
+ first.onmessage({data:{result:{key:'stale',seed:101},done:true}});first.onerror();assert.equal(h.read('rateCache.has("stale")'),false);assert.equal(h.read('workerError'),null);assert.notEqual(next.terminated,true);
 });
 test('crafting category and rarity changes preserve the round seed, time and completed rate entries',()=>{
  const h=craftScheduler();h.context.startSimulation();const first=h.workers[0];h.complete(first);
@@ -107,7 +106,7 @@ test('crafting category and rarity changes preserve the round seed, time and com
  assert.equal(next.data.plans.length,1);assert.equal(next.data.plans[0].tier,2);h.complete(next);
  assert.equal(h.read('rateCache.size'),2);
  h.read("group='missing'");h.context.refreshTaskSelection();h.flush();assert.equal(h.workers.length,2);
- h.read("group='';query='no-match';filledOnly=true");h.context.refreshTaskSelection();h.flush();
+ h.read("group='';query='no-match'");h.context.refreshTaskSelection();h.flush();
  assert.equal(h.workers.length,2);assert.equal(h.read('rateCache.size'),2);
 });
 test('crafting random-source failure is explicit and prevents redraw retry loops',()=>{

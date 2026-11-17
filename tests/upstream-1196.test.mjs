@@ -30,7 +30,7 @@ test('1196 fireworks preserve native inputs, output quantity and supported rarit
  }
  for(const tier of [1,2,3,4]){
   const job=fireworks[1];assert.throws(()=>craftingMaterials(job,tier,1),/invalidQuantity/);
-  assert.throws(()=>normalizeCrafting({...state,plans:{[`421:${tier}`]:1}}),/invalidQuantity/);
+  assert.equal(normalizeCrafting({...state,plans:{[`421:${tier}`]:1}}).plans,undefined);
  }
 });
 test('1196 rockets support pricing and translations; powder has no invented market or vendor sell price',()=>{

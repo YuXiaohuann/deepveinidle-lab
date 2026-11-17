@@ -85,7 +85,7 @@ export function renderMastery(nextLanguage){
   state.planned=true;const id=button.closest('[data-mastery-row]').dataset.masteryRow;state.target[id]=button.dataset.masteryAction==='max'?highestAffordableMastery(state,id):Number(state.target[id])+(button.dataset.masteryAction==='plus'?1:-1);
   host.querySelector(`[data-mastery-row="${id}"] [data-mastery-field="target"]`).value=state.target[id];save();updateResults();
  };
- host.querySelector('#mastery-import').onclick=()=>masteryUpdater.read({config:true,inventory:false});
+ host.querySelector('#mastery-import').onclick=()=>masteryUpdater.read({config:true});
  if(!probeStarted){probeStarted=true;probeCharacter().then(()=>{if(!status&&!busy){status={ready:true};renderImportStatus();}}).catch(error=>{if(!status&&!busy){status={error:error.message};renderImportStatus();}});}
  renderImportStatus();updateResults();for(const [id,open]of openDetails){const el=host.querySelector(`#${id}`);if(el)el.open=open;}
 }

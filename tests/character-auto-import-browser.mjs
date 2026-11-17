@@ -31,29 +31,26 @@ try{
  page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>result.errors.push(e.message));
  const flag=(p,k)=>page.locator(`[data-character-page="${p}"][data-character-update="${k}"]`);
  const wait=async p=>{const button=p==='combat'?'import-character':`${p}-import`;await page.waitForFunction(id=>!document.getElementById(id)?.disabled,button);};
- const stock=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-crafting-orders-v1')));
+ const stock=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-crafting-config-v1')));
  for(const p of ['combat','gather','enhance','mastery','craft']){
   await page.goto(`http://127.0.0.1:${port}/${p==='combat'?'combat':p}`);await wait(p);
-  assert.equal(await flag(p,'config').isChecked(),false);assert.equal(await flag(p,'inventory').count(),p==='craft'?1:0);
-  if(p==='craft'){assert.equal(await flag(p,'inventory').isChecked(),true);assert.equal(await page.evaluate(()=>window.bridge.reads),1);await flag(p,'inventory').uncheck();await wait(p);}
+  assert.equal(await flag(p,'config').isChecked(),false);assert.equal(await flag(p,'inventory').count(),0);
+
   const before=await page.evaluate(()=>window.bridge.reads);await flag(p,'config').check();await wait(p);assert.equal(await page.evaluate(()=>window.bridge.reads),before+1);
-  const settings=await page.evaluate(p=>JSON.parse(localStorage.getItem(`dvi-character-auto-import-${p}-v1`)),p);assert.equal(settings.config,true);assert.equal(settings.inventory,false);
+  const settings=await page.evaluate(p=>JSON.parse(localStorage.getItem(`dvi-character-auto-import-${p}-v1`)),p);assert.equal(settings.config,true);assert.equal(settings.inventory,undefined);
   assert.match(await page.locator(p==='combat'?'#import-status':`#${p}-import-status`).innerText(),/已导入/);
   if(p==='craft')await page.evaluate(xp=>window.bridge.snapshot.player.skills.smithing=xp,game.levelXp(56));
   const baseline=await page.evaluate(()=>{window.bridge.hold=true;window.dispatchEvent(new Event('focus'));return window.bridge.reads;});await page.evaluate(()=>{window.dispatchEvent(new Event('focus'));window.dispatchEvent(new Event('focus'));});assert.equal(await page.evaluate(()=>window.bridge.reads),baseline);
   await page.selectOption('#language','en');await page.selectOption('#language','zh');
   await page.evaluate(()=>{window.respond();window.bridge.hold=false;});await wait(p);if(p==='craft')assert.equal((await stock()).build.levels.smithing,56);
   await page.selectOption('#language','en');await page.selectOption('#language','zh');assert.equal(await page.evaluate(()=>window.bridge.reads),baseline);
-  result.cases.push(`${p}: configuration option, applicable inventory option, independent persistence, automatic import, coalesced focus and redraw stability`);
+  result.cases.push(`${p}: configuration option, no inventory option, independent persistence, automatic import, coalesced focus and redraw stability`);
  }
- // Craft configuration-only must not need or overwrite stock; both enabled validate atomically.
- await page.goto(`http://127.0.0.1:${port}/craft`);await wait('craft');const beforeCraft=await stock();assert.equal(beforeCraft.build.levels.smithing,55);
- await page.evaluate(()=>{window.bridge.snapshot.player.bank=null;window.bridge.snapshot.player.skills.smithing=0;window.dispatchEvent(new Event('focus'));});await wait('craft');const configOnly=await stock();assert.equal(configOnly.build.levels.smithing,1);assert.deepEqual(configOnly.inventory,beforeCraft.inventory);
- await page.evaluate(xp=>window.bridge.snapshot.player.skills.smithing=xp,game.levelXp(70));
- await flag('craft','inventory').check();await wait('craft');assert.deepEqual((await stock()).inventory,configOnly.inventory);assert.equal((await stock()).build.levels.smithing,1);
- await page.evaluate(()=>{window.bridge.snapshot.player.bank={1:30};window.bridge.snapshot.player.skills.smithing=0;});
- await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await wait('craft');assert.equal((await stock()).inventory.items[1],32);assert.deepEqual((await stock()).orders,beforeCraft.orders);
- result.cases.push('craft configuration-only preserves inventory and orders; combined request rejects invalid inventory atomically and retries');
+ // Invalid warehouse data must not prevent configuration updates.
+ await page.goto(`http://127.0.0.1:${port}/craft`);await wait('craft');
+ await page.evaluate(()=>{window.bridge.snapshot.player.bank=null;window.bridge.snapshot.player.pack=null;window.bridge.snapshot.player.skills.smithing=0;window.dispatchEvent(new Event('focus'));});await wait('craft');
+ assert.equal((await stock()).build.levels.smithing,1);assert.equal((await stock()).inventory,undefined);assert.equal((await stock()).orders,undefined);
+ result.cases.push('craft imports configuration with invalid warehouse and pack; no stock or orders saved');
  for(const p of ['craft']){await page.goto(`http://127.0.0.1:${port}/${p}`);await wait(p);for(const width of [1440,390])for(const lang of ['zh','en']){await page.setViewportSize({width,height:1000});await page.selectOption('#language',lang);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.locator('#craft-import-settings').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(out,`${p}-${lang}-${width}.png`)});}}
  result.cases.push('shared options visible in Chinese/English desktop and 390px without page overflow');
  const collectionRequests=[];page.on('request',request=>{if(/\/src\/collection-/.test(request.url()))collectionRequests.push(request.url());});

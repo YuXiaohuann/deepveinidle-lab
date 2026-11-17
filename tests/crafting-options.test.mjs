@@ -19,13 +19,13 @@ test('crafting XP fractions and ironman survive normalization and old storage',(
  for(const weeklyXp of [-1,Infinity,NaN])assert.equal(normalizeCrafting({weeklyXp}).weeklyXp,0);
 });
 
-test('crafting imports all active XP windows and ironman while preserving plans',()=>{
+test('crafting imports all active XP windows and ironman without preserving removed fields',()=>{
  const previous={...craftingDefaults(),weeklyXp:99,plans:{'61:0':12},owned:{1:7}};
  const snap=snapshot([window(1.1,1,100),window(1.2525,1.5,0,100),{fromTick:0,toTick:200,rarityMult:2},window(5,1,101),window(5,1,0,99)]);
  snap.player.ironman=true;
  const result=importCrafting(previous,snap);
  assert.equal(result.state.weeklyXp,35.25);assert.equal(result.state.ironman,true);
- assert.ok(!('worldRarity' in result.state));assert.deepEqual(result.state.plans,previous.plans);assert.deepEqual(result.state.owned,previous.owned);
+ assert.ok(!('worldRarity' in result.state));assert.equal(result.state.plans,undefined);assert.equal(result.state.owned,undefined);
  assert.equal(previous.weeklyXp,99);assert.deepEqual(result.warnings,[]);
  for(const windows of [[],[window(2,1,101)]])assert.equal(importCrafting(previous,snapshot(windows)).state.weeklyXp,0);
  assert.equal(importCrafting(previous,snapshot([window(100001)])).state.weeklyXp,1e7);

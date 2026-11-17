@@ -1,23 +1,23 @@
 export const characterUpdateStorageKey=page=>`dvi-character-auto-import-${page}-v1`;
-export function validateCharacterUpdates(raw,{inventory=false}={}){
- if(raw?.version!==1||typeof raw.config!=='boolean'||typeof raw.inventory!=='boolean'||(!inventory&&raw.inventory))throw Error('invalidAutoImport');
- return {version:1,config:raw.config,inventory:raw.inventory};
+export function validateCharacterUpdates(raw){
+ if(raw?.version!==1||typeof raw.config!=='boolean'||(raw.inventory!==undefined&&typeof raw.inventory!=='boolean'))throw Error('invalidAutoImport');
+ return {version:1,config:raw.config};
 }
-export function loadCharacterUpdates(storage,page,inventory=false){
+export function loadCharacterUpdates(storage,page){
  const raw=storage.getItem(characterUpdateStorageKey(page));
- if(raw!==null)return validateCharacterUpdates(JSON.parse(raw),{inventory});
- return {version:1,config:false,inventory};
+ if(raw!==null)return validateCharacterUpdates(JSON.parse(raw));
+ return {version:1,config:false};
 }
 
 // One controller per page. Redraws never recreate listeners or start reads.
-export function createCharacterUpdater({storage,page,inventory=false,read,apply,onError=()=>{},onBusy=()=>{},busy=()=>false,revision=()=>null,hasDraft=()=>false,onSettings=()=>{}}){
+export function createCharacterUpdater({storage,page,read,apply,onError=()=>{},onBusy=()=>{},busy=()=>false,revision=()=>null,hasDraft=()=>false,onSettings=()=>{}}){
  let options,settingsError=null;
- try{options=loadCharacterUpdates(storage,page,inventory);}
- catch{options={version:1,config:false,inventory:false};settingsError='load';}
+ try{options=loadCharacterUpdates(storage,page);}
+ catch{options={version:1,config:false};settingsError='load';}
  let active=false,running=false,generation=0,retry=false;
- const automatic=()=>({config:options.config,inventory:options.inventory});
+ const automatic=()=>({config:options.config});
  async function run(flags=automatic(),manual=false){
-  if(running||busy()||!active||(!flags.config&&!flags.inventory)||(!manual&&hasDraft()))return;
+  if(running||busy()||!active||!flags.config||(!manual&&hasDraft()))return;
   running=true;
   const token=generation,previous=revision();
   onBusy(true,flags);
@@ -41,7 +41,7 @@ export function createCharacterUpdater({storage,page,inventory=false,read,apply,
    if(active){if(running)retry=true;else void run();}
   },
   configure(next){
-   options=validateCharacterUpdates({...options,...next},{inventory});generation++;
+   options=validateCharacterUpdates({...options,...next});generation++;
    try{storage.setItem(characterUpdateStorageKey(page),JSON.stringify(options));settingsError=null;}
    catch{settingsError='save';}
    onSettings();
