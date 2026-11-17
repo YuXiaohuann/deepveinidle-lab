@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         Deep Vein Idle · 角色配置导入 / Character import
-// @name:en      Deep Vein Idle · Character import
-// @name:zh-cn   Deep Vein Idle · 角色配置导入
+// @name:en      Deep Vein Idle · Alice's Lab Assistant
+// @name:zh      Deep Vein Idle · Alice's 实验室助手
+// @name:zh-CN   Deep Vein Idle · Alice's 实验室助手
 // @namespace    https://dvi-lab.pages.dev/
-// @version      2.10.0
+// @version      2.10.1
 // @description  读取角色配置供实验室导入；不发送游戏指令。
 // @match        https://deepveinidle.com/*
 // @match        https://cn.deepveinidle.com/*

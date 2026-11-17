@@ -10,8 +10,9 @@
 
 战斗和强化导入区域均不展示刷新读取提示；战斗页不展示配置导入说明段落，对应英文同步移除。安装／更新角色 userscript 链接与导入按钮使用一致的字号、颜色、边框、背景、宽度、高度及交互样式，保持独立一行和新标签打开行为。验收检查两页双语文案移除及链接、导入按钮样式一致。配置导入及导出无需打开游戏战斗预测列表。
 
-- 角色 userscript（生产及待发布版本见 [当前状态](status.md)）提供安装入口、双语名称、document-start、现有游戏／线上／本机地址及共享 document 的 JSON CustomEvent 桥接；游戏捕获仅在 `https://deepveinidle.com/*` 与 `https://cn.deepveinidle.com/*` 启用，两站均只旁听各自同源 `/ws`。`https://*.dvi-lab.pages.dev/*` 匹配该项目的预览分支与部署地址，不扩大到其他 Pages 项目。角色桥接版本仍为 2.4，角色数据协议仍为 2，存储键 `dvi-character-snapshot-v2` 保持兼容；不再提供市场桥接或存储。验收覆盖两游戏域名的脚本匹配、角色捕获保存及非同源连接不捕获。
+- 角色 userscript（生产及待发布版本见 [当前状态](status.md)）提供安装入口、本地化显示名称、document-start、现有游戏／线上／本机地址及共享 document 的 JSON CustomEvent 桥接；游戏捕获仅在 `https://deepveinidle.com/*` 与 `https://cn.deepveinidle.com/*` 启用，两站均只旁听各自同源 `/ws`。`https://*.dvi-lab.pages.dev/*` 匹配该项目的预览分支与部署地址，不扩大到其他 Pages 项目。角色桥接版本仍为 2.4，角色数据协议仍为 2，存储键 `dvi-character-snapshot-v2` 保持兼容；不再提供市场桥接或存储。验收覆盖两游戏域名的脚本匹配、角色捕获保存及非同源连接不捕获。
 - 角色脚本旁听 own-role welcome/snapshot、公会与世界窗口，完整保存 `welcome.you`／`snapshot.you` 到 `player`，包括未知及嵌套字段；不做字段过滤；不安装 JSON 解析或预测字段读取钩子，不捕获预测输入。不发送游戏命令、不开额外游戏连接、不捕获 you 以外的认证或聊天消息；you 内所有字段均原样保留。
+- 本地化显示名称：中文（zh、zh-CN）为 `Deep Vein Idle · Alice's 实验室助手`，英文为 `Deep Vein Idle · Alice's Lab Assistant`。为保持脚本更新身份连续，默认 `@name` 保留 `Deep Vein Idle · 角色配置导入 / Character import`，`@namespace` 及安装路径不变；语言未匹配或不支持本地化名称时显示默认名称。验收核对默认名称、命名空间、本地化名称和版本元数据；真实管理器覆盖升级及存储继承另行验证。
 - 安装／更新脚本后刷新游戏和实验室。配置导入使用最近角色数据，显示其读取时间；跨连接／角色清空本连接状态，串行存储避免旧异步写入覆盖新数据。捕获失败、存储失败、旧协议及缺数据明确提示。
 - 不维护调试专用 userscript、`dvi-debug-request/response` 桥接或 `dvi-debug-snapshot-v2` 存储读写。旧脚本管理器数据不自动读取或迁移；原有安装脚本由用户在脚本管理器自行移除。
 - 协议验收：配置捕获、普通角色桥接、市场捕获移除、缺失／旧版／读取失败提示、预览路径、跨连接隔离及异步写入顺序继续回归；所有页面无完整快照操作，普通角色请求不接受调试来源，旧快照模拟格式明确拒绝。页面行为分别按 [战斗验收](pages/combat.md#37-验收与已知限制) 与 [强化验收](pages/enhancement.md#46-验收与验证边界)。

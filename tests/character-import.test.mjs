@@ -118,9 +118,11 @@ test('capture badge displays success after storage and is not rebuilt after remo
  assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');assert.equal(g.hasHideTimer(),false);finish();await new Promise(resolve=>setImmediate(resolve));
  assert.equal(g.badge().textContent,'角色配置已读取 / Character captured');g.removeBadge();assert.equal(g.badge(),null);
 });
-test('script metadata provides English and simplified Chinese names',()=>{
- assert.match(script,/^\/\/ @name:en\s+Deep Vein Idle · Character import$/m);
- assert.match(script,/^\/\/ @name:zh-cn\s+Deep Vein Idle · 角色配置导入$/m);
+test('localized script names retain the original installation identity',()=>{
+ assert.match(script,/^\/\/ @name\s+Deep Vein Idle · 角色配置导入 \/ Character import$/m);
+ assert.match(script,/^\/\/ @namespace\s+https:\/\/dvi-lab\.pages\.dev\/$/m);
+ assert.match(script,/^\/\/ @name:en\s+Deep Vein Idle · Alice's Lab Assistant$/m);
+ for(const locale of ['zh','zh-CN'])assert.ok(script.split('\n').some(line=>line.trim().replace(/\s+/g,' ')===`// @name:${locale} Deep Vein Idle · Alice's 实验室助手`));
 });
 
 test('success badge hides after five seconds without reappearing on redraws or later snapshots',async()=>{
@@ -131,7 +133,7 @@ test('success badge hides after five seconds without reappearing on redraws or l
  g.frame(socket,fixture().player);await new Promise(resolve=>setImmediate(resolve));
  assert.equal(g.stored.length,2);assert.equal(g.badge(),null);
  new g.page.WebSocket('wss://deepveinidle.com/ws');assert.equal(g.badge().textContent,'等待游戏数据 / Waiting for game data');
- assert.match(script,/^\/\/ @version\s+2\.10\.0$/m);
+ assert.match(script,/^\/\/ @version\s+2\.10\.1$/m);
 });
 
 const weeklyWindow=(label='Weekly goal: gathered',fromTick=100,toTick=200,xpMult=1.1)=>({label,fromTick,toTick,xpMult});
