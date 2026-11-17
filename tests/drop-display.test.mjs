@@ -27,13 +27,13 @@ test('combat methodology note identifies simulated and expected fields in both l
  const assignments=ast.body.filter(n=>n.type==='ExpressionStatement'&&n.expression.type==='CallExpression'&&n.expression.callee.object?.name==='Object'&&n.expression.callee.property?.name==='assign'&&n.expression.arguments[1]?.properties.some(p=>p.key.name==='combatMethodNote'));
  const c=vm.createContext({compactNumber,copy:{zh:{},en:{}}});
  vm.runInContext(assignments.map(n=>source.slice(n.start,n.end)).join('\n'),c);
- assert.match(c.copy.zh.combatMethodNote,/击杀次数、攻击次数、移动占比、经验及食物消耗来自<strong class="simulation-caveat">原始模拟<\/strong>/);
+ assert.match(c.copy.zh.combatMethodNote,/击杀次数、攻击次数、额外耗时、经验及食物消耗来自<strong class="simulation-caveat">原始模拟<\/strong>/);
  assert.match(c.copy.zh.combatMethodNote,/<strong class="simulation-caveat">数学期望<\/strong>/);
  assert.match(c.copy.en.combatMethodNote,/<strong class="simulation-caveat">original simulation<\/strong>/);
  assert.match(c.copy.en.combatMethodNote,/<strong class="simulation-caveat">mathematical expectations<\/strong>/);
  assert.match(c.copy.zh.combatMethodNote,/金币、普通与稀有掉落.*数学期望/);
  assert.match(c.copy.zh.combatMethodNote,/药剂成本按所选时长.*收入与利润.*物品价格/);
- assert.match(c.copy.en.combatMethodNote,/Kills, attack attempts, moving share, XP and food consumption.*original simulation/);
+ assert.match(c.copy.en.combatMethodNote,/Kills, attack attempts, extra time, XP and food consumption.*original simulation/);
  assert.match(c.copy.en.combatMethodNote,/coins, normal and rare drops.*mathematical expectations/);
  assert.match(c.copy.en.combatMethodNote,/potion cost uses the selected duration.*Income and profit.*item prices/);
  assert.ok(source.includes('</tbody></table></div><p id="combat-method-note" class="table-note">${t(\'rounding\')} <strong class="simulation-caveat">'));
