@@ -93,15 +93,15 @@ test('headers and pending and failed rows follow the visible column count',()=>{
  }
 });
 test('quantities and globally valued amounts render separately with highlighted income',()=>{
- const result={homeBank:2,kills:1,attacks:7,xp:2,coins:3,normal:4,rare:5,normalValue:40,rareValue:50,totalIncome:93,profit:80,foodCost:10,potionCost:3,consumableCost:13,food:6,normalItems:{},rareItems:{},bySkill:{},elapsedTicks:1,movingTicks:0,restocks:0};
+ const result={homeBank:2,kills:1,attacks:7,xp:2,coins:3,normal:4,rare:5,normalValue:40,rareValue:50,totalIncome:93,profit:80,foodCost:10,potionCost:3,consumableCost:13,food:6,normalItems:{},rareItems:{},bySkill:{},elapsedTicks:1,movingTicks:0,extraTicks:0,restocks:0};
  for(const enabled of [false,true]){
  const html=view(enabled,result).hourlyCells({key:'m'});
  assert.match(html,new RegExp(`<summary>${'40'}</summary>`));
  assert.match(html,new RegExp(`<summary>${'50'}</summary>`));
  assert.equal(html.includes('<td class="column-highlight">93</td>'),true);
  assert.match(html,/item quantity/);assert.ok(html.startsWith('<td class="column-highlight"><details'));assert.match(html,/<td>3<\/td>/);assert.match(html,/<td><details[^>]*><summary>1<\/summary><div>攻击次数\/天：7/);assert.match(html,/<summary>0%<\/summary>/);assert.match(html,/depot: 仓库 2/);
- const seeded=view(enabled,{...result,seed:4294967295});assert.match(seeded.hourlyCells({key:'m'}),/随机种子：4294967295/);
- seeded.language='en';assert.match(seeded.hourlyCells({key:'m'}),/Random seed: 4294967295/);
+ const seeded=view(enabled,{...result,seed:4294967295});assert.doesNotMatch(seeded.hourlyCells({key:'m'}),/随机种子：4294967295/);
+ seeded.language='en';assert.doesNotMatch(seeded.hourlyCells({key:'m'}),/Random seed: 4294967295/);
  assert.match(seeded.hourlyCells({key:'m'}),/Attack attempts\/day: 7/);
  }
 });
@@ -121,7 +121,7 @@ test('removed valuation controls stay absent regardless of guild and configurati
 });
 
 test('table amounts show fallback warnings before expanding and food displays its cost',()=>{
- const result={homeBank:2,kills:1,attacks:7,xp:2,coins:3,normalValue:40,rareValue:50,totalIncome:93,profit:20,food:6,foodCost:70,potionCost:3,consumableCost:73,consumableMissingPrices:[64],normalItems:{},rareItems:{},bySkill:{},elapsedTicks:1,movingTicks:0,restocks:0,normalMissingPrices:[1],rareMissingPrices:[],missingPrices:[1],foodMissingPrices:[64],profitMissingPrices:[1,64]};
+ const result={homeBank:2,kills:1,attacks:7,xp:2,coins:3,normalValue:40,rareValue:50,totalIncome:93,profit:20,food:6,foodCost:70,potionCost:3,consumableCost:73,consumableMissingPrices:[64],normalItems:{},rareItems:{},bySkill:{},elapsedTicks:1,movingTicks:0,extraTicks:0,restocks:0,normalMissingPrices:[1],rareMissingPrices:[],missingPrices:[1],foodMissingPrices:[64],profitMissingPrices:[1,64]};
  const html=view(true,result).hourlyCells({key:'m'});
  assert.match(html,/<summary><span[^>]*>⚠<\/span> 40<\/summary>/);
  assert.match(html,/<summary><span[^>]*>⚠<\/span> 73<\/summary>/);
@@ -132,7 +132,7 @@ test('table amounts show fallback warnings before expanding and food displays it
 });
 
 test('kills and attack attempts scale per day using selected duration even after death',()=>{
- const result={homeBank:2,kills:12345,attacks:67890,xp:48,coins:48,normalValue:48,rareValue:48,totalIncome:144,profit:96,foodCost:24,potionCost:24,consumableCost:48,normalItems:{},rareItems:{},bySkill:{melee:48},elapsedTicks:1,movingTicks:0,restocks:0,deaths:1};
+ const result={homeBank:2,kills:12345,attacks:67890,xp:48,coins:48,normalValue:48,rareValue:48,totalIncome:144,profit:96,foodCost:24,potionCost:24,consumableCost:48,normalItems:{},rareItems:{},bySkill:{melee:48},elapsedTicks:1,movingTicks:0,extraTicks:0,restocks:0,deaths:1};
  const formatter=ast.body.find(n=>n.declarations?.some(d=>d.id.name==='formatRate'));
  for(const language of ['zh','en'])for(const hours of [1,6,24,48])for(const kills of [0,12345,12345.6789]){
   const c=view(true,{...result,kills});c.language=language;c.state.manual.simulationHours=hours;c.rewardAmount=rewardAmount;
