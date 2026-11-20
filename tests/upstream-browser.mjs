@@ -72,7 +72,32 @@ try{
   await page.waitForFunction(()=>document.querySelector('#simulation-status').hidden&&!document.querySelector('#rows .pending'));
   assert.equal(await page.locator('#rows tr[data-enemy]').count(),1);
   assert.ok(!/Simulation failed|模拟失败/.test(await page.locator('#rows').innerText()));
-  assert.match(await page.locator('.footer-source').innerText(),/2026-11-09.*1\.0\.1214/);
+  const invite='https://deepveinidle.com/?ref=Alice';
+  const brand=page.locator('.brand');
+  const home=brand.getByRole('link',{name:language==='zh'?'Alice’s 实验室':'Alice’s Lab',exact:true});
+  const subtitle=brand.getByRole('link',{name:'Deep Vein Idle',exact:true});
+  const footer=page.locator('.project-footer');
+  const footerGame=footer.getByRole('link',{name:'Deep Vein Idle ↗',exact:true});
+  assert.equal(await home.getAttribute('href'),'/');
+  assert.equal(await footer.locator('.footer-contact span').innerText(),language==='zh'?'项目作者：Alice':'Project author: Alice');
+  assert.doesNotMatch(await footer.innerText(),/897891232|2026-11-09|1\.0\.1214/);
+  assert.equal(await footer.locator('p').count(),2);
+  const row=await footer.locator('.footer-contact').boundingBox();
+  const author=await footer.locator('.footer-contact span').boundingBox();
+  const link=await footerGame.boundingBox();
+  assert.ok(Math.abs(author.x-row.x)<1 && Math.abs(link.x+link.width-row.x-row.width)<1);
+  assert.ok(Math.abs(author.y-link.y)<3 && author.x+author.width<link.x);
+  await context.route(invite,route=>route.fulfill({body:'Game link verified'}));
+  await home.focus();
+  await page.keyboard.press('Tab');
+  assert.ok(await subtitle.evaluate(el=>document.activeElement===el));
+  for(const gameLink of [subtitle,footerGame]){
+   assert.equal(await gameLink.getAttribute('href'),invite);
+   await gameLink.focus();
+   const [popup]=await Promise.all([page.waitForEvent('popup'),page.keyboard.press('Enter')]);
+   await popup.waitForURL(invite);
+   await popup.close();
+  }
   assert.ok((await page.locator('[data-path^="house."]').evaluateAll(els=>els.map(el=>el.max))).every(max=>max==='50'));
   assert.equal(await page.locator('[data-path="masteries.accuracy"]').getAttribute('max'),'200');
   const amuletNote=/总等级|total level/i;
