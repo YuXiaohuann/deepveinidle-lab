@@ -89,6 +89,9 @@ test('earned mastery points include collection and forge sources and deduct exis
  let result=importMastery(s,snapshot).state;assert.equal(result.totalPoints,6);assert.equal(result.budget,6);
  snapshot.player.collections={};snapshot.player.forgeLog={};result=importMastery(s,snapshot).state;assert.equal(result.totalPoints,0);assert.equal(result.budget,0);
  snapshot.player.masteries={xp:1};assert.throws(()=>importMastery(s,snapshot),/invalidSnapshot/);
+ const granted=importMastery(s,{...snapshot,player:{...snapshot.player,masteryGrant:65}}).state;
+ assert.equal(granted.totalPoints,65);assert.equal(granted.budget,25);
+ for(const masteryGrant of [-1,1.5,'65',null])assert.throws(()=>importMastery(s,{...snapshot,player:{...snapshot.player,masteryGrant}}),/invalidSnapshot/);
  snapshot.player.forgeLog={0:255};const exhausted=importMastery(s,snapshot).state;assert.equal(exhausted.totalPoints,40);assert.equal(exhausted.budget,0);snapshot.player.forgeLog={};
  for(const field of ['collections','forgeLog']){for(const value of [undefined,null,[]]){const bad=structuredClone(snapshot);bad.player[field]=value;assert.throws(()=>importMastery(s,bad),/incompleteSnapshot/);}}
  snapshot.player.masteries={};

@@ -44,6 +44,7 @@ export function importMastery(current,snapshot){
  if(!record(snapshot)||snapshot.version!==2||!Number.isSafeInteger(snapshot.capturedAt)||snapshot.capturedAt<=0||snapshot.capturedAt>Date.now()+60000||!record(snapshot.player))throw Error('invalidSnapshot');
  const p=snapshot.player;
  if(!record(p.masteries)||!record(p.collections)||!record(p.forgeLog))throw Error('incompleteSnapshot');
+ if(Object.hasOwn(p,'masteryGrant')&&(!Number.isSafeInteger(p.masteryGrant)||p.masteryGrant<0))throw Error('invalidSnapshot');
  for(const [key,qty]of Object.entries(p.collections)){
   const id=Number(key);if(!Number.isSafeInteger(id)||id<1||String(id)!==key||game.itemTier(id)>4||!Number.isSafeInteger(qty)||qty<0)throw Error('invalidSnapshot');
   try{game.item(id);}catch{throw Error('invalidSnapshot');}

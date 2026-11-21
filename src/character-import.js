@@ -27,7 +27,7 @@ function warehouseFood(player){
  }
  if(player.bankLocked===undefined)return {warning:'food.bankLockedMissing'};
  if(!Array.isArray(player.bankLocked)||!player.bankLocked.every(id=>{if(!int(id,1))return false;try{game.item(id);return true;}catch{return false;}}))return {warning:'food.bankLockedInvalid'};
- const id=game.preferredBankFood(player);
+ const id=game.preferredBankFood({...player,lockedUsable:player.lockedUsable===true});
  if(id===null)return {warning:'food.noCandidate'};
  if(!foods.some(f=>f.id===game.baseItemId(id))||!int(game.itemTier(id),0,4))return {warning:'food.bankInvalid'};
  return {food:{id:game.baseItemId(id),tier:game.itemTier(id)}};

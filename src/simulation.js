@@ -27,8 +27,8 @@ export function createScenario(raw,monster=null,{now=Date.now(),seed=0}={}){
  const foodId=game.withRarity(state.food.id,state.food.tier);
  Object.assign(p,{
   id:state.manual.playerId,x:bank.x,y:bank.y,homeBank:bank.id,skills:{...Object.fromEntries(game.allSkills.map(k=>[k,0])),...p.skills},
-  skillboss:null,skillbossPending:[],skillbossBurn:{},skillbossFeedTicks:{},skillbossFed:{},masterySkills:{},masteryAway:{},toolSkins:[],toolSkinsOff:[],bossMarks:[],decosOwned:[],attacks:[],houseTrophies:{},houseDecos:{},alchemyLog:{},alchemy:{carry:{}},
-  pack:[],bank:{[foodId]:1e9},overflow:{},bankOrder:[],bankLocked:[],route:null,enhance:null,order:null,plots:{},queue:[],tunics:[],guide:{},
+  skillboss:null,skillbossPending:[],spoilsHeld:{},skillbossBurn:{},skillbossFeedTicks:{},skillbossFed:{},masterySkills:{},masteryAway:{},toolSkins:[],toolSkinsOff:[],bossMarks:[],decosOwned:[],attacks:[],houseTrophies:{},houseDecos:{},alchemyLog:{},alchemy:{carry:{}},
+  pack:[],bank:{[foodId]:1e9},overflow:{},bankOrder:[],bankLocked:[],gearSets:[],skillSets:{},route:null,enhance:null,order:null,plots:{},queue:[],tunics:[],guide:{},
   perks:{quick:0,rest:0,pockets:0,hands:0,...p.perks},housePoints:{},houseCells:[],houseBuild:null,houseUpgrades:{},
   quests:{day:0,week:0,daily:[],weekly:[]},path:null,streak:{},tally:{items:{},monsters:{},coinsEarned:0},collection:{},collections:{},forgeLog:{},achievements:{},titles:[],
   coins:state.manual.coins,hp:game.maxHp(p),unlimitedBank:state.manual.unlimitedBank,bankSlotsBought:state.manual.bankSlotsBought,offlineCapTicks:durationTicks*2,foodMaxTier:state.manual.foodMaxTier,foodItemId:state.manual.foodRule===0?foodId:state.manual.foodRule===2?-2:null,foodPerTrip:state.manual.foodPerTrip,eatAt:state.eatAt/100,

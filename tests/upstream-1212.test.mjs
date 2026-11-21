@@ -14,10 +14,10 @@ const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-12,`${a} != ${b}`);
 
 test('1212 uses the complete reviewed build and retains disabled experimental features',()=>{
  const manifest=JSON.parse(fs.readFileSync('vendor/manifest.json'));
- assert.equal(manifest.changelogVersion,'1.0.1214');assert.equal(manifest.declarations.length,1462);assert.deepEqual(manifest.overrides,[]);
+ assert.equal(manifest.changelogVersion,'1.0.1221');assert.equal(manifest.declarations.length,1463);assert.deepEqual(manifest.overrides,[]);
  assert.deepEqual(game.features,{enhanceRedesign:false,alchemy:false,profiles:false});
  assert.equal(game.rooms.length,18);assert.equal(game.equipmentSlots.includes('flask'),true);
- assert.equal(game.items.length,1484);assert.equal(game.upgradeRecipes.length,27);
+ assert.equal(game.items.length,1489);assert.equal(game.upgradeRecipes.length,27);
  const {player:p,context}=createScenario({});let prepared;
  game.predict(p,context,value=>{prepared=value;return false;});
  assert.deepEqual(prepared.masterySkills,{});assert.equal(prepared.skillboss,null);
@@ -50,15 +50,15 @@ test('1212 skilling offhands scale by rarity/enhancement and only affect the mat
  }
 });
 
-test('1212 outfit XP applies per piece, full set, and corresponding skill to panel and actual work',()=>{
+test('outfit XP applies per piece, full set, and corresponding skill to panel and actual work',()=>{
  const s=craftingDefaults();s.skill='smithing';s.levels.smithing=99;s.hotSetting='off';const job=craftingJobs.find(j=>j.id===41);
  const baseline=simulateCrafting(s,job,4,10);
  for(const [slot,id]of [['helmet',741],['body',742],['legs',743]])s.gear[slot]={id,tier:0,plus:0};
- near(craftingStats(s).xpBonus,.08);near(game.workXpMultiplier(craftingPlayer(s).player,false,'smithing'),1.08);
- const actual=simulateCrafting(s,job,4,10);assert.equal(actual.xp,Math.round(6*25*1.08)*10);assert.ok(actual.xp>baseline.xp);
+ near(craftingStats(s).xpBonus,.16);near(game.workXpMultiplier(craftingPlayer(s).player,false,'smithing'),1.16);
+ const actual=simulateCrafting(s,job,4,10);assert.equal(actual.xp,Math.round(6*25*1.16)*10);assert.ok(actual.xp>baseline.xp);
  s.skill='cooking';near(craftingStats(s).xpBonus,0);
- const e={helmet:741,body:null,legs:null};near(game.outfitXpBonus(e,'mining'),.02);near(game.outfitXpBonus(e,'fishing'),0);
- e.body=742;near(game.outfitXpBonus(e,'smithing'),.04);e.legs=743;near(game.outfitXpBonus(e,'smithing'),.08);
+ const e={helmet:741,body:null,legs:null};near(game.outfitXpBonus(e,'mining'),.04);near(game.outfitXpBonus(e,'fishing'),0);
+ e.body=742;near(game.outfitXpBonus(e,'smithing'),.08);e.legs=743;near(game.outfitXpBonus(e,'smithing'),.16);
 });
 
 test('1212 new work equipment survives saves and imports while legacy builds get empty slots',()=>{

@@ -391,6 +391,9 @@ test('automatic food skips locked stacks and preserves food on legacy or invalid
  const old=preset('ranged');old.food={id:64,tier:4};
  const snap=fixture(),rare=game.withRarity(64,2);snap.player.bank={64:10,[rare]:10};snap.player.foodItemId=null;
  snap.player.bankLocked=[rare];assert.deepEqual(importCharacter(old,snap).state.food,{id:64,tier:0});
+ snap.player.bank[783]=1;snap.player.lockedUsable=true;
+ const unlocked=importCharacter(old,snap);assert.ok(!unlocked.warnings.some(warning=>warning.startsWith('food:')));assert.deepEqual(unlocked.state.food,{id:64,tier:2});
+ delete snap.player.lockedUsable;
  snap.player.foodItemId=-2;snap.player.bankLocked=[64];assert.deepEqual(importCharacter(old,snap).state.food,{id:64,tier:2});
  for(const [locks,warning]of [[[64,rare],'food.noCandidate'],[undefined,'food.bankLockedMissing'],[null,'food.bankLockedInvalid'],[['64'],'food.bankLockedInvalid'],[[999999999],'food.bankLockedInvalid']]){
   snap.player.bankLocked=locks;const actual=importCharacter(old,snap);
