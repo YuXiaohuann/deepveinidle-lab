@@ -6,21 +6,19 @@
 
 ## 已发布基线
 
-生产为 **1.10.9**，游戏资源 **1.0.1221**；角色 userscript **2.10.1**、桥接 **2.4**、数据协议 **2**。[生产实验室](https://dvi-lab.pages.dev/) · [精确部署](https://f7e78ea1.dvi-lab.pages.dev/)。发布提交 `df808ee63c1618c30f64e21468c500519dc73d20`。
+生产为 **1.10.10**，游戏资源 **1.0.1221**；角色 userscript **2.10.1**、桥接 **2.4**、数据协议 **2**。发布提交 `d1aef62b55005795e5ea5cd8ce6dc62ea62e3291`。[生产实验室](https://dvi-lab.pages.dev/) · [精确部署](https://51d21c24.dvi-lab.pages.dev/)。
 
-[1.10.9 发布报告](../reports/v1.10.9-release-2026-11-21.md)记录新版游戏资源、各页适配和原始文件导入专项。[生产流水线 44914794934](https://github.com/yukixz/deepveinidle-lab/actions/runs/44914794934)首次运行成功，628 项单测、完整检查和打包通过。精确部署与正式域名各通过 17 条路由、73 个资源逐文件一致性及 32 组浏览器验收。CI 排除第三方统计脚本，统计可用性未验证。证据已下载至 `.test-artifacts/release/v1.10.9-production-ci/`，Actions artifact 保留 30 天。
+[1.10.10 发布报告](../reports/v1.10.10-release-2026-11-21.md)记录五页角色自动导入按捕获时间去重及本机专项。[生产流水线 44919804743](https://github.com/yukixz/deepveinidle-lab/actions/runs/44919804743)首次运行成功，630 项单测、完整检查和打包通过。精确部署与正式域名各通过 17 条路由、73 个资源逐文件一致性及 32 组浏览器验收。CI 排除第三方统计脚本，统计可用性未验证。证据已下载至 `.test-artifacts/release/v1.10.10-production-ci/`，Actions artifact 保留 30 天。
 
 <a id="已发布范围与本地待发布"></a>
 
 ## 本地待发布
 
-**1.10.10** 候选调整五页角色配置自动更新。每次仍通过现有桥接读取快照，同一页面会话内捕获时间相同则跳过应用与保存。专项入口见[本地开发](development.md)，正式生产结果待发布验收。
+无待发布应用改动。
 
 ## Preview 与历史
 
-当前已核验的 Preview 为 **1.10.7-preview.1**，提交 `d8e2b9fc72112d72b7ef700ce5e9107c190fd7f2`，入口为 [Preview 制造页](https://preview.dvi-lab.pages.dev/craft)。[CI 44078751159](https://github.com/yukixz/deepveinidle-lab/actions/runs/44078751159) 第二次运行已成功；首次运行通过完整检查、打包、上传和精确地址验收，固定域名因短暂返回旧资源而失败。随后只读核对资源大小及SHA-256一致，线上制造专项通过；再次整条重跑无必要，后续按[问题处理与停止条件](../AGENTS.md#问题处理与停止条件)避免重复工作。首次完整证据位于 `.test-artifacts/crafting-trim/preview-ci/`，线上专项位于 `.test-artifacts/crafting-trim/preview-table/`；第二次成功已核对运行状态，未下载其完整artifact。CI 排除第三方统计脚本，不证明统计可用性。
-
-1.10.9 正式候选推送 main 后自动触发的 Preview CI 44914779475 已取消，本轮验收以生产工作流为准。Preview通常由main push自动更新，之后的版本与提交以[CI记录](https://github.com/yukixz/deepveinidle-lab/actions/workflows/ci.yml)为准。更早的预览与发布记录见[报告索引](../reports/README.md)，不作为当前版本规则或本轮验证结果。
+**1.10.10** 候选提交 `d1aef62` 的 [Preview 工作流 44919760080](https://github.com/yukixz/deepveinidle-lab/actions/runs/44919760080)已核对成功状态，入口为 [Preview 制造页](https://preview.dvi-lab.pages.dev/craft)。Preview 通常由 main push 自动更新，之后的版本与提交以 [CI 记录](https://github.com/yukixz/deepveinidle-lab/actions/workflows/ci.yml) 为准。
 
 逐版发布、实施和调研证据统一从[报告索引](../reports/README.md)查阅；[验证归档](../reports/validation-history.md)保留更早记录，不作为当前规则或本次验证结果。个人调研已迁出项目，保留于本机私有的 `../deepveinidle-play/archives/` 下三组 `local-research-20261023/`、`local-research-20261027/`、`local-research-20261106/` 归档，不纳入源码或发布包。公开源码准备已将 13 个个人评估报告、真实角色复现输入及页面对照文件移出版本库，并移除公开报告中的对应个人读数。本地 6 个开发分支及发布工作树的历史已完成重写，保留 267 个提交；逐提交核对应用源码、测试及构建文件未变，文档引用和 Git 对象完整性检查通过，未重跑应用测试。完整项目及工作树备份已迁至 `../deepveinidle-play/backups/project-backup-20261106/`，包含个人资料，不可随源码分享。本次迁移的 149 个文件（含完整备份包）均按文件大小和 SHA-256 核验一致，迁出后原归档及备份目录已不存在；归档入口和校验清单位于私有目标目录。用户已手动强制推送；2026-11-06 只读核对远端仅有 `main`、无标签，远端 `main` 与本地脱敏提交 `ce96243` 一致。提交作者姓名／邮箱及主动公开的昵称、交流群、赞赏码未在此次个人评估清理中删除；截图此前仅抽查，未完成全部历史图片的逐张隐私复核。
 
