@@ -48,7 +48,7 @@ export function registerCharacterUpdates(page,adapter){
  const updater=createCharacterUpdater({
   storage:{getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value)},
   page,read:()=>requestCharacter('read'),...callbacks,
-  apply:async snapshot=>{await callbacks.apply(snapshot);drafts.delete(page);},
+  apply:async snapshot=>{const saved=await callbacks.apply(snapshot);drafts.delete(page);return saved;},
   hasDraft:()=>drafts.has(page)||hasDraft()||Boolean(document.getElementById(`${page}-section`)?.querySelector('input:invalid,select:invalid,[aria-invalid=true]')),
   onSettings:()=>updateCharacterOptions(page),
  });
@@ -80,5 +80,8 @@ globalThis.addEventListener?.('focus',()=>updaters.get(activeImportPage)?.trigge
 
 document.addEventListener('click',event=>{
  const id=event.target.closest?.('button')?.id??'';
- if(belongsToImportPage(event)&&/reset|zero-ranks|revert/.test(id)){drafts.delete(activeImportPage);updaters.get(activeImportPage)?.invalidate();}
+ if(belongsToImportPage(event)&&/reset|zero-ranks|revert/.test(id)){
+  drafts.delete(activeImportPage);
+  updaters.get(activeImportPage)?.invalidate();
+ }
 });

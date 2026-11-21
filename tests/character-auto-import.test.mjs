@@ -35,3 +35,26 @@ test('read/apply failures are visible, data remains unchanged and next trigger r
 test('settings save failures remain explicit while the in-memory choice is available',()=>{
  const t=setup({storage:{getItem:()=>null,setItem:()=>{throw Error('quota');}}});t.updater.configure({config:true});assert.equal(t.updater.settingsError,'save');assert.equal(t.updater.options.config,true);
 });
+test('deduplicates successful captures per controller, with manual and reset overrides',async()=>{
+ const t=setup({apply:snapshot=>{t.applied.push(snapshot);return true;}});
+ const receive=async(capturedAt,manual=false)=>{
+  const pending=manual?t.updater.read():t.updater.trigger();
+  t.reply({capturedAt});await pending;
+ };
+ t.updater.setActive(true);t.reply({capturedAt:1});await flush();
+ await receive(1);
+ t.updater.setActive(false);t.updater.setActive(true);t.reply({capturedAt:1});await flush();
+ assert.equal(t.applied.length,1);assert.equal(t.reads.length,3);
+ await receive(1,true);
+ await receive(2);
+ t.updater.reset();
+ await receive(2);
+ assert.deepEqual(t.applied.map(snapshot=>snapshot.capturedAt),[1,1,2,2]);
+});
+test('failed persistence does not mark a capture as imported',async()=>{
+ let attempts=0;
+ const t=setup({apply:()=>++attempts>1});
+ t.updater.setActive(true);t.reply({capturedAt:1});await flush();
+ for(let i=0;i<2;i++){const pending=t.updater.trigger();t.reply({capturedAt:1});await pending;}
+ assert.equal(attempts,2);
+});

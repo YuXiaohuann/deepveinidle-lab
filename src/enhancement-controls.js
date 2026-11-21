@@ -111,7 +111,7 @@ export function renderEnhancement(nextLanguage){
  });
  const itemOptions=()=>enhanceableItems.map(x=>({value:x.id,label:name(x.name),search:`${x.name} ${translatedName(x.name,'zh')}`}));
  bindSearchSelect({id:'enhance-item-search',options:itemOptions(),value:state.itemId,selectedLabel:id=>name(game.item(id).name),onSelect:id=>{state.itemId=id;resetBaseOverride();save();renderEnhancement(language);},emptyText:text('没有匹配的装备或工具','No matching equipment or tools'),countText:count=>text(`${count} 件匹配物品`,`${count} matching items`)});
- document.getElementById('enhance-reset').onclick=()=>{const {guild,level,lectern,mastery}=enhancementDefaults();state={...state,guild,level,lectern,mastery};status=null;save();renderEnhancement(language);};
+ document.getElementById('enhance-reset').onclick=()=>{enhancementUpdater.reset();const {guild,level,lectern,mastery}=enhancementDefaults();state={...state,guild,level,lectern,mastery};status=null;save();renderEnhancement(language);};
  document.getElementById('enhance-equipment-reset').onclick=()=>{const {guild,level,lectern,mastery}=state;state={...enhancementDefaults(),guild,level,lectern,mastery};save();renderEnhancement(language);};
  document.getElementById('enhance-import').onclick=()=>enhancementUpdater.read();
  if(!probeStarted){probeStarted=true;probeCharacter().then(()=>{if(!status&&!busy){status={ready:true};renderStatus();}}).catch(error=>{if(!status&&!busy){status={error:error.message};renderStatus();}});}
@@ -129,6 +129,6 @@ subscribe(change=>{
 const enhancementUpdater=registerCharacterUpdates('enhance',{
  busy:()=>busy,revision:()=>JSON.stringify(state),
  onBusy:value=>{busy=value;renderStatus();},
- apply:snapshot=>{applyEnhancementImport(snapshot);renderEnhancement(language);},
+ apply:snapshot=>{const result=applyEnhancementImport(snapshot);renderEnhancement(language);return result.saveOK;},
  onError:error=>{status={error:error.message};renderStatus();},
 });

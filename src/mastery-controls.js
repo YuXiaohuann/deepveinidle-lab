@@ -79,7 +79,7 @@ export function renderMastery(nextLanguage){
  host.querySelector('#mastery-mode').onchange=e=>{state.mode=e.target.value;try{validateMastery(state);save();}catch{}updateResults();};
  host.onclick=e=>{
   if(e.target.closest('#mastery-zero-ranks')){const defaults=masteryDefaults();state.current=defaults.current;state.target=defaults.target;state.planned=true;try{validateMastery(state);save();}catch{}renderMastery(language);return;}
-  if(e.target.closest('#mastery-reset')){state=masteryDefaults();status=null;save();renderMastery(language);return;}
+  if(e.target.closest('#mastery-reset')){masteryUpdater.reset();state=masteryDefaults();status=null;save();renderMastery(language);return;}
   if(e.target.closest('#mastery-revert')){state.target={...state.current};state.planned=true;try{validateMastery(state);save();}catch{}renderMastery(language);return;}
   const button=e.target.closest('[data-mastery-action]');if(!button||button.disabled)return;
   state.planned=true;const id=button.closest('[data-mastery-row]').dataset.masteryRow;state.target[id]=button.dataset.masteryAction==='max'?highestAffordableMastery(state,id):Number(state.target[id])+(button.dataset.masteryAction==='plus'?1:-1);
@@ -93,6 +93,6 @@ export function renderMastery(nextLanguage){
 const masteryUpdater=registerCharacterUpdates('mastery',{
  busy:()=>busy,revision:()=>JSON.stringify(state),
  onBusy:value=>{busy=value;renderImportStatus();},
- apply:snapshot=>{applyMasteryImport(snapshot);renderMastery(language);},
+ apply:snapshot=>{const result=applyMasteryImport(snapshot);renderMastery(language);return result.saveOK;},
  onError:error=>{status={error:error.message};renderImportStatus();},
 });

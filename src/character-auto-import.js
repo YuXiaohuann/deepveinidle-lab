@@ -14,7 +14,7 @@ export function createCharacterUpdater({storage,page,read,apply,onError=()=>{},o
  let options,settingsError=null;
  try{options=loadCharacterUpdates(storage,page);}
  catch{options={version:1,config:false};settingsError='load';}
- let active=false,running=false,generation=0,retry=false;
+ let active=false,running=false,generation=0,retry=false,lastImportedAt=null;
  async function run(manual=false){
   if(running||busy()||!active||(!manual&&!options.config)||(!manual&&hasDraft()))return;
   running=true;
@@ -24,7 +24,10 @@ export function createCharacterUpdater({storage,page,read,apply,onError=()=>{},o
    const response=await read();
    if(!active||token!==generation||revision()!==previous||(!manual&&hasDraft()))return;
    if(!response.snapshot)throw Error('noSnapshot');
-   await apply(response.snapshot);
+   const {snapshot}=response;
+   if(!manual&&lastImportedAt!==null&&snapshot.capturedAt===lastImportedAt)return;
+   const saved=await apply(snapshot);
+   if(saved&&active&&token===generation)lastImportedAt=snapshot.capturedAt;
   }catch(error){if(active&&token===generation)onError(error);}
   finally{
    running=false;onBusy(false);
@@ -47,6 +50,7 @@ export function createCharacterUpdater({storage,page,read,apply,onError=()=>{},o
    if(running)retry=true;else void run();
   },
   invalidate(){generation++;},
+  reset(){generation++;lastImportedAt=null;},
   trigger(){return run();},
   read(){return run(true);},
  };

@@ -170,9 +170,9 @@ export function renderCrafting(lang,{isActive=false}={}){
   const keys=el.dataset.craftField.split('.'),last=keys.pop(),target=keys.reduce((o,k)=>o[k],state);target[last]=el.type==='checkbox'?el.checked:el.dataset.craftField==='hotSetting'?el.value:keys[0]==='masteries'?masteryRank(last,Number(el.value)):Number(el.value);
   state=normalizeCrafting(state);clock=Date.now();save();schedule();renderCrafting(language,{isActive:active});
  });
- document.getElementById('craft-reset').onclick=()=>{state=craftingDefaults();importStatus=null;save();schedule();renderCrafting(language,{isActive:active});};
+ document.getElementById('craft-reset').onclick=()=>{craftingUpdater.reset();state=craftingDefaults();importStatus=null;save();schedule();renderCrafting(language,{isActive:active});};
  document.getElementById('craft-import').onclick=()=>craftingUpdater.read();
- const reset=document.getElementById('craft-reset-storage');if(reset)reset.onclick=()=>{if(!confirm(text('删除制造存档并恢复默认配置？','Delete crafting storage and restore defaults?')))return;try{resetCraftingConfig(localStorage);}catch{notice='savedInvalid';renderNotice();return;}state=craftingDefaults();storageBlocked=false;notice='';importStatus=null;save();schedule();renderCrafting(language,{isActive:active});};
+ const reset=document.getElementById('craft-reset-storage');if(reset)reset.onclick=()=>{if(!confirm(text('删除制造存档并恢复默认配置？','Delete crafting storage and restore defaults?')))return;try{resetCraftingConfig(localStorage);}catch{notice='savedInvalid';renderNotice();return;}craftingUpdater.reset();state=craftingDefaults();storageBlocked=false;notice='';importStatus=null;save();schedule();renderCrafting(language,{isActive:active});};
  if(active&&!probeStarted){probeStarted=true;probeCharacter().then(()=>{if(!importStatus)importStatus={ready:true};renderImport();}).catch(error=>{if(!importStatus)importStatus={error:error.message};renderImport();});}
  renderHot();
  renderResults();renderImport();renderNotice();if(active&&!running)startSimulation();
@@ -182,7 +182,7 @@ subscribe(change=>{if(change.prices||change.storage)renderResults();});
 const craftingUpdater=registerCharacterUpdates('craft',{
  busy:()=>importBusy||storageBlocked,revision:()=>JSON.stringify(state),
  onBusy:value=>{importBusy=value;renderImport();},
- apply:snapshot=>{const imported=importCrafting(state,snapshot);state=imported.state;importStatus=imported;clock=Date.now();save();schedule();renderCrafting(language,{isActive:active});},
+ apply:snapshot=>{const imported=importCrafting(state,snapshot);state=imported.state;importStatus=imported;clock=Date.now();save();schedule();renderCrafting(language,{isActive:active});return saveOK;},
  onError:error=>{importStatus={error:error.message};renderImport();},
 });
 

@@ -130,7 +130,7 @@ export function renderGathering(nextLanguage,{isActive=active}={}){
  if(el.type==='number'){el.oninput=()=>{if(el.value===''||!validNumberInput(el))return;const keys=el.dataset.gatherField.split('.'),last=keys.pop(),target=keys.reduce((obj,k)=>obj[k],state);target[last]=keys[0]==='masteries'?masteryRank(last,Number(el.value)):Number(el.value);state=normalizeGathering(state);save();if(keys[0]==='house'){const room=gatheringRooms.find(r=>r.id===last);host.querySelector(`[data-gather-house-description="${last}"]`).textContent=houseDescription(room);}if(active)startSimulation();else renderResults();};el.onchange=update;}else el.onchange=update;
  });
  host.querySelectorAll('[data-gather-skill]').forEach(el=>el.onclick=()=>{state.skill=el.dataset.gatherSkill;state.jobSelection='all';save();renderGathering(language,{isActive:true});});
- document.getElementById('gather-reset').onclick=()=>{state=gatheringDefaults();status=null;save();renderGathering(language,{isActive:active});};
+ document.getElementById('gather-reset').onclick=()=>{gatheringUpdater.reset();state=gatheringDefaults();status=null;save();renderGathering(language,{isActive:active});};
  document.getElementById('gather-import').onclick=()=>gatheringUpdater.read();
  if(!probeStarted){probeStarted=true;probeCharacter().then(()=>{if(!status&&!busy){status={ready:true};renderStatus();}}).catch(error=>{if(!status&&!busy){status={error:error.message};renderStatus();}});}
  if(active)startSimulation();else renderResults();
@@ -143,7 +143,7 @@ subscribe(change=>{if(change.prices)renderResults();});
 const gatheringUpdater=registerCharacterUpdates('gather',{
  busy:()=>busy,revision:()=>JSON.stringify(state),
  onBusy:value=>{busy=value;renderStatus();},
- apply:snapshot=>{const imported=importGathering(state,snapshot);state=imported.state;status={capturedAt:imported.capturedAt,warnings:imported.warnings};save();renderGathering(language,{isActive:active});},
+ apply:snapshot=>{const imported=importGathering(state,snapshot);state=imported.state;status={capturedAt:imported.capturedAt,warnings:imported.warnings};save();renderGathering(language,{isActive:active});return saveOK;},
  onError:error=>{status={error:error.message};renderStatus();},
 });
 
