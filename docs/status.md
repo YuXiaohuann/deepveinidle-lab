@@ -6,23 +6,21 @@
 
 ## 已发布基线
 
-生产为 **1.10.8**，游戏资源 **1.0.1214**；角色 userscript **2.10.1**、桥接 **2.4**、数据协议 **2**。入口为[生产实验室](https://dvi-lab.pages.dev/)，精确部署为 [b2b24ba8.dvi-lab.pages.dev](https://b2b24ba8.dvi-lab.pages.dev)，发布提交 `ab67df9a5f7b02f27c6a6867a9f8cc2baaf67719`。
+生产为 **1.10.9**，游戏资源 **1.0.1221**；角色 userscript **2.10.1**、桥接 **2.4**、数据协议 **2**。[生产实验室](https://dvi-lab.pages.dev/) · [精确部署](https://f7e78ea1.dvi-lab.pages.dev/)。发布提交 `df808ee63c1618c30f64e21468c500519dc73d20`。
 
-[1.10.8 发布报告](../reports/v1.10.8-release-2026-11-20.md)记录页眉、页脚、双语加载提示和专项验证。[生产流水线 44711234767](https://github.com/yukixz/deepveinidle-lab/actions/runs/44711234767)首次运行成功，628 项单元测试及完整检查、打包通过。精确部署与正式域名各通过 17 条路由、73 个资源逐文件一致性及 32 组浏览器验收。CI 排除第三方统计脚本，统计可用性未验证。完整证据已下载至 `.test-artifacts/release/v1.10.8-production-ci/`，Actions artifact 保留 30 天。
+[1.10.9 发布报告](../reports/v1.10.9-release-2026-11-21.md)记录新版游戏资源、各页适配和原始文件导入专项。[生产流水线 44914794934](https://github.com/yukixz/deepveinidle-lab/actions/runs/44914794934)首次运行成功，628 项单测、完整检查和打包通过。精确部署与正式域名各通过 17 条路由、73 个资源逐文件一致性及 32 组浏览器验收。CI 排除第三方统计脚本，统计可用性未验证。证据已下载至 `.test-artifacts/release/v1.10.9-production-ci/`，Actions artifact 保留 30 天。
 
 <a id="已发布范围与本地待发布"></a>
 
 ## 本地待发布
 
-本地游戏资源更新至 **1.0.1221**（[来源与摘要](technical.md#62-原始代码复用)），2026-11-21 复核官网入口与快照 SHA-256 一致。物品目录新增五种未开封技能首领奖励箱（ID 780–784），其中 783 为枯萎之花宝箱。战斗角色导入按新版锁定物品使用规则选食，战斗、采集及制造导入当前穿戴。采集按新版原始函数计算 105 级技能首领工具的强化幸运，采集与制造的技能套装经验加成更新为每件 4%、整套 16%。精通导入纳入游戏发放的额外精通点，旧版计算指标按历史结果处理。世界首领沿用静态攻防及理论 DPS。
-
-本轮使用原始配置文件核验战斗、强化、采集、制造及精通导入，均无警告；本地 Chrome 的 `/debug` 两个文件导入入口通过，战斗自动选食保存为罕见品质的熟鲨鱼。官方市场样本的 3,833 条物品报价均可识别。本地 `release:check` 通过 628 项单测、静态检查、提取可重复性、独立原始计算对照，以及 17 条路由、73 个资源和八个页面的 32 组双语／双尺寸浏览器检查。证据位于 `.test-artifacts/upstream-1221-all-pages/`。生产仍使用上方已发布基线。
+无待发布应用改动。
 
 ## Preview 与历史
 
 当前已核验的 Preview 为 **1.10.7-preview.1**，提交 `d8e2b9fc72112d72b7ef700ce5e9107c190fd7f2`，入口为 [Preview 制造页](https://preview.dvi-lab.pages.dev/craft)。[CI 44078751159](https://github.com/yukixz/deepveinidle-lab/actions/runs/44078751159) 第二次运行已成功；首次运行通过完整检查、打包、上传和精确地址验收，固定域名因短暂返回旧资源而失败。随后只读核对资源大小及SHA-256一致，线上制造专项通过；再次整条重跑无必要，后续按[问题处理与停止条件](../AGENTS.md#问题处理与停止条件)避免重复工作。首次完整证据位于 `.test-artifacts/crafting-trim/preview-ci/`，线上专项位于 `.test-artifacts/crafting-trim/preview-table/`；第二次成功已核对运行状态，未下载其完整artifact。CI 排除第三方统计脚本，不证明统计可用性。
 
-1.10.8 正式候选推送 main 后自动触发的冗余 Preview CI 已请求取消，本轮验收以生产工作流为准。Preview通常由main push自动更新，之后的版本与提交以[CI记录](https://github.com/yukixz/deepveinidle-lab/actions/workflows/ci.yml)为准。更早的预览与发布记录见[报告索引](../reports/README.md)，不作为当前版本规则或本轮验证结果。
+1.10.9 正式候选推送 main 后自动触发的 Preview CI 44914779475 已取消，本轮验收以生产工作流为准。Preview通常由main push自动更新，之后的版本与提交以[CI记录](https://github.com/yukixz/deepveinidle-lab/actions/workflows/ci.yml)为准。更早的预览与发布记录见[报告索引](../reports/README.md)，不作为当前版本规则或本轮验证结果。
 
 逐版发布、实施和调研证据统一从[报告索引](../reports/README.md)查阅；[验证归档](../reports/validation-history.md)保留更早记录，不作为当前规则或本次验证结果。个人调研已迁出项目，保留于本机私有的 `../deepveinidle-play/archives/` 下三组 `local-research-20261023/`、`local-research-20261027/`、`local-research-20261106/` 归档，不纳入源码或发布包。公开源码准备已将 13 个个人评估报告、真实角色复现输入及页面对照文件移出版本库，并移除公开报告中的对应个人读数。本地 6 个开发分支及发布工作树的历史已完成重写，保留 267 个提交；逐提交核对应用源码、测试及构建文件未变，文档引用和 Git 对象完整性检查通过，未重跑应用测试。完整项目及工作树备份已迁至 `../deepveinidle-play/backups/project-backup-20261106/`，包含个人资料，不可随源码分享。本次迁移的 149 个文件（含完整备份包）均按文件大小和 SHA-256 核验一致，迁出后原归档及备份目录已不存在；归档入口和校验清单位于私有目标目录。用户已手动强制推送；2026-11-06 只读核对远端仅有 `main`、无标签，远端 `main` 与本地脱敏提交 `ce96243` 一致。提交作者姓名／邮箱及主动公开的昵称、交流群、赞赏码未在此次个人评估清理中删除；截图此前仅抽查，未完成全部历史图片的逐张隐私复核。
 
