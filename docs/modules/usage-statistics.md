@@ -1,6 +1,6 @@
 # 使用统计
 
-使用 Cloudflare 免费版 Pages Functions 和 D1，按 UTC 日统计实验室使用次数、活跃角色数和角色名单。一次页面加载后成功导入角色才计一次使用。统计在 D1 Console 查询，全站 Visits 继续使用现有 Web Analytics。部署状态见[当前状态](../status.md#本地待发布)。
+使用 Cloudflare 免费版 Pages Functions 和 D1，按 UTC 日统计实验室使用次数、活跃角色数和角色名单。一次页面加载后成功导入角色才计一次使用。统计在 D1 Console 查询，全站 Visits 继续使用现有 Web Analytics。部署状态见[当前状态](../status.md#已发布基线)。
 
 ## 上报规则
 
