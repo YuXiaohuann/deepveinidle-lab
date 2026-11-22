@@ -24,10 +24,17 @@ export async function verifyHttp(base,root,manifest){
   assert.equal(new URL(response.headers.get('location'),url).href,new URL('/combat'+new URL(route,url).search,url).href,`${route}: unexpected redirect target`);
   await response.arrayBuffer();
  }
- const assets=manifest.filter(f=>!['index.html','_redirects'].includes(f.path));
+ const assets=manifest.filter(f=>!['index.html','_redirects','_routes.json'].includes(f.path));
  // Limited batches avoid flooding the production origin; all resources are verified.
  for(let i=0;i<assets.length;i+=6){const results=await Promise.allSettled(assets.slice(i,i+6).map(async file=>{
   const response=await fetchPath('/'+file.path);const data=Buffer.from(await response.arrayBuffer());assert.equal(data.length,file.bytes,`${file.path}: byte length mismatch`);assert.equal(sha256(data),file.sha256,`${file.path}: SHA-256 mismatch`);
  }));for(const result of results)if(result.status==='rejected')throw result.reason;}
  return {base:url.origin,routes:routes.length,assets:assets.length,html:'exact except Cloudflare analytics loader',redirects:unknownPaths.length};
+}
+
+export async function verifyUsageRoute(base){
+ const response=await fetch(new URL('/api/usage',base),{redirect:'manual',signal:AbortSignal.timeout(10000)});
+ assert.equal(response.status,405,'/api/usage must be served by the Pages Function');
+ assert.equal(response.headers.get('allow'),'POST');
+ return response.status;
 }

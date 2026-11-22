@@ -7,12 +7,15 @@ import http from 'node:http';
 import {once} from 'node:events';
 import {routes,json,inputs,packageFiles,filesIn,checkDocs,tapSummary,runLogged,freshDirectory,markdownAnchors} from '../scripts/release-common.mjs';
 import {check,buildPackage,verify} from '../scripts/release.mjs';
-import {verifyHttp,normalizeHostedHtml} from '../scripts/release-http.mjs';
+import {verifyHttp,verifyUsageRoute,normalizeHostedHtml} from '../scripts/release-http.mjs';
 
 async function fixture(t){
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'dvi-release-test-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
- for(const dir of ['src','vendor','tests','scripts','docs','reports','.github/workflows','.test-artifacts/evidence'])await fs.mkdir(path.join(root,dir),{recursive:true});
+ for(const dir of ['src','vendor','tests','scripts','docs','reports','functions/api','migrations','.github/workflows','.test-artifacts/evidence'])await fs.mkdir(path.join(root,dir),{recursive:true});
  for(const [name,text]of Object.entries({'index.html':'<!doctype html><html><body><div id="app">Loading</div><script type="module" src="/src/app.js"></script></body></html>','_redirects':[...routes.slice(1).map(r=>`${r} / 200`),'/ / 200','/index.html /index.html 200','/src/* /src/:splat 200','/vendor/* /vendor/:splat 200','/* /combat 302'].join('\n'),'src/app.js':'console.log("app");','vendor/game-original.js':'// source','package.json':JSON.stringify({version:'9.0.0',devDependencies:{}}),'pnpm-lock.yaml':'lock','.gitattributes':'vendor/game-original.js whitespace=-blank-at-eol','.gitignore':'.test-artifacts/','README.md':'# Readme\n\n[Docs](docs/topic.md#内容)','DESIGN.md':'# Design','AGENTS.md':'# Agents','docs/topic.md':'# 内容'}))await fs.writeFile(path.join(root,name),text);
+ await json(path.join(root,'_routes.json'),{version:1,include:['/api/usage'],exclude:[]});
+ await fs.writeFile(path.join(root,'functions/api/usage.js'),'// server handler');
+ await fs.writeFile(path.join(root,'migrations/0001_usage_sessions.sql'),'-- migration');
  const evidence=path.join(root,'.test-artifacts/evidence'),receipt={status:'passed',version:'9.0.0',inputs:await inputs(root),steps:['static','tests','native','extraction','local'].map(name=>({name,status:'passed'}))};await json(path.join(evidence,'check.json'),receipt);
  return {root,evidence,receipt};
 }
@@ -35,13 +38,13 @@ test('documentation checks resolve Chinese/duplicate anchors and reject broken l
 test('package contains only application files, keeps manifest outside and refuses existing output',async t=>{
  const {root,evidence}=await fixture(t);await fs.writeFile(path.join(root,'.test-artifacts','private.txt'),'do not publish');
  const out=path.join(root,'.test-artifacts/package');const result=await buildPackage(root,evidence,out);
- assert.deepEqual(await filesIn(out),['_redirects','index.html','src/app.js','vendor/game-original.js']);assert.equal(result.files.length,4);assert.equal(result.version,'9.0.0');
+ assert.deepEqual(await filesIn(out),['_redirects','_routes.json','index.html','src/app.js','vendor/game-original.js']);assert.equal(result.files.length,5);assert.equal(result.version,'9.0.0');
  await assert.rejects(buildPackage(root,evidence,out),/EEXIST/);assert.equal(await fs.readFile(path.join(out,'src/app.js'),'utf8'),'console.log("app");');
  await assert.rejects(freshDirectory(root,root),/Output must|Repository output/);await assert.rejects(freshDirectory(root,path.join(root,'src/out')),/Repository output/);
 });
 test('package evidence is invalidated by app/test/docs/lock changes and rejects incomplete receipts',async t=>{
  const {root,evidence,receipt}=await fixture(t);
- for(const file of ['src/app.js','tests/changed.test.mjs','docs/topic.md','pnpm-lock.yaml','.gitattributes','.github/workflows/ci.yml']){
+ for(const file of ['src/app.js','tests/changed.test.mjs','docs/topic.md','pnpm-lock.yaml','.gitattributes','.github/workflows/ci.yml','_routes.json','functions/api/usage.js','migrations/0001_usage_sessions.sql']){
   const original=await fs.readFile(path.join(root,file)).catch(e=>{if(e.code==='ENOENT')return null;throw e;});await fs.writeFile(path.join(root,file),'changed');
   await assert.rejects(buildPackage(root,evidence,path.join(root,'.test-artifacts/output')),/inputs\/environment changed/);
   if(original===null)await fs.unlink(path.join(root,file));else await fs.writeFile(path.join(root,file),original);
@@ -56,6 +59,7 @@ test('symbolic application paths and extra package files cannot pass verificatio
 test('HTTP checks verify all routes, content and asset hashes and reject route/version-page substitution',async t=>{
  const {root}=await fixture(t);let mode='valid';
  const server=http.createServer(async(req,res)=>{
+  if(req.url==='/api/usage'){res.writeHead(mode==='valid'?405:302,{Allow:'POST',Location:'/combat'});res.end();return;}
   if(req.url.startsWith('/release-unknown-page')){res.writeHead(mode==='unknown-fallback'?200:302,{Location:'/combat'+new URL(req.url,'http://localhost').search});res.end();return;}
   if(mode==='redirect'&&req.url==='/combat'){res.writeHead(302,{Location:'/'});res.end();return;}
   const file=routes.includes(req.url)?'index.html':req.url.slice(1);let body=await fs.readFile(path.join(root,file));
@@ -64,7 +68,9 @@ test('HTTP checks verify all routes, content and asset hashes and reject route/v
  });server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>new Promise(resolve=>server.close(resolve)));
  const base=`http://127.0.0.1:${server.address().port}`,manifest=await packageFiles(root);
  const result=await verifyHttp(base,root,manifest);assert.equal(result.routes,routes.length);assert.equal(result.assets,2);
+ assert.equal(await verifyUsageRoute(base),405);
  for(const [value,error]of [['redirect',/route path changed/],['unknown-fallback',/expected unknown-path redirect/],['corrupt',/byte length mismatch|SHA-256 mismatch/],['html',/unexpected HTML content/]]){mode=value;await assert.rejects(verifyHttp(base,root,manifest),error);}
+ await assert.rejects(verifyUsageRoute(base),/must be served by the Pages Function/);
 });
 test('only known analytics injection and inter-tag whitespace are normalized',()=>{
  const base='<html><body>Content</body></html>';const injected='<html>\n<body>Content<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v123" data-cf-beacon="{}"></script></body></html>';

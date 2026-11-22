@@ -44,6 +44,8 @@ pnpm release:verify --evidence .test-artifacts/release/candidate-check --package
 
 `release:verify` 必须显式指定 URL，无默认生产目标；成功只表示该目标通过，不能用本机／预览结果代替生产验收。预览发布使用 `--branch preview`，并单独验收 `https://preview.dvi-lab.pages.dev`；也可先验收精确部署地址，再验收生产别名，分别保存证据。
 
+首次发布使用统计前，在 Cloudflare 分别创建预览和生产 D1 数据库，在各自的 D1 Console 执行[建表迁移](../migrations/0001_usage_sessions.sql)，再在 `dvi-lab` Pages 项目的 Preview 和 Production 环境各绑定对应数据库，绑定名均为 `USAGE_DB`。从仓库根目录运行 Wrangler Direct Upload，Wrangler 从该目录编译 `functions/`，并从发布包读取 `_routes.json`。线上 `release:verify` 用无写入的 GET 检查 `/api/usage` 返回 `405` 和 `Allow: POST`；浏览器验收拦截该上报。D1 写入专项使用本机或预览的测试库。 [使用统计](modules/usage-statistics.md) · [Pages D1 绑定](https://developers.cloudflare.com/pages/functions/bindings/#d1-databases)
+
 认证有效时无需每次登录；Wrangler 明确报告认证失效后，才用 `npx wrangler login --scopes account:read user:read pages:write` 重新授权。既有部署及历史证据保留，旧项目不自动删除或重定向，不同域名配置不自动迁移。
 
 角色脚本版本见[当前状态](status.md#已发布基线)；升级与重新捕获要求、桥接、旧格式处理及捕获失败规则见[导入协议](technical.md#61-角色导入组件与-userscript-协议)，价格存储迁移见[全局物品价格](shared.md#导入策略与存储迁移)。
@@ -72,13 +74,13 @@ HTML 一致性检查仅允许已知 analytics loader、Cloudflare Web／Pages An
 
 ### 候选与证据有效性
 
-完整候选输入包含 `.gitattributes`、应用、上游资源、测试、发布脚本、文档／报告和依赖清单，证据同时记录运行环境。任一输入或记录环境变化后重新检查；提交号不能替代完整输入摘要。同轮证据完整且输入未变时，不重复完整验证，历史或专项结果不能代替本轮检查。
+完整候选输入包含 `.gitattributes`、应用、上游资源、Pages Functions、D1 迁移、测试、发布脚本、文档／报告和依赖清单，证据同时记录运行环境。任一输入或记录环境变化后重新检查；提交号不能替代完整输入摘要。同轮证据完整且输入未变时，不重复完整验证，历史或专项结果不能代替本轮检查。
 
 终端仅输出步骤、计数、耗时、异常与证据路径，完整日志落盘；通常只读取 `report.md` 与目标字段。非测试阶段显式写入独立 JSON 结果，父进程不依赖 stdout 最后一行。缺结果、失败、取消、跳过、超时或缺失环境均明确失败，返回非零退出码、有限诊断及完整日志路径，不能标记通过。
 
 ### 发布包白名单
 
-包只包含 `index.html`、`_redirects`、`src/` 和 `vendor/`，保持模块 Worker 与资源路径。其中允许 js、css、svg、json，以及指定赞赏图片 `src/assets/appreciation.jpg`、公式专用目录 Markdown 和指定 markdown-it ESM／源码映射／许可证文件。`package.json` 包清单保存在证据目录，不放进发布包。
+静态发布包含 `index.html`、`_redirects`、`_routes.json`、`src/` 和 `vendor/`，保持模块 Worker 与资源路径。`_routes.json` 只把 `/api/usage` 交给 Functions。其中允许 js、css、svg、json，以及指定赞赏图片 `src/assets/appreciation.jpg`、公式专用目录 Markdown 和指定 markdown-it ESM／源码映射／许可证文件。`package.json` 包清单保存在证据目录，不放进发布包。
 
 拒绝已存在的包目录、符号链接、隐藏文件、非白名单内容、缺失文件及过时证据。项目文档和验证证据不随生产或预览发布，页面不提供内部文档或报告链接。
 

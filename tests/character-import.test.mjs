@@ -79,7 +79,7 @@ test('new connections and characters replace snapshots rather than merging previ
  frame(second,{lastTick:101,skills:{melee:0},equipment:{weapon:null}},'welcome');await new Promise(resolve=>setImmediate(resolve));assert.equal(stored.length,2);assert.equal(stored[1].player.masteries,undefined);
 });
 class DomEvent extends Event{constructor(type,{detail}){super(type);this.detail=detail;}}
-const controls=fs.readFileSync(new URL('../src/import-controls.js',import.meta.url),'utf8').replace(/^import .*;\n/,'').replaceAll('export function','function');
+const controls=fs.readFileSync(new URL('../src/import-controls.js',import.meta.url),'utf8').replace(/^import .*;\n/gm,'').replaceAll('export function','function');
 function simulatorWorld(document,timers={setTimeout,clearTimeout,setInterval,clearInterval}){
  const context=vm.createContext({document,window:{world:'page'},CustomEvent:DomEvent,Date,console,...timers});
  vm.runInContext(controls,context);return context;

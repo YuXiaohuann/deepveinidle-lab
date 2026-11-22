@@ -1,4 +1,5 @@
 import {createCharacterUpdater} from './character-auto-import.js';
+import {reportUsage} from './usage-statistics.js';
 const pending=new Map();let counter=0;
 function receiveCharacter(event){
  if(typeof event.detail!=='string')return;
@@ -48,7 +49,12 @@ export function registerCharacterUpdates(page,adapter){
  const updater=createCharacterUpdater({
   storage:{getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value)},
   page,read:()=>requestCharacter('read'),...callbacks,
-  apply:async snapshot=>{const saved=await callbacks.apply(snapshot);drafts.delete(page);return saved;},
+  apply:async snapshot=>{
+   const saved=await callbacks.apply(snapshot);
+   drafts.delete(page);
+   if(saved)void reportUsage(snapshot.player);
+   return saved;
+  },
   hasDraft:()=>drafts.has(page)||hasDraft()||Boolean(document.getElementById(`${page}-section`)?.querySelector('input:invalid,select:invalid,[aria-invalid=true]')),
   onSettings:()=>updateCharacterOptions(page),
  });

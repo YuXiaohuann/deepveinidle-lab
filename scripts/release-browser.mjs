@@ -11,7 +11,9 @@ export async function verifyBrowser(base,version,directory,{analytics='live'}={}
  analyticsMode(analytics);
  const executablePath=await browserPath(),browser=await chromium.launch({headless:true,executablePath});
  const results={base,version,browser:browser.version(),executablePath,cases:[],errors:[],combat:[]};
- const context=await browser.newContext();results.analytics=await configureAnalytics(context,analytics);const page=await context.newPage();
+ const context=await browser.newContext();results.analytics=await configureAnalytics(context,analytics);
+ await context.route(new URL('/api/usage',base).href,route=>route.fulfill({status:204}));
+ const page=await context.newPage();
  page.setDefaultTimeout(20000);
  page.on('pageerror',e=>results.errors.push({type:'pageerror',message:e.message}));
  page.on('console',m=>{if(['error','warning'].includes(m.type()))results.errors.push({type:m.type(),message:m.text()});});

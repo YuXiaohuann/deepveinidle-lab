@@ -53,8 +53,10 @@ export async function verify(root,evidence,packageDirectory,url,out,{analytics='
  const directory=await freshDirectory(root,out),result={schema:1,status:'running',version:receipt.version,inputId:receipt.inputs.id,url,analytics,startedAt:new Date().toISOString()};await json(path.join(directory,'verify.json'),result);
  try{
   const log=path.join(directory,'verify.log');await fs.writeFile(log,`Target: ${url}\nHTTP verification started\n`);
-  const {verifyHttp}=await import('./release-http.mjs'),{verifyBrowser}=await import('./release-browser.mjs');
-  result.http=await verifyHttp(url,packageDirectory,manifest.files);await fs.appendFile(log,JSON.stringify(result.http)+'\nBrowser verification started\n');await json(path.join(directory,'verify.json'),result);
+  const {verifyHttp,verifyUsageRoute}=await import('./release-http.mjs'),{verifyBrowser}=await import('./release-browser.mjs');
+  result.http=await verifyHttp(url,packageDirectory,manifest.files);
+  result.http.usageRoute=await verifyUsageRoute(url);
+  await fs.appendFile(log,JSON.stringify(result.http)+'\nBrowser verification started\n');await json(path.join(directory,'verify.json'),result);
   result.browser=await verifyBrowser(url,receipt.version,directory,{analytics});await fs.appendFile(log,JSON.stringify(result.browser)+'\n');
   assert.equal((await inputs(root)).id,receipt.inputs.id,'Inputs changed during verification');sameFiles(await packageFiles(packageDirectory),manifest.files);
   result.status='passed';result.finishedAt=new Date().toISOString();await json(path.join(directory,'verify.json'),result);await report(directory,result,'部署目标验收');

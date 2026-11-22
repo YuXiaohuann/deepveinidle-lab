@@ -17,10 +17,12 @@ const server=spawn(process.execPath,['scripts/serve.mjs'],{env:{...process.env,P
 try{
  await once(server.stdout,'data');browser=await chromium.launch({headless:true,executablePath:await browserPath()});
  const {player}=createScenario({});for(const skill of [...craftingSkills,...gatheringSkills,'melee','ranged','magic','defence','hitpoints','enhancing'])player.skills[skill]=game.levelXp(55);for(const slot of [...craftingSlots,...gatheringSlots])player.equipment[slot]=null;
- Object.assign(player,{house:{},houseFurniture:{},masteries:{},perks:{},ironman:false,homeBank:null,bank:{1:5},pack:[{itemId:1,qty:2}],overflow:{},collections:{40:9}});
+ Object.assign(player,{id:123456,name:'Alice',house:{},houseFurniture:{},masteries:{},perks:{},ironman:false,homeBank:null,bank:{1:5},pack:[{itemId:1,qty:2}],overflow:{},collections:{40:9}});
  const snapshot=JSON.parse(JSON.stringify({version:2,capturedAt:Date.now(),worldBuffsVersion:1,worldTick:player.lastTick,worldBuffs:[],guild:null,player}));
  const build=preset('ranged');build.manual.simulationHours=1;build.manual.enemySelection='monster-1';const prices=priceDefaults();prices.preferences.autoImport=false;
  const context=await browser.newContext({viewport:{width:1440,height:1000}});
+ const usageRequests=[];
+ context.on('request',request=>{if(new URL(request.url()).pathname==='/api/usage')usageRequests.push(request);});
  await context.addInitScript(({snapshot,build,prices})=>{
   if(!localStorage.getItem('dvi-simulator-v1'))localStorage.setItem('dvi-simulator-v1',JSON.stringify({language:'zh',state:build}));localStorage.setItem('dvi-item-prices-v1',JSON.stringify(prices));
   window.bridge={snapshot,reads:0,hold:false,pending:[]};const seen=new Set();
@@ -74,6 +76,33 @@ try{
  }
  assert.equal(await page.evaluate(()=>localStorage.getItem('dvi-collection-v1')),'preserved-old-data');assert.deepEqual(collectionRequests,[]);
  result.cases.push('removed collection routes redirect, history preserves query/hash, no collection DOM or requests, old storage preserved');
+ assert.equal(usageRequests.length,0);
+
+ const production='https://dvi-lab.pages.dev';
+ await context.route(production+'/**',async route=>{
+  const url=new URL(route.request().url());
+  if(url.pathname==='/api/usage')return route.fulfill({status:204});
+  const response=await context.request.get(`http://127.0.0.1:${port}${url.pathname}${url.search}`);
+  await route.fulfill({response});
+ });
+ await page.goto(production+'/combat');await wait('combat');
+ assert.equal(usageRequests.length,0);
+ const posted=()=>page.waitForResponse(response=>response.url()===production+'/api/usage'&&response.status()===204);
+ await Promise.all([posted(),page.locator('#import-character').click()]);
+ const first=usageRequests[0];
+ assert.equal(first.method(),'POST');
+ assert.deepEqual(first.postDataJSON(),{id:'313233343536',name:'416c696365'});
+ const session=first.headers()['x-session-id'];
+ assert.match(session,/^[0-9a-f-]{36}$/);
+ await flag('combat','config').check();await wait('combat');
+ await page.locator('#gather-nav').click();await wait('gather');
+ await page.locator('#gather-import').click();await wait('gather');
+ assert.equal(usageRequests.length,1);
+ await page.locator('#combat-nav').click();await wait('combat');
+ await Promise.all([posted(),page.reload()]);
+ assert.equal(usageRequests.length,2);
+ assert.notEqual(usageRequests[1].headers()['x-session-id'],session);
+ result.cases.push('usage reports manual import once per document, then automatic import with a new session after reload');
  assert.deepEqual(result.errors,[]);result.status='passed';await context.close();
 }catch(error){result.errors.push(error.stack??String(error));if(page)await page.screenshot({path:path.join(out,'failure.png')}).catch(()=>{});process.exitCode=1;}
 finally{if(browser)await browser.close();server.kill();await fs.writeFile(path.join(out,'results.json'),JSON.stringify(result,null,2)+'\n');}console.log(JSON.stringify(result,null,2));
