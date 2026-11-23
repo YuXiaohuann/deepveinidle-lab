@@ -12,6 +12,8 @@ import {preset} from '../src/model.js';
 import {enhancementDefaults,enhancementStorageKey} from '../src/enhancement.js';
 import {masteryDefaults,masteryStorageKey} from '../src/mastery.js';
 import {craftingDefaults} from '../src/crafting-model.js';
+import {translatedItemName} from '../src/i18n.js';
+import {priceDefaults,setItemPrice} from '../src/item-prices.js';
 
 const args=process.argv.slice(2),option=name=>args.includes(name)?args[args.indexOf(name)+1]:null;
 const output=path.resolve(option('--out')??'.test-artifacts/upstream-1212/browser');
@@ -33,9 +35,11 @@ try{
   const state=preset('ranged');state.manual.simulationHours=1;state.manual.enemySelection='monster-11';state.manual.hotSetting='off';
   state.gear.amulet={id:357,tier:4,plus:17};
   const craft=craftingDefaults();craft.skill='smithing';craft.simulationHours=1;craft.levels.smithing=99;craft.levels.crafting=99;
-  await context.addInitScript(({state,craft,key,language})=>{
+  const prices=setItemPrice(priceDefaults(),700,50);prices.preferences.autoImport=false;
+  await context.addInitScript(({state,craft,key,language,prices})=>{
    if(!localStorage.getItem('dvi-simulator-v1'))localStorage.setItem('dvi-simulator-v1',JSON.stringify({language,state}));if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify({version:1,build:craft}));
-  },{state,craft,key:craftingStorageKey,language});
+   if(!localStorage.getItem('dvi-item-prices-v1'))localStorage.setItem('dvi-item-prices-v1',JSON.stringify(prices));
+  },{state,craft,key:craftingStorageKey,language,prices});
   await page.goto(base+'/combat');await page.selectOption('#language',language);
   if(args.includes('--caps-only')){
    for(const [route,prefix]of [['combat','data-path'],['gather','data-gather-field'],['craft','data-craft-field']]){
@@ -135,21 +139,26 @@ try{
   await page.selectOption('#craft-group','Upgrades');await page.locator('#craft-search').fill('Colossus blade');
   const upgradeRow=page.locator('.craft-table tbody tr').filter({has:page.locator('[id="craft-upgrade-271:4-recipe"]')});
   await upgradeRow.locator('td').nth(0).locator('summary').click();assert.match(await upgradeRow.locator('td').nth(0).innerText(),/1,900/);
-  await upgradeRow.locator('td').nth(5).locator('summary').click();assert.equal(await upgradeRow.locator('[data-craft-price="4114"]').count(),1);assert.equal(await upgradeRow.locator('[data-craft-price="4252"]').count(),1);
+  const upgradeCost=upgradeRow.locator('td').nth(5);
+  await upgradeCost.locator('summary').click();
+  for(const id of [4114,4252])assert.equal(await upgradeCost.locator('.gather-item').filter({hasText:translatedItemName(id,language)}).count(),1);
+  assert.equal(await upgradeCost.locator('input').count(),0);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   const craftScreenshot=`craft-${language}-${width}.png`;await page.screenshot({path:path.join(output,craftScreenshot),fullPage:true});
   await page.reload();await page.locator('#craft-section').waitFor({state:'visible'});
   assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).build.skill,craftingStorageKey),'smithing');
   await page.locator('[data-craft-skill="crafting"]').click();await page.locator('[data-craft-rarity="4"]').click();await page.selectOption('#craft-group','Fireworks');
   assert.equal(await page.locator('.craft-table tbody tr').count(),9);assert.equal(await page.locator('[id="craft-421:4-recipe"]').count(),0);
-  const powder=page.locator('[data-craft-price="700"]').first();await powder.locator('xpath=ancestor::details').evaluate(e=>e.open=true);await powder.fill('50');await powder.blur();
+  const powder=page.locator('.craft-table .gather-item').filter({hasText:translatedItemName(700,language)}).first();
+  await powder.locator('xpath=ancestor::details').evaluate(e=>e.open=true);
   await page.waitForFunction(()=>document.querySelector('.craft-progress').classList.contains('is-idle'),{},{timeout:120000});
   assert.ok(!/制造计算失败|Crafting computation failed|invalidRoute|noSites/.test(await page.locator('#craft-results').innerText()));
-  assert.equal(await powder.inputValue(),'50');assert.match(await page.locator('#craft-results').innerText(),language==='zh'?/烟花火药/:/Firework powder/);
+  assert.match(await powder.locator('span').first().innerText(),/ 50$/);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   const fireworksScreenshot=`fireworks-${language}-${width}.png`;await page.screenshot({path:path.join(output,fireworksScreenshot),fullPage:true});
   await page.reload();await page.selectOption('#craft-group','Fireworks');assert.equal(await page.locator('[id="craft-420:4-recipe"]').count(),0);
-  assert.equal(await page.locator('[data-craft-price="700"]').first().inputValue(),'50');
+  await powder.locator('xpath=ancestor::details').evaluate(e=>e.open=true);
+  assert.match(await powder.locator('span').first().innerText(),/ 50$/);
   const enhance={...enhancementDefaults(),mastery:200,target:100};delete enhance.lectern;
   await page.evaluate(({key,state})=>localStorage.setItem(key,JSON.stringify(state)),{key:enhancementStorageKey,state:enhance});
   await page.goto(base+'/enhance');

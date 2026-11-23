@@ -49,19 +49,36 @@ try{
  }
  results.cases.push('Chinese/English desktop and 390px layout, sort, work probability, timing details retained across redraw');
  await page.setViewportSize({width:1440,height:1000});await page.selectOption('#language','zh');
+ const cost=row('61:0').locator('td').nth(5).locator('details');
+ await cost.locator('summary').click();
+ const count=await page.evaluate(()=>window.runs.length);
+ await page.locator('#item-prices-open').click();
+ const priceSearch=page.locator('#price-search');
+ await priceSearch.fill('Shrimp');await priceSearch.blur();
+ const globalPrice=page.locator('[data-price-value="20"]');
+ await globalPrice.fill('1250');await globalPrice.blur();await page.keyboard.press('Escape');
+ assert.match(await cost.locator('.gather-item').innerText(),/1\.25K/);
+ assert.equal(await cost.getAttribute('open'),'');
+ assert.equal(await page.evaluate(()=>window.runs.length),count);
  await page.locator('[data-craft-skill="crafting"]').click();await page.selectOption('#craft-group','Fireworks');await ready();
- const powder=page.locator('[data-craft-price="700"]').first();await powder.locator('xpath=ancestor::details').evaluate(e=>e.open=true);
- const count=await page.evaluate(()=>window.runs.length);await powder.fill('50');await powder.blur();assert.equal(await page.evaluate(()=>window.runs.length),count);assert.equal(await powder.inputValue(),'50');
- await page.reload();await page.selectOption('#craft-group','Fireworks');await ready();assert.equal(await page.locator('[data-craft-price="700"]').first().inputValue(),'50');
- results.cases.push('firework powder editable from recipe, price persists and does not rerun simulation');
- // Delayed Worker repaint must preserve a focused price input and reject stale results.
+ const powder=page.locator('.craft-table .gather-item').filter({hasText:'烟花火药'}).first();
+ await powder.locator('xpath=ancestor::details').evaluate(e=>e.open=true);
+ assert.equal(await powder.locator('[aria-label="缺价"]').count(),1);
+ await page.evaluate(async()=>{const {setPrice}=await import('/src/price-service.js');setPrice(700,50);});
+ await page.reload();await page.selectOption('#craft-group','Fireworks');await ready();
+ await powder.locator('xpath=ancestor::details').evaluate(e=>e.open=true);
+ assert.match(await powder.locator('span').first().innerText(),/ 50$/);
+ assert.equal(await powder.locator('[aria-label="缺价"]').count(),0);
+ assert.equal(await page.locator('.craft-table tbody input').count(),0);
+ results.cases.push('read-only material prices, global price changes without new simulation, and existing powder prices survive reload');
+ // Delayed Worker repaint must preserve the focused search control.
  const previousRuns=await page.evaluate(()=>{window.holdCraft=true;return window.runs.length;});await page.locator('#craft-rerun').click();await page.waitForFunction(n=>window.runs.length>n&&window.runs.at(-1)?.input,previousRuns);
- const field=page.locator('[data-craft-price="700"]').first();await field.locator('xpath=ancestor::details').evaluate(e=>e.open=true);await field.focus();
- await page.evaluate(()=>{window.focusedPrice=document.activeElement;window.craftWorker.onmessage({data:{progress:{completed:1,total:5}}});});
- await page.waitForFunction(()=>document.querySelector('.craft-progress').textContent.includes('1/5'));assert.ok(await page.evaluate(()=>document.activeElement===window.focusedPrice));
+ await page.locator('#craft-search').focus();
+ await page.evaluate(()=>{window.focusedSearch=document.activeElement;window.craftWorker.onmessage({data:{progress:{completed:1,total:5}}});});
+ await page.waitForFunction(()=>document.querySelector('.craft-progress').textContent.includes('1/5'));assert.ok(await page.evaluate(()=>document.activeElement===window.focusedSearch));
  await page.evaluate(()=>{const w=window.craftWorker;for(const p of w.run.input.recipes)w.onmessage({data:{jobError:{key:p.key,message:'invalidRoute'}}});w.onmessage({data:{done:true}});});await ready();assert.match(await page.locator('.craft-table tbody').innerText(),/无法建立制造路线/);
  assert.equal(await page.locator('.craft-table tbody tr').evaluateAll(rows=>rows.every(r=>r.cells.length===7)),true);
- results.cases.push('pending and failed seven-column rows; progress preserves exact focused price node');
+ results.cases.push('pending and failed seven-column rows; progress preserves exact focused search node');
  await page.locator('#craft-search').fill('no-such-item');assert.equal(await page.locator('.empty-results').getAttribute('colspan'),'7');
  await page.evaluate(()=>window.holdCraft=false);await page.locator('#craft-reset').click();await ready();assert.deepEqual((await saved()).build,craftingDefaults());
  await context.close();

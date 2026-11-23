@@ -7,10 +7,10 @@ import * as game from '../src/upstream.js';
 import * as model from '../src/crafting-model.js';
 import * as store from '../src/crafting-store.js';
 import {valuationPrice} from '../src/item-prices.js';
-import {compactNumber,formatOneDecimal} from '../src/number-format.js';
+import {compactNumber,formatOneDecimal,formatUnitPrice} from '../src/number-format.js';
 const source=fs.readFileSync(new URL('../src/crafting-controls.js',import.meta.url),'utf8');
 function page(language='zh'){
- const context=vm.createContext({timingDetails,compactNumber,formatOneDecimal,registerCharacterUpdates:()=>({read(){}}),...model,...store,game,valuationPrice,localStorage:{getItem(){return null;},removeItem(){}},translatedName:n=>n,translatedItemName:id=>String(id),getSnapshot:()=>({getItem:()=>({price:null,vendorPrice:0})}),subscribe(){}});
+ const context=vm.createContext({timingDetails,compactNumber,formatOneDecimal,formatUnitPrice,registerCharacterUpdates:()=>({read(){}}),...model,...store,game,valuationPrice,localStorage:{getItem(){return null;},removeItem(){}},translatedName:n=>n,translatedItemName:id=>String(id),getSnapshot:()=>({getItem:()=>({price:null,vendorPrice:0})}),subscribe(){}});
  vm.runInContext(source.replaceAll('import.meta.url',"'http://localhost/'").replace(/^import .*;\n/gm,'').replaceAll('export function','function'),context);
  vm.runInContext(`language=${JSON.stringify(language)};state.levels.cooking=100;[1,2,3,4].forEach(t=>selectedTiers.add(t));`,context);return context;
 }
@@ -51,19 +51,20 @@ test('calculation status keeps its layout slot when idle, running and failed',()
  assert.doesNotMatch(source,/<p class="table-note gather-progress"/);
 });
 
-test('recipe totals use compact formatting while item prices remain editable',()=>{
+test('recipe cost and value details show read-only prices',()=>{
  const p=page();
  vm.runInContext(`getSnapshot=()=>({getItem:id=>({price:id===20?2500:1250,vendorPrice:0})});
  const recipe=visibleJobs()[0];
  rateCache.set(recipe.key,{signature:signature(recipe),result:{completed:1,xp:999.25,items:{60:1},consumed:{20:1}}});`,p);
  const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
- assert.match(row,/data-craft-price/);
+ assert.doesNotMatch(row,/<input/);
  assert.match(row,/-cost/);assert.match(row,/-value/);
  assert.match(row,/<summary>999\.25<\/summary>/);
  assert.match(row,/<td class="column-highlight">-1\.25K<\/td>/);
  assert.match(row,/-cost"><summary>2\.50K<\/summary>/);
  assert.match(row,/-value"><summary>1\.25K<\/summary>/);
- assert.match(row,/value="2500"/);
+ assert.match(row,/20 · 普通 2\.50K<\/span><span>1<\/span>/);
+ assert.match(row,/60 · 普通 1\.25K<\/span><span>1<\/span>/);
 });
 
 

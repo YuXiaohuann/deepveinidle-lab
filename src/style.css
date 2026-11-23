@@ -180,7 +180,7 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
 
 /* Crafting reuses gathering's panels, cards and table treatments. */
 @media(max-width:740px){.section-nav{gap:6px}.section-nav a{flex:1 1 auto;min-width:max-content;padding:9px 8px;white-space:nowrap}}
-.craft-toolbar{flex-wrap:wrap;align-items:center}.craft-price-input{width:100px;font-size:12px;padding:7px 8px}#craft-results>section{margin-bottom:18px}#craft-notice:empty,#craft-price-status:empty{display:none}[data-craft-field][aria-invalid=true],[data-craft-price][aria-invalid=true]{border-color:#d47c69}
+.craft-toolbar{flex-wrap:wrap;align-items:center}#craft-results>section{margin-bottom:18px}#craft-notice:empty{display:none}[data-craft-field][aria-invalid=true]{border-color:#d47c69}
 
 .craft-search-filters{display:flex;flex:1 1 280px;min-width:0;gap:8px}.craft-search-filters .search-wrap{min-width:80px}.craft-search-filters select{max-width:50%;min-width:0}
 .craft-rarity-filters{display:flex;flex-wrap:wrap;gap:0}.craft-rarity-filters button{padding:7px 9px;font-size:11px;white-space:nowrap}
