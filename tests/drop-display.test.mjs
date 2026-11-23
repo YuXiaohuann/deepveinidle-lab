@@ -1,6 +1,6 @@
 import {timingDetails} from '../src/activity-timing.js';
 import test from 'node:test';
-import {compactNumber} from '../src/number-format.js';
+import {compactNumber,formatOneDecimal,formatUnitPrice} from '../src/number-format.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -13,7 +13,7 @@ const source=fs.readFileSync(new URL('../src/app.js',import.meta.url),'utf8');
 const ast=parse(source,{ecmaVersion:'latest',sourceType:'module'});
 const names=['enemyColumns','visibleEnemyColumns','depotCell','priceWarning','hourlyCells'];
 const code=ast.body.filter(n=>names.includes(n.id?.name)||n.declarations?.some(d=>names.includes(d.id.name))).map(n=>source.slice(n.start,n.end)).join('\n');
-const quantityNames=['formatAmount','formatRate','formatDropQuantity','lootDetails'];
+const quantityNames=['formatRate','formatDropQuantity','lootDetails'];
 const quantityCode=ast.body.filter(n=>quantityNames.includes(n.id?.name)||n.declarations?.some(d=>quantityNames.includes(d.id.name))).map(n=>source.slice(n.start,n.end)).join('\n');
 test('gathering pet price notes stay empty without looking up prices',()=>{
  const gathering=fs.readFileSync(new URL('../src/gathering-controls.js',import.meta.url),'utf8');
@@ -42,7 +42,7 @@ test('combat methodology note identifies simulated and expected fields in both l
 });
 test('drop quantities use adaptive precision after daily conversion without changing consumables',()=>{
  for(const language of ['zh','en'])for(const hours of [1,6,24,48]){
-  const c=vm.createContext({timingDetails,compactNumber,language,state:{manual:{simulationHours:hours}},rewardAmount,game:{isPet:id=>id===280,itemTier:()=>0,baseItemId:id=>id,item:()=>({name:'Item'})},valuationPrice:()=>({price:1,fallback:false}),getSnapshot:()=>({}),esc:String,name:String});
+  const c=vm.createContext({timingDetails,compactNumber,formatUnitPrice,language,state:{manual:{simulationHours:hours}},rewardAmount,game:{isPet:id=>id===280,itemTier:()=>0,baseItemId:id=>id,item:()=>({name:'Item'})},valuationPrice:()=>({price:1,fallback:false}),getSnapshot:()=>({}),esc:String,name:String});
   vm.runInContext(quantityCode,c);
   const factor=rewardAmount(1,'day',hours);
   for(const [value,expected] of [[0,'0'],[0.000001,'1/1,000,000'],[0.03,'1/33'],[0.026,'1/38'],[0.027,'1/37'],[0.099,'1/10'],[0.1,'0.10'],[0.1234,'0.12'],[1,'1.00'],[9.994,'9.99'],[10,'10'],[10.6,'11']]){
@@ -51,6 +51,7 @@ test('drop quantities use adaptive precision after daily conversion without chan
    assert.ok(c.lootDetails({1:quantity},true).includes(`<span>${expected}</span>`));
   }
   assert.ok(c.lootDetails({1:0.03/factor}).includes('<span>0.0</span>'));
+  assert.match(c.lootDetails({1:1},true),/<span>Item 1<\/span>/);
   assert.equal(c.lootDetails({},true),'');
   const pet=c.lootDetails({280:0.03/factor},true);
   assert.ok(pet.includes('<span>Item</span>'));
@@ -63,7 +64,7 @@ test('drop quantities use adaptive precision after daily conversion without chan
  assert.ok(source.includes('lootDetails(r.potionItems??{})'));
 });
 function view(enabled,result,error=false){
- const c=vm.createContext({timingDetails,compactNumber,state:{manual:{vendorValues:enabled}},hourly:new Map(result?[['m',result]]:[]),simulationError:error,valuedResult:r=>r,language:'zh',game:{tickMs:600},t:k=>k,formatRate:(n,metric='count')=>['coins','attempts'].includes(metric)?String(Math.round(n)):n.toFixed(1),formatAmount:String,esc:String,lootDetails:()=>'<span>item quantity</span>'});
+ const c=vm.createContext({timingDetails,compactNumber,formatOneDecimal,state:{manual:{vendorValues:enabled}},hourly:new Map(result?[['m',result]]:[]),simulationError:error,valuedResult:r=>r,language:'zh',game:{tickMs:600},t:k=>k,formatRate:(n,metric='count')=>['coins','attempts'].includes(metric)?String(Math.round(n)):n.toFixed(1),esc:String,lootDetails:()=>'<span>item quantity</span>'});
  vm.runInContext(code,c);return c;
 }
 test('global valuation is canonical and obsolete controls stay absent in both languages',()=>{
@@ -99,7 +100,7 @@ test('quantities and globally valued amounts render separately with highlighted 
  assert.match(html,new RegExp(`<summary>${'40'}</summary>`));
  assert.match(html,new RegExp(`<summary>${'50'}</summary>`));
  assert.equal(html.includes('<td class="column-highlight">93</td>'),true);
- assert.match(html,/item quantity/);assert.ok(html.startsWith('<td class="column-highlight"><details'));assert.match(html,/<td>3<\/td>/);assert.match(html,/<td><details[^>]*><summary>1<\/summary><div>攻击次数\/天：7/);assert.match(html,/<summary>0%<\/summary>/);assert.match(html,/depot: 仓库 2/);
+ assert.match(html,/item quantity/);assert.ok(html.startsWith('<td class="column-highlight"><details'));assert.match(html,/<td>3<\/td>/);assert.match(html,/<td><details[^>]*><summary>1<\/summary><div>攻击次数\/天：7/);assert.match(html,/<summary>0\.0%<\/summary>/);assert.match(html,/depot: 仓库 2/);
  const seeded=view(enabled,{...result,seed:4294967295});assert.doesNotMatch(seeded.hourlyCells({key:'m'}),/随机种子：4294967295/);
  seeded.language='en';assert.doesNotMatch(seeded.hourlyCells({key:'m'}),/Random seed: 4294967295/);
  assert.match(seeded.hourlyCells({key:'m'}),/Attack attempts\/day: 7/);

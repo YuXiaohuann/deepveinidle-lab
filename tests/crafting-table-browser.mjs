@@ -7,6 +7,7 @@ import {once} from 'node:events';
 import {chromium} from 'playwright-core';
 import {browserPath} from '../scripts/release-common.mjs';
 import {craftingDefaults} from '../src/crafting-model.js';
+import {compactNumber} from '../src/number-format.js';
 import {priceDefaults} from '../src/item-prices.js';
 const directory=path.resolve(process.argv[2]??'.test-artifacts/crafting-table');await fs.mkdir(directory,{recursive:true});
 let base=process.argv[3],server,browser,page;const results={cases:[],errors:[]};
@@ -34,8 +35,8 @@ try{
  assert.equal(await page.locator('#craft-orders-panel,#craft-filled,#craft-refresh-inventory,[data-craft-count],[data-character-update="inventory"]').count(),0);
  assert.equal(await page.locator('.craft-table th').count(),7);assert.equal(await page.locator('.craft-table tbody tr').evaluateAll(rows=>rows.every(r=>r.cells.length===7)),true);
  const run=await page.evaluate(()=>window.runs[0]);const result=run.results.find(r=>r.key==='61:0');assert.ok(result);
- assert.equal(await row('61:0').locator('td').nth(1).locator('summary').innerText(),(result.xp*24).toLocaleString('zh-CN',{maximumFractionDigits:2}));
- assert.equal(await row('61:0').locator('td').nth(3).locator('summary').innerText(),(result.extraTicks/result.elapsedTicks*100).toLocaleString('zh-CN',{maximumFractionDigits:2})+'%');
+ assert.equal(await row('61:0').locator('td').nth(1).locator('summary').innerText(),compactNumber(result.xp*24)??(result.xp*24).toLocaleString('zh-CN',{maximumFractionDigits:2}));
+ assert.equal(await row('61:0').locator('td').nth(3).locator('summary').innerText(),(result.extraTicks/result.elapsedTicks*100).toLocaleString('zh-CN',{minimumFractionDigits:1,maximumFractionDigits:1})+'%');
  results.cases.push('legacy build migrates despite invalid removed fields; no removed controls; seven columns; real Worker daily XP and extra time');
  await row('61:0').locator('td').nth(3).locator('summary').click();await row('61:0').locator('td').nth(4).locator('summary').click();
  await page.locator('[data-craft-sort="xp"]').click();assert.equal(await page.locator('[id="craft-61:0-timing"]').getAttribute('open'),'');

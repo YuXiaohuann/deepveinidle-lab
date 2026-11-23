@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {parse} from 'acorn';
-import {compactNumber} from '../src/number-format.js';
+import {compactNumber,formatUnitPrice} from '../src/number-format.js';
 import {rewardAmount} from '../src/combat-hot.js';
 
 function formatters(file,names,context){
@@ -19,9 +19,17 @@ test('compact amounts retain two decimals and promote rounded unit boundaries',(
  for(const [value,expected] of [[0,null],[999.99,null],[1000,'1.00K'],[12345,'12.35K'],[1.2e6,'1.20M'],[-3450,'-3.45K'],[1e9,'1.00B'],[1e12,'1.00T'],[999999,'1.00M']])assert.equal(compactNumber(value),expected);
 });
 
+test('read-only unit prices show integers below 1,000 and use compact formatting from 1,000',()=>{
+ for(const language of ['zh','en']){
+  for(const [price,expected] of [[0,'0'],[12,'12'],[999,'999'],[1000,'1.00K'],[1250,'1.25K']]){
+   assert.equal(formatUnitPrice(price,language),expected);
+  }
+ }
+});
+
 test('combat abbreviates daily XP and money while counts and quantities retain precision',()=>{
  for(const language of ['zh','en']){
-  const run=formatters('../src/app.js',['formatAmount','formatRate','formatDropQuantity'],{language,state:{manual:{simulationHours:6}}});
+  const run=formatters('../src/app.js',['formatRate','formatDropQuantity'],{language,state:{manual:{simulationHours:6}}});
   assert.equal(run("formatRate(3125,'xp')"),'12.50K');
   assert.equal(run("formatRate(-3125,'coins')"),'-12.50K');
   assert.equal(run("formatRate(3125,'attempts')"),'12,500');
@@ -31,9 +39,9 @@ test('combat abbreviates daily XP and money while counts and quantities retain p
  }
 });
 
-test('gathering abbreviates daily XP, money and prices regardless of legacy period while quantities stay complete',()=>{
+test('gathering abbreviates daily XP and money regardless of legacy period while quantities stay complete',()=>{
  for(const language of ['zh','en'])for(const period of ['hour','day']){
-  const run=formatters('../src/gathering-controls.js',['text','format','money','amount','expectedQuantity'],{language,period,state:{simulationHours:6}});
+  const run=formatters('../src/gathering-controls.js',['text','format','amount','expectedQuantity'],{language,period,state:{simulationHours:6}});
   // 3125 per six hours is 12500 per day; a legacy hourly selection is ignored.
   assert.equal(run("amount(3125,'xp')"),'12.50K');
   assert.equal(run("amount(3125000,'coins')"),'12.50M');
@@ -41,7 +49,5 @@ test('gathering abbreviates daily XP, money and prices regardless of legacy peri
   assert.equal(run('amount(3125)'),'12,500.0');
   assert.equal(run('expectedQuantity(12500)'),'12,500');
   assert.equal(run('expectedQuantity(0.000001)'),'1/1,000,000');
-  assert.equal(run('money(12500)'),'12.50K');
-  assert.equal(run('money(12.5)'),'12.5');
  }
 });

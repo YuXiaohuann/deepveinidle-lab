@@ -1,3 +1,11 @@
+export function formatOneDecimal(value, language) {
+ return value.toLocaleString(language==='zh'?'zh-CN':'en',{minimumFractionDigits:1,maximumFractionDigits:1});
+}
+
+export function formatUnitPrice(value, language) {
+ return compactNumber(value)??value.toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:0});
+}
+
 // Return null below the threshold so callers retain their existing precision.
 export function compactNumber(value) {
  const absolute=Math.abs(value);

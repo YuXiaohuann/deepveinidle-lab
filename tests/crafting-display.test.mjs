@@ -7,9 +7,10 @@ import * as game from '../src/upstream.js';
 import * as model from '../src/crafting-model.js';
 import * as store from '../src/crafting-store.js';
 import {valuationPrice} from '../src/item-prices.js';
+import {compactNumber,formatOneDecimal} from '../src/number-format.js';
 const source=fs.readFileSync(new URL('../src/crafting-controls.js',import.meta.url),'utf8');
 function page(language='zh'){
- const context=vm.createContext({timingDetails,registerCharacterUpdates:()=>({read(){}}),...model,...store,game,valuationPrice,localStorage:{getItem(){return null;},removeItem(){}},translatedName:n=>n,translatedItemName:id=>String(id),getSnapshot:()=>({getItem:()=>({price:null,vendorPrice:0})}),subscribe(){}});
+ const context=vm.createContext({timingDetails,compactNumber,formatOneDecimal,registerCharacterUpdates:()=>({read(){}}),...model,...store,game,valuationPrice,localStorage:{getItem(){return null;},removeItem(){}},translatedName:n=>n,translatedItemName:id=>String(id),getSnapshot:()=>({getItem:()=>({price:null,vendorPrice:0})}),subscribe(){}});
  vm.runInContext(source.replaceAll('import.meta.url',"'http://localhost/'").replace(/^import .*;\n/gm,'').replaceAll('export function','function'),context);
  vm.runInContext(`language=${JSON.stringify(language)};state.levels.cooking=100;[1,2,3,4].forEach(t=>selectedTiers.add(t));`,context);return context;
 }
@@ -50,10 +51,19 @@ test('calculation status keeps its layout slot when idle, running and failed',()
  assert.doesNotMatch(source,/<p class="table-note gather-progress"/);
 });
 
-test('recipe cost and value details show prices with editable prices',()=>{
- const p=page(),row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
- assert.match(row,/data-craft-price|craft-price-input/);
+test('recipe totals use compact formatting while item prices remain editable',()=>{
+ const p=page();
+ vm.runInContext(`getSnapshot=()=>({getItem:id=>({price:id===20?2500:1250,vendorPrice:0})});
+ const recipe=visibleJobs()[0];
+ rateCache.set(recipe.key,{signature:signature(recipe),result:{completed:1,xp:999.25,items:{60:1},consumed:{20:1}}});`,p);
+ const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
+ assert.match(row,/data-craft-price/);
  assert.match(row,/-cost/);assert.match(row,/-value/);
+ assert.match(row,/<summary>999\.25<\/summary>/);
+ assert.match(row,/<td class="column-highlight">-1\.25K<\/td>/);
+ assert.match(row,/-cost"><summary>2\.50K<\/summary>/);
+ assert.match(row,/-value"><summary>1\.25K<\/summary>/);
+ assert.match(row,/value="2500"/);
 });
 
 
@@ -65,7 +75,7 @@ test('upgrades stay in the seven-column table without extra recipe notes and dis
   const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
   assert.equal((row.match(/<td[ >]/g)||[]).length,7);
   assert.doesNotMatch(row,/即时升级 · 底装 \+0|Instant upgrade · base \+0|gear-stats/);
-  assert.match(row,/22,800/);assert.match(row,lang==='zh'?/平均单次经验/:/Average XP per action/);
+  assert.match(row,/<summary>22\.80K<\/summary>/);assert.match(row,lang==='zh'?/平均单次经验/:/Average XP per action/);
  }
 });
 
@@ -85,7 +95,7 @@ test('valuation errors preserve all seven cells, highlighted XP/profit and highl
 test('XP details use unrounded run totals, include burnt attempts and handle zero completed actions',()=>{
  const p=page();vm.runInContext(`const recipe=visibleJobs()[0];rateCache.set(recipe.key,{signature:signature(recipe),result:{completed:4,success:3,burnt:1,xp:15,items:{},consumed:{}}});`,p);
  const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
- assert.match(row,/id="craft-61:0-xp"/);assert.match(row,/平均单次经验<\/span><span>3.75<\/span>/);
+ assert.match(row,/id="craft-61:0-xp"/);assert.match(row,/平均单次经验<\/span><span>3\.8<\/span>/);
  vm.runInContext('rateFor(visibleJobs()[0]).result.completed=0;rateFor(visibleJobs()[0]).result.xp=0',p);
  assert.match(vm.runInContext('recipeRow(visibleJobs()[0])',p),/单次经验<\/span><span>—<\/span>/);
 });
@@ -109,12 +119,12 @@ test('movement share uses unrounded elapsed ticks, handles zero time and sorts n
   const p=page(lang);
   vm.runInContext(`selectedTiers.clear();selectedTiers.add(0);selectedTiers.add(1);const recipes=visibleJobs().slice(0,2);recipes.forEach((recipe,i)=>rateCache.set(recipe.key,{signature:signature(recipe),result:{completed:4,xp:15,items:{},consumed:{},extraTicks:i?1:2,elapsedTicks:i?3:6}}));`,p);
   const cell=()=>vm.runInContext('recipeRow(visibleJobs()[0])',p).match(/<td[^>]*>.*?<\/td>/g)[3];
-  assert.match(cell(),/<summary>33.33%<\/summary>/);
+  assert.match(cell(),/<summary>33\.3%<\/summary>/);
   const headings=vm.runInContext('headers()',p);assert.ok(headings.indexOf('data-craft-sort="movingRatio"')<headings.indexOf('data-craft-sort="completed"'));
   vm.runInContext('state.simulationHours=1',p);
   // Refresh signatures after changing duration; percentages must not scale to a day.
-  vm.runInContext('recipes.forEach(recipe=>rateCache.get(recipe.key).signature=signature(recipe))',p);assert.match(cell(),/<summary>33.33%<\/summary>/);
-  vm.runInContext('rateFor(recipes[0]).result.extraTicks=0',p);assert.match(cell(),/<summary>0%<\/summary>/);
+  vm.runInContext('recipes.forEach(recipe=>rateCache.get(recipe.key).signature=signature(recipe))',p);assert.match(cell(),/<summary>33\.3%<\/summary>/);
+  vm.runInContext('rateFor(recipes[0]).result.extraTicks=0',p);assert.match(cell(),/<summary>0\.0%<\/summary>/);
   vm.runInContext("sort='movingRatio';direction='desc'",p);assert.equal(vm.runInContext('sortedJobs()[0].tier',p),1);
   vm.runInContext("direction='asc'",p);assert.equal(vm.runInContext('sortedJobs()[0].tier',p),0);
   vm.runInContext('rateFor(recipes[0]).result.elapsedTicks=0',p);assert.equal(cell(),'<td>—</td>');assert.equal(vm.runInContext('sortedJobs()[0].tier',p),1);

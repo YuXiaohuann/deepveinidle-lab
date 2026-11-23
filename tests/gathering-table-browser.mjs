@@ -42,7 +42,7 @@ try{
  assert.equal(sample.sites.length,1);assert.equal(sample.sites[0].siteId,1);assert.equal(sample.homeBank,1);
  const potions=page.locator(`#gather-${sample.jobId}-potions`);await potions.locator('summary').click();assert.match(await potions.innerText(),/药剂成本/);assert.equal(await potions.locator('.loot-line').last().locator('span').last().innerText(),'24.0');
  const xpDetail=page.locator(`#gather-${sample.jobId}-xp`);await xpDetail.locator('summary').click();
- const singleXp=(sample.xp/sample.completed).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
+ const singleXp=(sample.xp/sample.completed).toLocaleString('zh-CN',{minimumFractionDigits:1,maximumFractionDigits:1});
  assert.equal(await xpDetail.locator('.loot-line span').last().innerText(),singleXp);
  const daily=['任务','经验/天','收入/天','利润/天','额外耗时','采集次数/天','金币/天','主要产物/天','额外掉落/天','消耗品/天'];
  assert.deepEqual(await headers(),daily);await checkRows();
@@ -54,6 +54,8 @@ try{
  assert.equal(await page.locator('#gather-results .gather-table td:first-child details').count(),0);
  const job=page.locator(`#gather-${sample.jobId}-completed`);const id=await job.getAttribute('id');await job.locator('summary').click();
  assert.equal(await job.locator('.loot-line').count(),2);assert.match(await job.innerText(),/平均采集耗时/);assert.match(await job.innerText(),/每刻完成概率/);
+ assert.match(await job.locator('.loot-line').nth(0).locator('span').last().innerText(),/\.\d 秒$/);
+ assert.match(await job.locator('.loot-line').nth(1).locator('span').last().innerText(),/\.\d%$/);
  await page.locator('[data-gather-sort="levelReq"]').click();values=await levels();assert.deepEqual(values,[...values].sort((a,b)=>a-b));assert.equal(await page.locator(`#${id}`).getAttribute('open'),'');
  results.cases.push('10-column order, name/level merge, default and ascending level sorting, highlighted data and locked rows');
  await page.locator('#gather-simulation').evaluate(el=>el.open=true);
@@ -70,10 +72,12 @@ try{
  const sampleRow=page.locator(`#gather-${sample.jobId}-level`).locator('xpath=ancestor::tr');
  assert.match(await sampleRow.locator('td').nth(3).innerText(),/-/);
  assert.equal(await potions.locator('summary [aria-label="Unset price"]').count(),0);
+ assert.match(await potions.locator('.loot-line').last().locator('span').first().innerText(),/ 100\.00K$/);
  for(const key of ['profit','potionCost']){await page.locator(`[data-gather-sort="${key}"]`).click();assert.equal(await page.locator(`[data-gather-sort="${key}"]`).locator('xpath=..').getAttribute('aria-sort'),'ascending');}
  await page.locator('[data-gather-sort="levelReq"]').click();
  await page.evaluate(async id=>{const service=await import('/src/price-service.js');service.setPrice(id,0);},potionId);
  assert.equal(await potions.locator('summary').innerText(),'0');
+ assert.match(await potions.locator('.loot-line').last().locator('span').first().innerText(),/ 0$/);
  await page.evaluate(async id=>{const service=await import('/src/price-service.js');service.setPrice(id,null);},potionId);
  assert.equal(await potions.locator('summary [aria-label="Unset price"]').count(),1);
  assert.equal(await page.evaluate(()=>window.gatherRuns.length),runs);
