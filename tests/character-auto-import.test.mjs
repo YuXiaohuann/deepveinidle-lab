@@ -58,3 +58,15 @@ test('failed persistence does not mark a capture as imported',async()=>{
  for(let i=0;i<2;i++){const pending=t.updater.trigger();t.reply({capturedAt:1});await pending;}
  assert.equal(attempts,2);
 });
+test('the same capture is reapplied for a different import skill',async()=>{
+ let skill='cooking';
+ const applied=[],t=setup({importSkill:()=>skill,apply:()=>{applied.push(skill);return true;}});
+ const snapshot={capturedAt:1};
+ t.updater.setActive(true);t.reply(snapshot);await flush();
+ for(const selected of ['cooking','smithing','smithing','cooking']){
+  skill=selected;
+  const pending=t.updater.trigger();
+  t.reply(snapshot);await pending;
+ }
+ assert.deepEqual(applied,['cooking','smithing','cooking']);
+});

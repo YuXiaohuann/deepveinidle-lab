@@ -17,7 +17,9 @@ const server=spawn(process.execPath,['scripts/serve.mjs'],{env:{...process.env,P
 try{
  await once(server.stdout,'data');browser=await chromium.launch({headless:true,executablePath:await browserPath()});
  const {player}=createScenario({});for(const skill of [...craftingSkills,...gatheringSkills,'melee','ranged','magic','defence','hitpoints','enhancing'])player.skills[skill]=game.levelXp(55);for(const slot of [...craftingSlots,...gatheringSlots])player.equipment[slot]=null;
- Object.assign(player,{id:123456,name:'Alice',house:{},houseFurniture:{},masteries:{},perks:{},ironman:false,homeBank:null,bank:{1:5},pack:[{itemId:1,qty:2}],overflow:{},collections:{40:9}});
+ Object.assign(player,{id:123456,name:'Alice',house:{},houseFurniture:{},masteries:{},
+  masteryPage:1,masteryAway:{2:{xp:7,enhance:8}},masterySkills:{melee:2,mining:2,smithing:2,enhancing:2},
+  perks:{},ironman:false,homeBank:null,bank:{1:5},pack:[{itemId:1,qty:2}],overflow:{},collections:{40:9}});
  const snapshot=JSON.parse(JSON.stringify({version:2,capturedAt:Date.now(),worldBuffsVersion:1,worldTick:player.lastTick,worldBuffs:[],guild:null,player}));
  const build=preset('ranged');build.manual.simulationHours=1;build.manual.enemySelection='monster-1';const prices=priceDefaults();prices.preferences.autoImport=false;
  const context=await browser.newContext({viewport:{width:1440,height:1000}});
@@ -32,7 +34,9 @@ try{
  await context.route('https://deepveinidle.com/api/market/prices.json',route=>{return route.fulfill({contentType:'application/json',body:JSON.stringify({game:'Deep Vein Idle',generatedAt:new Date().toISOString(),refreshSeconds:60,items:{40:{lowestSell:20,highestBuy:10}}})});});
  page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>result.errors.push(e.message));
  const flag=(p,k)=>page.locator(`[data-character-page="${p}"][data-character-update="${k}"]`);
+ const status=p=>page.locator(p==='combat'?'#import-status':`#${p}-import-status`);
  const wait=async p=>{const button=p==='combat'?'import-character':`${p}-import`;await page.waitForFunction(id=>!document.getElementById(id)?.disabled,button);};
+ const focus=()=>page.evaluate(()=>window.dispatchEvent(new Event('focus')));
  const stock=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-crafting-config-v1')));
  for(const p of ['combat','gather','enhance','mastery','craft']){
   await page.goto(`http://127.0.0.1:${port}/${p==='combat'?'combat':p}`);await wait(p);
@@ -40,7 +44,11 @@ try{
 
   const before=await page.evaluate(()=>window.bridge.reads);await flag(p,'config').check();await wait(p);assert.equal(await page.evaluate(()=>window.bridge.reads),before+1);
   const settings=await page.evaluate(p=>JSON.parse(localStorage.getItem(`dvi-character-auto-import-${p}-v1`)),p);assert.equal(settings.config,true);assert.equal(settings.inventory,undefined);
-  assert.match(await page.locator(p==='combat'?'#import-status':`#${p}-import-status`).innerText(),/已导入/);
+  const imported=await status(p).innerText();
+  assert.match(imported,/已导入/);
+  const masteryLine={combat:'精通：第 2 页（近战绑定）',gather:'精通：第 2 页（采矿绑定）',enhance:'精通：第 2 页（强化绑定）',craft:'精通：当前页'}[p];
+  if(masteryLine)assert.ok(imported.includes(masteryLine),imported);
+  else assert.doesNotMatch(imported,/精通：/);
   if(p==='craft')await page.evaluate(xp=>window.bridge.snapshot.player.skills.smithing=xp,game.levelXp(56));
   if(p==='craft'){
    await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await wait(p);
@@ -51,6 +59,12 @@ try{
   await page.selectOption('#language','en');await page.selectOption('#language','zh');
   await page.evaluate(()=>{window.respond();window.bridge.hold=false;});await wait(p);if(p==='craft')assert.equal((await stock()).build.levels.smithing,56);
   await page.selectOption('#language','en');await page.selectOption('#language','zh');assert.equal(await page.evaluate(()=>window.bridge.reads),baseline);
+  if(p==='gather'){
+   await page.locator('[data-gather-skill="fishing"]').click();await focus();await wait(p);
+   assert.match(await status(p).innerText(),/精通：当前页/);
+   await page.locator('[data-gather-skill="mining"]').click();await focus();await wait(p);
+   assert.match(await status(p).innerText(),/精通：第 2 页（采矿绑定）/);
+  }
   result.cases.push(`${p}: configuration option, no inventory option, independent persistence, automatic import, coalesced focus and redraw stability`);
  }
  // Invalid warehouse data must not prevent configuration updates.
@@ -63,8 +77,42 @@ try{
  assert.equal((await stock()).build.levels.smithing,56);
  result.cases.push('same-time capture skips configuration apply; explicit reset permits reimport');
  result.cases.push('craft imports configuration with invalid warehouse and pack; no stock or orders saved');
- for(const p of ['craft']){await page.goto(`http://127.0.0.1:${port}/${p}`);await wait(p);for(const width of [1440,390])for(const lang of ['zh','en']){await page.setViewportSize({width,height:1000});await page.selectOption('#language',lang);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.locator('#craft-import-settings').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(out,`${p}-${lang}-${width}.png`)});}}
- result.cases.push('shared options visible in Chinese/English desktop and 390px without page overflow');
+ const selectCraftSkill=skill=>page.locator(`[data-craft-skill="${skill}"]`).click();
+ assert.equal((await stock()).build.masteries.xp,0);
+ await page.evaluate(()=>{
+  window.bridge.snapshot.capturedAt++;
+  window.bridge.snapshot.player.masteries.xp=4;
+  window.bridge.hold=true;
+ });
+ await focus();await page.waitForFunction(()=>window.bridge.pending.length===1);
+ await selectCraftSkill('smithing');
+ await selectCraftSkill('cooking');
+ await page.evaluate(()=>{window.respond();window.bridge.hold=false;});await wait('craft');
+ assert.equal((await stock()).build.masteries.xp,0);
+ await focus();await wait('craft');
+ assert.equal((await stock()).build.masteries.xp,4);
+ await selectCraftSkill('smithing');await focus();await wait('craft');
+ assert.equal((await stock()).build.masteries.xp,7);
+ await page.evaluate(()=>{
+  window.bridge.snapshot.capturedAt++;
+  window.bridge.snapshot.player.masteryAway={};
+ });
+ await page.locator('#craft-import').click();await wait('craft');
+ assert.equal((await stock()).build.masteries.xp,4);
+ assert.match(await status('craft').innerText(),/绑定的精通页不可用，已使用当前页/);
+ await page.selectOption('#language','en');
+ assert.match(await status('craft').innerText(),/The assigned mastery page is unavailable\. Used the active page\./);
+ await page.evaluate(()=>window.bridge.snapshot.player.masteryAway={2:{xp:7}});
+ await page.locator('#craft-import').click();await wait('craft');
+ assert.equal((await stock()).build.masteries.xp,7);
+ result.cases.push('same capture reapplies after a skill change, stale response is discarded, and manual import uses the same page rules');
+ for(const width of [1440,390])for(const lang of ['zh','en']){
+  await page.setViewportSize({width,height:1000});await page.selectOption('#language',lang);
+  assert.match(await status('craft').innerText(),lang==='zh'?/精通：第 2 页（锻造绑定）/:/Masteries: page 2 \(Smithing assignment\)/);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  await page.locator('#craft-import-settings').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(out,`craft-${lang}-${width}.png`)});
+ }
+ result.cases.push('shared options and the mastery source are visible in Chinese/English desktop and 390px without page overflow');
  const collectionRequests=[];page.on('request',request=>{if(/\/src\/collection-/.test(request.url()))collectionRequests.push(request.url());});
  await page.evaluate(()=>localStorage.setItem('dvi-collection-v1','preserved-old-data'));
  for(const route of ['/collection','/collection/']){

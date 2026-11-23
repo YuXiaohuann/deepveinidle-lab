@@ -1,5 +1,6 @@
 import {createCharacterUpdater} from './character-auto-import.js';
 import {reportUsage} from './usage-statistics.js';
+import {translatedName} from './i18n.js';
 const pending=new Map();let counter=0;
 function receiveCharacter(event){
  if(typeof event.detail!=='string')return;
@@ -38,7 +39,13 @@ export function importStatusText(language,status,busy=false){
  if(status.error)return (importErrors[status.error]??[status.error,status.error])[zh?0:1];
  if(status.ready)return zh?'脚本已连接；可读取最近游戏角色数据。':'Script connected; ready to read the latest game character.';
  const label=zh?'已导入 · 读取时间：':'Imported · Captured: ';
- return label+new Date(status.capturedAt).toLocaleString(zh?'zh-CN':'en');
+ const captured=label+new Date(status.capturedAt).toLocaleString(zh?'zh-CN':'en');
+ const source=status.masterySource;
+ if(!source)return captured;
+ if(source.fallback)return captured+(zh?'\n绑定的精通页不可用，已使用当前页。':'\nThe assigned mastery page is unavailable. Used the active page.');
+ if(source.page===null)return captured+(zh?'\n精通：当前页':'\nMasteries: active page');
+ const skill=translatedName(source.skill[0].toUpperCase()+source.skill.slice(1),language);
+ return captured+(zh?`\n精通：第 ${source.page} 页（${skill}绑定）`:`\nMasteries: page ${source.page} (${skill} assignment)`);
 }
 
 const panelPages={'character-import-settings':'combat','gather-import-settings':'gather','craft-import-settings':'craft','enhance-import-settings':'enhance','mastery-import-settings':'mastery'};

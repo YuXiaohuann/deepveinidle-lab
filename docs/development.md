@@ -116,7 +116,7 @@ node --test tests/mastery.test.mjs tests/mastery-controls.test.mjs tests/mastery
 
 ## 共用角色自动更新专项
 
-`node --test tests/character-auto-import.test.mjs tests/character-import.test.mjs tests/crafting-store.test.mjs tests/crafting-display.test.mjs` 验证配置导入、偏好、坏存档保护及并发。`node tests/character-auto-import-browser.mjs [输出目录]` 验证五页配置开关、独立保存、焦点合并、重绘、制造忽略无效库存及双语桌面／390px；默认输出 `.test-artifacts/character-auto-import/browser/`，使用受控桥接，不连接游戏账号，不替代发布验收。
+`node --test tests/character-auto-import.test.mjs tests/character-import.test.mjs tests/character-masteries.test.mjs tests/crafting-store.test.mjs tests/crafting-display.test.mjs` 验证配置导入、精通选页、偏好、坏存档保护及并发。`node tests/character-auto-import-browser.mjs [输出目录]` 验证五页配置开关、独立保存、焦点合并、重绘、制造忽略无效库存，以及精通来源、同快照换技能、迟到响应、异常绑定回退和双语桌面／390px。默认输出 `.test-artifacts/character-auto-import/browser/`，使用受控桥接，不连接游戏账号，不替代发布验收。
 
 1208 上限与旧存档浏览器专项：`node tests/upstream-browser.mjs --caps-only --out .test-artifacts/upstream-1208/caps-browser`。覆盖中英文桌面／390px 下战斗、采集、制造的家园控件、强化书台及精通等级上限、越界输入提示和恢复合法值、强化／精通越界存档明确提示且原存储保留。此选项仅执行该专项，不代表完整页面或发布验收。
 

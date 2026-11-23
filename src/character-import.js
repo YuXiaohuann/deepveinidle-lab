@@ -2,6 +2,7 @@ import {readGuild} from './guild.js';
 import {readWorldBuffs,worldBuffWarningText} from './world-buffs.js';
 import {game,defaults,normalize,slots,skills,foods,gearDetails} from './model.js';
 import {combatRooms,combatMasteries,combatPerks,combatPotions} from './combat-options.js';
+import {characterMasteries} from './character-masteries.js';
 const importTypes=[['skills','技能','Skills'],['equipment','装备','Equipment'],['food','食物','Food'],['potions','药水','Potions'],['home','家园','Home'],['masteries','精通','Masteries'],['guild','公会与祝福','Guild & blessing'],['supplies','补给','Supplies'],['perks','特权','Perks']];
 export function importWarningText(language,warnings=[]){
  const zh=language==='zh',categories=new Set(warnings.filter(item=>item!=='guild: worldBuffs.upgrade').map(item=>item.split(': ')[0])),lines=[];
@@ -35,7 +36,8 @@ function warehouseFood(player){
 export function importCharacter(current,snapshot){
  if(!record(snapshot)||snapshot.version!==2||!int(snapshot.capturedAt,1)||snapshot.capturedAt>Date.now()+60000||!record(snapshot.player)||!int(snapshot.player.lastTick))throw new Error('invalidSnapshot');
  const chosen=importTypes.map(([id])=>id);
- const state=defaults(),p=snapshot.player,warnings=[],applied=new Set();let category;
+ const state=defaults(),p=snapshot.player,warnings=[],applied=new Set();
+ let category,combatSkill,masterySource;
  for(const key of ['food','eatAt','fed','rooted'])state[key]=structuredClone(current[key]);
  for(const key of ['foodRule','foodMaxTier','foodPerTrip','enemySelection','simulationHours','customSimulation','hotSetting','vendorValues','valuationMode'])state.manual[key]=current.manual[key];
  try{state.guild=readGuild(snapshot.guild);}catch(error){
@@ -44,10 +46,6 @@ export function importCharacter(current,snapshot){
  }
  const warn=field=>warnings.push(`${category}: ${field}`);
  const put=(field,value,check,set)=>{if(check(value)){set(value);applied.add(category);}else warn(field);};
- const map=(field,entries,set,max=Number.MAX_SAFE_INTEGER)=>{
-  if(!record(p[field])){warn(field);return;}
-  for(const key of entries)put(`${field}.${key}`,Object.hasOwn(p[field],key)?p[field][key]:0,v=>int(v,0,max),(v)=>set(key,v));
- };
  const active=kind=>record(p.brews)&&int(p.brews[kind]??0)&&(p.brews[kind]??0)>p.lastTick;
  for(category of chosen){
   if(category==='skills')for(const k of skills)put(`skills.${k}`,p.skills?.[k],v=>valid(v),v=>state.levels[k]=game.level(v));
@@ -55,15 +53,20 @@ export function importCharacter(current,snapshot){
    if(!record(p.equipment)){warn('equipment');continue;}
    for(const slot of slots){
     const id=p.equipment[slot];
-    if(id===null){state.gear[slot]={id:0,tier:0,plus:0};applied.add(category);continue;}
+    if(id===null){
+     state.gear[slot]={id:0,tier:0,plus:0};applied.add(category);
+     if(slot==='weapon')combatSkill='melee';
+     continue;
+    }
     const base=int(id)?game.baseItemId(id):0,tier=int(id)?game.itemTier(id):0,plus=int(id)?Math.floor(id/game.encode(0,1)):0;
-    if(!int(id)||!int(tier,0,4)||!int(plus,0,game.maxEnhancement)||!gearDetails(slot,id)||gearDetails(slot,id).slot!==slot){warn(`equipment.${slot}`);continue;}
+    if(!int(id)||!int(tier,0,4)||!int(plus,0,game.maxEnhancement)||gearDetails(slot,id)?.slot!==slot){warn(`equipment.${slot}`);continue;}
     state.gear[slot]={id:base,tier,plus};applied.add(category);
+    if(slot==='weapon'){
+     const weapon=game.gear(base);
+     combatSkill=weapon?.magic?'magic':weapon?.ranged?'ranged':'melee';
+    }
    }
-   // Derive only when the weapon itself was readable.
-   if(p.equipment.weapon===null||int(p.equipment.weapon)&&game.gear(p.equipment.weapon)?.slot==='weapon'){
-    const weapon=game.gear(state.gear.weapon.id);state.style=weapon?.magic?'magic':weapon?.ranged?'ranged':'melee';
-   }
+   if(combatSkill)state.style=combatSkill;
    if(slots.some(slot=>{const g=gearDetails(slot,game.encode(game.withRarity(state.gear[slot].id,state.gear[slot].tier),state.gear[slot].plus));return g?.style&&g.style!==state.style;}))state.manual.allGear=true;
   }
   if(category==='food'){
@@ -103,7 +106,12 @@ export function importCharacter(current,snapshot){
    if(!record(p.house)||!record(p.houseFurniture)){warn('house / houseFurniture');continue;}
    for(const r of combatRooms)put(`house.${r.id}`,Object.hasOwn(p.house,r.id)?p.house[r.id]:0,v=>int(v,0,game.houseLevelLimit),v=>state.house[r.id]=r.bonus.kind==='bankSlots'||record(p.houseFurniture[r.id])?v:0);
   }
-  if(category==='masteries')map('masteries',combatMasteries.map(m=>m.id),(k,v)=>state.masteries[k]=v,game.masteryRankLimit);
+  if(category==='masteries'){
+   const {ranks,source}=characterMasteries(p,combatSkill);
+   masterySource=source;
+   if(!record(ranks)){warn('masteries');continue;}
+   for(const {id}of combatMasteries)put(`masteries.${id}`,Object.hasOwn(ranks,id)?ranks[id]:0,v=>int(v,0,game.masteryRankLimit),v=>state.masteries[id]=v);
+  }
   if(category==='guild'){
    put('guildBonus',p.guildBonus,v=>valid(v,0,1e5),v=>state.manual.guildXp=v*100);
    if(record(p.brews)&&int(p.brews.blessing??0)){state.manual.blessing=active('blessing');applied.add(category);}else warn('blessing');
@@ -120,5 +128,5 @@ export function importCharacter(current,snapshot){
    for(const perk of combatPerks)put(`perks.${perk.id}`,Object.hasOwn(p.perks,perk.id)?p.perks[perk.id]:0,v=>int(v,0,perk.ranks),v=>{if(perk.id==='meals')state.meals=v;else state.manual.perks[perk.id]=v;});
   }
  }
- return {state:normalize(state),applied:[...applied],warnings};
+ return {state:normalize(state),applied:[...applied],warnings,masterySource};
 }

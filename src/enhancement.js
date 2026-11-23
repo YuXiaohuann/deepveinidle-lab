@@ -1,5 +1,6 @@
 import {itemPrice} from './item-prices.js';
 import {readGuild} from './guild.js';
+import {characterMasteries} from './character-masteries.js';
 import * as game from './upstream.js';
 
 export const enhancementStorageKey='dvi-enhancement-v1';
@@ -79,11 +80,12 @@ export function decodeEnhancementItem(id){
 export function importEnhancement(current,snapshot){
  if(!record(snapshot)||snapshot.version!==2||!integer(snapshot.capturedAt,1,Number.MAX_SAFE_INTEGER)||snapshot.capturedAt>Date.now()+60000||!record(snapshot.player))throw Error('invalidSnapshot');
  const guild=readGuild(snapshot.guild),p=snapshot.player;
- if(!record(p.skills)||typeof p.skills.enhancing!=='number'||!Number.isFinite(p.skills.enhancing)||p.skills.enhancing<0||!record(p.house)||!record(p.houseFurniture)||!record(p.masteries))throw Error('incompleteSnapshot');
- const lectern=p.house.lectern??0,mastery=p.masteries.enhance??0;
+ const {ranks,source:masterySource}=characterMasteries(p,'enhancing');
+ if(!record(p.skills)||typeof p.skills.enhancing!=='number'||!Number.isFinite(p.skills.enhancing)||p.skills.enhancing<0||!record(p.house)||!record(p.houseFurniture)||!record(ranks))throw Error('incompleteSnapshot');
+ const lectern=p.house.lectern??0,mastery=ranks.enhance??0;
  if(!integer(lectern,0,game.houseLevelLimit)||!integer(mastery,0,game.masteryRankLimit)||Object.hasOwn(p.houseFurniture,'lectern')&&!record(p.houseFurniture.lectern))throw Error('invalidSnapshot');
  const state=validateEnhancement({...current,guild,level:game.level(p.skills.enhancing),lectern:Object.hasOwn(p.houseFurniture,'lectern')?lectern:0,mastery});
- return {state,capturedAt:snapshot.capturedAt};
+ return {state,capturedAt:snapshot.capturedAt,masterySource};
 }
 
 const enhancementPriceItems={shardPrice:208,scrollPrice:359};

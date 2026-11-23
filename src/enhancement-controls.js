@@ -87,8 +87,8 @@ function renderResults(){const revision=cancelDistribution();const host=document
  startDistribution(priced,result,revision);
 }
 export function applyEnhancementImport(snapshot){
- const result=importEnhancement(state,snapshot);
- state=result.state;status={capturedAt:result.capturedAt};save();
+ const {state:imported,...result}=importEnhancement(state,snapshot);
+ state=imported;status=result;save();
  return {...status,saveOK};
 }
 export function renderEnhancement(nextLanguage){

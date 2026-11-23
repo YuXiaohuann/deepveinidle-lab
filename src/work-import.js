@@ -1,6 +1,7 @@
 import * as game from './upstream.js';
 import {readGuild} from './guild.js';
 import {readWorldBuffs} from './world-buffs.js';
+import {characterMasteries} from './character-masteries.js';
 
 export function importWorkConfig(current,snapshot,{skills,slots,potions,rooms,masteries,perks,normalize,gear,reset}){
  const record=v=>v!==null&&typeof v==='object'&&!Array.isArray(v),valid=(v,min=0,max=Number.MAX_SAFE_INTEGER)=>typeof v==='number'&&Number.isFinite(v)&&v>=min&&v<=max,int=(v,min=0,max=Number.MAX_SAFE_INTEGER)=>valid(v,min,max)&&Number.isInteger(v);
@@ -19,7 +20,8 @@ export function importWorkConfig(current,snapshot,{skills,slots,potions,rooms,ma
   put(`brewTier.${kind}`,tier,v=>int(v,0,4),v=>s.brews[kind]=v);
  }
  for(const r of rooms){if(!record(p.house)||!record(p.houseFurniture)){warnings.push(`house.${r.id}`);continue;}put(`house.${r.id}`,p.house[r.id]??0,v=>int(v,0,game.houseLevelLimit),v=>s.house[r.id]=record(p.houseFurniture[r.id])?v:0);}
- for(const m of masteries)put(`masteries.${m.id}`,p.masteries?.[m.id]??(record(p.masteries)?0:undefined),v=>int(v,0,game.masteryRankLimit),v=>s.masteries[m.id]=v);
+ const {ranks,source:masterySource}=characterMasteries(p,s.skill);
+ for(const {id}of masteries)put(`masteries.${id}`,ranks?.[id]??(record(ranks)?0:undefined),v=>int(v,0,game.masteryRankLimit),v=>s.masteries[id]=v);
  for(const perk of perks)put(`perks.${perk.id}`,p.perks?.[perk.id]??(record(p.perks)?0:undefined),v=>int(v,0,perk.ranks),v=>s.perks[perk.id]=v);
  put('guildBonus',p.guildBonus,v=>valid(v,0,1e5),v=>s.guildXp=v*100);
  if(record(p.brews)&&int(p.brews.blessing??0))s.blessing=(p.brews.blessing??0)>p.lastTick;else warnings.push('blessing');
@@ -30,5 +32,5 @@ export function importWorkConfig(current,snapshot,{skills,slots,potions,rooms,ma
  if(world.warning)warnings.push(world.warning);
  try{s.guild=readGuild(snapshot.guild);}catch{warnings.push('guild');}
  Object.assign(s,reset);
- return {state:normalize(s),capturedAt:snapshot.capturedAt,warnings};
+ return {state:normalize(s),capturedAt:snapshot.capturedAt,warnings,masterySource};
 }

@@ -10,24 +10,24 @@ export function loadCharacterUpdates(storage,page){
 }
 
 // One controller per page. Redraws never recreate listeners or start reads.
-export function createCharacterUpdater({storage,page,read,apply,onError=()=>{},onBusy=()=>{},busy=()=>false,revision=()=>null,hasDraft=()=>false,onSettings=()=>{}}){
+export function createCharacterUpdater({storage,page,read,apply,onError=()=>{},onBusy=()=>{},busy=()=>false,revision=()=>null,importSkill=()=>null,hasDraft=()=>false,onSettings=()=>{}}){
  let options,settingsError=null;
  try{options=loadCharacterUpdates(storage,page);}
  catch{options={version:1,config:false};settingsError='load';}
- let active=false,running=false,generation=0,retry=false,lastImportedAt=null;
+ let active=false,running=false,generation=0,retry=false,lastImport=null;
  async function run(manual=false){
   if(running||busy()||!active||(!manual&&!options.config)||(!manual&&hasDraft()))return;
   running=true;
-  const token=generation,previous=revision();
+  const token=generation,previous=revision(),skill=importSkill();
   onBusy(true);
   try{
    const response=await read();
    if(!active||token!==generation||revision()!==previous||(!manual&&hasDraft()))return;
    if(!response.snapshot)throw Error('noSnapshot');
    const {snapshot}=response;
-   if(!manual&&lastImportedAt!==null&&snapshot.capturedAt===lastImportedAt)return;
+   if(!manual&&lastImport&&snapshot.capturedAt===lastImport.capturedAt&&skill===lastImport.skill)return;
    const saved=await apply(snapshot);
-   if(saved&&active&&token===generation)lastImportedAt=snapshot.capturedAt;
+   if(saved&&active&&token===generation)lastImport={capturedAt:snapshot.capturedAt,skill};
   }catch(error){if(active&&token===generation)onError(error);}
   finally{
    running=false;onBusy(false);
@@ -50,7 +50,7 @@ export function createCharacterUpdater({storage,page,read,apply,onError=()=>{},o
    if(running)retry=true;else void run();
   },
   invalidate(){generation++;},
-  reset(){generation++;lastImportedAt=null;},
+  reset(){generation++;lastImport=null;},
   trigger(){return run();},
   read(){return run(true);},
  };
