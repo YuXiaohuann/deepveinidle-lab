@@ -3,6 +3,7 @@ import * as game from './upstream.js';
 import {normalizeManual} from './manual-settings.js';
 import {createScenario} from './simulation.js';
 import {readGuild} from './guild.js';
+import {restoreSkillMasteries} from './character-masteries.js';
 
 export const gatheringStorageKey='dvi-gathering-v1';
 export const gatheringSkills=['mining','fishing','woodcutting','thieving'];
@@ -34,6 +35,7 @@ export function normalizeGathering(raw,{wholeHours=true}={}){
  for(const p of gatheringPotions)s.brews[p.kind]=integer(raw.brews?.[p.kind]??-1,-1,4,-1);
  for(const r of gatheringRooms)s.house[r.id]=integer(raw.house?.[r.id]??0,0,game.houseLevelLimit);
  for(const m of gatheringMasteries)s.masteries[m.id]=integer(raw.masteries?.[m.id]??0,0,game.masteryRankLimit);
+ restoreSkillMasteries(s,raw.masteriesBySkill,gatheringSkills,game.masteryRankLimit);
  for(const p of gatheringPerks)s.perks[p.id]=integer(raw.perks?.[p.id]??0,0,p.ranks);
  const manual=normalizeManual(raw,{wholeHours,fractionalWorldXp:true});for(const k of ['guildXp','weeklyXp','worldRarity','blessing','ironman','simulationHours','customSimulation','hotSetting','vendorValues','valuationMode'])s[k]=manual[k];
  s.homeBank=game.world.banks.some(b=>b.id===Number(raw.homeBank))?Number(raw.homeBank):0;

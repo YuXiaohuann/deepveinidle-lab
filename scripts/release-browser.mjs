@@ -49,6 +49,7 @@ export async function verifyBrowser(base,version,directory,{analytics='live'}={}
     else await page.locator(`#${id}-nav`).click();
     await page.locator(`#${id}-section`).waitFor({state:'visible'});
     if(id==='formulas')await page.locator('.formula-article h1').waitFor();
+    if(id==='boss-feed')await page.locator('#boss-feed-comparison-title').waitFor();
     if(id==='usage'){
      assert.equal(await page.locator('.section-nav a[href="/usage"]').count(),0);
      await page.locator('#usage-token').fill('usage-test-key');
@@ -71,7 +72,7 @@ export async function verifyBrowser(base,version,directory,{analytics='live'}={}
      return {width:root.scrollWidth,viewport:innerWidth,split:document.getElementById('app').classList.contains('split-scroll'),bodyHeight:root.scrollHeight,height:innerHeight,leftOverflow:left?getComputedStyle(left).overflowY:null,rightOverflow:right?getComputedStyle(right).overflowY:null,rightBelow:left&&right?right.getBoundingClientRect().top>=left.getBoundingClientRect().bottom-1:null,footerInRight:right?right.contains(document.querySelector('.project-footer')):false};
     },id);
     assert.ok(layout.width<=width,`${id} ${language} ${width}: horizontal overflow`);
-    const configured=['combat','gather','craft','enhance','mastery'].includes(id);
+    const configured=['combat','gather','craft','boss-feed','enhance','mastery'].includes(id);
     if(configured&&width>740){assert.equal(layout.split,true);assert.equal(layout.leftOverflow,'auto');assert.equal(layout.rightOverflow,'auto');assert.equal(layout.footerInRight,true);assert.ok(layout.bodyHeight<=layout.height+1,'Desktop body should not scroll');}
     else if(configured){assert.notEqual(layout.leftOverflow,'auto');assert.notEqual(layout.rightOverflow,'auto');assert.equal(layout.rightBelow,true,'Mobile columns overlap');}
     else assert.equal(layout.split,false,'Forecast/debug should use normal scrolling');

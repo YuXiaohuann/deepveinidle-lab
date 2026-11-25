@@ -117,7 +117,7 @@ test('gathering and crafting workers forward their supplied seed to every work t
  for(const type of ['gathering','crafting']){
   const source=fs.readFileSync(new URL(`../src/${type}-worker.js`,import.meta.url),'utf8'),seen=[],results=[];
   const ctx=vm.createContext({...gathering,...crafting,self:{postMessage:m=>results.push(m)},performance:{now:()=>0},simulateGatheringJob:(state,job,o)=>{seen.push(o.seed);return {jobId:job.id,seed:o.seed};},simulateCraftingWindow:(s,j,t,o)=>{seen.push(o.seed);return {key:crafting.recipeKey(j.id,t),seed:o.seed};}});
-  vm.runInContext(source.replace(/^import .*;\n/gm,''),ctx);
+  vm.runInContext(source.replace(/^import .*;\r?\n/gm,''),ctx);
   const state=gathering.gatheringDefaults();state.levels.mining=100;
   ctx.self.onmessage({data:{state,seed:0xffffffff,recipes:[{jobId:61,tier:0,key:'61:0'},{jobId:61,tier:1,key:'61:1'}]}});
   assert.ok(seen.length>=2);assert.ok(seen.every(seed=>seed===0xffffffff));assert.equal(results.at(-1).done,true);

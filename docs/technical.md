@@ -4,7 +4,7 @@
 
 战斗、采集、制造、强化、精通复用 characterImportPanel：统一 details/summary、import-body、安装链接、按钮与状态节点，参数控制节点标识、按钮及说明；状态为空隐藏，长文本换行。导入区域使用相同高亮容器、金色标题、边框、背景与展开间距，折叠遵循 [语言、布局与持久化](shared.md#22-语言布局与持久化)。
 
-角色自动更新统一使用 `src/character-auto-import.js` 管理各页角色配置选项、进入／焦点调度、忙碌合并、响应代际与按页内存捕获时间去重；`src/import-controls.js` 负责共用开关、页面激活、输入保护及只读桥接。各页面提供角色配置应用适配器并返回保存结果，手动导入也复用同一调度；只调度角色配置读取。具体规则见[共用角色自动更新](shared.md#导入游戏角色与自动更新)。精通来源在实验室解析。快照的 `masteryPage` 标识当前页，`masteries` 保存该页等级，`masteryAway` 按页号保存备用页等级，`masterySkills` 将技能映射到页号。现有捕获原样保存这些字段，沿用桥接、数据协议和存储键。
+角色自动更新统一使用 `src/character-auto-import.js` 管理各页角色配置选项、进入／焦点调度、忙碌合并、响应代际与按页内存捕获时间去重；`src/import-controls.js` 负责共用开关、页面激活、输入保护及只读桥接。各页面提供角色配置应用适配器并返回保存结果，手动导入也复用同一调度。具体规则见[共用角色自动更新](shared.md#导入游戏角色与自动更新)。快照的 `masteryPage` 标识当前页，`masteries` 保存该页等级，`masteryAway` 按页号保存备用页等级，`masterySkills` 将技能映射到页号。Lab 在导入时解析对应技能，战斗、采集和制造将结果保存在可选的 `masteriesBySkill` 字段，技能首领沿用按技能保存的精通配置。捕获沿用原有字段、桥接、数据协议和存储键。
 
 连接检测共用单次 probe 请求，各页分别保留状态，统一由 importStatusText 生成连接成功、读取中、捕获时间及缺失/旧版本/读取失败等双语提示。较晚 probe 不覆盖读取中或已有结果；读取期间禁用对应按钮，失败保留原配置。战斗额外保留字段警告。
 
@@ -40,7 +40,7 @@
 
 - 游戏地址：<https://deepveinidle.com/>。
 - 当前工作树已完整同步公开资源 <https://deepveinidle.com/assets/index-szBaIgSm.js>，2026-11-21 获取并核验，SHA-256 `7fdb0dbe3a5aa0bda15768e45c55a5f064508b5259e1b6f44c0cb5e271b3272c`。资源最新更新条目为 1.0.1221（2026-11-20）；文件名和摘要作为快照标识。
-- 当前生成模块完整提取 1463 个原始声明，manifest 无 overrides，不混合旧声明或局部替换。此前战斗局部补充保留为历史证据；适配验证与发布状态见 [当前状态](status.md)，此前发布证据不作为当前版本验证。
+- 当前生成模块从单一快照提取原始声明。主模拟、技能首领投喂规则和 `work-time` 适配使用同一提取过程。清单记录语义映射、声明与摘要，无 overrides。此前战斗局部补充保留为历史证据，适配验证与发布状态见[当前状态](status.md)。
 - 价格选项的一级分类复用原始 `marketCategories`，剔除宝石快捷分类后将宝石纳入资源；上游同步时核对该导出、细分类归属与价格存档迁移。
 - 保存完整公开资源；`.gitattributes` 仅对 `vendor/game-original.js` 关闭行尾空格检查，保留上游模板字符串中的原始空格及完整摘要，其余空白检查保持。原样提取计算函数及数据依赖，不加载整个游戏应用，也不依赖游戏账号。函数体及数据字面量保持原样，每个提取声明可追溯并校验摘要；原始计算模块不依赖 DOM、网络或账号。压缩符号只是当前快照定位信息，不是稳定接口。
 - 1.0.1190 引入的物品 397 为满月礼盒（Moon box），定义价值 25，原始商人售价函数返回 10，归贵重物品分类；仅补齐物品定义、翻译、分类与价格导入，不增加现实活动利润模拟。新版活动 `box` 事件已携带实际 `itemId`，统计优先读取该字段，不把其他活动礼盒计成旧礼盒。
@@ -60,6 +60,7 @@
 | `src/simulation.js`、`src/simulation-worker.js` | 原始战斗函数状态适配、可配置时长统计及异步计算 |
 | `src/gathering-model.js`、`src/gathering-simulation.js`、`src/gathering-worker.js`、`src/gathering-controls.js` | 独立采集配置与导入、原始工作逐刻适配、最近点选择、异步进度及页面交互 |
 | `src/crafting-model.js`、`src/crafting-store.js`、`src/crafting-simulation.js`、`src/crafting-worker.js`、`src/crafting-controls.js` | 制造角色配置及旧存档迁移、配方速率模拟、材料消耗与产物估值及页面交互（Worker只接收配方／品质列表，不区分订单与速率模式） |
+| `src/boss-feed-*.js`、`vendor/work-time/` | 技能首领角色配置、投喂及单层制造耗时、路线估值和比较页面。耗时使用固定版本的 work-time 浏览器模块 |
 | `src/work-expectation.js` | 采集／制造共用机会期望、品质、烧焦及奖励容量门槛；支持直接写入目标期望账本，使用最小背包状态调用原始容量校验，不改原始过程 |
 | `src/world-buffs.js` | 战斗、采集与制造共用世界增益窗口校验、捕获时汇总与旧捕获提示 |
 | `src/work-import.js` | 采集与制造共用角色导入校验及字段映射 |

@@ -5,6 +5,8 @@ import {filesIn,checkDocs,checkRedirects,readJson,json,routes} from './release-c
 const root=process.cwd();let count=0;
 const markdown=spawnSync(process.execPath,['scripts/vendor-markdown.mjs','--check'],{encoding:'utf8'});
 assert.equal(markdown.status,0,markdown.error??markdown.stdout+markdown.stderr);
+const workTime=spawnSync(process.execPath,['scripts/vendor-work-time.mjs','--check'],{encoding:'utf8'});
+assert.equal(workTime.status,0,workTime.error??workTime.stdout+workTime.stderr);
 for(const args of [['diff','--check'],['diff','--cached','--check']]){const result=spawnSync('git',args,{encoding:'utf8'});assert.equal(result.status,0,result.error??result.stdout+result.stderr);}
 for(const folder of ['src','scripts','tests','functions'])for(const file of await filesIn(root,folder))if(/\.(mjs|js)$/.test(file)){
  const result=spawnSync(process.execPath,['--check',file],{encoding:'utf8'});

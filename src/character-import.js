@@ -1,6 +1,6 @@
 import {readGuild} from './guild.js';
 import {readWorldBuffs,worldBuffWarningText} from './world-buffs.js';
-import {game,defaults,normalize,slots,skills,foods,gearDetails} from './model.js';
+import {game,defaults,normalize,slots,skills,combatStyles,foods,gearDetails} from './model.js';
 import {combatRooms,combatMasteries,combatPerks,combatPotions} from './combat-options.js';
 import {characterMasteries} from './character-masteries.js';
 const importTypes=[['skills','技能','Skills'],['equipment','装备','Equipment'],['food','食物','Food'],['potions','药水','Potions'],['home','家园','Home'],['masteries','精通','Masteries'],['guild','公会与祝福','Guild & blessing'],['supplies','补给','Supplies'],['perks','特权','Perks']];
@@ -37,7 +37,7 @@ export function importCharacter(current,snapshot){
  if(!record(snapshot)||snapshot.version!==2||!int(snapshot.capturedAt,1)||snapshot.capturedAt>Date.now()+60000||!record(snapshot.player)||!int(snapshot.player.lastTick))throw new Error('invalidSnapshot');
  const chosen=importTypes.map(([id])=>id);
  const state=defaults(),p=snapshot.player,warnings=[],applied=new Set();
- let category,combatSkill,masterySource;
+ let category,combatSkill,masterySource,masteryFallback=false;
  for(const key of ['food','eatAt','fed','rooted'])state[key]=structuredClone(current[key]);
  for(const key of ['foodRule','foodMaxTier','foodPerTrip','enemySelection','simulationHours','customSimulation','hotSetting','vendorValues','valuationMode'])state.manual[key]=current.manual[key];
  try{state.guild=readGuild(snapshot.guild);}catch(error){
@@ -107,10 +107,23 @@ export function importCharacter(current,snapshot){
    for(const r of combatRooms)put(`house.${r.id}`,Object.hasOwn(p.house,r.id)?p.house[r.id]:0,v=>int(v,0,game.houseLevelLimit),v=>state.house[r.id]=r.bonus.kind==='bankSlots'||record(p.houseFurniture[r.id])?v:0);
   }
   if(category==='masteries'){
-   const {ranks,source}=characterMasteries(p,combatSkill);
-   masterySource=source;
-   if(!record(ranks)){warn('masteries');continue;}
-   for(const {id}of combatMasteries)put(`masteries.${id}`,Object.hasOwn(ranks,id)?ranks[id]:0,v=>int(v,0,game.masteryRankLimit),v=>state.masteries[id]=v);
+   let hasRanks=false;
+   const read=skill=>{
+    const {ranks,source}=characterMasteries(p,skill),values={...state.masteries};
+    masteryFallback ||= Boolean(source.fallback);
+    if(record(ranks)){
+     hasRanks=true;
+     for(const {id}of combatMasteries)put(`masteries.${id}`,Object.hasOwn(ranks,id)?ranks[id]:0,
+      v=>int(v,0,game.masteryRankLimit),v=>values[id]=v);
+    }else warn('masteries');
+    return {values,source};
+   };
+   const active=read(combatSkill);
+   masterySource=active.source;
+   const activeStyle=combatSkill??'melee';
+   const profiles=Object.fromEntries(combatStyles.map(skill=>[skill,skill===activeStyle?active.values:read(skill).values]));
+   if(hasRanks)state.masteriesBySkill=profiles;
+   state.masteries=active.values;
   }
   if(category==='guild'){
    put('guildBonus',p.guildBonus,v=>valid(v,0,1e5),v=>state.manual.guildXp=v*100);
@@ -128,5 +141,5 @@ export function importCharacter(current,snapshot){
    for(const perk of combatPerks)put(`perks.${perk.id}`,Object.hasOwn(p.perks,perk.id)?p.perks[perk.id]:0,v=>int(v,0,perk.ranks),v=>{if(perk.id==='meals')state.meals=v;else state.manual.perks[perk.id]=v;});
   }
  }
- return {state:normalize(state),applied:[...applied],warnings,masterySource};
+ return {state:normalize(state),applied:[...applied],warnings:[...new Set(warnings)],masterySource,masteryFallback};
 }

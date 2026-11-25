@@ -1,15 +1,17 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {json} from './release-common.mjs';
-const root=process.cwd(),directory=await fs.mkdtemp(path.join(os.tmpdir(),'dvi-extraction-'));
+const root=process.cwd(),scratch=path.join(root,'.test-artifacts');
+await fs.mkdir(scratch,{recursive:true});
+assert.ok(!(await fs.lstat(scratch)).isSymbolicLink(),'Extraction scratch directory must be a regular directory');
+// Resolve the installed dependencies from the repository while extracting from isolated copies.
+const directory=await fs.mkdtemp(path.join(scratch,'dvi-extraction-'));
 try{
  for(const sub of ['scripts','vendor','src'])await fs.mkdir(path.join(directory,sub));
  await fs.copyFile('scripts/extract.mjs',path.join(directory,'scripts/extract.mjs'));
  await fs.copyFile('vendor/game-original.js',path.join(directory,'vendor/game-original.js'));
- await fs.symlink(path.join(root,'node_modules'),path.join(directory,'node_modules'),'dir');
  const outputs=['src/upstream.js','vendor/manifest.json'];
  const execute=()=>spawnSync(process.execPath,['scripts/extract.mjs'],{cwd:directory,encoding:'utf8',timeout:120000,maxBuffer:1024*1024});
  const first=execute();assert.equal(first.status,0,first.error??first.stderr);

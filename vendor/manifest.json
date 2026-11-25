@@ -43,6 +43,10 @@
     "isCrop": "Nz",
     "damageReduction": "upe",
     "brewScale": "_a",
+    "warriorAccuracyBonus": "Lz",
+    "warriorMaxHitBonus": "FW",
+    "nourishHealingBonus": "MW",
+    "hasteAttackSpeedBonus": "CW",
     "combine": "Za",
     "bosses": "Xb",
     "bossStats": "O_",
@@ -153,6 +157,80 @@
     "startUpgrade": "LZ",
     "upgradeSiteJob": "FB",
     "upgradeWorkTicks": "Tv"
+  },
+  "exportGroups": {
+    "bossFeedRules": {
+      "rawBosses": "ke",
+      "rooms": "J_",
+      "makePlayer": "Uye",
+      "pointsBase": "tk",
+      "markMultiplier": "lb",
+      "outfitContribution": "Rce",
+      "chestThreshold": "Sh",
+      "feedXp": "rZ",
+      "feedRecipe": "Up",
+      "feedUsesFarmingSpeed": "Xue",
+      "productionXp": "oke",
+      "equippedSkillTool": "BS",
+      "materialSavingSkill": "E0e",
+      "swiftSpeedBonus": "DW",
+      "item": "Xe",
+      "itemList": "li",
+      "gear": "Ha",
+      "tool": "Os",
+      "decodeBase": "re",
+      "tier": "eo",
+      "withRarity": "$o",
+      "encode": "gi",
+      "level": "Je",
+      "levelXp": "ca",
+      "workSpeed": "a3",
+      "inventoryCapacity": "ma",
+      "mountStride": "WS",
+      "brewStrength": "_a",
+      "masteryMultiplier": "Ma",
+      "sideSkillBonus": "sA",
+      "workXpMultiplier": "Jp",
+      "perkList": "wS",
+      "maxLevel": "Sl",
+      "maxEnhancement": "vr",
+      "masteryRankLimit": "Sn",
+      "houseLevelLimit": "zG",
+      "canEnhance": "hi"
+    },
+    "bossWorkTimeGame": {
+      "tickMs": "ue",
+      "recipes": "Ve",
+      "upgradeRecipes": "Un",
+      "items": "li",
+      "item": "Xe",
+      "recipeInputs": "ba",
+      "recipeOutput": "du",
+      "itemSupportsRarity": "Nd",
+      "rarityThresholds": "Vh",
+      "hotRarityMultiplier": "mA",
+      "world": "P",
+      "siteEntrance": "xs",
+      "walkPath": "ik",
+      "withRarity": "$o",
+      "baseItemId": "re",
+      "itemTier": "eo",
+      "upgradeMaterials": "Xp",
+      "upgradeResult": "_d",
+      "levelSpeedCoefficient": "_le",
+      "upgradeBaseTicks": "$B",
+      "bonusMinimumUncommon": "Cb",
+      "bosses": "ke",
+      "bossUnlockLevel": "Br",
+      "bossFeedRecipe": "Up",
+      "bossFeedParts": "hz",
+      "bossUsesFarmingSpeed": "Xue",
+      "bossHeartLayout": "ct",
+      "bossKrakenLayout": "Ra",
+      "bossColonyLayout": "rr",
+      "bossBlightLayout": "Xa",
+      "bossSiegeLayout": "sn"
+    }
   },
   "declarations": [
     {
@@ -3348,6 +3426,12 @@
       "sha256": "ab60c79cdb8a03fe081422c3514c89cc24a13e3d65dde8f519865d9751010ea7"
     },
     {
+      "name": "cd",
+      "start": 157687,
+      "end": 157726,
+      "sha256": "c996668c6e1954e0b7ef6b04fcc0e0968dec363163f6e6542c133dc28346d4b0"
+    },
+    {
       "name": "nl",
       "start": 159286,
       "end": 159335,
@@ -3852,6 +3936,18 @@
       "sha256": "cb2e9bd01e4603636e26bd1c16761f5f1f8b445da29e22daa1a001194dc008a8"
     },
     {
+      "name": "ub",
+      "start": 343399,
+      "end": 343403,
+      "sha256": "bf251ac4e67ff839e5d0ac193976b1fede221e7cba24739112327bf66f5a0cfa"
+    },
+    {
+      "name": "mk",
+      "start": 343427,
+      "end": 343432,
+      "sha256": "18c5623b4a3df6ba66e1110ed1c96a53ca298a95d618f4c69ad8d8fceb9aaa9e"
+    },
+    {
       "name": "fb",
       "start": 343458,
       "end": 343463,
@@ -3862,6 +3958,12 @@
       "start": 352857,
       "end": 353379,
       "sha256": "875d1aac070a402b7c0ea139fe39d918d54925aad9293aa7faf88d015bb06fec"
+    },
+    {
+      "name": "Ope",
+      "start": 353662,
+      "end": 353726,
+      "sha256": "bf20745869c3d1bb4a85a549cc14295522d9aeef1da00d4737bcccd1c4f4a7f7"
     },
     {
       "name": "mu",
@@ -3976,6 +4078,12 @@
       "start": 354777,
       "end": 354811,
       "sha256": "e1945f8ee1318159ddc0409bd90523b2b4b643feda5227b2a4b2fbd4e34dbdbc"
+    },
+    {
+      "name": "ame",
+      "start": 355432,
+      "end": 355552,
+      "sha256": "6ed6154c3124a8af58ac07e122c6ab0632d8b9b42bf1ceb88c425ea6b839b1e0"
     },
     {
       "name": "Sd",
@@ -5640,6 +5748,12 @@
       "sha256": "2318794ba0b1b40355516c99cdcf6468601f20f76597bdc2e2c858f3b542d586"
     },
     {
+      "name": "Ra",
+      "start": 408499,
+      "end": 408530,
+      "sha256": "9621dc55c05f31a5d005ebd5806e1c41652a7d8805543273b7b794dbc3f6dd8c"
+    },
+    {
       "name": "z4",
       "start": 408531,
       "end": 408540,
@@ -5736,6 +5850,12 @@
       "sha256": "d66511917a7198374fb6b4c555af61522408d7ba627912fff860538258c48665"
     },
     {
+      "name": "rr",
+      "start": 410322,
+      "end": 410344,
+      "sha256": "02c36132ac687fc765fc6cc1f5cfaa408e1689688a460602272775c49fe18f5c"
+    },
+    {
       "name": "Nbe",
       "start": 410345,
       "end": 410355,
@@ -5812,6 +5932,12 @@
       "start": 411376,
       "end": 411941,
       "sha256": "2cd21a009a6ec59b805e03b77d499ef38a1d32ccb21f2b44e27c82c592d16226"
+    },
+    {
+      "name": "Xa",
+      "start": 411942,
+      "end": 411971,
+      "sha256": "6b7ab8685c39bc710e4cf0f33ce5cae1a7d209d406024c95be3a3e7b88906405"
     },
     {
       "name": "Jbe",
@@ -7446,6 +7572,12 @@
       "sha256": "ae0423c21ce5a0370e1ecdc085e138daff2dbcfff7dcaa083b37a77821272375"
     },
     {
+      "name": "Sye",
+      "start": 472182,
+      "end": 472239,
+      "sha256": "cb89362b34b7b0295101d3b3d86695bf88a623364153075f96a2336af03806c7"
+    },
+    {
       "name": "Qw",
       "start": 472245,
       "end": 472318,
@@ -7560,6 +7692,12 @@
       "sha256": "71d79363878087afadb891a0917523921ecfd02701a2f34cd4b4623aa4f22d58"
     },
     {
+      "name": "Iye",
+      "start": 479361,
+      "end": 479445,
+      "sha256": "5cc5917d5dccfa6f668a73627a579d987f982645408957f48285955989b50c19"
+    },
+    {
       "name": "eJ",
       "start": 479451,
       "end": 479456,
@@ -7572,6 +7710,18 @@
       "sha256": "42432353226c803b2927d553764522379a19c20d86b7347929fb7d1b6b133300"
     },
     {
+      "name": "Lye",
+      "start": 479512,
+      "end": 479519,
+      "sha256": "75b8bb47af59305aa2db4fdb91ec5cf0124fe979218903467a7c3b3a1aa64b15"
+    },
+    {
+      "name": "Pye",
+      "start": 479520,
+      "end": 479530,
+      "sha256": "1a390be54b6b3299b9500ab6e2724820ecb282f78b913859416077cbce89772a"
+    },
+    {
       "name": "Ml",
       "start": 479594,
       "end": 479749,
@@ -7582,6 +7732,30 @@
       "start": 479750,
       "end": 479822,
       "sha256": "4316789271772cd5be9b13a6a9c4f3ded47c8761a769b16f3b42c6cd7ce75af9"
+    },
+    {
+      "name": "Uye",
+      "start": 479822,
+      "end": 481702,
+      "sha256": "46d67c361e3c26d41daecfdcc20504464da1f887b7bba90466782a03fa2d8e49"
+    },
+    {
+      "name": "Wk",
+      "start": 481708,
+      "end": 481713,
+      "sha256": "b40225112371917af1be959fddd72e5a40a56394ca3f45c5464d9e92c16deee3"
+    },
+    {
+      "name": "$S",
+      "start": 481714,
+      "end": 481719,
+      "sha256": "13061870133b2585d8dccbce4054524b3254f093900f29705608da998f16a1bf"
+    },
+    {
+      "name": "gF",
+      "start": 481720,
+      "end": 481725,
+      "sha256": "9e6da05cc29cdb52edb220da583c6f7a5c4450af18e538784819b59c735b6893"
     },
     {
       "name": "eu",
@@ -7618,6 +7792,12 @@
       "start": 482243,
       "end": 482248,
       "sha256": "5d77fba2282dba43794c22da37ce205c0f25c5b5177ad1b928e798dca01f7160"
+    },
+    {
+      "name": "sJ",
+      "start": 482249,
+      "end": 482253,
+      "sha256": "d84317fcb9a800a376ea048595dd46650e6b443e114df9ce37e975cbd3c7b435"
     },
     {
       "name": "JA",

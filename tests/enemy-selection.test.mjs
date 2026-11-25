@@ -17,15 +17,18 @@ test('enemy scopes limit static rows and normalize old or invalid selections',()
  }
 });
 
-test('worker simulates only selected monsters, including snapshot requests',()=>{
+test('worker simulates only selected and unfinished monsters, including snapshot requests',()=>{
  const source=readFileSync(new URL('../src/simulation-worker.js',import.meta.url),'utf8').replace(/^import .*;\n/gm,'');
  for(const selection of ['all','normal',monsterKey(game.monsters[2])]){
   for(const snapshot of [false,true]){
    const calls=[],messages=[],self={postMessage:value=>messages.push(value)};
-   vm.runInNewContext(source,{self,selectedEnemies,simulateMonster:(state,monster)=>{calls.push(monster.id);return {key:monsterKey(monster)};}});
-   self.onmessage({data:{state:snapshot?{format:'snapshot'}:defaults(),enemySelection:selection,now:0}});
-   assert.deepEqual(calls,selectedEnemies(selection).monsters.map(m=>m.id));
-   assert.equal(messages.at(-1).done,true);
+   vm.runInNewContext(source,{self,selectedEnemies,monsterKey,simulateMonster:(state,monster)=>{calls.push(monster.id);return {key:monsterKey(monster)};}});
+   for(const completedEnemies of [undefined,[monsterKey(game.monsters[2])]]){
+    calls.length=0;messages.length=0;
+    self.onmessage({data:{state:snapshot?{format:'snapshot'}:defaults(),enemySelection:selection,now:0,completedEnemies}});
+    assert.deepEqual(calls,selectedEnemies(selection).monsters.filter(m=>!completedEnemies?.includes(monsterKey(m))).map(m=>m.id));
+    assert.equal(messages.at(-1).done,true);
+   }
   }
  }
 });

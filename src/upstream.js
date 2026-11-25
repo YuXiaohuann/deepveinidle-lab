@@ -531,6 +531,7 @@ const Xo=6;
 const bA=257;
 const wA=1;
 const SI=1;
+const cd=Math.floor(ua/2)*ua+Math.floor(ua/2);
 const nl=(o,e,t)=>e>=0&&t>=0&&e<ua&&t<ua&&o.has(t*ua+e);
 const AI=o=>{const e=Math.ceil((Xo-SI)/2);return o>=e&&o<e+SI};
 function Cz(o,e,t){const a=e-bA,s=t-wA,n=ua*Xo;if(a<0||s<0||a>n||s>n)return!0;const i=a%Xo===0,r=s%Xo===0;if(!i&&!r)return!nl(o,Math.floor(a/Xo),Math.floor(s/Xo));if(i&&r)return!0;if(i){const c=a/Xo,u=Math.floor(s/Xo);return!(nl(o,c-1,u)&&nl(o,c,u)&&AI(s%Xo))}const h=s/Xo,l=Math.floor(a/Xo);return!(nl(o,l,h-1)&&nl(o,l,h)&&AI(a%Xo))}
@@ -615,8 +616,11 @@ const _z=[{tier:1,name:"Uncommon",ticks:200},{tier:2,name:"Rare",ticks:1e3},{tie
 function SA(o){return _z.find(e=>e.tier===o)??null}
 function zz(o,e){return(o.brews[fk]??0)>e?xr:0}
 function Za(...o){let e=0;for(const t of o)e+=t-1;return 1+e}
+const ub=1;
+const mk=10;
 const fb=24;
 const wS=[{id:"pockets",name:"Deep pockets",each:"+1 inventory slot",ranks:5,cost:o=>20+20*o},{id:"hands",name:"Steady hands",each:"Burn and stall-catch chance 3% lower, of the chance itself (20% becomes 19.4%)",ranks:10,cost:o=>10+8*o},{id:"meals",name:"Hearty meals",each:"food heals 2.5% more",ranks:10,cost:o=>10+8*o},{id:"rest",name:"Quick rest",each:"the fountain heals a tick sooner",ranks:4,cost:o=>30+30*o},{id:"quick",name:"Quick hands",each:"0.5% faster at every gathering and crafting job",ranks:10,cost:o=>15+10*o}];
+function Ope(){return{pockets:0,hands:0,meals:0,rest:0,quick:0}}
 const mu=396;
 const Xpe=Bp(1.5);
 const _pe=8;
@@ -636,6 +640,7 @@ function wV(o,e){const t=o.eventBox;o.eventBox=t&&t.day===e?{day:e,n:t.n+1}:{day
 function wk(o,e,t,a){const s=o.lastTick,n=gk(s);if(!n||Jpe(o,s)===0||!ome(o))return;const i=Au(o,"box"),r=vs(e.seed,e.secretAt,zpe,o.id,i,s);if(r===null||r>=Zpe(t))return;const h=bV(s);o.bank[n.itemId]=(o.bank[n.itemId]??0)+1,wV(o,h),a.push({kind:"box",day:h,itemId:n.itemId})}
 const eme=100;
 function ome(o){return Fn(o)>=eme}
+function ame(){return{kills:0,made:0,deaths:0,caught:0,questsDone:0,coinsEarned:0,items:{},monsters:{},burnt:0,eaten:0}}
 const Sd=li.filter(o=>o.id<Gh&&o.id!==200&&o.id!==70).map(o=>o.id);
 function C4(o){const e=new Set;for(const a of Object.keys(o.collection))e.add(re(Number(a)));let t=0;for(const a of Sd)e.has(a)&&t++;return t}
 const II=[[10,100],[25,500],[50,2500],[75,1e4],[99,5e4]];
@@ -913,6 +918,7 @@ const Bbe={barrel:[-.95,.05],stove:[-1,.1],winch:[-1.15,.05]};
 const o0={site:{x:159,y:105},shipFoot:{x:164,y:109.4},chest:{x:143,y:115},shop:{x:139,y:116},fire:{x:141,y:108}};
 function Kbe(o,e){const t=(a,s)=>Math.abs(o-(a.x+.5))<s&&Math.abs(e-(a.y+1))<s;return qbe("kraken",Math.round(o-.5),Math.round(e-1))||t({x:137,y:104},1)||t(o0.chest,1.1)||t(o0.shop,1.4)||t(o0.fire,1.1)||o>142.4&&o<145.2&&e>112.2&&e<115.6}
 const Ak=LA([{kind:"barrel",x:145.2,y:108.95,flip:!1},{kind:"barrel",x:147.8,y:108.95,flip:!1},{kind:"barrel",x:150.4,y:108.95,flip:!1},{kind:"barrel",x:151.3,y:111.4,flip:!1},{kind:"stove",x:148.2,y:115.5,flip:!1},{kind:"stove",x:151.2,y:115.3,flip:!1},{kind:"stove",x:154.2,y:115.5,flip:!1},{kind:"stove",x:157.2,y:115.3,flip:!1},{kind:"winch",x:139.8,y:103.9,flip:!1},{kind:"winch",x:142.6,y:103.7,flip:!1},{kind:"winch",x:145.4,y:105,flip:!1},{kind:"winch",x:144.4,y:106.9,flip:!1}],{work:Bbe,stand:(o,e,t)=>o==="barrel"?FQ(e,t):o==="stove"?qQ(e,t):TQ(e,t),clear:Kbe,box:{x0:134,y0:101,x1:161,y1:119},reach:3.6,queue:14});
+const Ra={...o0,wharf:fy,stations:Ak};
 const z4=UA(Ak);
 const Rbe=[...z4.barrel,...z4.stove];
 const Ebe=jA(Ak);
@@ -929,6 +935,7 @@ const Ube={pyre:[-1.1,.05],line:[-.9,.05],stakes:[-1,.05]};
 const t0={site:{x:189,y:157},moundFoot:{x:189.5,y:160.4},chest:{x:191,y:167},fire:{x:187,y:167},shop:{x:195,y:168}};
 function jbe(o,e){const t=(a,s)=>Math.abs(o-(a.x+.5))<s&&Math.abs(e-(a.y+1))<s;return t(t0.chest,1.1)||t(t0.shop,1.4)||t(t0.fire,1.1)||o>187.6&&o<191.4&&e>160.5}
 const Dk=LA([{kind:"pyre",x:182.6,y:158.6,flip:!1},{kind:"pyre",x:196.4,y:158.6,flip:!0},{kind:"pyre",x:184.5,y:153.8,flip:!1},{kind:"pyre",x:194.5,y:153.8,flip:!0},{kind:"line",x:184.4,y:163.9,flip:!1},{kind:"line",x:186.9,y:163.9,flip:!1},{kind:"line",x:192.1,y:163.9,flip:!0},{kind:"line",x:194.6,y:163.9,flip:!0},{kind:"stakes",x:187.4,y:153.2,flip:!1},{kind:"stakes",x:191.6,y:153.2,flip:!0},{kind:"stakes",x:184.6,y:161.4,flip:!1},{kind:"stakes",x:194.4,y:161.4,flip:!0}],{work:Ube,stand:(o,e,t)=>o==="line"?V4(e,t)&&Q4(e,t):Q4(e,t)&&!V4(e,t),clear:jbe,box:{x0:177,y0:150,x1:202,y1:167},reach:3.2,queue:12});
+const rr={...t0,stations:Dk};
 const Nbe=UA(Dk);
 const Obe=jA(Dk);
 function Xbe(o,e){return o==="logs"?"pyre":o==="bows"?"line":"stakes"}
@@ -942,6 +949,7 @@ const Qbe={trough:[-1.3,.05],well:[-1.1,.05],bed:[-1.2,.05]};
 const Mf={site:{x:112,y:300},bloomFoot:{x:112,y:300.5},chest:{x:115,y:292},fire:{x:108,y:292},shop:{x:121,y:293}};
 function Zbe(o,e){const t=(a,s)=>Math.abs(o-(a.x+.5))<s&&Math.abs(e-(a.y+1))<s;return t(Mf.chest,1.1)||t(Mf.fire,1.1)||Math.abs(o-(Mf.shop.x+.5))<2.2&&e<Mf.shop.y+1.6&&e>Mf.shop.y-1.2||o>hM.x0&&o<hM.x1&&e<hM.y1}
 const Mk=LA([{kind:"trough",x:101.6,y:299.4,flip:!1},{kind:"trough",x:101.6,y:304.2,flip:!1},{kind:"trough",x:122.4,y:299.4,flip:!0},{kind:"trough",x:122.4,y:304.2,flip:!0},{kind:"well",x:106.4,y:296.4,flip:!1},{kind:"well",x:117.6,y:296.4,flip:!0},{kind:"well",x:108.4,y:307.4,flip:!1},{kind:"well",x:115.6,y:307.4,flip:!0},{kind:"bed",x:101.4,y:294.6,flip:!1},{kind:"bed",x:123.4,y:295.6,flip:!0},{kind:"bed",x:101.4,y:309.2,flip:!1},{kind:"bed",x:122.6,y:309.2,flip:!0}],{work:Qbe,stand:(o,e,t)=>Vbe(e,t),clear:Zbe,box:{x0:97,y0:291,x1:126,y1:310},reach:3.2,queue:12});
+const Xa={...Mf,box:ei,stations:Mk};
 const Jbe=UA(Mk);
 const ewe=jA(Mk);
 function owe(o,e){return o==="crops"?"trough":o==="draughts"?"well":"bed"}
@@ -1214,6 +1222,7 @@ const fF=1;
 const pF=3;
 function zd(o){return Math.floor(o/IB)}
 function LB(o){return Math.floor(zd(o)/7)}
+function Sye(){return{day:-1,week:-1,daily:[],weekly:[]}}
 const Qw=[[1,2100],[15,4300],[30,6500],[45,9500],[60,14e3],[75,21e3],[90,33e3]];
 function Hye(o){for(let e=1;e<Qw.length;e++){const[t,a]=Qw[e-1],[s,n]=Qw[e];if(o<=s)return a+(n-a)*(o-t)/(s-t)}return Qw[Qw.length-1][1]}
 function Aye(){const o=new Set;for(const e of Ve)o.add(e.output.itemId);for(const e of mv(P))o.add(e.drop);for(const e of Xb)for(const t of e.materials)o.add(t.itemId);for(const e of hb)o.add(e.itemId);return o}
@@ -1233,16 +1242,24 @@ function QZ(o,e){return e.kind==="kill"?Wn(o):e.reward.skill}
 function ZZ(o,e,t){const a=[...o.quests.daily,...o.quests.weekly].find(i=>i.id===e);if(!a||a.claimed||a.done<a.goal)return!1;a.claimed=!0,o.questPoints+=a.id.startsWith("w")?pF:fF,Qp(o,a.reward.coins,"quest");const s=QZ(o,a),n=bn(o,s,a.reward.xp);return n.after>n.before&&t.push({kind:"levelUp",skill:s,level:n.after}),!0}
 function UB(o,e,t){if(o.kind==="kill"){for(const n of e.zoneById.values())if(n.monsterId===o.monsterId)return{zoneId:n.id};return null}let a=null,s=1/0;for(const n of e.sites){if(!n.jobIds.includes(o.jobId))continue;const i=Math.abs(n.x-t.x)+Math.abs(n.y-t.y);i<s&&(s=i,a=n.id)}return a===null?null:{siteId:a,jobId:o.jobId}}
 function JZ(o,e,t){const a=[...o.quests.daily,...o.quests.weekly].find(i=>i.id===t);if(!a||a.claimed||a.done>=a.goal)return!1;const s=UB(a,e.world,o);return!s||!("zoneId"in s?Vp(o,e,s.zoneId,null):Bn(o,e,s.siteId,s.jobId,"bank",null))||!o.route?!1:(o.route.questId=t,!0)}
+function Iye(o){return{carry:{house:0,boss:0,enhance:0,xp:0},energy:0,energyTick:o}}
 const eJ=28;
 function ma(o){return eJ+o.perks.pockets}
+const Lye=119;
+const Pye=Bp(24);
 const Ml=["weapon","shield","helmet","body","legs","ring","amulet","pickaxe","rod","axe","gloves","pan","hammer","knife","needle","mortar","hoe","flask","mount"];
 function Au(o,e){const t=o.rollIndex??={},a=(t[e]??0)+1;return t[e]=a,a}
+function Uye(o,e,t,a,s){return{version:Lye,id:o,name:e,x:t,y:a,skills:{...Object.fromEntries(U_.map(n=>[n,0])),hitpoints:ca(Wk)},equipment:{pickaxe:null,rod:null,axe:null,gloves:null,pan:null,hammer:null,knife:null,needle:null,mortar:null,hoe:null,flask:null,mount:null,weapon:null,shield:null,helmet:null,body:null,legs:null,ring:null,amulet:null},hp:Wk,eatAt:$S,foodItemId:null,foodMaxTier:sJ,foodPerTrip:gF,foodKeepFree:0,foeIndex:null,foeHp:0,foeTicks:0,pack:[],bank:{},overflow:{},bankOrder:[],bankLocked:[],coins:0,route:null,skillboss:null,skillbossPending:[],skillbossBurn:{},skillbossFeedTicks:{},skillbossFed:{},shardDry:{},toolSkins:[],toolSkinsOff:[],bossMarks:[],decosOwned:[],enhance:null,contract:null,order:null,ordersFrom:"everyone",lastStop:null,plots:{},plantPlainest:!1,plotChoice:{},house:{},housePoints:{},houseCells:[cd],houseFurniture:{},houseTrophies:{},houseDecos:{},houseBuild:null,houseUpgrades:{},queue:[],quests:Sye(),questPoints:0,gems:0,queueSlots:ub,marketOrderSlots:mk,tunics:[],tunic:null,attacks:[],attack:null,titles:[],title:null,guide:{step:0,paid:-1},perks:Ope(),streak:{days:0,lastDay:-1},brews:{},brewTier:{},homeBank:null,stunUntil:0,tally:ame(),collection:{},collections:{},forgeLog:{},spoilsHeld:{},alchemyLog:{},alchemy:Iye(s),masteries:{},masteryResets:0,masteryPage:1,masteryAway:{},masterySkills:{},ironman:!1,uiLayout:null,gearSets:[],skillSets:{},pet:null,bankSlotsBought:0,mountSkins:[],mountSkin:null,skins:[],skin:null,nameIcons:[],nameIcon:null,nameColors:[],nameColor:null,hideTier:!1,hideFounder:!1,badges:{},badgeNotes:{},nameChip:null,hideGear:!1,hideWardrobe:!1,autoBossOff:!1,autoHarvest:!1,lockedUsable:!0,raiding:!1,strideSpeed:1e3,stride:0,unlimitedBank:!1,achievements:{},activity:"idle",path:null,pathIndex:0,workSiteId:null,workJobId:null,attemptTicks:0,actionIndex:0,workRarity:0,offlineCapTicks:Pye,lastTick:s}}
+const Wk=10;
+const $S=.5;
+const gF=20;
 const eu=-1;
 const ou=-2;
 function tJ(o){return Math.max(0,Math.min(o.foodKeepFree??0,ma(o)-1))}
 function FS(o){const e=ma(o)-tJ(o);return o.foodPerTrip===eu?e:o.foodPerTrip===ou?Math.min(e,Math.max(1,ma(o)-1)):Math.min(e,o.foodPerTrip)}
 function Oye(o){return Math.max(0,ma(o)-di(o)-tJ(o))}
 const Bk=-2;
+const sJ=1;
 function JA(o,e){return(Xe(e).heals??0)<=0?!1:eo(e)<=o.foodMaxTier||o.foodItemId!==null&&o.foodItemId>0&&e===o.foodItemId}
 function jn(o){return Math.floor(Je(o.skills.hitpoints)*Ma(o.masteries,"hp"))}
 const iJ=0;
@@ -1462,4 +1479,77 @@ const lh=[{key:"gems",en:"Gems",zh:"宝石",families:["gems"]},{key:"resources",
 const Sje=new Set([200,70]);
 const qie=(()=>{const o=new Map,e=(t,a)=>{if(Sje.has(t)||pv.has(t)||a==="alchemy"||DV(t))return;const s=o.get(t)??o.set(t,[]).get(t);s.includes(a)||s.push(a)};for(const t of Ve)e(t.output.itemId,t.skill),t.bonus&&e(t.bonus.itemId,t.skill);for(const t of Un)for(const a of t.to)e(a,t.skill);for(const t of Pn)e(t.drop,"combat"),e(t.bonus.itemId,"combat"),e(cz(t.id),"combat");for(const t of uW)e(t.itemId,t.skill);e(wp,"mining"),e(wp,"smithing"),e(sb,"fishing"),e(sb,"cooking"),e(L0,"woodcutting"),e(L0,"fletching"),e(P0,"farming"),e(P0,"herblore"),e(U0,"thieving"),e(U0,"crafting");for(const t of ke)for(const a of t.skills)e(t.currency,a);for(const t of ke)for(const a of t.skills)e(t.core,a),e(t.shard,a);for(const t of xu)e(t.id,cu[t.slot]);for(const t of Yu)e(t.id,t.skill);return o})();
 const Tf=new Set(qie.keys());
-export { Io as features, Fd as skillOutfits, $_ as outfitXpBonus, sA as skillOffhandBonus, zG as houseLevelLimit, zd as questDay, LB as questWeek, Pn as monsters, ZE as equipment, li as items, lh as marketCategories, eW as marketFamilies, hA as marketFamily, Ha as gear, Xe as item, Pp as canSell, na as vendorPrice, gi as encode, $o as withRarity, ca as levelXp, Je as level, Sl as maxLevel, gu as accuracy, Rd as maxHit, bu as evasion, Dd as hitChance, tp as magic, Wn as style, YS as attackTicks, jn as maxHp, Ml as equipmentSlots, dd as masteries, Xt as rooms, SA as foodBuff, iw as preferredBankFood, qI as cropDuration, Nz as isCrop, upe as damageReduction, _a as brewScale, Za as combine, Xb as bosses, O_ as bossStats, iue as bossWeakMultiplier, rue as bossOtherMultiplier, ue as tickMs, Dge as strength, Mge as armour, L4 as magicDefenceScale, vr as maxEnhancement, Qb as potions, Ve as recipes, t_ as translations, w3e as worldTranslations, e3e as uiTranslations, o3e as homeTranslations, Bd as houseBonus, LV as houseDamageCap, Sn as masteryRankLimit, mr as masteryRankCost, xfe as masteryTotalCost, Wc as masteriesTotalCost, Af as masteryEarnedPoints, AV as collectionPoints, Tf as collectionItems, Ege as combatTick, Bge as killMonster, Wge as combatRarityMultiplier, Vh as rarityThresholds, zl as mountRarityThresholds, $0e as mountChance, fg as baseAttackTicks, ak as combatPetChance, cz as combatPetItem, kn as isPet, Tge as voidShardChance, qge as voidShardQuantity, Wr as voidShardItemId, md as mountItemId, TW as abyssalGoldBonus, re as baseItemId, eo as itemTier, Da as coinItemId, yv as hotSkill, fb as masteryOfflineBaseHours, Eg as predict, IS as offline, nee as tick, P as world, Vp as startFight, ta as resetActivity, XB as depositPack, rw as homeBank, fye as combatTargetTile, xs as nearbyTile, wg as predictionStartTick, l8 as predictionChunkTicks, Bt as allSkills, wI as createContext, eu as fullFoodLoad, wS as perks, mz as hotXp, gz as hotRare, XE as tools, Os as tool, uu as toolLuck, gp as equipmentLuck, VB as brewRarityMultiplier, Av as houseRarityMultiplier, Ma as masteryMultiplier, WS as mountSpeed, J$ as randomFloat, hi as canEnhance, yb as enhanceChance, Op as enhanceCost, sbe as enhanceXp, qi as enhanceTicks, rs as protectionMin, Bn as startWork, CJ as workChance, a3 as workModifiers, ba as recipeInputs, DJ as burnChance, Jp as workXpMultiplier, MJ as caughtChance, ma as packCapacity, mu as lootBoxItemId, xl as nearestWorkSite, oB as armourMultiplier, bye as restock, Un as upgradeRecipes, _d as upgradeResult, Xp as upgradeMaterials, dQ as recipeLevel, Ir as windowModifiers, mA as hotRarityMultiplier, fW as skillPet, g4 as skillPetChance, Nd as itemSupportsRarity, Cb as bonusMinimumUncommon, Ys as addPack, Dr as enhancementTargetLimit, fQ as enhanceMasteryMultiplier, iB as enhanceMasteryBonusCap, Ep as recipeRarity, du as recipeOutput, MV as collectionExcluded, LZ as startUpgrade, FB as upgradeSiteJob, Tv as upgradeWorkTicks };
+export { Io as features, Fd as skillOutfits, $_ as outfitXpBonus, sA as skillOffhandBonus, zG as houseLevelLimit, zd as questDay, LB as questWeek, Pn as monsters, ZE as equipment, li as items, lh as marketCategories, eW as marketFamilies, hA as marketFamily, Ha as gear, Xe as item, Pp as canSell, na as vendorPrice, gi as encode, $o as withRarity, ca as levelXp, Je as level, Sl as maxLevel, gu as accuracy, Rd as maxHit, bu as evasion, Dd as hitChance, tp as magic, Wn as style, YS as attackTicks, jn as maxHp, Ml as equipmentSlots, dd as masteries, Xt as rooms, SA as foodBuff, iw as preferredBankFood, qI as cropDuration, Nz as isCrop, upe as damageReduction, _a as brewScale, Lz as warriorAccuracyBonus, FW as warriorMaxHitBonus, MW as nourishHealingBonus, CW as hasteAttackSpeedBonus, Za as combine, Xb as bosses, O_ as bossStats, iue as bossWeakMultiplier, rue as bossOtherMultiplier, ue as tickMs, Dge as strength, Mge as armour, L4 as magicDefenceScale, vr as maxEnhancement, Qb as potions, Ve as recipes, t_ as translations, w3e as worldTranslations, e3e as uiTranslations, o3e as homeTranslations, Bd as houseBonus, LV as houseDamageCap, Sn as masteryRankLimit, mr as masteryRankCost, xfe as masteryTotalCost, Wc as masteriesTotalCost, Af as masteryEarnedPoints, AV as collectionPoints, Tf as collectionItems, Ege as combatTick, Bge as killMonster, Wge as combatRarityMultiplier, Vh as rarityThresholds, zl as mountRarityThresholds, $0e as mountChance, fg as baseAttackTicks, ak as combatPetChance, cz as combatPetItem, kn as isPet, Tge as voidShardChance, qge as voidShardQuantity, Wr as voidShardItemId, md as mountItemId, TW as abyssalGoldBonus, re as baseItemId, eo as itemTier, Da as coinItemId, yv as hotSkill, fb as masteryOfflineBaseHours, Eg as predict, IS as offline, nee as tick, P as world, Vp as startFight, ta as resetActivity, XB as depositPack, rw as homeBank, fye as combatTargetTile, xs as nearbyTile, wg as predictionStartTick, l8 as predictionChunkTicks, Bt as allSkills, wI as createContext, eu as fullFoodLoad, wS as perks, mz as hotXp, gz as hotRare, XE as tools, Os as tool, uu as toolLuck, gp as equipmentLuck, VB as brewRarityMultiplier, Av as houseRarityMultiplier, Ma as masteryMultiplier, WS as mountSpeed, J$ as randomFloat, hi as canEnhance, yb as enhanceChance, Op as enhanceCost, sbe as enhanceXp, qi as enhanceTicks, rs as protectionMin, Bn as startWork, CJ as workChance, a3 as workModifiers, ba as recipeInputs, DJ as burnChance, Jp as workXpMultiplier, MJ as caughtChance, ma as packCapacity, mu as lootBoxItemId, xl as nearestWorkSite, oB as armourMultiplier, bye as restock, Un as upgradeRecipes, _d as upgradeResult, Xp as upgradeMaterials, dQ as recipeLevel, Ir as windowModifiers, mA as hotRarityMultiplier, fW as skillPet, g4 as skillPetChance, Nd as itemSupportsRarity, Cb as bonusMinimumUncommon, Ys as addPack, Dr as enhancementTargetLimit, fQ as enhanceMasteryMultiplier, iB as enhanceMasteryBonusCap, Ep as recipeRarity, du as recipeOutput, MV as collectionExcluded, LZ as startUpgrade, FB as upgradeSiteJob, Tv as upgradeWorkTicks };
+export const bossFeedRules = Object.freeze({
+  rawBosses: ke,
+  rooms: J_,
+  makePlayer: Uye,
+  pointsBase: tk,
+  markMultiplier: lb,
+  outfitContribution: Rce,
+  chestThreshold: Sh,
+  feedXp: rZ,
+  feedRecipe: Up,
+  feedUsesFarmingSpeed: Xue,
+  productionXp: oke,
+  equippedSkillTool: BS,
+  materialSavingSkill: E0e,
+  swiftSpeedBonus: DW,
+  item: Xe,
+  itemList: li,
+  gear: Ha,
+  tool: Os,
+  decodeBase: re,
+  tier: eo,
+  withRarity: $o,
+  encode: gi,
+  level: Je,
+  levelXp: ca,
+  workSpeed: a3,
+  inventoryCapacity: ma,
+  mountStride: WS,
+  brewStrength: _a,
+  masteryMultiplier: Ma,
+  sideSkillBonus: sA,
+  workXpMultiplier: Jp,
+  perkList: wS,
+  maxLevel: Sl,
+  maxEnhancement: vr,
+  masteryRankLimit: Sn,
+  houseLevelLimit: zG,
+  canEnhance: hi
+});
+export const bossWorkTimeGame = Object.freeze({
+  tickMs: ue,
+  recipes: Ve,
+  upgradeRecipes: Un,
+  items: li,
+  item: Xe,
+  recipeInputs: ba,
+  recipeOutput: du,
+  itemSupportsRarity: Nd,
+  rarityThresholds: Vh,
+  hotRarityMultiplier: mA,
+  world: P,
+  siteEntrance: xs,
+  walkPath: ik,
+  withRarity: $o,
+  baseItemId: re,
+  itemTier: eo,
+  upgradeMaterials: Xp,
+  upgradeResult: _d,
+  levelSpeedCoefficient: _le,
+  upgradeBaseTicks: $B,
+  bonusMinimumUncommon: Cb,
+  bosses: ke,
+  bossUnlockLevel: Br,
+  bossFeedRecipe: Up,
+  bossFeedParts: hz,
+  bossUsesFarmingSpeed: Xue,
+  bossHeartLayout: ct,
+  bossKrakenLayout: Ra,
+  bossColonyLayout: rr,
+  bossBlightLayout: Xa,
+  bossSiegeLayout: sn,
+  source: Object.freeze({"sourceVersion":"1.0.1221","sourceUrl":"https://deepveinidle.com/assets/index-szBaIgSm.js","sha256":"7fdb0dbe3a5aa0bda15768e45c55a5f064508b5259e1b6f44c0cb5e271b3272c"})
+});

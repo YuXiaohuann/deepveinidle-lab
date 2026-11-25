@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import {spawn} from 'node:child_process';
 import assert from 'node:assert/strict';
 
-export const pages=['combat','gather','craft','enhance','mastery','forecast','formulas','debug','usage'];
+export const pages=['combat','gather','craft','boss-feed','enhance','mastery','forecast','formulas','debug','usage'];
 export const routes=['/',...pages.flatMap(p=>['/'+p,'/'+p+'/'])];
 export const sha256=data=>crypto.createHash('sha256').update(data).digest('hex');
 export async function json(file,value){await fs.writeFile(file,JSON.stringify(value,null,2)+'\n');}
@@ -30,7 +30,7 @@ async function digestFiles(root,names){
 }
 export async function packageFiles(root){
  const names=['index.html','_redirects','_routes.json',...await filesIn(root,'src'),...await filesIn(root,'vendor')];
- for(const name of names)assert.ok(!name.split('/').some(p=>p.startsWith('.'))&&(['index.html','_redirects','src/assets/appreciation.jpg'].includes(name)||/\.(js|css|svg|json)$/.test(name)||/^src\/content\/formulas\/[a-z][a-z.-]*\.md$/.test(name)||['vendor/markdown-it/LICENSE.txt','vendor/markdown-it/markdown-it.esm.min.mjs','vendor/markdown-it/markdown-it.esm.min.mjs.map'].includes(name)),`Not an application file: ${name}`);
+ for(const name of names)assert.ok(!name.split('/').some(p=>p.startsWith('.'))&&(['index.html','_redirects','src/assets/appreciation.jpg'].includes(name)||/\.(js|css|svg|json)$/.test(name)||/^src\/content\/formulas\/[a-z][a-z.-]*\.md$/.test(name)||['vendor/work-time/LICENSE.txt','vendor/markdown-it/LICENSE.txt','vendor/markdown-it/markdown-it.esm.min.mjs','vendor/markdown-it/markdown-it.esm.min.mjs.map'].includes(name)),`Not an application file: ${name}`);
  return digestFiles(root,names);
 }
 export async function browserPath(){
@@ -45,7 +45,17 @@ export async function inputs(root){
  const files=await digestFiles(root,names);
  const environment={node:process.version,platform:process.platform,arch:process.arch,browserOverride:process.env.RELEASE_BROWSER??null,dependencies:{}};
  const pkg=await readJson(path.join(root,'package.json'));
- for(const name of Object.keys(pkg.devDependencies??{}).sort()){const installed=(await readJson(path.join(root,'node_modules',name,'package.json'))).version;assert.equal(installed,pkg.devDependencies[name],`Installed dependency differs from pinned version: ${name}`);environment.dependencies[name]=installed;}
+ for(const name of Object.keys(pkg.devDependencies??{}).sort()){
+  const {version:installed}=await readJson(path.join(root,'node_modules',name,'package.json'));
+  let expected=pkg.devDependencies[name];
+  if(name==='@dvi-lab/work-time'){
+   const source=await readJson(path.join(root,'vendor/work-time/source.json'));
+   assert.equal(source.url,expected,'work-time vendor source differs from the dependency URL');
+   expected=source.version;
+  }
+  assert.equal(installed,expected,`Installed dependency differs from pinned version: ${name}`);
+  environment.dependencies[name]=installed;
+ }
  if(pkg.devDependencies?.['playwright-core']){const executable=await browserPath();environment.browser={executable,sha256:sha256(await fs.readFile(executable))};}
  return {id:sha256(JSON.stringify({files,environment})),files,environment,version:pkg.version};
 }

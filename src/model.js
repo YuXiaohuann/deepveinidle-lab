@@ -1,10 +1,12 @@
 import {readGuild} from './guild.js';
 import {selectedEnemies} from './enemy-selection.js';
 import {manualDefaults,normalizeManual,skillXp,applyManualPlayer} from './manual-settings.js';
+import {restoreSkillMasteries,switchSkillMasteries} from './character-masteries.js';
 import * as game from './upstream.js';
 export {game};
 export const slots=['weapon','shield','helmet','body','legs','ring','amulet','mount'];
 export const skills=['melee','ranged','magic','defence','hitpoints'];
+export const combatStyles=['melee','ranged','magic'];
 export const foods=game.items.filter(x=>x.id<1000&&x.heals>0);
 export const potions=game.potions.map(p=>{
  const recipe=game.recipes.find(r=>r.skill==='herblore'&&r.output.itemId===p.itemId);
@@ -24,8 +26,9 @@ export function normalize(raw){
  if(foods.some(x=>x.id===Number(raw.food?.id)))s.food={id:Number(raw.food.id),tier:integer(raw.food.tier??0,0,4)};
  for(const k of Object.keys(s.brews))s.brews[k]=integer(raw.brews?.[k]??-1,-1,4,-1);
  for(const k of Object.keys(s.masteries))s.masteries[k]=integer(raw.masteries?.[k]??0,0,game.masteryRankLimit);
+ restoreSkillMasteries(s,raw.masteriesBySkill,combatStyles,game.masteryRankLimit);
  for(const k of Object.keys(s.house))s.house[k]=integer(raw.house?.[k]??0,0,game.houseLevelLimit);
- s.style=['melee','ranged','magic'].includes(raw.style)?raw.style:(game.gear(s.gear.weapon.id)?.magic?'magic':game.gear(s.gear.weapon.id)?.ranged?'ranged':'melee');
+ s.style=combatStyles.includes(raw.style)?raw.style:(game.gear(s.gear.weapon.id)?.magic?'magic':game.gear(s.gear.weapon.id)?.ranged?'ranged':'melee');
 
  s.eatAt=[25,50,75].includes(Number(raw.eatAt))?Number(raw.eatAt):50;
  s.homeBank=game.world.banks.some(b=>b.id===Number(raw.homeBank))?Number(raw.homeBank):0;
@@ -59,7 +62,7 @@ export function preset(style){const s=defaults();for(const k of skills)s.levels[
 export function chooseLanguage(saved,languages){return ['zh','en'].includes(saved)?saved:languages.some(x=>/^zh(?:-|$)/i.test(x))?'zh':'en';}
 
 export function gearForStyle(slot,style){return baseGear.filter(g=>g.slot===slot&&(slot==='weapon'?(g.magic?'magic':g.ranged?'ranged':'melee')===style:!g.style||g.style===style));}
-export function selectStyle(raw,style){const s=normalize(raw);s.style=style;for(const slot of slots){const choices=s.manual.allGear&&slot!=='weapon'?baseGear.filter(g=>g.slot===slot):gearForStyle(slot,style);if(s.gear[slot].id&&!choices.some(g=>g.itemId===s.gear[slot].id))s.gear[slot]={id:0,tier:0,plus:0};if(slot==='weapon'&&!s.gear[slot].id&&style!=='melee')s.gear[slot]={id:choices[0].itemId,tier:0,plus:0};}return s;}
+export function selectStyle(raw,style){const s=normalize(raw);switchSkillMasteries(s,s.style,style);s.style=style;for(const slot of slots){const choices=s.manual.allGear&&slot!=='weapon'?baseGear.filter(g=>g.slot===slot):gearForStyle(slot,style);if(s.gear[slot].id&&!choices.some(g=>g.itemId===s.gear[slot].id))s.gear[slot]={id:0,tier:0,plus:0};if(slot==='weapon'&&!s.gear[slot].id&&style!=='melee')s.gear[slot]={id:choices[0].itemId,tier:0,plus:0};}return s;}
 export function sortEnemies(rows,key,direction=key==='level'?'asc':'desc',value=row=>row[key]){
  const sign=direction==='asc'?1:-1;
  return [...rows].sort((a,b)=>{

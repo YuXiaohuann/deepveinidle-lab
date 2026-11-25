@@ -141,7 +141,7 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
 
 .simulation-caveat{color:var(--gold);font-weight:650}
 
-#gather-section,#craft-section{max-width:1600px;margin:0 auto;padding:28px 32px}#gather-section[hidden],#craft-section[hidden]{display:none}#gather-content,#craft-content{display:grid;grid-template-columns:345px minmax(0,1fr);gap:28px;align-items:start;min-width:0}.gather-config,.gather-config .skill-grid>*{min-width:0}.gather-skills{grid-template-columns:repeat(2,minmax(0,1fr))}.gather-skills svg{display:block;width:20px;height:20px}.gather-skills .selected{border-color:var(--gold);color:var(--gold)}.gather-config .number-field{margin:10px 0}.gather-config .potion select{width:150px}.gather-stats{grid-template-columns:repeat(5,minmax(128px,1fr));overflow-x:auto}.gather-table th:not(:first-child),.gather-table td:not(:first-child){text-align:right}.gather-table .reward-detail>div{max-width:280px}#gather-results .gather-table .reward-detail>div,#craft-results .craft-table .reward-detail>div{max-width:230px}.gather-item{display:flex;justify-content:space-between;gap:12px}.gather-item span:first-child{text-align:left}.gather-config .import-status{white-space:pre-line;overflow-wrap:anywhere}@media(max-width:1050px){#gather-section,#craft-section{padding:20px 18px}#gather-content,#craft-content{grid-template-columns:300px minmax(0,1fr);gap:18px}}@media(max-width:740px){#gather-section,#craft-section{padding:17px 12px}#gather-content,#craft-content{grid-template-columns:minmax(0,1fr);gap:18px}.section-nav{flex-wrap:wrap}.section-nav a{min-width:0;flex:1;padding:9px 12px}}
+#gather-section,#craft-section,#boss-feed-section{max-width:1600px;margin:0 auto;padding:28px 32px}#gather-section[hidden],#craft-section[hidden]{display:none}#gather-content,#craft-content,#boss-feed-content{display:grid;grid-template-columns:345px minmax(0,1fr);gap:28px;align-items:start;min-width:0}.gather-config,.gather-config .skill-grid>*{min-width:0}.gather-skills{grid-template-columns:repeat(2,minmax(0,1fr))}.gather-skills svg{display:block;width:20px;height:20px}.gather-skills .selected{border-color:var(--gold);color:var(--gold)}.gather-config .number-field{margin:10px 0}.gather-config .potion select{width:150px}:is(.gather-stats,.boss-attribute-grid){--work-stat-min-width:128px}.gather-stats{grid-template-columns:repeat(5,minmax(var(--work-stat-min-width),1fr));overflow-x:auto}.gather-table th:not(:first-child),.gather-table td:not(:first-child){text-align:right}.gather-table .reward-detail>div{max-width:280px}#gather-results .gather-table .reward-detail>div,#craft-results .craft-table .reward-detail>div{max-width:230px}.gather-item{display:flex;justify-content:space-between;gap:12px}.gather-item span:first-child{text-align:left}.gather-config .import-status{white-space:pre-line;overflow-wrap:anywhere}@media(max-width:1050px){#gather-section,#craft-section,#boss-feed-section{padding:20px 18px}#gather-content,#craft-content,#boss-feed-content{grid-template-columns:300px minmax(0,1fr);gap:18px}}@media(max-width:740px){#gather-section,#craft-section,#boss-feed-section{padding:17px 12px}#gather-content,#craft-content,#boss-feed-content{grid-template-columns:minmax(0,1fr);gap:18px}.section-nav{flex-wrap:wrap}.section-nav a{min-width:0;flex:1;padding:9px 12px}}
 
 /* Mastery planner */
 #mastery-section{max-width:1800px;margin:0 auto;padding:28px 32px;min-width:0}
@@ -197,22 +197,36 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
 
 #rerun-combat,.rerun-simulation{width:auto;flex-shrink:0;white-space:nowrap}
 
-/* Viewport workspace for the five configuration/result pages. */
+/* Viewport workspace for configuration and results. */
 .scroll-information{min-width:0}
 .scroll-information .project-footer{width:100%;padding:22px 0 0;margin-top:24px}
 @media(min-width:741px){
  body:has(#app.split-scroll){overflow:hidden}
  #app.split-scroll{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
  #app.split-scroll>header{flex:0 0 auto}
- #app.split-scroll>:is(#combat-section,#gather-section,#craft-section,#enhance-section,#mastery-section){flex:1;min-height:0;width:100%;margin:0 auto;overflow:hidden}
+ #app.split-scroll>:is(#combat-section,#gather-section,#craft-section,#boss-feed-section,#enhance-section,#mastery-section){flex:1;min-height:0;width:100%;margin:0 auto;overflow:hidden}
  #app.split-scroll #combat-section{align-items:stretch}
- #app.split-scroll :is(#gather-content,#craft-content,#enhance-content,#mastery-content){height:100%;min-height:0;align-items:stretch}
+ #app.split-scroll :is(#gather-content,#craft-content,#boss-feed-content,#enhance-content,#mastery-content){height:100%;min-height:0;align-items:stretch}
  #app.split-scroll [data-scroll-column]{min-height:0;overflow-y:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable}
  #app.split-scroll .scroll-information{padding:2px 4px 4px}
 }
 @media(max-width:740px){
  .scroll-information{width:100%}
  .scroll-information .project-footer{padding-bottom:24px}
+ .gear-row{--gear-control-height:32px;grid-template-columns:minmax(0,1fr);row-gap:4px;margin-bottom:12px}
+ .gear-name>span{margin-bottom:4px}
+ .gear-mods{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:0}
+ .gear-row :is(.gear-name select,.gear-mods select,.enhance input){
+  min-width:0;width:100%;height:var(--gear-control-height);min-height:var(--gear-control-height);padding-block:4px;font-size:13px
+ }
+ .gear-mods .enhance{position:relative;display:block;border:0;background:none}
+ .gear-mods .enhance span{
+  position:absolute;inset-block:0;inset-inline-start:10px;display:grid;place-items:center;padding:0;pointer-events:none
+ }
+ .gear-mods .enhance input{
+  display:block;border:1px solid #3a4c53;background:#18272d;padding:4px 9px;padding-inline-start:26px
+ }
+ .gear-mods .enhance:has(input:disabled) span{opacity:.4}
 }
 
 .enemies td:first-child .reward-detail>div{margin-left:0;margin-right:0;font-weight:400;color:var(--muted)}
@@ -314,3 +328,52 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
 .activity-timing .loot-line{gap:6px}
 .activity-timing-breakdown{border-left:1px solid var(--muted);margin:3px 0 0 3px;padding-left:7px;min-width:0}
 .activity-timing-breakdown .loot-line>span:first-child{color:var(--muted)}
+
+/* Skill bosses use the common configuration and results workspace. */
+#boss-feed-section .potion select{width:150px}
+#boss-feed-section .import-status{white-space:pre-line;overflow-wrap:anywhere}
+.boss-fieldset{border:0;padding:0;margin:12px 0;min-width:0}
+.boss-fieldset legend{padding:0;color:var(--muted);font-size:12px}
+#boss-feed-character .skill-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.boss-config-field .micro{margin:2px 0 8px}
+#boss-feed-boss-badge{white-space:nowrap}
+.boss-attribute-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;min-width:0;margin:0 0 18px;overflow-x:auto}
+.boss-attribute-grid .stats{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(112px,1fr);gap:8px;margin:0}
+.boss-attribute-grid .stat{min-width:0;padding:10px 12px;gap:5px}
+.boss-attribute-grid .stat span{font-size:12px;line-height:1.35}
+.boss-attribute-grid .stat strong{font-size:clamp(22px,2.1vw,29px);line-height:1.18;overflow-wrap:anywhere}
+.boss-row-detail h3{font-size:13px;margin:0 0 8px}
+.boss-row-detail dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0}
+.boss-row-detail dt{color:var(--muted);font-size:11px}
+.boss-row-detail dd{margin:2px 0 0;font-size:12px;white-space:normal;font-variant-numeric:tabular-nums}
+.boss-comparison-heading{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 8px}
+#boss-feed-box-basis{color:var(--teal);font-size:11px;white-space:nowrap}
+.boss-filters{display:grid;gap:10px;padding-top:5px}
+.boss-filter-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;min-width:0}
+.boss-filter-row .check{margin:0}
+.boss-inline-field{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;color:var(--muted);font-size:12px}
+.boss-inline-field input{width:8rem}
+.boss-feed-table{min-width:660px}
+.boss-pagination{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:8px;padding:12px;color:var(--muted);font-size:12px}
+.boss-pagination .secondary{width:auto;max-width:80px;flex:none;padding:6px 10px;white-space:nowrap}
+.boss-pagination [role=status]{white-space:nowrap}
+.boss-pagination button:disabled{opacity:.5;cursor:default}
+@media(max-width:740px){
+ .boss-attribute-grid .stats{grid-auto-columns:minmax(var(--work-stat-min-width),1fr)}
+ .boss-pagination{gap:6px;padding:10px 6px}
+}
+.boss-feed-table>tbody>tr>th[scope=row]{color:#dbe4e5;letter-spacing:normal}
+.boss-feed-table>tbody>tr>td:nth-child(n+4),.boss-feed-table>thead th:nth-child(n+4){text-align:right}
+.boss-expand{display:inline-flex;align-items:baseline;gap:6px;text-align:left;color:inherit}
+.boss-expand .death-note{margin:3px 0 0}
+.boss-rarity{font-size:10px;color:#a5b8bc;margin-left:3px}
+.boss-rarity[data-rarity="1"]{color:#81c59b}
+.boss-rarity[data-rarity="2"]{color:#88bcf0}
+.boss-rarity[data-rarity="3"]{color:#c6a3e3}
+.boss-rarity[data-rarity="4"]{color:var(--gold)}
+.boss-feed-table .boss-detail-row>td{position:static;background:#132329;white-space:normal}
+.boss-row-detail{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:14px 18px;text-align:left}
+.boss-row-detail p{margin:5px 0}
+.boss-detail-notes{grid-column:1/-1}
+.boss-row-detail .boss-materials{min-width:0}
+.boss-row-detail .boss-materials :is(th,td){padding:5px;position:static;white-space:normal}

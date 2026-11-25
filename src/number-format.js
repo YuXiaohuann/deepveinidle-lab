@@ -2,6 +2,10 @@ export function formatOneDecimal(value, language) {
  return value.toLocaleString(language==='zh'?'zh-CN':'en',{minimumFractionDigits:1,maximumFractionDigits:1});
 }
 
+export function bonusPercent(bonus, language) {
+ return '+' + (bonus * 100).toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:2}) + '%';
+}
+
 export function formatUnitPrice(value, language) {
  return compactNumber(value)??value.toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:0});
 }

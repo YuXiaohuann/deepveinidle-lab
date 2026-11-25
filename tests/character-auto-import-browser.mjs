@@ -46,9 +46,6 @@ try{
   const settings=await page.evaluate(p=>JSON.parse(localStorage.getItem(`dvi-character-auto-import-${p}-v1`)),p);assert.equal(settings.config,true);assert.equal(settings.inventory,undefined);
   const imported=await status(p).innerText();
   assert.match(imported,/已导入/);
-  const masteryLine={combat:'精通：第 2 页（近战绑定）',gather:'精通：第 2 页（采矿绑定）',enhance:'精通：第 2 页（强化绑定）',craft:'精通：当前页'}[p];
-  if(masteryLine)assert.ok(imported.includes(masteryLine),imported);
-  else assert.doesNotMatch(imported,/精通：/);
   if(p==='craft')await page.evaluate(xp=>window.bridge.snapshot.player.skills.smithing=xp,game.levelXp(56));
   if(p==='craft'){
    await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await wait(p);
@@ -59,11 +56,21 @@ try{
   await page.selectOption('#language','en');await page.selectOption('#language','zh');
   await page.evaluate(()=>{window.respond();window.bridge.hold=false;});await wait(p);if(p==='craft')assert.equal((await stock()).build.levels.smithing,56);
   await page.selectOption('#language','en');await page.selectOption('#language','zh');assert.equal(await page.evaluate(()=>window.bridge.reads),baseline);
-  if(p==='gather'){
-   await page.locator('[data-gather-skill="fishing"]').click();await focus();await wait(p);
-   assert.match(await status(p).innerText(),/精通：当前页/);
-   await page.locator('[data-gather-skill="mining"]').click();await focus();await wait(p);
-   assert.match(await status(p).innerText(),/精通：第 2 页（采矿绑定）/);
+  if(p==='gather'||p==='combat'){
+   await flag(p,'config').uncheck();
+   const reads=await page.evaluate(()=>window.bridge.reads);
+   const rank=p==='gather'
+    ?()=>page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-gathering-v1')).masteries.xp)
+    :()=>page.evaluate(()=>JSON.parse(localStorage.getItem('dvi-simulator-v1')).state.masteries.xp);
+   const alternate=p==='gather'?'[data-gather-skill="fishing"]':'[data-preset="ranged"]';
+   const original=p==='gather'?'[data-gather-skill="mining"]':'[data-preset="melee"]';
+   assert.equal(await rank(),7);
+   await page.click(alternate);
+   assert.equal(await rank(),0);
+   await focus();
+   await page.click(original);
+   assert.equal(await rank(),7);
+   assert.equal(await page.evaluate(()=>window.bridge.reads),reads);
   }
   result.cases.push(`${p}: configuration option, no inventory option, independent persistence, automatic import, coalesced focus and redraw stability`);
  }
@@ -91,28 +98,44 @@ try{
  assert.equal((await stock()).build.masteries.xp,0);
  await focus();await wait('craft');
  assert.equal((await stock()).build.masteries.xp,4);
- await selectCraftSkill('smithing');await focus();await wait('craft');
+ const beforeSwitch=await page.evaluate(()=>window.bridge.reads);
+ await selectCraftSkill('smithing');
  assert.equal((await stock()).build.masteries.xp,7);
+ assert.equal(await page.evaluate(()=>window.bridge.reads),beforeSwitch);
  await page.evaluate(()=>{
   window.bridge.snapshot.capturedAt++;
   window.bridge.snapshot.player.masteryAway={};
  });
  await page.locator('#craft-import').click();await wait('craft');
  assert.equal((await stock()).build.masteries.xp,4);
- assert.match(await status('craft').innerText(),/绑定的精通页不可用，已使用当前页/);
+ assert.match(await status('craft').innerText(),/精通绑定不可用，已使用游戏当前设置/);
  await page.selectOption('#language','en');
- assert.match(await status('craft').innerText(),/The assigned mastery page is unavailable\. Used the active page\./);
+ assert.match(await status('craft').innerText(),/Some mastery bindings are unavailable\. Used the current in-game settings\./);
  await page.evaluate(()=>window.bridge.snapshot.player.masteryAway={2:{xp:7}});
  await page.locator('#craft-import').click();await wait('craft');
  assert.equal((await stock()).build.masteries.xp,7);
- result.cases.push('same capture reapplies after a skill change, stale response is discarded, and manual import uses the same page rules');
+ result.cases.push('stored masteries switch immediately, stale responses are discarded, and invalid bindings fall back');
  for(const width of [1440,390])for(const lang of ['zh','en']){
   await page.setViewportSize({width,height:1000});await page.selectOption('#language',lang);
-  assert.match(await status('craft').innerText(),lang==='zh'?/精通：第 2 页（锻造绑定）/:/Masteries: page 2 \(Smithing assignment\)/);
+  const imported=await status('craft').innerText();
+  assert.match(imported,lang==='zh'?/已导入/:/Imported/);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await page.locator('#craft-import-settings').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(out,`craft-${lang}-${width}.png`)});
  }
- result.cases.push('shared options and the mastery source are visible in Chinese/English desktop and 390px without page overflow');
+ await flag('craft','config').uncheck();
+ const craftXp=page.locator('[data-craft-field="masteries.xp"]');
+ await craftXp.evaluate(input=>input.closest('details').open=true);
+ await craftXp.fill('6.5');
+ await craftXp.blur();
+ assert.equal((await stock()).build.masteries.xp,13);
+ await selectCraftSkill('cooking');
+ assert.equal((await stock()).build.masteries.xp,4);
+ await page.reload();
+ await selectCraftSkill('smithing');
+ assert.equal((await stock()).build.masteries.xp,13);
+ assert.equal(await page.evaluate(()=>window.bridge.reads),0);
+ result.cases.push('shared options and capture time are visible in Chinese/English desktop and 390px without page overflow');
+ result.cases.push('manual mastery adjustments stay with the selected skill across reload');
  const collectionRequests=[];page.on('request',request=>{if(/\/src\/collection-/.test(request.url()))collectionRequests.push(request.url());});
  await page.evaluate(()=>localStorage.setItem('dvi-collection-v1','preserved-old-data'));
  for(const route of ['/collection','/collection/']){
