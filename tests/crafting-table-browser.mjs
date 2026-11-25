@@ -14,7 +14,9 @@ let base=process.argv[3],server,browser,page;const results={cases:[],errors:[]};
 try{
  if(!base){const socket=net.createServer();socket.listen(0,'127.0.0.1');await once(socket,'listening');const port=socket.address().port;await new Promise(r=>socket.close(r));server=spawn(process.execPath,['scripts/serve.mjs'],{env:{...process.env,PORT:String(port)},stdio:['ignore','pipe','pipe']});await once(server.stdout,'data');base=`http://127.0.0.1:${port}`;}
  browser=await chromium.launch({headless:true,executablePath:await browserPath()});
- const prices=priceDefaults();prices.preferences.autoImport=false;
+ const prices=priceDefaults(),capturedAt=Date.now()-1000;prices.preferences.autoImport=false;
+ prices.prices={20:{price:1000,locked:true,source:'manual',updatedAt:capturedAt,quoteCapturedAt:null},60:{price:1000,locked:true,source:'manual',updatedAt:capturedAt,quoteCapturedAt:null}};
+ prices.quotes={20:{ask:{value:500,capturedAt},bid:{value:2000,capturedAt}},60:{ask:{value:600,capturedAt},bid:{value:3000,capturedAt}}};
  const build=craftingDefaults();build.simulationHours=1;build.hotSetting='off';build.levels.cooking=20;build.levels.crafting=110;build.levels.smithing=110;
  const context=await browser.newContext({viewport:{width:1440,height:1000}});
  await context.addInitScript(({build,prices})=>{
@@ -38,6 +40,23 @@ try{
  assert.equal(await row('61:0').locator('td').nth(1).locator('summary').innerText(),compactNumber(result.xp*24)??(result.xp*24).toLocaleString('zh-CN',{maximumFractionDigits:2}));
  assert.equal(await row('61:0').locator('td').nth(3).locator('summary').innerText(),(result.extraTicks/result.elapsedTicks*100).toLocaleString('zh-CN',{minimumFractionDigits:1,maximumFractionDigits:1})+'%');
  results.cases.push('legacy build migrates despite invalid removed fields; no removed controls; seven columns; real Worker daily XP and extra time');
+ const materialsMode=page.locator('[data-craft-price-mode="materials"]'),productsMode=page.locator('[data-craft-price-mode="products"]');
+ assert.equal(await materialsMode.count(),1);assert.equal(await productsMode.count(),1);
+ assert.equal(await materialsMode.inputValue(),'global');assert.equal(await productsMode.inputValue(),'global');
+ assert.equal(await materialsMode.locator('option').count(),6);assert.equal(await productsMode.locator('option').count(),6);
+ const costDetail=row('61:0').locator('td').nth(5).locator('details'),valueDetail=row('61:0').locator('td').nth(6).locator('details');
+ await costDetail.locator('summary').click();await valueDetail.locator('summary').click();
+ assert.match(await costDetail.innerText(),/1\.00K/);assert.match(await valueDetail.innerText(),/1\.00K/);
+ const runsBeforeModes=await page.evaluate(()=>window.runs.length),profitBefore=await row('61:0').locator('td').nth(2).innerText();
+ await materialsMode.selectOption('ask');await productsMode.selectOption('bid');
+ assert.equal(await page.evaluate(()=>window.runs.length),runsBeforeModes);
+ assert.match(await costDetail.innerText(),/500/);assert.match(await valueDetail.innerText(),/3\.00K/);
+ assert.notEqual(await row('61:0').locator('td').nth(2).innerText(),profitBefore);
+ assert.deepEqual((await saved()).build.priceModes,{materials:'ask',products:'bid'});
+ await page.reload();await ready();
+ assert.equal(await page.locator('[data-craft-price-mode="materials"]').inputValue(),'ask');assert.equal(await page.locator('[data-craft-price-mode="products"]').inputValue(),'bid');
+ await page.selectOption('[data-craft-price-mode="materials"]','global');await page.selectOption('[data-craft-price-mode="products"]','global');
+ results.cases.push('material/product valuation modes revalue details and profit without rerunning, persist across reload and reset independently');
  await row('61:0').locator('td').nth(3).locator('summary').click();await row('61:0').locator('td').nth(4).locator('summary').click();
  await page.locator('[data-craft-sort="xp"]').click();assert.equal(await page.locator('[id="craft-61:0-timing"]').getAttribute('open'),'');
  for(const width of [1440,390])for(const language of ['zh','en']){

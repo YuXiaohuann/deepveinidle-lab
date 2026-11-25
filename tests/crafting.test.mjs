@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as game from '../src/upstream.js';
 import {START_TICK} from '../src/simulation.js';
-import {craftingDefaults,craftingTiers,normalizeCrafting,craftingJobs,craftingSkills,craftingMaterials,priceItems,craftingPlayer,craftingJobStats,craftingStats,importCrafting} from '../src/crafting-model.js';
+import {craftingDefaults,craftingTiers,normalizeCrafting,craftingJobs,craftingSkills,craftingMaterials,craftingPrice,priceItems,craftingPlayer,craftingJobStats,craftingStats,importCrafting} from '../src/crafting-model.js';
 import {createCraftingScenario,simulateCrafting,MAX_CRAFT_TICKS} from '../src/crafting-simulation.js';
 import {combatHot,combatHotWindows} from '../src/combat-hot.js';
 import {setItemPrice,priceDefaults} from '../src/item-prices.js';
@@ -32,6 +32,24 @@ test('materials and valuation enforce quantity and money bounds',()=>{
  const coal=craftingJobs.find(j=>j.inputs?.some(i=>i.qty>1));assert.throws(()=>craftingMaterials(coal,0,Number.MAX_SAFE_INTEGER),/quantityOverflow/);
  assert.throws(()=>priceItems({1:Number.MAX_SAFE_INTEGER+1},{}),/quantityOverflow/);
  assert.throws(()=>priceItems({1:2},setItemPrice(priceDefaults(),1,Number.MAX_SAFE_INTEGER).prices),/priceOverflow/);
+});
+test('page valuation modes prefer the selected quote, then global, vendor and zero',()=>{
+ const item=overrides=>({price:1000,vendorPrice:10,sellPrice:500,buyPrice:2000,avg7d:700,avg30d:800,...overrides});
+ const snapshot=overrides=>({getItem:()=>item(overrides)});
+ assert.deepEqual(craftingPrice(20,snapshot({}),'avg7d'),{price:700,fallback:false});
+ assert.deepEqual(craftingPrice(20,snapshot({}),'avg30d'),{price:800,fallback:false});
+ assert.deepEqual(craftingPrice(20,snapshot({}),'ask'),{price:500,fallback:false});
+ assert.deepEqual(craftingPrice(20,snapshot({}),'bid'),{price:2000,fallback:false});
+ assert.deepEqual(craftingPrice(20,snapshot({}),'vendor'),{price:10,fallback:false});
+ assert.deepEqual(craftingPrice(20,snapshot({sellPrice:null}),'ask'),{price:1000,fallback:false});
+ assert.deepEqual(craftingPrice(20,snapshot({sellPrice:null,price:null}),'ask'),{price:10,fallback:true});
+ assert.deepEqual(craftingPrice(20,snapshot({sellPrice:null,price:null,vendorPrice:null}),'ask'),{price:0,fallback:true});
+ assert.deepEqual(craftingPrice(20,snapshot({vendorPrice:null}),'vendor'),{price:1000,fallback:false});
+ assert.deepEqual(craftingPrice(20,snapshot({price:null}),'global'),{price:10,fallback:true});
+ assert.deepEqual(craftingPrice(316,snapshot({}),'ask'),{price:0,fallback:false});
+ assert.deepEqual(craftingPrice(20,{20:{price:null}},'ask'),{price:1,fallback:true});
+ assert.deepEqual(priceItems({20:2},snapshot({}),{mode:'ask'}),{value:1000,missing:[]});
+ assert.deepEqual(priceItems({20:2},snapshot({sellPrice:null,price:null,vendorPrice:null}),{mode:'ask'}),{value:0,missing:[20]});
 });
 for(const skill of craftingSkills)test(`${skill}: count-limited engine matches independent original offline XP, products, burning and banking`,()=>{
  const s=craftingDefaults();s.skill=skill;s.hotSetting='off';s.brews.elixir=2;s.masteries.xp=40;s.masteries.craft=10;s.perks.quick=5;s.house={...s.house,[{cooking:'range',smithing:'forge',fletching:'fletchrack',herblore:'herbrack',crafting:'loom'}[skill]]:5};
@@ -69,9 +87,9 @@ test('current-time hot windows are mapped to the crafting skill and change no ma
  assert.deepEqual(scenario.materials,{1:10,2:10});
 });
 test('character import uses shared protocol and retains failures and independent settings',()=>{
- const s=craftingDefaults();const p=craftingPlayer(s).player;p.skills.cooking=game.levelXp(40);p.equipment.pan=game.withRarity(360,2);p.house.range=8;p.houseFurniture.range={cell:0,slot:0};p.brews.elixir=p.lastTick+100;p.brewTier.elixir=2;
+ const s=craftingDefaults();s.priceModes={materials:'ask',products:'bid'};const p=craftingPlayer(s).player;p.skills.cooking=game.levelXp(40);p.equipment.pan=game.withRarity(360,2);p.house.range=8;p.houseFurniture.range={cell:0,slot:0};p.brews.elixir=p.lastTick+100;p.brewTier.elixir=2;
  const snapshot={version:2,capturedAt:Date.now(),player:p,worldTick:p.lastTick,worldBuffs:[]},result=importCrafting(s,snapshot);
- assert.equal(result.state.levels.cooking,40);assert.equal(result.state.gear.pan.id,360);assert.equal(result.state.gear.pan.tier,2);assert.equal(result.state.house.range,8);assert.equal(result.state.brews.elixir,2);assert.equal(result.state.hotSetting,'game');assert.equal(result.state.homeBank,0);
+ assert.equal(result.state.levels.cooking,40);assert.equal(result.state.gear.pan.id,360);assert.equal(result.state.gear.pan.tier,2);assert.equal(result.state.house.range,8);assert.equal(result.state.brews.elixir,2);assert.equal(result.state.hotSetting,'game');assert.equal(result.state.homeBank,0);assert.deepEqual(result.state.priceModes,{materials:'ask',products:'bid'});
  delete p.skills.smithing;const partial=importCrafting(result.state,snapshot);assert.ok(partial.warnings.includes('skills.smithing'));assert.equal(partial.state.levels.smithing,result.state.levels.smithing);
  assert.throws(()=>importCrafting(s,{...snapshot,version:1}),/invalidSnapshot/);
 });

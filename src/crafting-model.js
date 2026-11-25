@@ -16,13 +16,14 @@ export const craftingRooms=game.rooms.filter(r=>r.bonus.kind==='craftSpeed'&&cra
 export const craftingMasteries=game.masteries.filter(m=>['craft','xp','move'].includes(m.id));
 export const craftingPerks=game.perks.filter(p=>['pockets','quick','hands'].includes(p.id));
 export const craftingTiers=job=>Array.from({length:5},(_,tier)=>tier).filter(tier=>job.upgrade||game.recipeRarity(job,tier)===tier);
+export const craftingValuationModes=['global','avg7d','avg30d','ask','bid','vendor'];
 export const recipeKey=(jobId,tier)=>`${jobId}:${tier}`;
 export const validQuantity=value=>Number.isSafeInteger(value)&&value>=0;
 export const safeAdd=(a,b)=>{const value=a+b;if(!Number.isSafeInteger(value)||value<0)throw Error('quantityOverflow');return value;};
 const safeMultiply=(a,b)=>{const value=a*b;if(!Number.isSafeInteger(value)||value<0)throw Error('quantityOverflow');return value;};
 const integer=(v,min,max)=>Number.isFinite(Number(v))?Math.min(max,Math.max(min,Math.floor(Number(v)))):min;
 export function craftingDefaults(){return {
- simulationHours:24,skill:'cooking',levels:Object.fromEntries(craftingSkills.map(k=>[k,1])),gear:Object.fromEntries(craftingSlots.map(k=>[k,{id:0,tier:0,plus:0}])),
+ simulationHours:24,skill:'cooking',levels:Object.fromEntries(craftingSkills.map(k=>[k,1])),gear:Object.fromEntries(craftingSlots.map(k=>[k,{id:0,tier:0,plus:0}])),priceModes:{materials:'global',products:'global'},
  brews:Object.fromEntries(craftingPotions.map(p=>[p.kind,-1])),house:Object.fromEntries(craftingRooms.map(r=>[r.id,0])),masteries:Object.fromEntries(craftingMasteries.map(m=>[m.id,0])),
  perks:Object.fromEntries(craftingPerks.map(p=>[p.id,0])),guild:null,guildXp:0,weeklyXp:0,ironman:false,blessing:false,homeBank:0,hotSetting:'game',
 };}
@@ -35,6 +36,7 @@ export function normalizeCrafting(raw){
  for(const r of craftingRooms)s.house[r.id]=integer(raw.house?.[r.id]??0,0,game.houseLevelLimit);
  for(const m of craftingMasteries)s.masteries[m.id]=integer(raw.masteries?.[m.id]??0,0,game.masteryRankLimit);
  for(const p of craftingPerks)s.perks[p.id]=integer(raw.perks?.[p.id]??0,0,p.ranks);
+ for(const side of ['materials','products'])s.priceModes[side]=craftingValuationModes.includes(raw.priceModes?.[side])?raw.priceModes[side]:'global';
  const manual=normalizeManual(raw,{fractionalWorldXp:true});for(const k of ['guildXp','weeklyXp','ironman','blessing','hotSetting','simulationHours'])s[k]=manual[k];
  s.homeBank=game.world.banks.some(b=>b.id===Number(raw.homeBank))?Number(raw.homeBank):0;s.guild=readGuild(raw.guild);
  return s;
@@ -49,9 +51,21 @@ export function craftingMaterials(job,tier,count){
  return Object.fromEntries(game.recipeInputs(job,tier).map(i=>[i.itemId,safeMultiply(i.qty,count)]));
 }
 const money=v=>{if(!Number.isFinite(v)||v<0||v>Number.MAX_SAFE_INTEGER)throw Error('priceOverflow');return v;};
-export function priceItems(items,prices,{expected=false}={}){
+// A page-level source prefers its market quote, then the global effective price
+// (including manual and locked prices), then the shared vendor/zero fallback.
+export function craftingPrice(id,prices={},mode='global'){
+ id=Number(id);if(game.isPet(id))return {price:0,fallback:false};
+ if(mode==='global'||typeof prices.getItem!=='function')return valuationPrice(id,prices);
+ const item=prices.getItem(id);
+ const quote=mode==='avg7d'?item.avg7d:mode==='avg30d'?item.avg30d:mode==='ask'?item.sellPrice:mode==='bid'?item.buyPrice:mode==='vendor'?item.vendorPrice:null;
+ if(quote!==null&&quote!==undefined)return {price:quote,fallback:false};
+ if(item.price!==null&&item.price!==undefined)return {price:item.price,fallback:false};
+ if(item.vendorPrice!==null&&item.vendorPrice!==undefined)return {price:item.vendorPrice,fallback:true};
+ return {price:0,fallback:true};
+}
+export function priceItems(items,prices,{expected=false,mode='global'}={}){
  let value=0;const missing=[];
- for(const [id,n]of Object.entries(items)){if(!(expected?Number.isFinite(n)&&n>=0&&n<=Number.MAX_SAFE_INTEGER:validQuantity(n)))throw Error('quantityOverflow');const p=valuationPrice(Number(id),prices);value=money(value+money(n*p.price));if(n>0&&p.fallback)missing.push(Number(id));}
+ for(const [id,n]of Object.entries(items)){if(!(expected?Number.isFinite(n)&&n>=0&&n<=Number.MAX_SAFE_INTEGER:validQuantity(n)))throw Error('quantityOverflow');const p=craftingPrice(Number(id),prices,mode);value=money(value+money(n*p.price));if(n>0&&p.fallback)missing.push(Number(id));}
  return {value,missing};
 }
 export function craftingPlayer(raw){

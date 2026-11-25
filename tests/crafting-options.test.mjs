@@ -15,6 +15,8 @@ test('crafting XP fractions and ironman survive normalization and old storage',(
  const state=normalizeCrafting({weeklyXp:35.25,ironman:true});
  assert.equal(state.weeklyXp,35.25);assert.equal(craftingPlayer(state).player.ironman,true);
  assert.deepEqual(normalizeCrafting(JSON.parse(JSON.stringify(state))),state);
+ assert.deepEqual(normalizeCrafting({...state,priceModes:{materials:'ask',products:'bid'}}).priceModes,{materials:'ask',products:'bid'});
+ assert.deepEqual(normalizeCrafting({priceModes:{materials:'bad',products:null}}).priceModes,{materials:'global',products:'global'});
  assert.equal(normalizeCrafting({weeklyXp:1e9}).weeklyXp,1e7);
  for(const weeklyXp of [-1,Infinity,NaN])assert.equal(normalizeCrafting({weeklyXp}).weeklyXp,0);
 });

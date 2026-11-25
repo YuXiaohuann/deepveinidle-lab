@@ -68,6 +68,59 @@ test('recipe cost and value details show read-only prices',()=>{
 });
 
 
+test('toolbar offers independent material and product valuation modes',()=>{
+ for(const lang of ['zh','en']){
+  const p=page(lang);
+  const html=vm.runInContext(`priceModeSelect('materials',text('原料金额取值','Material valuation'))+priceModeSelect('products',text('成品金额取值','Product valuation'))`,p);
+  assert.equal((html.match(/<select /g)||[]).length,2);
+  assert.equal((html.match(/<option /g)||[]).length,12);
+  assert.match(html,/data-craft-price-mode="materials"/);assert.match(html,/data-craft-price-mode="products"/);
+  assert.match(html,lang==='zh'?/原料金额取值/:/Material valuation/);
+  assert.match(html,lang==='zh'?/成品金额取值/:/Product valuation/);
+  assert.match(html,/value="global" selected/);
+  assert.match(html,lang==='zh'?/全局物品价格/:/Global item price/);
+  assert.match(vm.runInContext('priceModeLabels().map(([,label])=>label).join("|")',p),lang==='zh'?/卖单价\|买单价\|商人价/:/Ask\|Bid\|Vendor price/);
+ }
+ assert.match(source,/class="craft-price-modes"/);assert.match(source,/<td colspan="7"/);
+ assert.match(source,/state\.priceModes\[el\.dataset\.craftPriceMode\]=el\.value/);
+});
+
+test('material and product modes independently revalue details, cost, value and profit',()=>{
+ const p=page();
+ vm.runInContext(`getSnapshot=()=>({getItem:id=>({price:1000,vendorPrice:10,sellPrice:id===20?500:600,buyPrice:id===20?2000:3000,avg7d:700,avg30d:800})});
+ state.priceModes={materials:'ask',products:'bid'};
+ const recipe=visibleJobs()[0];
+ rateCache.set(recipe.key,{signature:signature(recipe),result:{completed:1,xp:999.25,items:{60:1},consumed:{20:1}}});`,p);
+ let row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
+ assert.match(row,/-cost"><summary>500<\/summary>/);
+ assert.match(row,/-value"><summary>3\.00K<\/summary>/);
+ assert.match(row,/<td class="column-highlight">2\.50K<\/td>/);
+ assert.match(row,/20 · 普通 500<\/span><span>1<\/span>/);
+ assert.match(row,/60 · 普通 3\.00K<\/span><span>1<\/span>/);
+ vm.runInContext("state.priceModes.materials='global'",p);
+ row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
+ assert.match(row,/-cost"><summary>1\.00K<\/summary>/);
+ assert.match(row,/<td class="column-highlight">2\.00K<\/td>/);
+ assert.match(row,/20 · 普通 1\.00K<\/span><span>1<\/span>/);
+ vm.runInContext(`getSnapshot=()=>({getItem:id=>({price:null,vendorPrice:id===20?10:null,sellPrice:null,buyPrice:3000,avg7d:700,avg30d:800})})`,p);
+ row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
+ assert.match(row,/-cost"><summary>.*?10<\/summary>/);assert.match(row,/-cost"[^>]*>.*?aria-label="缺价"/);
+});
+
+test('sorting follows the selected product valuation mode',()=>{
+ const p=page();
+ const order=vm.runInContext(`(()=>{
+  const pair=visibleJobs().slice(0,2),ids=pair.map(p=>game.withRarity(p.job.output.itemId,p.tier));
+  getSnapshot=()=>({getItem:id=>({price:id===ids[0]?100:900,vendorPrice:0,sellPrice:id===ids[0]?100:900,buyPrice:id===ids[0]?5000:1000,avg7d:0,avg30d:0})});
+  sort='outputValue';direction='asc';
+  const globalOrder=sortedJobs().map(p=>p.key);
+  state.priceModes.products='bid';
+  const bidOrder=sortedJobs().map(p=>p.key);
+  return {a:globalOrder.indexOf(pair[0].key),b:globalOrder.indexOf(pair[1].key),c:bidOrder.indexOf(pair[0].key),d:bidOrder.indexOf(pair[1].key)};
+ })()`,p);
+ assert.ok(order.a<order.b);assert.ok(order.c>order.d);
+});
+
 test('upgrades stay in the seven-column table without extra recipe notes and display daily simulation results',()=>{
  for(const lang of ['zh','en']){
   const p=page(lang);vm.runInContext("state.skill='smithing';query='Colossus blade';state.levels.smithing=99",p);
