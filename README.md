@@ -6,6 +6,8 @@ Alice 制作的非官方 Deep Vein Idle 辅助工具，简称 DVI Lab，提供�
 
 [打开线上实验室](https://dvi-lab.pages.dev/) · [功能与设计](DESIGN.md) · [当前版本与待发布变更](docs/status.md)
 
+管理员可通过 `/usage` 查看按 UTC 汇总的使用统计。 [访问与查询规则](docs/modules/usage-statistics.md#使用统计页)
+
 ## 快速启动
 
 需要 Node.js 20+。运行网页无需安装开发依赖：

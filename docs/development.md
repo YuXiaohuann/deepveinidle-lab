@@ -10,6 +10,8 @@ node scripts/serve.mjs
 
 打开 [本机页面](http://127.0.0.1:4173)。服务仅监听本机，可通过 `PORT` 环境变量修改端口；支持 `/combat`、`/gather`、`/craft`、`/enhance`、`/mastery`、`/forecast`、`/formulas` 和调试页 `/debug`。调试页仅提供角色配置 JSON 导出、战斗／强化配置文件导入；完整角色快照捕获、导入、导出与模拟已在当前版本移除。
 
+`/usage` 可用静态服务检查页面入口和锁定界面。验证实际查询时用 `wrangler pages dev`、本机 `USAGE_DB` 和测试用 `USAGE_READ_TOKEN`，在本地数据库执行 `migrations/` 内的迁移。发布前浏览器检查会拦截统计查询并返回合成数据。 [使用统计页](modules/usage-statistics.md#使用统计页)
+
 功能修改默认运行相关测试；涉及共用逻辑、影响范围难以界定或专项检查发现问题时扩大范围，发布前按[发布流程](release.md)执行完整检查。专项示例：
 
 ```sh

@@ -1,6 +1,6 @@
 # 使用统计
 
-使用 Cloudflare 免费版 Pages Functions 和 D1，按 UTC 日统计实验室使用次数、活跃角色数和角色名单。一次页面加载后成功导入角色才计一次使用。统计在 D1 Console 查询，全站 Visits 继续使用现有 Web Analytics。部署状态见[当前状态](../status.md#已发布基线)。
+使用 Cloudflare 免费版 Pages Functions 和 D1，按 UTC 日统计实验室使用次数和活跃角色。一次页面加载后成功导入角色才计一次使用。管理员可在使用统计页或 D1 Console 查询，全站 Visits 继续使用现有 Web Analytics。部署状态见[当前状态](../status.md)。
 
 ## 上报规则
 
@@ -29,10 +29,18 @@ GROUP BY utc_date
 ORDER BY utc_date DESC
 ```
 
+## 使用统计页
+
+- 通过 `/usage` 或 `/usage/` 进入，菜单无入口。页面沿用实验室的中英文设置和窄屏布局。进入后输入管理员访问密钥解锁，密钥仅存在页面内存，可锁定页面或刷新清除。
+- 概览显示今天、近 7 天和近 30 天的活跃人数及会话数。时间窗按服务端 UTC 日期计算并包含今天，分别在整个时间窗内按 `(id, name)` 去重。会话数为窗口内上报行数。
+- 按完整角色名称查询每日会话数。查询忽略 ASCII 字母大小写，同名角色的会话计入同一天的合计。按 UTC 日期从新到旧显示，每次最多加载 30 个有记录的日期，可继续加载更早记录。
+- 统计数据只通过 `GET /api/usage-stats` 返回。请求使用 Bearer 密钥，服务端通过 Pages Secret `USAGE_READ_TOKEN` 校验。读取使用现有 `USAGE_DB`，以新索引支持角色名查询。数据响应不缓存，不返回原始会话 ID。原上报协议继续使用 `POST /api/usage`。
+
 ## 验收
 
 1. 验收手动及自动导入、跨页沿用会话、刷新后生成新会话、失败后沿用会话重试，以及预览或本机页面不自动上报。
 2. 用合成数据验收编码往返、非法请求拒绝、同一会话重复及并发请求只存一条、跨日重试保留原记录，以及不同会话的使用次数和活跃角色数。
 3. 预览验收使用独立 D1 库，生产绑定单独配置。线上浏览器验收拦截合成角色的统计请求。核对静态路由和现有计算仍正常。 [发布流程](../release.md)
+4. 统计页覆盖隐藏导航、双语桌面和窄屏、时间窗边界与跨日去重、角色名查询与翻页、空结果、错误反馈，以及无效密钥无法查询。
 
 按日均 1,000 次 Visits、每次平均 5 次上报估算，Functions 请求约为免费日额度的 5%。D1 以每次请求最多预算两行写入估算，约为免费日写入额度的 10%。实际用量按 Cloudflare 后台计量。 [Pages Functions 定价](https://developers.cloudflare.com/pages/functions/pricing/) · [D1 定价](https://developers.cloudflare.com/d1/platform/pricing/)

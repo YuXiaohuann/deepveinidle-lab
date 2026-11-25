@@ -46,6 +46,8 @@ pnpm release:verify --evidence .test-artifacts/release/candidate-check --package
 
 首次发布使用统计前，在 Cloudflare 分别创建预览和生产 D1 数据库，在各自的 D1 Console 执行[建表迁移](../migrations/0001_usage_sessions.sql)，再在 `dvi-lab` Pages 项目的 Preview 和 Production 环境各绑定对应数据库，绑定名均为 `USAGE_DB`。从仓库根目录运行 Wrangler Direct Upload，Wrangler 从该目录编译 `functions/`，并从发布包读取 `_routes.json`。线上 `release:verify` 用无写入的 GET 检查 `/api/usage` 返回 `405` 和 `Allow: POST`；浏览器验收拦截该上报。D1 写入专项使用本机或预览的测试库。 [使用统计](modules/usage-statistics.md) · [Pages D1 绑定](https://developers.cloudflare.com/pages/functions/bindings/#d1-databases)
 
+首次发布 `/usage` 页面前，在两套 D1 库执行[角色名索引迁移](../migrations/0002_usage_sessions_by_name.sql)，并在 Pages 各环境通过 **Settings → Variables and Secrets** 设置加密 Secret `USAGE_READ_TOKEN`。可用 `openssl rand -hex 32` 分别生成密钥。线上 `release:verify` 检查 `/api/usage-stats` 无密钥时返回空 `401`，浏览器验收使用合成数据。上线后可用相应环境的密钥打开 `/usage` 验证实际查询。 [Pages Secrets](https://developers.cloudflare.com/pages/functions/bindings/#secrets)
+
 认证有效时无需每次登录；Wrangler 明确报告认证失效后，才用 `npx wrangler login --scopes account:read user:read pages:write` 重新授权。既有部署及历史证据保留，旧项目不自动删除或重定向，不同域名配置不自动迁移。
 
 角色脚本版本见[当前状态](status.md#已发布基线)；升级与重新捕获要求、桥接、旧格式处理及捕获失败规则见[导入协议](technical.md#61-角色导入组件与-userscript-协议)，价格存储迁移见[全局物品价格](shared.md#导入策略与存储迁移)。
@@ -54,9 +56,9 @@ pnpm release:verify --evidence .test-artifacts/release/candidate-check --package
 
 | 阶段 | 检查范围与结果 |
 | --- | --- |
-| `release:check` | 完整测试、唯一完整独立原始计算对照、隔离重复提取与未知摘要拒绝、源码语法／文档引用／版本／路由定义，以及本机 17 路由、全部公开资源和八页双语两视口的 32 组浏览器验收。保存 `check.json`、五阶段完整日志、HTTP／浏览器结果、32 张截图与 `report.md`。 |
+| `release:check` | 完整测试、唯一完整独立原始计算对照、隔离重复提取与未知摘要拒绝、源码语法／文档引用／版本／路由定义，以及本机 19 路由、全部公开资源和九页双语两视口的 36 组浏览器验收。保存 `check.json`、五阶段完整日志、HTTP／浏览器结果、36 张截图与 `report.md`。 |
 | `release:package` | 核对同轮通过证据与完整候选输入，按下节白名单创建全新包目录，包清单保存在检查证据目录。 |
-| `release:verify` | 重新核对候选输入与包摘要，独立检查实际目标的 17 路由、路径保留、全部资源与来源清单、逐文件一致性、HTML 入口与双语版本，以及 32 组布局、独立滚动／键盘／滚轮／页脚与普通战斗完成。保存带目标 URL 的 `verify.json`、截图与报告。 |
+| `release:verify` | 重新核对候选输入与包摘要，独立检查实际目标的 19 路由、路径保留、全部资源与来源清单、逐文件一致性、HTML 入口与双语版本，以及 36 组布局、独立滚动／键盘／滚轮／页脚与普通战斗完成。保存带目标 URL 的 `verify.json`、截图与报告。 |
 
 独立计算验证须包含人工算例，不能再次调用同一函数生成预期值；完整对照已包含战斗子集，常规发布不叠加重跑。日期型原始对照文件继续作为历史证据保留。
 
@@ -80,7 +82,7 @@ HTML 一致性检查仅允许已知 analytics loader、Cloudflare Web／Pages An
 
 ### 发布包白名单
 
-静态发布包含 `index.html`、`_redirects`、`_routes.json`、`src/` 和 `vendor/`，保持模块 Worker 与资源路径。`_routes.json` 只把 `/api/usage` 交给 Functions。其中允许 js、css、svg、json，以及指定赞赏图片 `src/assets/appreciation.jpg`、公式专用目录 Markdown 和指定 markdown-it ESM／源码映射／许可证文件。`package.json` 包清单保存在证据目录，不放进发布包。
+静态发布包含 `index.html`、`_redirects`、`_routes.json`、`src/` 和 `vendor/`，保持模块 Worker 与资源路径。`_routes.json` 只把 `/api/usage` 和 `/api/usage-stats` 交给 Functions。其中允许 js、css、svg、json，以及指定赞赏图片 `src/assets/appreciation.jpg`、公式专用目录 Markdown 和指定 markdown-it ESM／源码映射／许可证文件。`package.json` 包清单保存在证据目录，不放进发布包。
 
 拒绝已存在的包目录、符号链接、隐藏文件、非白名单内容、缺失文件及过时证据。项目文档和验证证据不随生产或预览发布，页面不提供内部文档或报告链接。
 
