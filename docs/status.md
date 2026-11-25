@@ -6,21 +6,21 @@
 
 ## 已发布基线
 
-生产为 **1.11.0**，游戏资源 **1.0.1221**。角色 userscript **2.10.1**、桥接 **2.4**、数据协议 **2**。发布提交 `93b7f0a10fb84c3323f824f20fb7f08f1eeb4c86`。 [生产实验室](https://dvi-lab.pages.dev/) · [精确部署](https://1626b80b.dvi-lab.pages.dev/)
+生产为 **1.12.0**，游戏资源 **1.0.1221**。角色 userscript **2.10.1**、桥接 **2.4**、数据协议 **2**。发布提交 `ac2c20e35c1d878d38c30fadf06ca27f4079b1e8`。 [生产实验室](https://dvi-lab.pages.dev/) · [精确部署](https://138dd514.dvi-lab.pages.dev/)
 
-主导航在「精通」之后提供「技能首领」，可比较五个首领每 100 箱的投喂性价比。战斗、采集、制造和技能首领按技能读取并保存精通，技能首领一次导入即可填入五个首领的技能等级。战斗模拟在战斗页继续计算，离开时停止并保留已完成结果。 [投喂性价比](https://dvi-lab.pages.dev/boss-feed) · [页面设计](pages/boss-feed.md) · [导入精通规则](shared.md#导入精通页)
+精通规划的采集与制造目标默认使用静态估算算法，可切换到标准模拟，已完成方案显示当时使用的计算模式。战斗、采集、制造和技能首领页共用 SVG 搜索图标，页头物品价格齿轮垂直居中。 [正式精通页](https://dvi-lab.pages.dev/mastery) · [精通页面设计](pages/mastery.md#快速模式)
 
-生产通过 652 项单测、完整检查及打包，两个线上目标各通过 21 条路由、93 个公开资源和 40 组浏览器验收。 [1.11.0 发布报告](../reports/v1.11.0-release-2026-11-25.md) · [生产流水线](https://github.com/yukixz/deepveinidle-lab/actions/runs/45606002247)
+生产通过 655 项单测、完整检查及打包，两个线上目标各通过 21 条路由、95 个公开资源和 40 组浏览器验收。 [1.12.0 发布报告](../reports/v1.12.0-release-2026-11-25.md) · [生产流水线](https://github.com/yukixz/deepveinidle-lab/actions/runs/45637643924)
 
 <a id="已发布范围与本地待发布"></a>
 
 ## 本地待发布
 
-- 精通规划的采集与制造目标默认使用 work-time 快速估算，可切换到原模拟流程。已完成方案保留计算模式。 [精通页面设计](pages/mastery.md#快速模式)
+暂无已记录的待发布功能。
 
 ## Preview 与历史
 
-**1.11.0** 候选提交 `93b7f0a` 的 Preview 发布与验收通过。 [Preview 流水线](https://github.com/yukixz/deepveinidle-lab/actions/runs/45605014724) · [Preview 投喂性价比](https://preview.dvi-lab.pages.dev/boss-feed)
+**1.12.0** 候选提交 `ac2c20e` 的 Preview 发布与验收通过。 [Preview 流水线](https://github.com/yukixz/deepveinidle-lab/actions/runs/45637522710) · [Preview 精通](https://preview.dvi-lab.pages.dev/mastery)
 
 逐版发布、实施和调研证据统一从[报告索引](../reports/README.md)查阅；[验证归档](../reports/validation-history.md)保留更早记录，不作为当前规则或本次验证结果。个人调研已迁出项目，保留于本机私有的 `../deepveinidle-play/archives/` 下三组 `local-research-20261023/`、`local-research-20261027/`、`local-research-20261106/` 归档，不纳入源码或发布包。公开源码准备已将 13 个个人评估报告、真实角色复现输入及页面对照文件移出版本库，并移除公开报告中的对应个人读数。本地 6 个开发分支及发布工作树的历史已完成重写，保留 267 个提交；逐提交核对应用源码、测试及构建文件未变，文档引用和 Git 对象完整性检查通过，未重跑应用测试。完整项目及工作树备份已迁至 `../deepveinidle-play/backups/project-backup-20261106/`，包含个人资料，不可随源码分享。本次迁移的 149 个文件（含完整备份包）均按文件大小和 SHA-256 核验一致，迁出后原归档及备份目录已不存在；归档入口和校验清单位于私有目标目录。用户已手动强制推送；2026-11-06 只读核对远端仅有 `main`、无标签，远端 `main` 与本地脱敏提交 `ce96243` 一致。提交作者姓名／邮箱及主动公开的昵称、交流群、赞赏码未在此次个人评估清理中删除；截图此前仅抽查，未完成全部历史图片的逐张隐私复核。
 
