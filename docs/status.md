@@ -6,19 +6,19 @@
 
 ## 已发布基线
 
-生产为 **1.10.12**，游戏资源 **1.0.1221**。角色 userscript **2.10.1**、桥接 **2.4**、数据协议 **2**。发布提交 `80e31719e34658826ffb7d6db8c7ef25a4bd7dd4`。 [生产实验室](https://dvi-lab.pages.dev/) · [精确部署](https://24665482.dvi-lab.pages.dev/)
+生产为 **1.10.13**，游戏资源 **1.0.1221**。角色 userscript **2.10.1**、桥接 **2.4**、数据协议 **2**。发布提交 `1f75e2c98d6cde283757a44368a1f3de1c550387`。 [生产实验室](https://dvi-lab.pages.dev/) · [精确部署](https://54e52b89.dvi-lab.pages.dev/)
 
-本版按技能导入已绑定的精通页，统一指定的战斗、采集和制造数字格式，并将制造定价集中在全局物品价格弹窗。生产通过 639 项单测、完整检查及打包，两个线上目标各通过 17 条路由、75 个公开资源和 32 组浏览器验收。 [1.10.12 发布报告](../reports/v1.10.12-release-2026-11-23.md) · [生产流水线](https://github.com/yukixz/deepveinidle-lab/actions/runs/45134721972)
+隐藏的管理员使用统计页 `/usage` 已上线。生产通过 642 项单测、完整检查及打包，两个线上目标各通过 19 条路由、76 个公开资源和 36 组浏览器验收。线上接口拒绝缺失或无效密钥，浏览器解锁与查询使用合成数据验收。 [1.10.13 发布报告](../reports/v1.10.13-release-2026-11-25.md) · [生产流水线](https://github.com/yukixz/deepveinidle-lab/actions/runs/45532870455)
 
 <a id="已发布范围与本地待发布"></a>
 
 ## 本地待发布
 
-新增隐藏的 `/usage` 管理员统计页。SQLite 专项核对 UTC 时间窗、去重和按角色名翻页。本机 Wrangler Pages 与临时 D1 验证 19 条页面路由、原上报及受保护的查询接口。预览和生产尚未部署，发布前需配置查询密钥及角色名索引。 [使用统计页](modules/usage-statistics.md#使用统计页) · [发布流程](release.md)
+无待发布应用改动。
 
 ## Preview 与历史
 
-**1.10.12** 候选提交 `80e3171` 的 Preview 发布与验收通过。 [Preview 流水线](https://github.com/yukixz/deepveinidle-lab/actions/runs/45133832783) · [Preview 制造页](https://preview.dvi-lab.pages.dev/craft)
+**1.10.13** 候选提交 `1f75e2c` 的 Preview 发布与验收通过。 [Preview 流水线](https://github.com/yukixz/deepveinidle-lab/actions/runs/45532146245) · [Preview 统计页](https://preview.dvi-lab.pages.dev/usage)
 
 逐版发布、实施和调研证据统一从[报告索引](../reports/README.md)查阅；[验证归档](../reports/validation-history.md)保留更早记录，不作为当前规则或本次验证结果。个人调研已迁出项目，保留于本机私有的 `../deepveinidle-play/archives/` 下三组 `local-research-20261023/`、`local-research-20261027/`、`local-research-20261106/` 归档，不纳入源码或发布包。公开源码准备已将 13 个个人评估报告、真实角色复现输入及页面对照文件移出版本库，并移除公开报告中的对应个人读数。本地 6 个开发分支及发布工作树的历史已完成重写，保留 267 个提交；逐提交核对应用源码、测试及构建文件未变，文档引用和 Git 对象完整性检查通过，未重跑应用测试。完整项目及工作树备份已迁至 `../deepveinidle-play/backups/project-backup-20261106/`，包含个人资料，不可随源码分享。本次迁移的 149 个文件（含完整备份包）均按文件大小和 SHA-256 核验一致，迁出后原归档及备份目录已不存在；归档入口和校验清单位于私有目标目录。用户已手动强制推送；2026-11-06 只读核对远端仅有 `main`、无标签，远端 `main` 与本地脱敏提交 `ce96243` 一致。提交作者姓名／邮箱及主动公开的昵称、交流群、赞赏码未在此次个人评估清理中删除；截图此前仅抽查，未完成全部历史图片的逐张隐私复核。
 
