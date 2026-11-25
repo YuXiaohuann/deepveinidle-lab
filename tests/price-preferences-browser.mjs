@@ -30,7 +30,7 @@ try{
   await context.addInitScript(({saved,language})=>{if(!localStorage.getItem('dvi-item-prices-v1'))localStorage.setItem('dvi-item-prices-v1',JSON.stringify(saved));localStorage.setItem('dvi-simulator-v1',JSON.stringify({language}));},{saved,language});
   await context.route('https://deepveinidle.com/api/market/prices.json',async route=>{
    requests++;await new Promise(resolve=>release=resolve);
-   await route.fulfill({contentType:'application/json',body:JSON.stringify({game:'Deep Vein Idle',generatedAt:new Date(at+500).toISOString(),refreshSeconds:300,items:{1:{avg7d:115,avg30d:105,lowestSell:150,highestBuy:55,sellQty:20,buyQty:10},293:{avg7d:215,avg30d:205,lowestSell:250,highestBuy:140,sellQty:30,buyQty:15}}})});
+   await route.fulfill({contentType:'application/json',body:JSON.stringify({game:'Deep Vein Idle',generatedAt:new Date(at+500).toISOString(),refreshSeconds:300,items:{1:{avg7d:115,avg30d:105,lowestSell:150,highestBuy:55,sellQty:20,buyQty:10,vol7d:1234,vol30d:5678},293:{avg7d:215,avg30d:205,lowestSell:250,highestBuy:140,sellQty:30,buyQty:15,vol7d:0,vol30d:0}}})});
   });
   await page.goto(base+'/forecast');await page.locator('#item-prices-open').click();
   const panel=page.locator('#price-import-settings');
@@ -95,7 +95,7 @@ try{
   await page.locator('#price-import-reset').click();assert.equal(await page.locator('[data-price-category="resources"][value=""]').isChecked(),true);assert.equal(await apiPrice(1),115);assert.equal(await apiPrice(2),0);
   assert.equal(await page.locator('[data-price-category="all"][value="avg7d"]').isChecked(),true);
   await choose('all','avg30d');assert.equal(await apiPrice(1),105);
-  const fields=await page.evaluate(async()=>(await import('/src/price-service.js')).getItem(1));assert.equal(fields.avg7d,115);assert.equal(fields.avg30d,105);
+  const fields=await page.evaluate(async()=>(await import('/src/price-service.js')).getItem(1));assert.equal(fields.avg7d,115);assert.equal(fields.avg30d,105);assert.equal(fields.volume7d,1234);assert.equal(fields.volume30d,5678);
   await page.reload();await page.locator('#item-prices-open').click();await expand();assert.equal(await apiPrice(1),105);assert.equal(await page.locator('[data-price-category="all"][value="avg30d"]').isChecked(),true);
   await page.screenshot({path:path.join(directory,`restored-average-${language}-${width}.png`)});
   const layout=await page.locator('#item-prices-dialog').evaluate(el=>({client:el.clientWidth,scroll:el.scrollWidth}));assert.ok(layout.scroll<=layout.client+1,JSON.stringify(layout));

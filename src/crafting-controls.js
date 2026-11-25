@@ -7,7 +7,7 @@ import {translatedName,translatedItemName} from './i18n.js';
 import {masteryValue,masteryRank} from './model.js';
 import {slotItems,gatheringGear} from './gathering-model.js';
 import {getSnapshot,subscribe} from './price-service.js';
-import {compactNumber,formatOneDecimal,formatUnitPrice} from './number-format.js';
+import {compactNumber,formatCount,formatOneDecimal,formatUnitPrice} from './number-format.js';
 import {registerCharacterUpdates,characterImportPanel,probeCharacter,importStatusText} from './import-controls.js';
 import {worldBuffWarningText} from './world-buffs.js';
 import {randomSimulationSeed} from './simulation-seed.js';
@@ -71,6 +71,43 @@ function itemLines(items,prices,mode){
   return `<div class="gather-item"><span>${esc(itemLabel(id))}${unitPrice}</span><span>${format(quantity)}</span></div>`;
  }).join('')||text('无','None');
 }
+function volumeInfo(prices,id){
+ try{const item=prices.getItem(Number(id)),status=item.market?.status??{};return {value:item.volume7d??null,status:status.volume7d??'unread'};}
+ catch{return {value:null,status:'invalid'};}
+}
+function volumeText(value,status){
+ if(status==='invalid'||value===null||value===undefined)return '—';
+ return formatCount(value,language);
+}
+function marketPrice(value){return value===null||value===undefined?'—':formatUnitPrice(value,language);}
+function marketTime(value){return value?new Date(value).toLocaleString(language==='zh'?'zh-CN':'en'):'—';}
+function volumeCell(prices,id){
+ const volume=volumeInfo(prices,id),value=volumeText(volume.value,volume.status);
+ const title=volume.status==='unread'?text('未读取行情','Quote not read'):volume.status==='invalid'?text('行情异常','Invalid quote'):'';
+ return `<td${title?` title="${esc(title)}"`:''}>${value}</td>`;
+}
+function marketBlock(id,prices){
+ const item=prices.getItem(Number(id)),status=item.market?.status??{};
+ const metrics=[
+  [text('7天成交量','7-day volume'),volumeText(item.volume7d,status.volume7d)],
+  [text('30天成交量','30-day volume'),volumeText(item.volume30d,status.volume30d)],
+  [text('7天均价','7-day average'),marketPrice(item.avg7d)],
+  [text('30天均价','30-day average'),marketPrice(item.avg30d)],
+  [text('在售数量','Quantity for sale'),volumeText(item.sellQuantity,status.sellQuantity)],
+  [text('求购数量','Quantity wanted'),volumeText(item.buyQuantity,status.buyQuantity)],
+  [text('最低卖价','Lowest ask'),marketPrice(item.sellPrice)],
+  [text('最高买价','Highest bid'),marketPrice(item.buyPrice)]
+ ];
+ return `<div class="market-block"><div class="market-heading">${text('市场','Market')}</div><div class="market-grid">${metrics.map(([label,value])=>`<span class="market-cell"><span>${label}</span><span>${value}</span></span>`).join('')}</div><div class="market-time">${text('行情时间','Quote time')} ${marketTime(item.market?.generatedAt)}</div></div>`;
+}
+function productLines(items,prices,mode){
+ return Object.entries(items).map(([key,quantity])=>{
+  const id=Number(key);
+  const {price,fallback}=craftingPrice(id,prices,mode);
+  const unitPrice=game.isPet(id)?'':` ${warn(fallback?[id]:[])}${formatUnitPrice(price,language)}`;
+  return `<div class="gather-item"><span>${esc(itemLabel(id))}${unitPrice}</span><span>${format(quantity)}</span></div>${marketBlock(id,prices)}`;
+ }).join('')||text('无','None');
+}
 function selectedRateJobs(){
  return craftingJobs.filter(job=>job.skill===state.skill&&(!group||job.group===group))
   .flatMap(job=>craftingTiers(job).filter(tier=>selectedTiers.has(tier))
@@ -87,25 +124,27 @@ function signature(recipe){
  const skill=recipe.job.skill;return JSON.stringify({simulationHours:state.simulationHours,tier:recipe.tier,level:state.levels[skill],tool:state.gear[craftingToolSlots[skill]],mount:state.gear.mount,workEquipment:['shield','helmet','body','legs'].map(k=>state.gear[k]),brews:state.brews,house:craftingRooms.filter(r=>r.bonus.skill===skill).map(r=>[r.id,state.house[r.id]]),masteries:state.masteries,perks:{pockets:state.perks.pockets,quick:state.perks.quick,hands:skill==='cooking'?state.perks.hands:0},guildXp:state.guildXp,weeklyXp:state.weeklyXp,ironman:state.ironman,blessing:state.blessing,homeBank:state.homeBank,hotSetting:state.hotSetting,clock:state.hotSetting==='current'?clock:null});
 }
 function sortedJobs(){
- const metric=p=>{if(sort==='levelReq')return p.job.levelReq;try{const r=rateFor(p)?.result,prices=getSnapshot(),modes=state.priceModes;return {xp:r?.xp,completed:r?.completed,movingRatio:r?.elapsedTicks>0?r.extraTicks/r.elapsedTicks:undefined,materialValue:priceItems(craftingMaterials(p.job,p.tier,1),prices,{mode:modes.materials}).value,outputValue:priceItems({[game.withRarity(p.job.output.itemId,p.tier)]:p.job.output.qty},prices,{mode:modes.products}).value,profit:r?priceItems(r.items,prices,{expected:true,mode:modes.products}).value-priceItems(r.consumed,prices,{mode:modes.materials}).value:undefined}[sort];}catch{return undefined;}};
+ const metric=p=>{if(sort==='levelReq')return p.job.levelReq;try{const r=rateFor(p)?.result,prices=getSnapshot(),modes=state.priceModes;return {xp:r?.xp,completed:r?.completed,movingRatio:r?.elapsedTicks>0?r.extraTicks/r.elapsedTicks:undefined,materialValue:priceItems(craftingMaterials(p.job,p.tier,1),prices,{mode:modes.materials}).value,outputValue:priceItems({[game.withRarity(p.job.output.itemId,p.tier)]:p.job.output.qty},prices,{mode:modes.products}).value,volume:volumeInfo(prices,game.withRarity(p.job.output.itemId,p.tier)).value,profit:r?priceItems(r.items,prices,{expected:true,mode:modes.products}).value-priceItems(r.consumed,prices,{mode:modes.materials}).value:undefined}[sort];}catch{return undefined;}};
  return visibleJobs().sort((a,b)=>{const x=metric(a),y=metric(b);if(x===undefined)return y===undefined?String(a.job.id).localeCompare(String(b.job.id))||a.tier-b.tier:1;if(y===undefined)return -1;return (x-y)*(direction==='asc'?1:-1)||String(a.job.id).localeCompare(String(b.job.id))||a.tier-b.tier;});
 }
-function headers(){const day=text('天','day');return [[text('配方','Recipe'),'levelReq'],[text('经验','XP')+'/'+day,'xp'],[text('利润','Profit')+'/'+day,'profit'],[text('额外耗时','Extra time'),'movingRatio'],[text('制造次数','Crafts')+'/'+day,'completed'],[text('单次材料成本','Material cost / craft'),'materialValue'],[text('单次产物价值','Product value / craft'),'outputValue']].map(([label,key])=>`<th aria-sort="${sort===key?(direction==='asc'?'ascending':'descending'):'none'}"><button class="sort-header" data-craft-sort="${key}">${label} <span class="sort-arrow">${sort===key?(direction==='asc'?'↑':'↓'):'↕'}</span></button></th>`).join('');}
+function headers(){const day=text('天','day');return [[text('配方','Recipe'),'levelReq'],[text('经验','XP')+'/'+day,'xp'],[text('利润','Profit')+'/'+day,'profit'],[text('额外耗时','Extra time'),'movingRatio'],[text('制造次数','Crafts')+'/'+day,'completed'],[text('单次材料成本','Material cost / craft'),'materialValue'],[text('单次产物价值','Product value / craft'),'outputValue'],[text('7天成交量','7-day volume'),'volume']].map(([label,key])=>`<th aria-sort="${sort===key?(direction==='asc'?'ascending':'descending'):'none'}"><button class="sort-header" data-craft-sort="${key}">${label} <span class="sort-arrow">${sort===key?(direction==='asc'?'↑':'↓'):'↕'}</span></button></th>`).join('');}
 function recipeRow(recipe){
  const {job,tier,key}=recipe,locked=state.levels[job.skill]<job.levelReq;
  const recipeInfo=[[text('单次产量','Output per craft'),format(job.output.qty)],[text('基础经验 / 次','Base XP / craft'),format(job.xp)],...(job.burn?[[text('安全等级','No-burn level'),job.burn.safeAtLevel]]:[])].map(([label,value])=>detailLine(label,value)).join('');
  const lead=`<tr><td class="column-highlight">${detail(`${key}-recipe`,`<span class="enemy-name"><span><strong>${esc(name(job.name))} · ${rarities()[tier]}</strong><small>${text('所需等级','Level')} ${job.levelReq}${locked?`<span class="craft-level-warning">${errorText('levelTooLow')}</span>`:''}</small></span></span>`,recipeInfo)}</td>`;
 
+ const productId=game.withRarity(job.output.itemId,tier);let volumeHtml='<td>—</td>';
+ try{volumeHtml=volumeCell(getSnapshot(),productId);}catch{}
  try{
   const prices=getSnapshot(),modes=state.priceModes;
-  const materials=craftingMaterials(job,tier,1),cost=priceItems(materials,prices,{mode:modes.materials}),products={[game.withRarity(job.output.itemId,tier)]:job.output.qty},value=priceItems(products,prices,{mode:modes.products}),entry=rateFor(recipe),r=entry?.result,factor=24/state.simulationHours;
+  const materials=craftingMaterials(job,tier,1),cost=priceItems(materials,prices,{mode:modes.materials}),products={[productId]:job.output.qty},value=priceItems(products,prices,{mode:modes.products}),entry=rateFor(recipe),r=entry?.result,factor=24/state.simulationHours;
   const preview=craftingJobStats(state,job),workInfo=detailLine(text('平均制造耗时','Average crafting time'),formatOneDecimal(preview.seconds,language)+' '+text('秒','s'))+detailLine(text('每刻完成概率','Completion chance per tick'),preview.chance===null?text('固定耗时，无随机完成判定','Fixed duration; no random completion check'):formatOneDecimal(preview.chance*100,language)+'%');
-  const unitValues=`<td>${detail(`${key}-cost`,warn(cost.missing)+formatResult(cost.value),itemLines(materials,prices,modes.materials))}</td><td>${detail(`${key}-value`,warn(value.missing)+formatResult(value.value),itemLines(products,prices,modes.products))}</td>`;
+  const unitValues=`<td>${detail(`${key}-cost`,warn(cost.missing)+formatResult(cost.value),itemLines(materials,prices,modes.materials))}</td><td>${detail(`${key}-value`,warn(value.missing)+formatResult(value.value),productLines(products,prices,modes.products))}</td>`;
   const label=locked?errorText('levelTooLow'):entry?.error?errorText(entry.error):r?.error?errorText(r.error):text('计算中…','Calculating…');
   const output=r?priceItems(r.items,prices,{expected:true,mode:modes.products}):null,consumed=r?priceItems(r.consumed,prices,{mode:modes.materials}):null;
   const profit=r?output.value-consumed.value:0,missing=r?[...output.missing,...consumed.missing]:[];
-  return lead+`<td class="column-highlight">${r&&!r.error?detail(`${key}-xp`,formatResult(r.xp*factor),detailLine(text('平均单次经验','Average XP per action'),r.completed>0?formatOneDecimal(r.xp/r.completed,language):'—')):label}</td><td class="column-highlight">${r&&!r.error?warn(missing)+formatResult(profit*factor):label}</td><td>${r&&!r.error?(r.elapsedTicks>0?detail(`${key}-timing`,formatOneDecimal(r.extraTicks/r.elapsedTicks*100,language)+'%',timingDetails(r,language,text('制造耗时','Crafting time'))+detailLine(text('初始仓库','Starting depot'),r.homeBank)+detailLine(text('回仓次数','Deposits'),format(r.deposits??0))):'—'):label}</td><td>${r&&!r.error?detail(`${key}-completed`,format(r.completed*factor),workInfo):label}</td>`+unitValues+'</tr>';
- }catch(error){return lead+['column-highlight','column-highlight','hourly-muted','hourly-muted','hourly-muted','hourly-muted'].map(style=>`<td class="${style}">${esc(errorText(error.message))}</td>`).join('')+'</tr>';}
+  return lead+`<td class="column-highlight">${r&&!r.error?detail(`${key}-xp`,formatResult(r.xp*factor),detailLine(text('平均单次经验','Average XP per action'),r.completed>0?formatOneDecimal(r.xp/r.completed,language):'—')):label}</td><td class="column-highlight">${r&&!r.error?warn(missing)+formatResult(profit*factor):label}</td><td>${r&&!r.error?(r.elapsedTicks>0?detail(`${key}-timing`,formatOneDecimal(r.extraTicks/r.elapsedTicks*100,language)+'%',timingDetails(r,language,text('制造耗时','Crafting time'))+detailLine(text('初始仓库','Starting depot'),r.homeBank)+detailLine(text('回仓次数','Deposits'),format(r.deposits??0))):'—'):label}</td><td>${r&&!r.error?detail(`${key}-completed`,format(r.completed*factor),workInfo):label}</td>`+unitValues+volumeHtml+'</tr>';
+ }catch(error){return lead+['column-highlight','column-highlight','hourly-muted','hourly-muted','hourly-muted','hourly-muted'].map(style=>`<td class="${style}">${esc(errorText(error.message))}</td>`).join('')+volumeHtml+'</tr>';}
 }
 function craftingProgress(){
  const message=workerError?errorText(workerError):text('正在计算','Calculating')+(progress?` · ${progress.completed}/${progress.total}`:'…');
@@ -115,7 +154,7 @@ function renderResults({keepToolbar=false}={}){
  const host=document.getElementById('craft-results');if(!host)return;
  const stats=craftingStats(state),jobs=sortedJobs();
  const groups=[...new Set(craftingJobs.filter(j=>j.skill===state.skill).map(j=>j.group))];if(group&&!groups.includes(group))groups.push(group);
- replaceResults(host,`<div class="result-heading"><div><span class="eyebrow">CRAFTING OVERVIEW</span><h2>${text('制造属性','Crafting stats')}</h2></div><span class="style-badge">${skillName(state.skill)}</span></div><div class="stats gather-stats">${[[text('技能等级','Skill level'),format(stats.level)],[text('制造速度加成','Craft speed bonus'),format(stats.speedBonus*100,2)+'%'],[text('经验加成','XP bonus'),format(stats.xpBonus*100,2)+'%'],[text('移动速度','Movement speed'),format(stats.moveSpeed,2)+'×'],[text("背包格子",'Inventory slots'),format(stats.capacity)]].map(([label,v])=>`<div class="stat"><span>${label}</span><strong>${v}</strong></div>`).join('')}</div><section id="craft-recipes-panel" class="panel enemies"><div class="enemies-heading simulation-heading craft-recipe-heading"><div class="craft-recipe-title"><h2>${text('配方选择','Recipe selection')}</h2></div>${craftingProgress()}</div><div class="toolbar craft-toolbar"><div class="craft-search-filters"><div class="search-wrap"><span>⌕</span><input id="craft-search" type="search" value="${esc(query)}" placeholder="${text('搜索配方名称（中 / 英）','Search recipes in English or Chinese')}" aria-label="${text('搜索制造配方','Search crafting recipes')}"></div><select id="craft-group" aria-label="${text('配方分类','Recipe group')}">${options([['',text('全部分类','All groups')],...groups.map(g=>[g,name(g)])],group)}</select></div>${rarityFilters()}<button id="craft-rerun" class="secondary rerun-simulation">${text('重新模拟','Rerun simulation')}</button><div class="craft-price-modes">${priceModeSelect('materials',text('原料金额取值','Material valuation'))}${priceModeSelect('products',text('成品金额取值','Product valuation'))}</div></div><p id="craft-notice" class="table-note" role="status"></p><div class="table-scroll"><table class="gather-table craft-table"><thead><tr>${headers()}</tr></thead><tbody>${jobs.length?jobs.map(recipeRow).join(''):`<tr><td colspan="7" class="empty-results">${text('没有匹配的配方','No matching recipes')}</td></tr>`}</tbody></table></div><p id="craft-method-note" class="table-note">${methodNote()}</p></section>`,keepToolbar);
+ replaceResults(host,`<div class="result-heading"><div><span class="eyebrow">CRAFTING OVERVIEW</span><h2>${text('制造属性','Crafting stats')}</h2></div><span class="style-badge">${skillName(state.skill)}</span></div><div class="stats gather-stats">${[[text('技能等级','Skill level'),format(stats.level)],[text('制造速度加成','Craft speed bonus'),format(stats.speedBonus*100,2)+'%'],[text('经验加成','XP bonus'),format(stats.xpBonus*100,2)+'%'],[text('移动速度','Movement speed'),format(stats.moveSpeed,2)+'×'],[text("背包格子",'Inventory slots'),format(stats.capacity)]].map(([label,v])=>`<div class="stat"><span>${label}</span><strong>${v}</strong></div>`).join('')}</div><section id="craft-recipes-panel" class="panel enemies"><div class="enemies-heading simulation-heading craft-recipe-heading"><div class="craft-recipe-title"><h2>${text('配方选择','Recipe selection')}</h2></div>${craftingProgress()}</div><div class="toolbar craft-toolbar"><div class="craft-search-filters"><div class="search-wrap"><span>⌕</span><input id="craft-search" type="search" value="${esc(query)}" placeholder="${text('搜索配方名称（中 / 英）','Search recipes in English or Chinese')}" aria-label="${text('搜索制造配方','Search crafting recipes')}"></div><select id="craft-group" aria-label="${text('配方分类','Recipe group')}">${options([['',text('全部分类','All groups')],...groups.map(g=>[g,name(g)])],group)}</select></div>${rarityFilters()}<button id="craft-rerun" class="secondary rerun-simulation">${text('重新模拟','Rerun simulation')}</button><div class="craft-price-modes">${priceModeSelect('materials',text('原料金额取值','Material valuation'))}${priceModeSelect('products',text('成品金额取值','Product valuation'))}</div></div><p id="craft-notice" class="table-note" role="status"></p><div class="table-scroll"><table class="gather-table craft-table"><thead><tr>${headers()}</tr></thead><tbody>${jobs.length?jobs.map(recipeRow).join(''):`<tr><td colspan="8" class="empty-results">${text('没有匹配的配方','No matching recipes')}</td></tr>`}</tbody></table></div><p id="craft-method-note" class="table-note">${methodNote()}</p></section>`,keepToolbar);
  bindResults();renderNotice();
 }
 function bindResults(){

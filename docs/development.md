@@ -22,7 +22,7 @@ node --test tests/enhancement.test.mjs tests/enhancement-controls.test.mjs
 node --test tests/*.test.mjs
 ```
 
-物品价格协议与命令测试为 `tests/price-protocol.test.mjs`、`tests/price-service.test.mjs`，官方接口解析见 `tests/market-import.test.mjs`。运行 `node tests/price-refactor-browser.mjs` 验证八项数据、全市场挂单总量、强化方案覆盖与清空，以及价格消费者页面导航；输出位于 `.test-artifacts/price-refactor/protocol/`。沿用市场价格浏览器专项，需要本机端口和 Chrome 进程权限，不能替代完整发布验收。协议见[物品价格模块](modules/item-prices.md)。
+物品价格协议与命令测试为 `tests/price-protocol.test.mjs`、`tests/price-service.test.mjs`，官方接口解析见 `tests/market-import.test.mjs`。运行 `node tests/price-refactor-browser.mjs` 验证十项数据、全市场挂单总量与成交量、强化方案覆盖与清空，以及价格消费者页面导航；输出位于 `.test-artifacts/price-refactor/protocol/`。沿用市场价格浏览器专项，需要本机端口和 Chrome 进程权限，不能替代完整发布验收。协议见[物品价格模块](modules/item-prices.md)。
 
 重新提取原始计算代码时，安装开发依赖后执行：
 
@@ -104,7 +104,7 @@ node --test tests/mastery.test.mjs tests/mastery-controls.test.mjs tests/mastery
 
 模拟配置专项：`node --test tests/work-simulation-settings.test.mjs` 验证时长规范化、旧存档、角色导入保留时长及制造实际窗口。`node tests/work-simulation-settings-browser.mjs [输出目录] [目标网址]` 验证双语桌面／390px 的整数小时输入、固定每天展示、热门日程、导入、刷新、重置及旧 Worker 隔离；默认输出 `.test-artifacts/work-settings/settings/`，提供目标网址时不启动本机服务。使用合成角色消息与真实工作 Worker，截图需审阅，不代替完整发布验收。
 
-`node --test tests/crafting-display.test.mjs` 验证配方列序、品质、固定每天折算、额外耗时与排序、制造次数取整、经验明细与异常行。浏览器专项使用 `node tests/gathering-table-browser.mjs [输出目录] [目标网址]`、`node tests/crafting-table-browser.mjs [输出目录] [目标网址]`，需要本机监听和 Chrome；默认分别输出至 `.test-artifacts/gathering-table/`、`.test-artifacts/crafting-table/`，复验时指定独立目录以保留历史证据。覆盖双语桌面／390px、排序、经验展开、采集／制造次数展开的起始耗时与完成概率（升级为固定耗时）、制造名称与品质不折行、固定每天展示及周期选择器移除、等待／失败、配方只读单价和全局价格联动、原料／成品金额取值下拉框（六项取值、按侧重估、刷新保存与不重跑模拟）；正常计算使用真实 Worker，异常场景使用受控消息，不替代完整发布验收。
+`node --test tests/crafting-display.test.mjs` 验证配方列序、品质、固定每天折算、额外耗时与排序、制造次数取整、经验明细与异常行。浏览器专项使用 `node tests/gathering-table-browser.mjs [输出目录] [目标网址]`、`node tests/crafting-table-browser.mjs [输出目录] [目标网址]`，需要本机监听和 Chrome；默认分别输出至 `.test-artifacts/gathering-table/`、`.test-artifacts/crafting-table/`，复验时指定独立目录以保留历史证据。覆盖双语桌面／390px、排序、经验展开、采集／制造次数展开的起始耗时与完成概率（升级为固定耗时）、制造名称与品质不折行、固定每天展示及周期选择器移除、等待／失败、配方只读单价和全局价格联动、原料／成品金额取值下拉框（六项取值、按侧重估、刷新保存与不重跑模拟）、7天成交量列（0／未读取、全品质合计）及产物市场明细；正常计算使用真实 Worker，异常场景使用受控消息，不替代完整发布验收。
 
 上述表格专项及下述标题栏／按需任务专项传入目标网址时不启动本机服务，直接检查指定目标；本机通过不能代替生产验证。
 

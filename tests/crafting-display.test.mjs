@@ -7,10 +7,10 @@ import * as game from '../src/upstream.js';
 import * as model from '../src/crafting-model.js';
 import * as store from '../src/crafting-store.js';
 import {valuationPrice} from '../src/item-prices.js';
-import {compactNumber,formatOneDecimal,formatUnitPrice} from '../src/number-format.js';
+import {compactNumber,formatCount,formatOneDecimal,formatUnitPrice} from '../src/number-format.js';
 const source=fs.readFileSync(new URL('../src/crafting-controls.js',import.meta.url),'utf8');
 function page(language='zh'){
- const context=vm.createContext({timingDetails,compactNumber,formatOneDecimal,formatUnitPrice,registerCharacterUpdates:()=>({read(){}}),...model,...store,game,valuationPrice,localStorage:{getItem(){return null;},removeItem(){}},translatedName:n=>n,translatedItemName:id=>String(id),getSnapshot:()=>({getItem:()=>({price:null,vendorPrice:0})}),subscribe(){}});
+ const context=vm.createContext({timingDetails,compactNumber,formatCount,formatOneDecimal,formatUnitPrice,registerCharacterUpdates:()=>({read(){}}),...model,...store,game,valuationPrice,localStorage:{getItem(){return null;},removeItem(){}},translatedName:n=>n,translatedItemName:id=>String(id),getSnapshot:()=>({getItem:()=>({price:null,vendorPrice:0})}),subscribe(){}});
  vm.runInContext(source.replaceAll('import.meta.url',"'http://localhost/'").replace(/^import .*;\n/gm,'').replaceAll('export function','function'),context);
  vm.runInContext(`language=${JSON.stringify(language)};state.levels.cooking=100;[1,2,3,4].forEach(t=>selectedTiers.add(t));`,context);return context;
 }
@@ -18,8 +18,8 @@ test('all five rarities appear independently, with XP and profit first and no qu
  for(const lang of ['zh','en']){
   const p=page(lang),rows=vm.runInContext('visibleJobs()',p);assert.equal(rows.length,40);
   assert.deepEqual(Array.from(rows.slice(0,5),r=>r.tier),[0,1,2,3,4]);
-  const headers=vm.runInContext('headers()',p);assert.equal((headers.match(/<th /g)||[]).length,7);
-  const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);assert.equal((row.match(/<td[ >]/g)||[]).length,7);
+  const headers=vm.runInContext('headers()',p);assert.equal((headers.match(/<th /g)||[]).length,8);
+  const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);assert.equal((row.match(/<td[ >]/g)||[]).length,8);
   assert.doesNotMatch(row,/<select/);
   assert.ok(headers.indexOf(lang==='zh'?'经验/天':'XP/day')<headers.indexOf(lang==='zh'?'单次材料成本':'Material cost / craft'));
   assert.match(row,lang==='zh'?/ · 普通<\/strong><small>所需等级 1/:/ · Normal<\/strong><small>Level 1/);
@@ -81,7 +81,7 @@ test('toolbar offers independent material and product valuation modes',()=>{
   assert.match(html,lang==='zh'?/全局物品价格/:/Global item price/);
   assert.match(vm.runInContext('priceModeLabels().map(([,label])=>label).join("|")',p),lang==='zh'?/卖单价\|买单价\|商人价/:/Ask\|Bid\|Vendor price/);
  }
- assert.match(source,/class="craft-price-modes"/);assert.match(source,/<td colspan="7"/);
+ assert.match(source,/class="craft-price-modes"/);assert.match(source,/<td colspan="8"/);
  assert.match(source,/state\.priceModes\[el\.dataset\.craftPriceMode\]=el\.value/);
 });
 
@@ -121,13 +121,39 @@ test('sorting follows the selected product valuation mode',()=>{
  assert.ok(order.a<order.b);assert.ok(order.c>order.d);
 });
 
-test('upgrades stay in the seven-column table without extra recipe notes and display daily simulation results',()=>{
+test('volume column shows exact product volume, zero, unread and the market block',()=>{
+ const p=page();
+ const setSnapshot=(volume,status)=>vm.runInContext(`getSnapshot=()=>({getItem:id=>({price:1000,vendorPrice:0,sellPrice:8,buyPrice:4,sellQuantity:10,buyQuantity:20,avg7d:14,avg30d:16,volume7d:id===60?${volume}:0,volume30d:id===60?5678:0,market:{generatedAt:Date.UTC(2026,10,25,3,0),status:{volume7d:id===60?${JSON.stringify(status)}:'available',volume30d:'available',sellQuantity:'available',buyQuantity:'available'}}})})`,p);
+ setSnapshot(1234,'available');vm.runInContext(`state.priceModes={materials:'global',products:'global'};const recipe=visibleJobs()[0];rateCache.set(recipe.key,{signature:signature(recipe),result:{completed:1,xp:1,items:{60:1},consumed:{20:1}}});`,p);
+ let row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
+ assert.match(row,/<td>1\.23K<\/td>/);assert.match(row,/7天成交量/);assert.match(row,/30天成交量/);assert.match(row,/在售数量/);assert.match(row,/求购数量/);assert.match(row,/最低卖价/);assert.match(row,/最高买价/);assert.match(row,/行情时间/);
+ assert.equal((row.match(/class="market-cell"/g)||[]).length,8);
+ const order=['7天成交量','30天成交量','7天均价','30天均价','在售数量','求购数量','最低卖价','最高买价'].map(label=>row.indexOf(label));
+ assert.ok(order.every((index,i)=>index>=0&&(i===0||index>order[i-1])));
+ setSnapshot(0,'available');
+ row=vm.runInContext('recipeRow(visibleJobs()[0])',p);assert.match(row,/<td>0<\/td>/);
+ setSnapshot(null,'unread');
+ row=vm.runInContext('recipeRow(visibleJobs()[0])',p);assert.match(row,/<td title="未读取行情">—<\/td>/);
+});
+test('sorting by 7-day volume uses the output full item ID',()=>{
+ const p=page();
+ const order=vm.runInContext(`(()=>{
+  const pair=visibleJobs().slice(0,2),volumes=new Map(pair.map((p,i)=>[game.withRarity(p.job.output.itemId,p.tier),i?200:100]));
+  getSnapshot=()=>({getItem:id=>({volume7d:volumes.get(id)??0,market:{status:{volume7d:'available'}}})});
+  sort='volume';direction='desc';
+  const keys=sortedJobs().map(p=>p.key);
+  return [keys.indexOf(pair[1].key),keys.indexOf(pair[0].key)];
+ })()`,p);
+ assert.deepEqual(Array.from(order),[0,1]);
+});
+
+test('upgrades stay in the eight-column table without extra recipe notes and display daily simulation results',()=>{
  for(const lang of ['zh','en']){
   const p=page(lang);vm.runInContext("state.skill='smithing';query='Colossus blade';state.levels.smithing=99",p);
   const recipes=vm.runInContext('visibleJobs()',p);assert.equal(recipes.length,5);
   vm.runInContext(`const recipe=visibleJobs()[0];rateCache.set(recipe.key,{signature:signature(recipe),result:{completed:12,xp:22800,items:{350:12},consumed:{114:12}}});`,p);
   const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
-  assert.equal((row.match(/<td[ >]/g)||[]).length,7);
+  assert.equal((row.match(/<td[ >]/g)||[]).length,8);
   assert.doesNotMatch(row,/即时升级 · 底装 \+0|Instant upgrade · base \+0|gear-stats/);
   assert.match(row,/<summary>22\.80K<\/summary>/);assert.match(row,lang==='zh'?/平均单次经验/:/Average XP per action/);
  }
@@ -140,10 +166,10 @@ test('daily craft count rounds for display while sorting retains raw counts',()=
  assert.equal(vm.runInContext('rateFor(visibleJobs()[0]).result.completed',p),241.6);
 });
 
-test('valuation errors preserve all seven cells, highlighted XP/profit and highlighted recipe name',()=>{
+test('valuation errors preserve all eight cells, highlighted XP/profit and highlighted recipe name',()=>{
  const p=page();vm.runInContext("priceItems=()=>{throw Error('priceOverflow')}",p);
  const row=vm.runInContext('recipeRow(visibleJobs()[0])',p);
- assert.equal((row.match(/<td[ >]/g)||[]).length,7);assert.equal((row.match(/class="column-highlight"/g)||[]).length,3);
+ assert.equal((row.match(/<td[ >]/g)||[]).length,8);assert.equal((row.match(/class="column-highlight"/g)||[]).length,3);
 });
 
 test('XP details use unrounded run totals, include burnt attempts and handle zero completed actions',()=>{

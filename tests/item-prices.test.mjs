@@ -85,6 +85,15 @@ test('missing and malformed observations do not zero, erase or silently reuse ca
  assert.equal(validateMarketSnapshot(snapshot({9999999:{bid:side(1)}})).invalid,1);
  assert.throws(()=>importItemPrices(s,{version:9,quotes:{},invalid:0}),/invalidMarketData/);assert.equal(s.prices[1].price,30);
 });
+test('market volumes validate as nonnegative integers and merge independently of prices',()=>{
+ const state=policy(priceDefaults(),{resources:'off'}),imported=importItemPrices(state,snapshot({1:{volume7d:side(0),volume30d:side(12)}}));
+ assert.equal(imported.state.quotes[1].volume7d.value,0);assert.equal(imported.state.quotes[1].volume30d.value,12);
+ const parsed=validateMarketSnapshot(snapshot({1:{volume7d:side(5),volume30d:side(9)},2:{volume7d:{value:-1,capturedAt:at}},3:{volume7d:{value:1.5,capturedAt:at}},4:{volume7d:{invalid:true,capturedAt:at}}}));
+ assert.equal(parsed.quotes[1].volume7d.value,5);assert.equal(parsed.quotes[2],undefined);assert.equal(parsed.quotes[3],undefined);
+ assert.equal(parsed.quotes[4].volume7d.invalid,true);assert.equal(parsed.invalid,4);
+ const merged=mergeQuotes({1:{volume7d:{value:5,capturedAt:at-1}}},parsed.quotes);
+ assert.equal(merged[1].volume7d.value,5);assert.equal(merged[1].volume30d.value,9);assert.equal(merged[4].volume7d.invalid,true);
+});
 test('quotes and imported prices cannot move backwards, including fallback',()=>{
  let s=policy(priceDefaults(),{resources:'bid'},true);s=importItemPrices(s,snapshot({1:{bid:side(25)}})).state;
  const older={value:null,capturedAt:at-100};const r=importItemPrices(s,snapshot({1:{bid:older}}));assert.equal(r.state.prices[1].price,25);assert.equal(r.stats.stale,1);

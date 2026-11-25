@@ -12,6 +12,7 @@ const monsterValuables=new Set(game.monsters.map(monster=>game.baseItemId(monste
 export const priceOptionCategories=[...priceCategories,{key:monsterValuablesCategory,zh:'贵重品（怪物的稀有掉落）',en:'Valuables (monster rare drops)'}];
 export function itemPriceCategory(id){return monsterValuables.has(game.baseItemId(id))?monsterValuablesCategory:itemCategory(id);}
 export const marketPriceModes=['avg7d','avg30d','ask','bid'];
+export const marketVolumeModes=['volume7d','volume30d'];
 const priceModes=[...marketPriceModes,'vendor','off'];
 const priceSources=['manual',...marketPriceModes,'vendor'];
 const legacyPriceModes=['ask','bid','vendor','off'];
@@ -101,13 +102,18 @@ export function validateMarketSnapshot(raw){
     else {entry[side].quantityInvalid=true;invalid++;}
    }
   }
+  for(const side of marketVolumeModes){
+   if(!Object.hasOwn(q,side))continue;const v=q[side];
+   if(!record(v)||!time(v.capturedAt)||!(v.invalid===true||Number.isSafeInteger(v.value)&&v.value>=0)){invalid++;continue;}
+   entry[side]=v.invalid===true?{invalid:true,capturedAt:v.capturedAt}:{value:v.value,capturedAt:v.capturedAt};
+  }
   if(Object.keys(entry).length)quotes[key]=entry;else invalid++;
  }
  return {quotes,invalid};
 }
 export function mergeQuotes(current,incoming){
  const quotes=structuredClone(current);
- for(const [id,q]of Object.entries(incoming))for(const side of marketPriceModes)if(q[side]&&(!quotes[id]?.[side]||q[side].capturedAt>=quotes[id][side].capturedAt)){
+ for(const [id,q]of Object.entries(incoming))for(const side of [...marketPriceModes,...marketVolumeModes])if(q[side]&&(!quotes[id]?.[side]||q[side].capturedAt>=quotes[id][side].capturedAt)){
   quotes[id]??={};quotes[id][side]={...q[side]};
  }
  return quotes;

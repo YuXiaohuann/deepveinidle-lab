@@ -49,6 +49,15 @@ test('existing valuation fallback and enhancement local overrides work with prot
  enhancement.shardPrice=null;assert.equal(resolveEnhancementPrices(enhancement,snapshot).shardPrice,null);
 });
 
+test('volumes expose zero, unread and invalid states independently of price averages',()=>{
+ const state=priceDefaults();state.quotes=market({1:{vol7d:0,vol30d:123},2:{vol7d:null},3:{}}).quotes;
+ const snapshot=createPriceSnapshot(normalizePriceState(JSON.parse(JSON.stringify(state))));
+ const first=snapshot.getItem(1);assert.equal(first.volume7d,0);assert.equal(first.volume30d,123);assert.equal(first.market.status.volume7d,'available');assert.equal(first.market.status.volume30d,'available');
+ const second=snapshot.getItem(2);assert.equal(second.volume7d,null);assert.equal(second.market.status.volume7d,'invalid');assert.equal(second.market.status.volume30d,'unread');
+ const third=snapshot.getItem(3);assert.equal(third.volume7d,null);assert.equal(third.market.status.volume7d,'unread');
+ assert.equal(snapshot.getItem(1).avg7d,null);
+ state.quotes[1].volume7d.value=9;assert.equal(first.volume7d,0);assert.throws(()=>{first.volume7d=1;},TypeError);
+});
 test('average prices are independent immutable fields with persisted status and generation time',()=>{
  const state=priceDefaults();state.quotes=market({1:{avg7d:73.25,avg30d:62},2:{avg7d:null,avg30d:'bad'}}).quotes;
  const snapshot=createPriceSnapshot(normalizePriceState(JSON.parse(JSON.stringify(state))));

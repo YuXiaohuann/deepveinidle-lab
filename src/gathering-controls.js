@@ -1,5 +1,5 @@
 import {timingDetails} from './activity-timing.js';
-import {compactNumber,formatOneDecimal,formatUnitPrice} from './number-format.js';
+import {compactNumber,formatCount,formatOneDecimal,formatUnitPrice} from './number-format.js';
 import {getSnapshot,subscribe} from './price-service.js';
 import {valueCombatRewards,valuationPrice} from './item-prices.js';
 import * as game from './upstream.js';
@@ -54,26 +54,56 @@ const detailLine=(label,value)=>`<div class="loot-line"><span>${label}</span><sp
 function detail(id,summary,html){return `<details class="reward-detail" id="gather-${id}"><summary>${summary}</summary><div>${html}</div></details>`;}
 function priceWarning(missing){return missing?.length?`<span title="${text('部分物品未设置价格，采用商人价格计算','Some items have no configured price; vendor prices are used')}" aria-label="${text('缺价','Unset price')}">⚠</span> `:'';}
 function priceNote(id){if(game.isPet(Number(id)))return '';const p=valuationPrice(id,getSnapshot());return (p.fallback?`<span title="${text('部分物品未设置价格，采用商人价格计算','Some items have no configured price; vendor prices are used')}">⚠</span> `:'')+formatUnitPrice(p.price,language);}
+function marketCount(value,status){return status==='available'&&value!==null&&value!==undefined?formatCount(value,language):'—';}
+function marketPrice(value){return value===null||value===undefined?'—':formatUnitPrice(value,language);}
+function marketTime(value){return value?new Date(value).toLocaleString(language==='zh'?'zh-CN':'en'):'—';}
+function marketNote(id){
+ const item=getSnapshot().getItem(Number(id)),status=item.market?.status??{};
+ const metrics=[
+  [text('7天成交量','7-day volume'),marketCount(item.volume7d,status.volume7d)],
+  [text('30天成交量','30-day volume'),marketCount(item.volume30d,status.volume30d)],
+  [text('7天均价','7-day average'),marketPrice(item.avg7d)],
+  [text('30天均价','30-day average'),marketPrice(item.avg30d)],
+  [text('在售数量','Quantity for sale'),marketCount(item.sellQuantity,status.sellQuantity)],
+  [text('求购数量','Quantity wanted'),marketCount(item.buyQuantity,status.buyQuantity)],
+  [text('最低卖价','Lowest ask'),marketPrice(item.sellPrice)],
+  [text('最高买价','Highest bid'),marketPrice(item.buyPrice)]
+ ];
+ return `<div class="market-note"><div class="market-grid">${metrics.map(([label,value])=>`<span class="market-cell"><span>${label}</span><span>${value}</span></span>`).join('')}</div><div class="market-time">${text('行情时间','Quote time')} ${marketTime(item.market?.generatedAt)}</div></div>`;
+}
+function mainProductVolume(job){
+ const base=game.baseItemId(job.output?.itemId??0);if(!base)return {value:null,complete:false};
+ const tiers=game.itemSupportsRarity(base)?[0,1,2,3,4]:[0];let value=0,known=false,complete=true;
+ for(const tier of tiers){
+  try{
+   const item=getSnapshot().getItem(game.encode(game.withRarity(base,tier),0));
+   if(item.market?.status?.volume7d==='available'){value+=item.volume7d;known=true;}
+   else complete=false;
+  }catch{complete=false;}
+ }
+ return {value:known?value:null,complete};
+}
+function volumeSummary(job){const volume=mainProductVolume(job);if(volume.value===null)return {text:'—',title:''};return {text:(volume.complete?'':'≥')+formatCount(volume.value,language),title:volume.complete?text('主产物全品质7天成交量','All main-item qualities, 7-day volume'):text('部分品质无行情，合计仅含已读取品质','Some qualities have no quote; total includes available data only')};}
 function expectedQuantity(value){if(value===0)return '0';if(value<.1)return '1/'+format(1/value,0);const digits=value>=10?0:2;return value.toLocaleString(language==='zh'?'zh-CN':'en',{minimumFractionDigits:digits,maximumFractionDigits:digits});}
 function methodNote(){return (state.discardGathered?text('已开启丢弃采集物：产物及收入仅计入已存放与期末未丢弃的机会期望，已丢弃部分不估值；特殊奖励按各自规则保留。','Discard gathering is enabled: items and income include only stored and end-of-run retained opportunity expectations. Discarded items have no value; special rewards follow their own rules.')+'<br>':'')+text('采集次数、额外耗时、经验、回仓及偷窃被抓和停顿来自<strong class="simulation-caveat">原始模拟</strong>；金币按本次模拟成功次数计算，主要产物与额外掉落为基于本次模拟机会的<strong class="simulation-caveat">数学期望</strong>，活动礼盒仍按原始模拟统计；收入结合物品价格推算，利润扣除按所选时长计算的药剂成本。','Gather counts, extra time, XP, banking, catches and stuns come from the <strong class="simulation-caveat">original simulation</strong>; coins use successful actions in this run, while main products and extra drops are <strong class="simulation-caveat">mathematical expectations</strong> based on its opportunities. Event boxes still use simulated counts. Income uses item prices; profit deducts potion costs based on the selected duration.');}
-function itemDetail(items){return Object.entries(items).sort((a,b)=>Number(a[0])-Number(b[0])).map(([id,qty])=>`<div class="gather-item"><span>${esc(translatedItemName(Number(id),language))} · ${rarities()[game.itemTier(Number(id))]} ${priceNote(id)}</span><span>${expectedQuantity(rewardAmount(qty,'day',state.simulationHours))}</span></div>`).join('')||text('无','None');}
+function itemDetail(items,{market=false}={}){return Object.entries(items).sort((a,b)=>Number(a[0])-Number(b[0])).map(([id,qty])=>`<div class="gather-item"><span>${esc(translatedItemName(Number(id),language))} · ${rarities()[game.itemTier(Number(id))]} ${priceNote(id)}</span><span>${expectedQuantity(rewardAmount(qty,'day',state.simulationHours))}</span></div>${market?marketNote(Number(id)):''}`).join('')||text('无','None');}
 function potionDetail(items){return Object.entries(items).map(([id,qty])=>`<div class="loot-line"><span>${esc(translatedItemName(Number(id),language))} · ${rarities()[game.itemTier(Number(id))]} ${priceNote(id)}</span><span>${format(rewardAmount(qty,'day',state.simulationHours),1)}</span></div>`).join('')||'0.0';}
 function siteDetails(job,result){return result?detailLine(text('初始仓库','Starting depot'),result.homeBank):'';}
 const periodSuffix=()=>text('/天','/day');
-function headers(){const suffix=periodSuffix(),entries=[[text('任务','Task'),'levelReq'],[text('经验','XP')+suffix,'xp'],[text('收入','Income')+suffix,'totalIncome'],[text('利润','Profit')+suffix,'profit'],[text('额外耗时','Extra time'),'movingRatio'],[text('采集次数','Gathering')+suffix,'completed'],[text('金币','Coins')+suffix,'coins'],[text('主要产物','Main items')+suffix,'normalValue'],[text('额外掉落','Extra drops')+suffix,'rareValue'],[text('消耗品','Consumables')+suffix,'potionCost']];
+function headers(){const suffix=periodSuffix(),entries=[[text('任务','Task'),'levelReq'],[text('经验','XP')+suffix,'xp'],[text('收入','Income')+suffix,'totalIncome'],[text('利润','Profit')+suffix,'profit'],[text('额外耗时','Extra time'),'movingRatio'],[text('采集次数','Gathering')+suffix,'completed'],[text('金币','Coins')+suffix,'coins'],[text('主要产物','Main items')+suffix,'normalValue'],[text('7天成交量','7-day volume'),'volume'],[text('额外掉落','Extra drops')+suffix,'rareValue'],[text('消耗品','Consumables')+suffix,'potionCost']];
  return entries.map(([label,key])=>`<th aria-sort="${sort===key?(direction==='asc'?'ascending':'descending'):'none'}"><button class="sort-header" data-gather-sort="${key}">${label} <span class="sort-arrow">${sort===key?(direction==='asc'?'↑':'↓'):'↕'}</span></button></th>`).join('');
 }
 function renderStatus(){const worldWarnings=(status?.warnings??[]).filter(w=>w==='worldBuffs.upgrade'||w==='weeklyXp.reset'),warnings=(status?.warnings??[]).filter(w=>!worldWarnings.includes(w));const el=document.getElementById('gather-import-status');if(el){el.textContent=importStatusText(language,status,busy)+(warnings.length?`\n${text('以下字段未导入，已保留原值：','These fields were not imported; previous values were kept: ')}${[...new Set(warnings.map(field=>({skills:text('技能','Skills'),equipment:text('工具与装备','Tools & equipment'),brews:text('药水','Potions'),brewBuckets:text('药水','Potions'),brewTier:text('药水','Potions'),house:text('家园','Home'),masteries:text('精通','Masteries'),perks:text('特权','Perks'),guildBonus:text('公会经验','Guild XP'),guild:text('公会','Guild'),blessing:text('祝福','Blessing'),weeklyXp:text('世界增益经验','World buff XP'),homeBank:text('初始仓库','Starting depot'),ironman:text('铁人模式','Ironman')}[field.split('.')[0]]??text('角色配置','Character build'))))].join(text('、',', '))}`:'')+worldWarnings.map(w=>'\n'+worldBuffWarningText(language,w)).join('');document.getElementById('gather-import').disabled=busy;}}
 function valuedResult(result){try{return valueCombatRewards(result,getSnapshot());}catch(error){return result?{...result,normalValue:null,rareValue:null,totalIncome:null,profit:null,potionCost:null,valuationError:error.message}:result;}}
 function renderResults({tableOnly=false}={}){const host=document.getElementById('gather-results');if(!host)return;rememberDetails('#gather-results');
  const jobs=selectedGatheringJobs(state).filter(j=>`${j.name} ${translatedName(j.name,'zh')}`.toLowerCase().includes(query.toLowerCase()));
- const rows=sortEnemies(jobs,sort,direction,j=>sort==='levelReq'?j.levelReq:valuedResult(current?.results.get(j.id))?.[sort]);
- const rewardRow=job=>{const r=valuedResult(current?.results.get(job.id)),error=current?.errors.get(job.id),locked=state.levels[job.skill]<job.levelReq,preview=gatheringJobStats(state,job);const workInfo=[[text('平均采集耗时','Average gathering time'),formatOneDecimal(preview.seconds,language)+' '+text('秒','s')],[text('每刻完成概率','Completion chance per tick'),formatOneDecimal(preview.chance*100,language)+'%']].map(([label,value])=>detailLine(label,value)).join('');
+ const rows=sortEnemies(jobs,sort,direction,j=>sort==='levelReq'?j.levelReq:sort==='volume'?mainProductVolume(j).value:valuedResult(current?.results.get(j.id))?.[sort]);
+ const rewardRow=job=>{const r=valuedResult(current?.results.get(job.id)),error=current?.errors.get(job.id),locked=state.levels[job.skill]<job.levelReq,preview=gatheringJobStats(state,job);const workInfo=[[text('平均采集耗时','Average gathering time'),formatOneDecimal(preview.seconds,language)+' '+text('秒','s')],[text('每刻完成概率','Completion chance per tick'),formatOneDecimal(preview.chance*100,language)+'%']].map(([label,value])=>detailLine(label,value)).join('');const volume=volumeSummary(job),volumeCell=`<td${volume.title?` title="${esc(volume.title)}"`:''}>${volume.text}</td>`;
  let cells;
- if(locked||!r){const label=locked?text('等级不足','Level too low'):error?esc(errorText(error)):current?.error?esc(errorText(current.error)):'…';cells=`<td class="column-highlight">${label}</td><td class="column-highlight">${label}</td><td class="column-highlight">${label}</td><td class="hourly-muted">${locked?label:detail(`${job.id}-sites`,label,siteDetails(job))}</td>${Array.from({length:5},()=>`<td class="hourly-muted">${label}</td>`).join('')}`;}
+ if(locked||!r){const label=locked?text('等级不足','Level too low'):error?esc(errorText(error)):current?.error?esc(errorText(current.error)):'…';cells=`<td class="column-highlight">${label}</td><td class="column-highlight">${label}</td><td class="column-highlight">${label}</td><td class="hourly-muted">${locked?label:detail(`${job.id}-sites`,label,siteDetails(job))}</td>${Array.from({length:3},()=>`<td class="hourly-muted">${label}</td>`).join('')}${volumeCell}${Array.from({length:2},()=>`<td class="hourly-muted">${label}</td>`).join('')}`;}
  else{
  const timing=timingDetails(r,language,text('采集耗时','Gathering time'))+detailLine(text('回仓次数','Deposits'),format(r.deposits))+(job.caught?detailLine(text('被抓次数','Caught'),format(r.caught)):'')+siteDetails(job,r);
- cells=`<td class="column-highlight">${detail(`${job.id}-xp`,amount(r.xp,'xp'),detailLine(text('平均单次经验','Average XP per action'),r.completed>0?formatOneDecimal(r.xp/r.completed,language):'—'))}</td><td class="column-highlight">${priceWarning(r.missingPrices)}${amount(r.totalIncome,'value')}</td><td class="column-highlight">${priceWarning(r.profitMissingPrices)}${amount(r.profit,'value')}</td><td>${detail(`${job.id}-sites`,r.movingRatio===null?'—':formatOneDecimal(r.movingRatio*100,language)+'%',timing)}${r.endedEarly?`<small class="death-note">${text('提前停止','Stopped early')}</small>`:''}</td><td>${detail(`${job.id}-completed`,format(rewardAmount(r.completed,'day',state.simulationHours),0),workInfo)}</td><td>${amount(r.coins,'coins')}</td><td>${detail(`${job.id}-normal`,priceWarning(r.normalMissingPrices)+amount(r.normalValue,'value'),itemDetail(r.normalItems))}</td><td>${detail(`${job.id}-rare`,priceWarning(r.rareMissingPrices)+amount(r.rareValue,'value'),itemDetail(r.rareItems))}</td><td>${detail(`${job.id}-potions`,priceWarning(r.potionMissingPrices)+amount(r.potionCost,'value'),detailLine(text('药剂成本','Potion cost'),amount(r.potionCost,'value'))+potionDetail(r.potionItems))}</td>`;
+ cells=`<td class="column-highlight">${detail(`${job.id}-xp`,amount(r.xp,'xp'),detailLine(text('平均单次经验','Average XP per action'),r.completed>0?formatOneDecimal(r.xp/r.completed,language):'—'))}</td><td class="column-highlight">${priceWarning(r.missingPrices)}${amount(r.totalIncome,'value')}</td><td class="column-highlight">${priceWarning(r.profitMissingPrices)}${amount(r.profit,'value')}</td><td>${detail(`${job.id}-sites`,r.movingRatio===null?'—':formatOneDecimal(r.movingRatio*100,language)+'%',timing)}${r.endedEarly?`<small class="death-note">${text('提前停止','Stopped early')}</small>`:''}</td><td>${detail(`${job.id}-completed`,format(rewardAmount(r.completed,'day',state.simulationHours),0),workInfo)}</td><td>${amount(r.coins,'coins')}</td><td>${detail(`${job.id}-normal`,priceWarning(r.normalMissingPrices)+amount(r.normalValue,'value'),itemDetail(r.normalItems,{market:true}))}</td>${volumeCell}<td>${detail(`${job.id}-rare`,priceWarning(r.rareMissingPrices)+amount(r.rareValue,'value'),itemDetail(r.rareItems))}</td><td>${detail(`${job.id}-potions`,priceWarning(r.potionMissingPrices)+amount(r.potionCost,'value'),detailLine(text('药剂成本','Potion cost'),amount(r.potionCost,'value'))+potionDetail(r.potionItems))}</td>`;
  }
  const jobName=`<span class="enemy-name"><span><strong>${esc(name(job.name))}</strong><small>${text('等级','Level')} ${job.levelReq}</small></span></span>`;
  return `<tr><td class="column-highlight">${job.caught?detail(`${job.id}-level`,jobName,detailLine(text('起始被抓概率','Starting catch chance'),format(preview.caught*100,2)+'%')):`<span id="gather-${job.id}-level">${jobName}</span>`}</td>${cells}</tr>`;
@@ -81,7 +111,7 @@ function renderResults({tableOnly=false}={}){const host=document.getElementById(
  const running=current?.running,progress=current?.progress;
  const status=document.querySelector('#gather-results .gather-progress');
  const statusText=current?.error?esc(errorText(current.error)):text('正在模拟采集任务','Simulating gathering tasks')+' · '+(progress?`${progress.completed}/${progress.total}`:'…')+' · '+state.simulationHours+'h';
- const rowsHtml=rows.length?rows.map(rewardRow).join(''):`<tr><td colspan="10" class="empty-results">${text('没有匹配的任务','No matching tasks')}</td></tr>`;
+ const rowsHtml=rows.length?rows.map(rewardRow).join(''):`<tr><td colspan="11" class="empty-results">${text('没有匹配的任务','No matching tasks')}</td></tr>`;
  if(tableOnly&&status){
   status.hidden=!running&&!current?.error;
   status.innerHTML=statusText;

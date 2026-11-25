@@ -22,7 +22,7 @@
 
 #### 官方市场价格
 
-页面统一使用 `src/price-service.js` 的公开读写协议，纯数据快照由 `src/price-protocol.js` 定义；协议、八项数据及页面选价见[物品价格模块](modules/item-prices.md)。内部存储与行情解析不作为页面访问协议。
+页面统一使用 `src/price-service.js` 的公开读写协议，纯数据快照由 `src/price-protocol.js` 定义；协议、十项数据及页面选价见[物品价格模块](modules/item-prices.md)。内部存储与行情解析不作为页面访问协议。
 
 `src/market-import.js` 负责官方公开 API 适配与共用错误文案，`src/item-price-store.js` 负责校验、缓存、防倒退、锁定及持久化，`src/price-auto-import.js` 负责自动导入调度与通知；各入口共享网络请求，不发送凭据、不使用代理。接口字段、定价协议见[物品价格模块](modules/item-prices.md)，导入触发、超时、失败及迁移规则见[共用价格界面](shared.md#24-全局物品价格)。已移除的游戏侧市场桥接及 GM 缓存不再读写，历史数据不主动删除；更新角色脚本并刷新游戏后移除旧脚本的市场捕获。
 
@@ -82,7 +82,7 @@
 | `src/mastery-optimizer.js`、`src/mastery-optimizer-worker.js`、`src/mastery-optimizer-controls.js` | 目标策略、有界搜索、独立复核与专用 Worker；冻结输入、运行任务输入检查与迟到消息隔离；任务重置与已完成推荐独立，应用只填入本页目标。具体预算、评分和交互见[精通优化设计](pages/mastery.md#计算最优分配方案) |
 | `src/mastery-result-store.js`、`src/mastery-result-controls.js`、`src/mastery-plan-view.js` | 精通双栏分配保存、历史指标与共用卡片展示、跨标签冲突检查；新计算严格校验，恢复仅校验分配等级。计算、搜索、估值或上游规则不兼容时更新计算兼容版本，旧分配仍可应用，指标标记历史版本；辅助信息异常明确提示且不丢分配 |
 | `tests/mastery-optimizer.test.mjs`、`tests/mastery-optimizer-browser.mjs` | 独立穷举算例、真实模拟对照、预算／缺价／异常与种子隔离，以及真实 Worker、取消、结果保留和双语窄屏验证 |
-| `src/price-protocol.js`、`src/price-service.js` | 物品价格八项数据的只读快照、固定公开协议、统一设价命令及分类变更通知 |
+| `src/price-protocol.js`、`src/price-service.js` | 物品价格十项数据的只读快照、固定公开协议、统一设价命令及分类变更通知 |
 | `src/item-prices.js`、`src/item-price-store.js`、`src/market-import.js`、`src/item-price-controls.js`、`src/price-auto-import.js` | 价格模块内部规则、存储、官方价格及挂单总量解析、管理弹窗与自动导入通知 |
 | `src/app.js`、`src/style.css` | 双语交互、呈现、本地保存和响应式布局 |
 | `scripts/release.mjs`、`scripts/release-*.mjs` | 发布三阶段编排、证据摘要、隔离提取、HTTP／浏览器验收与完整日志 |

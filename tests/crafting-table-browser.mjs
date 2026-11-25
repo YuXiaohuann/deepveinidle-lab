@@ -16,7 +16,7 @@ try{
  browser=await chromium.launch({headless:true,executablePath:await browserPath()});
  const prices=priceDefaults(),capturedAt=Date.now()-1000;prices.preferences.autoImport=false;
  prices.prices={20:{price:1000,locked:true,source:'manual',updatedAt:capturedAt,quoteCapturedAt:null},60:{price:1000,locked:true,source:'manual',updatedAt:capturedAt,quoteCapturedAt:null}};
- prices.quotes={20:{ask:{value:500,capturedAt},bid:{value:2000,capturedAt}},60:{ask:{value:600,capturedAt},bid:{value:3000,capturedAt}}};
+ prices.quotes={20:{ask:{value:500,capturedAt},bid:{value:2000,capturedAt},volume7d:{value:800,capturedAt},volume30d:{value:2400,capturedAt}},60:{ask:{value:600,capturedAt},bid:{value:3000,capturedAt},volume7d:{value:5000,capturedAt},volume30d:{value:15000,capturedAt}}};
  const build=craftingDefaults();build.simulationHours=1;build.hotSetting='off';build.levels.cooking=20;build.levels.crafting=110;build.levels.smithing=110;
  const context=await browser.newContext({viewport:{width:1440,height:1000}});
  await context.addInitScript(({build,prices})=>{
@@ -35,11 +35,12 @@ try{
  await page.goto(base+'/craft');await ready();
  assert.equal((await saved()).build.simulationHours,1);assert.equal(await page.evaluate(()=>localStorage.getItem('dvi-crafting-orders-v1')),null);
  assert.equal(await page.locator('#craft-orders-panel,#craft-filled,#craft-refresh-inventory,[data-craft-count],[data-character-update="inventory"]').count(),0);
- assert.equal(await page.locator('.craft-table th').count(),7);assert.equal(await page.locator('.craft-table tbody tr').evaluateAll(rows=>rows.every(r=>r.cells.length===7)),true);
+ assert.equal(await page.locator('.craft-table th').count(),8);assert.equal(await page.locator('.craft-table tbody tr').evaluateAll(rows=>rows.every(r=>r.cells.length===8)),true);
+ assert.match(await row('61:0').locator('td').nth(7).innerText(),/5\.00K/);
  const run=await page.evaluate(()=>window.runs[0]);const result=run.results.find(r=>r.key==='61:0');assert.ok(result);
  assert.equal(await row('61:0').locator('td').nth(1).locator('summary').innerText(),compactNumber(result.xp*24)??(result.xp*24).toLocaleString('zh-CN',{maximumFractionDigits:2}));
  assert.equal(await row('61:0').locator('td').nth(3).locator('summary').innerText(),(result.extraTicks/result.elapsedTicks*100).toLocaleString('zh-CN',{minimumFractionDigits:1,maximumFractionDigits:1})+'%');
- results.cases.push('legacy build migrates despite invalid removed fields; no removed controls; seven columns; real Worker daily XP and extra time');
+ results.cases.push('legacy build migrates despite invalid removed fields; no removed controls; eight columns; real Worker daily XP and extra time');
  const materialsMode=page.locator('[data-craft-price-mode="materials"]'),productsMode=page.locator('[data-craft-price-mode="products"]');
  assert.equal(await materialsMode.count(),1);assert.equal(await productsMode.count(),1);
  assert.equal(await materialsMode.inputValue(),'global');assert.equal(await productsMode.inputValue(),'global');
@@ -47,6 +48,8 @@ try{
  const costDetail=row('61:0').locator('td').nth(5).locator('details'),valueDetail=row('61:0').locator('td').nth(6).locator('details');
  await costDetail.locator('summary').click();await valueDetail.locator('summary').click();
  assert.match(await costDetail.innerText(),/1\.00K/);assert.match(await valueDetail.innerText(),/1\.00K/);
+ for(const label of ['7天成交量','30天成交量','在售数量','求购数量','最低卖价','最高买价','7天均价','30天均价','行情时间'])assert.match(await valueDetail.innerText(),new RegExp(label));
+ assert.equal(await valueDetail.locator('.market-cell').count(),8);
  const runsBeforeModes=await page.evaluate(()=>window.runs.length),profitBefore=await row('61:0').locator('td').nth(2).innerText();
  await materialsMode.selectOption('ask');await productsMode.selectOption('bid');
  assert.equal(await page.evaluate(()=>window.runs.length),runsBeforeModes);
@@ -61,7 +64,7 @@ try{
  await page.locator('[data-craft-sort="xp"]').click();assert.equal(await page.locator('[id="craft-61:0-timing"]').getAttribute('open'),'');
  for(const width of [1440,390])for(const language of ['zh','en']){
   await page.setViewportSize({width,height:1000});await page.selectOption('#language',language);await ready();
-  assert.equal(await page.locator('.craft-table th').count(),7);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  assert.equal(await page.locator('.craft-table th').count(),8);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   assert.match(await page.locator('[id="craft-61:0-completed"]').innerText(),language==='zh'?/每刻完成概率/:/Completion chance per tick/);
   assert.doesNotMatch(await page.locator('[id="craft-61:0-timing"]').innerText(),/随机种子|Random seed|坐标/);
   await page.locator('.craft-recipe-heading').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(directory,`${language}-${width}.png`)});
@@ -96,9 +99,9 @@ try{
  await page.evaluate(()=>{window.focusedSearch=document.activeElement;window.craftWorker.onmessage({data:{progress:{completed:1,total:5}}});});
  await page.waitForFunction(()=>document.querySelector('.craft-progress').textContent.includes('1/5'));assert.ok(await page.evaluate(()=>document.activeElement===window.focusedSearch));
  await page.evaluate(()=>{const w=window.craftWorker;for(const p of w.run.input.recipes)w.onmessage({data:{jobError:{key:p.key,message:'invalidRoute'}}});w.onmessage({data:{done:true}});});await ready();assert.match(await page.locator('.craft-table tbody').innerText(),/无法建立制造路线/);
- assert.equal(await page.locator('.craft-table tbody tr').evaluateAll(rows=>rows.every(r=>r.cells.length===7)),true);
- results.cases.push('pending and failed seven-column rows; progress preserves exact focused search node');
- await page.locator('#craft-search').fill('no-such-item');assert.equal(await page.locator('.empty-results').getAttribute('colspan'),'7');
+ assert.equal(await page.locator('.craft-table tbody tr').evaluateAll(rows=>rows.every(r=>r.cells.length===8)),true);
+ results.cases.push('pending and failed eight-column rows; progress preserves exact focused search node');
+ await page.locator('#craft-search').fill('no-such-item');assert.equal(await page.locator('.empty-results').getAttribute('colspan'),'8');
  await page.evaluate(()=>window.holdCraft=false);await page.locator('#craft-reset').click();await ready();assert.deepEqual((await saved()).build,craftingDefaults());
  await context.close();
  const bad=await browser.newContext();await bad.addInitScript(()=>localStorage.setItem('dvi-crafting-config-v1','broken'));const badPage=await bad.newPage();await badPage.goto(base+'/craft');assert.equal(await badPage.locator('#craft-reset-storage').count(),1);assert.equal(await badPage.evaluate(()=>localStorage.getItem('dvi-crafting-config-v1')),'broken');badPage.once('dialog',d=>d.accept());await badPage.locator('#craft-reset-storage').click();assert.equal(await badPage.locator('#craft-reset-storage').count(),0);await bad.close();

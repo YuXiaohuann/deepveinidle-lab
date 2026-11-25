@@ -6,8 +6,9 @@ import {spawn} from 'node:child_process';
 import {once} from 'node:events';
 import {chromium} from 'playwright-core';
 import {browserPath} from '../scripts/release-common.mjs';
-import {gatheringDefaults} from '../src/gathering-model.js';
-import {priceDefaults} from '../src/item-prices.js';
+import {gatheringDefaults,gatheringJobs} from '../src/gathering-model.js';
+import {priceDefaults,validItemId,itemFamily} from '../src/item-prices.js';
+import * as game from '../src/upstream.js';
 
 const directory=path.resolve(process.argv[2]??'.test-artifacts/gathering-table');await fs.mkdir(directory,{recursive:true});
 const target=process.argv[3]?.replace(/\/$/,'')??null;let server,port;
@@ -21,7 +22,11 @@ try{
  if(server)await Promise.race([once(server.stdout,'data'),once(server,'exit').then(([code])=>{throw Error(`Server exited: ${code}`);})]);
  browser=await chromium.launch({headless:true,executablePath:await browserPath()});
  const context=await browser.newContext({viewport:{width:1440,height:1000}});
- const prices=priceDefaults();prices.preferences.autoImport=false;
+ const prices=priceDefaults(),capturedAt=Date.now()-1000;prices.preferences.autoImport=false;prices.quotes={};
+ for(const job of gatheringJobs){
+  const base=game.baseItemId(job.output.itemId),tiers=game.itemSupportsRarity(base)?[0,1,2,3,4]:[0];
+  for(const tier of tiers){const id=game.encode(game.withRarity(base,tier),0);if(validItemId(id)&&itemFamily(id))prices.quotes[id]={volume7d:{value:1000,capturedAt},volume30d:{value:4000,capturedAt}};}
+ }
  await context.addInitScript(prices=>localStorage.setItem('dvi-item-prices-v1',JSON.stringify(prices)),prices);
  await context.addInitScript(state=>{
   if(!localStorage.getItem('dvi-gathering-v1'))localStorage.setItem('dvi-gathering-v1',JSON.stringify(state));
@@ -37,14 +42,23 @@ try{
  assert.doesNotMatch(await page.locator('#gather-content').innerText(),/所有采集点平均|实际随机选择|Average of all sites|selects sites randomly/);
  await page.waitForFunction(()=>window.gatherRuns.at(-1)?.done);
  const headers=()=>page.locator('#gather-results .gather-table th button').allTextContents().then(items=>items.map(item=>item.replace(/\s*[↑↓↕]/g,'').trim()));
- const checkRows=async(count=10)=>assert.ok(await page.locator('#gather-results .gather-table tbody tr').evaluateAll((rows,count)=>rows.every(row=>[...row.cells].reduce((sum,cell)=>sum+cell.colSpan,0)===count),count));
+ const checkRows=async(count=11)=>assert.ok(await page.locator('#gather-results .gather-table tbody tr').evaluateAll((rows,count)=>rows.every(row=>[...row.cells].reduce((sum,cell)=>sum+cell.colSpan,0)===count),count));
  const sample=await page.evaluate(()=>window.gatherRuns.at(-1).results[0]);
  assert.equal(sample.sites.length,1);assert.equal(sample.sites[0].siteId,1);assert.equal(sample.homeBank,1);
+ const sampleJob=gatheringJobs.find(job=>job.id===sample.jobId),sampleBase=game.baseItemId(sampleJob.output.itemId),sampleTiers=game.itemSupportsRarity(sampleBase)?[0,1,2,3,4]:[0],sampleIds=sampleTiers.map(tier=>game.encode(game.withRarity(sampleBase,tier),0)),expectedVolume=sampleIds.reduce((sum,id)=>sum+(prices.quotes[id]?1000:0),0),expectedVolumeText=expectedVolume?`${sampleIds.every(id=>prices.quotes[id])?'':'≥'}${(expectedVolume/1000).toFixed(2)}K`:'—';
+ const volumeRow=page.locator(`#gather-${sample.jobId}-level`).locator('xpath=ancestor::tr');
+ assert.equal(await volumeRow.locator('td').nth(8).innerText(),expectedVolumeText);
+ const normalDetail=page.locator(`#gather-${sample.jobId}-normal`);await normalDetail.locator('summary').click();
+ for(const label of ['7天成交量','30天成交量','在售数量','求购数量','最低卖价','最高买价','7天均价','30天均价','行情时间'])assert.match(await normalDetail.innerText(),new RegExp(label));
+ const firstMarket=normalDetail.locator('.market-note').first();
+ assert.equal(await firstMarket.locator('.market-cell').count(),8);
+ assert.deepEqual(await firstMarket.locator('.market-cell > span:first-child').allTextContents(),['7天成交量','30天成交量','7天均价','30天均价','在售数量','求购数量','最低卖价','最高买价']);
+ assert.match(await firstMarket.locator('.market-time').innerText(),/行情时间/);
  const potions=page.locator(`#gather-${sample.jobId}-potions`);await potions.locator('summary').click();assert.match(await potions.innerText(),/药剂成本/);assert.equal(await potions.locator('.loot-line').last().locator('span').last().innerText(),'24.0');
  const xpDetail=page.locator(`#gather-${sample.jobId}-xp`);await xpDetail.locator('summary').click();
  const singleXp=(sample.xp/sample.completed).toLocaleString('zh-CN',{minimumFractionDigits:1,maximumFractionDigits:1});
  assert.equal(await xpDetail.locator('.loot-line span').last().innerText(),singleXp);
- const daily=['任务','经验/天','收入/天','利润/天','额外耗时','采集次数/天','金币/天','主要产物/天','额外掉落/天','消耗品/天'];
+ const daily=['任务','经验/天','收入/天','利润/天','额外耗时','采集次数/天','金币/天','主要产物/天','7天成交量','额外掉落/天','消耗品/天'];
  assert.deepEqual(await headers(),daily);await checkRows();
  assert.equal(await page.locator('#gather-results .enemies-heading h2 span').count(),0);
  assert.ok(await page.locator('#gather-results .gather-table tbody tr').evaluateAll(rows=>rows.every(row=>[...row.cells].flatMap((cell,i)=>cell.classList.contains('column-highlight')?[i]:[]).join(',')==='0,1,2,3')));
@@ -57,13 +71,13 @@ try{
  assert.match(await job.locator('.loot-line').nth(0).locator('span').last().innerText(),/\.\d 秒$/);
  assert.match(await job.locator('.loot-line').nth(1).locator('span').last().innerText(),/\.\d%$/);
  await page.locator('[data-gather-sort="levelReq"]').click();values=await levels();assert.deepEqual(values,[...values].sort((a,b)=>a-b));assert.equal(await page.locator(`#${id}`).getAttribute('open'),'');
- results.cases.push('10-column order, name/level merge, default and ascending level sorting, highlighted data and locked rows');
+ results.cases.push('11-column order, name/level merge, default and ascending level sorting, highlighted data and locked rows');
  await page.locator('#gather-simulation').evaluate(el=>el.open=true);
  const runs=await page.evaluate(()=>window.gatherRuns.length);
  assert.equal(await page.locator('#gather-period').count(),0);assert.deepEqual(await headers(),daily);
  assert.equal(await potions.locator('.loot-line').last().locator('span').last().innerText(),'24.0');assert.equal(await xpDetail.getAttribute('open'),'');assert.equal(await xpDetail.locator('.loot-line span').last().innerText(),singleXp);
- await page.locator('#gather-search').fill('no-such-task');await checkRows();assert.equal(await page.locator('#gather-results .empty-results').getAttribute('colspan'),'10');await page.locator('#gather-search').fill('');
- await page.selectOption('#language','en');assert.deepEqual(await headers(),['Task','XP/day','Income/day','Profit/day','Extra time','Gathering/day','Coins/day','Main items/day','Extra drops/day','Consumables/day']);assert.equal(await page.locator(`#${id}`).getAttribute('open'),'');
+ await page.locator('#gather-search').fill('no-such-task');await checkRows();assert.equal(await page.locator('#gather-results .empty-results').getAttribute('colspan'),'11');await page.locator('#gather-search').fill('');
+ await page.selectOption('#language','en');assert.deepEqual(await headers(),['Task','XP/day','Income/day','Profit/day','Extra time','Gathering/day','Coins/day','Main items/day','7-day volume','Extra drops/day','Consumables/day']);assert.equal(await page.locator(`#${id}`).getAttribute('open'),'');
 
  assert.equal(await page.evaluate(()=>window.gatherRuns.length),runs);
  results.cases.push('fixed daily bilingual headers, gather counts, empty results and expanded state survive redraw without new Workers');
@@ -73,7 +87,7 @@ try{
  assert.match(await sampleRow.locator('td').nth(3).innerText(),/-/);
  assert.equal(await potions.locator('summary [aria-label="Unset price"]').count(),0);
  assert.match(await potions.locator('.loot-line').last().locator('span').first().innerText(),/ 100\.00K$/);
- for(const key of ['profit','potionCost']){await page.locator(`[data-gather-sort="${key}"]`).click();assert.equal(await page.locator(`[data-gather-sort="${key}"]`).locator('xpath=..').getAttribute('aria-sort'),'ascending');}
+ for(const key of ['profit','potionCost','volume']){await page.locator(`[data-gather-sort="${key}"]`).click();assert.equal(await page.locator(`[data-gather-sort="${key}"]`).locator('xpath=..').getAttribute('aria-sort'),'ascending');}
  await page.locator('[data-gather-sort="levelReq"]').click();
  await page.evaluate(async id=>{const service=await import('/src/price-service.js');service.setPrice(id,0);},potionId);
  assert.equal(await potions.locator('summary').innerText(),'0');
@@ -126,8 +140,8 @@ try{
  results.cases.push('Worker progress preserves the focused task filter and text selection');
  await page.evaluate(()=>window.tableMode='error');await page.locator('#gather-rerun').click();await page.waitForFunction(()=>document.querySelector('.gather-progress').textContent.includes('无法建立采集路线'));await checkRows();assert.match(await page.locator('#gather-results .gather-table tbody tr').first().locator('td').nth(1).innerText(),/无法建立采集路线/);
  results.cases.push('controlled waiting and failed Worker rows retain column alignment and site details');
- await page.evaluate(()=>{const state=JSON.parse(localStorage.getItem('dvi-gathering-v1'));state.simulationHours=1;localStorage.setItem('dvi-gathering-v1',JSON.stringify(state));});await page.reload();await page.waitForFunction(()=>window.gatherRuns.at(-1)?.done);await checkRows();assert.equal((await headers()).length,10);assert.equal((await headers())[1],'经验/天');
- await page.locator('#gather-search').fill('no-such-task');assert.equal(await page.locator('#gather-results .empty-results').getAttribute('colspan'),'10');await page.locator('#gather-search').fill('');
+ await page.evaluate(()=>{const state=JSON.parse(localStorage.getItem('dvi-gathering-v1'));state.simulationHours=1;localStorage.setItem('dvi-gathering-v1',JSON.stringify(state));});await page.reload();await page.waitForFunction(()=>window.gatherRuns.at(-1)?.done);await checkRows();assert.equal((await headers()).length,11);assert.equal((await headers())[1],'经验/天');
+ await page.locator('#gather-search').fill('no-such-task');assert.equal(await page.locator('#gather-results .empty-results').getAttribute('colspan'),'11');await page.locator('#gather-search').fill('');
  await page.locator('[data-gather-skill="thieving"]').click();await page.waitForFunction(()=>window.gatherRuns.at(-1)?.done);assert.equal(await page.locator('#gather-results .gather-table td:first-child details').last().locator('.loot-line').count(),1);
  results.cases.push('short-duration daily scaling, empty rows and thieving catch detail');
  assert.deepEqual(results.errors,[]);await context.close();

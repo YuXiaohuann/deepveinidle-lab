@@ -18,6 +18,13 @@ export function parseMarketPrices(raw){
    if(Number.isSafeInteger(quantity)&&quantity>=0)quote[side].quantity=quantity;
    else quote[side].quantityInvalid=true;
   }
+  // The official snapshot includes traded units; older payloads without these
+  // fields stay unread rather than invalidating the rest of the quote.
+  for(const [field,apiField]of [['volume7d','vol7d'],['volume30d','vol30d']]){
+   if(!Object.hasOwn(item,apiField))continue;
+   const value=item[apiField];
+   quote[field]=Number.isSafeInteger(value)&&value>=0?{value,capturedAt:at}:{invalid:true,capturedAt:at};
+  }
   quotes[key]=quote;
  }
  if(!Object.keys(quotes).length)throw Error(Object.keys(raw.items).length?'invalidMarketData':'noMarketData');

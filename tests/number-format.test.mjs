@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {parse} from 'acorn';
-import {compactNumber,formatUnitPrice} from '../src/number-format.js';
+import {compactNumber,formatCount,formatUnitPrice} from '../src/number-format.js';
 import {rewardAmount} from '../src/combat-hot.js';
 
 function formatters(file,names,context){
@@ -27,6 +27,12 @@ test('read-only unit prices show integers below 1,000 and use compact formatting
  }
 });
 
+test('volumes keep zero and small integers while abbreviating from 1,000',()=>{
+ for(const language of ['zh','en']){
+  assert.equal(formatCount(0,language),'0');assert.equal(formatCount(999,language),'999');assert.equal(formatCount(1000,language),'1.00K');
+  assert.equal(formatCount(1234567,language),'1.23M');assert.equal(formatCount(null,language),'—');assert.equal(formatCount(undefined,language),'—');
+ }
+});
 test('combat abbreviates daily XP and money while counts and quantities retain precision',()=>{
  for(const language of ['zh','en']){
   const run=formatters('../src/app.js',['formatRate','formatDropQuantity'],{language,state:{manual:{simulationHours:6}}});

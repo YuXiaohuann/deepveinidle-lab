@@ -52,3 +52,12 @@ test('official seven/thirty-day averages preserve decimals and distinguish null 
  assert.equal(parsed.quotes[1].avg30d.value,62);assert.equal(parsed.quotes[2].avg7d.value,null);
  assert.equal(parsed.quotes[2].avg30d.invalid,true);assert.equal(parsed.quotes[3].avg7d.invalid,true);assert.equal(parsed.quotes[3].avg30d.invalid,true);
 });
+
+test('official seven/thirty-day volumes accept zero and omit absent fields',()=>{
+ const parsed=parseMarketPrices(payload({1:{vol7d:0,vol30d:123},2:{vol7d:null,vol30d:-1},3:{vol7d:1.5},4:{}}));
+ assert.deepEqual(parsed.quotes[1].volume7d,{value:0,capturedAt:Date.parse(generatedAt)});
+ assert.equal(parsed.quotes[1].volume30d.value,123);
+ assert.equal(parsed.quotes[2].volume7d.invalid,true);assert.equal(parsed.quotes[2].volume30d.invalid,true);
+ assert.equal(parsed.quotes[3].volume7d.invalid,true);assert.equal(parsed.quotes[3].volume30d,undefined);
+ assert.equal(parsed.quotes[4].volume7d,undefined);assert.equal(parsed.quotes[4].volume30d,undefined);
+});

@@ -39,7 +39,7 @@ try{
   page.on('pageerror',e=>result.errors.push(e.message));
   let requests=0,fail=false;
   const at=Date.now()-1000;
-  const payload={game:'Deep Vein Idle',generatedAt:new Date(at).toISOString(),refreshSeconds:300,items:{1:{avg7d:74,avg30d:64,lowestSell:84,highestBuy:50},2:{avg7d:80,avg30d:70,lowestSell:90,highestBuy:80},1110:{lowestSell:900,highestBuy:700}}};
+  const payload={game:'Deep Vein Idle',generatedAt:new Date(at).toISOString(),refreshSeconds:300,items:{1:{avg7d:74,avg30d:64,lowestSell:84,highestBuy:50,vol7d:4321,vol30d:8765},2:{avg7d:80,avg30d:70,lowestSell:90,highestBuy:80,vol7d:0,vol30d:0},1110:{lowestSell:900,highestBuy:700}}};
   await context.route('https://deepveinidle.com/api/market/prices.json',route=>{
    requests++;return route.fulfill({status:fail?503:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:fail?'Unavailable':JSON.stringify(payload)});
   });
@@ -98,7 +98,7 @@ try{
   assert.ok(layout.width<=width,JSON.stringify(layout));assert.ok(layout.scroll<=layout.client+1,JSON.stringify(layout));
   await page.locator('#price-import-settings summary').click();assert.equal(await page.locator('#price-import-settings').evaluate(el=>el.open),false);
   assert.equal(requests,0);await page.locator('#price-import-settings summary').click();await page.locator('#price-import').click();await page.waitForFunction(()=>document.querySelector('#price-status')?.textContent.startsWith('已更新 ')||document.querySelector('#price-status')?.textContent.startsWith('Updated '));
-  assert.equal(requests,1);assert.equal((await stored()).version,7);assert.equal((await stored()).quotes[3],undefined);assert.equal((await stored()).prices[1].price,123);assert.equal((await stored()).prices[2].price,80);
+  assert.equal(requests,1);assert.equal((await stored()).version,7);assert.equal((await stored()).quotes[3],undefined);assert.equal((await stored()).prices[1].price,123);assert.equal((await stored()).prices[2].price,80);assert.equal((await stored()).quotes[1].volume7d.value,4321);assert.equal((await stored()).quotes[2].volume7d.value,0);
   assert.equal((await stored()).prices[2].quoteCapturedAt,at);
   await expectEmpty();
   for(const [key,value,reset]of [['family','resources','all'],['search','Tin',''],['tier','0','all'],['plus','1','0'],['filter','unpriced','all'],['filter','locked','all']]){
