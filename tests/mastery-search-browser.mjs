@@ -48,14 +48,18 @@ try{
    await input.press('Enter');assert.equal(await page.locator(`#${c.id}`).inputValue(),`${translatedName(c.catalog[0].name,language)} · ${c.catalog[0].levelReq??c.catalog[0].level}`);
    await selectSearchOption(page,c.id,c.item);
    await page.locator(`#${c.id}`).fill(c.item.name);await page.locator(`#${c.id}`).press('Enter');assert.equal(await page.locator(`#${c.id}`).inputValue(),selected);
-   for(const width of [1440,390]){
+   for(const width of [1440,1280,390]){
     await page.setViewportSize({width,height:1000});await page.locator(`#${c.id}`).click();
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-    const ids=['optimizer-allocation-mode','optimizer-effort','optimizer-goal',c.id,...(c.objective==='craftXp'?['optimizer-tier']:[])];
+    const ids=['optimizer-allocation-mode','optimizer-effort','optimizer-goal',c.id,...(c.objective==='craftXp'?['optimizer-tier']:[]),...(c.objective==='combatXp'?[]:['optimizer-work-mode'])];
     assert.deepEqual(await page.locator('.optimizer-fields').evaluate(el=>[...el.querySelectorAll('select,input[role=combobox]')].map(e=>e.id)),ids);
-    if(width===1440){
-     const tops=await page.locator('.optimizer-fields').evaluate(el=>[...el.children].map(e=>e.getBoundingClientRect().top));
-     assert.ok(tops.every(top=>Math.abs(top-tops[0])<1),'all calculation options share one desktop row');
+    if(width>=1280){
+     const fields=await page.locator('.optimizer-fields').evaluate(el=>[...el.children].map(e=>{
+      const {top,width}=e.getBoundingClientRect();
+      return {top,width};
+     }));
+     assert.ok(fields.every(({top})=>Math.abs(top-fields[0].top)<1),'all calculation options share one desktop row');
+     assert.ok(fields.every(({width})=>Math.abs(width-fields[0].width)<1),'desktop calculation options have equal widths');
     }
     assert.ok(await list.evaluate(el=>el.clientHeight<=260&&el.scrollHeight>=el.clientHeight));
     assert.ok(await list.getByRole('option').first().evaluate(el=>el.getBoundingClientRect().height>=44));
@@ -79,7 +83,7 @@ try{
  }
  await page.selectOption('#optimizer-effort','standard');await page.selectOption('#language','zh');assert.equal(await page.locator('#optimizer-effort').inputValue(),'standard');
  await page.reload();await page.locator('#mastery-optimizer>summary').click();assert.equal(await page.locator('#optimizer-effort').inputValue(),'deep');
- results.cases.push('three bilingual search allowances; default 360, session selection and refresh; ordered options share a desktop row and fit mobile');
+ results.cases.push('three bilingual search allowances; default 360, session selection and refresh; ordered options share an equal-width desktop row and fit mobile');
  assert.deepEqual(results.errors,[]);await context.close();
 }catch(error){results.errors.push(error.stack??String(error));console.error(error.stack??String(error));process.exitCode=1;}
 finally{await fs.writeFile(path.join(directory,'results.json'),JSON.stringify(results,null,2)+'\n');await session?.close();}

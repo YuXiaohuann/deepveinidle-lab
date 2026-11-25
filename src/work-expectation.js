@@ -24,16 +24,20 @@ export function workQualities(player,context,job,tick,{bonus=false}={}){
  return rarityProbabilities(multiplier);
 }
 
-// Accept an existing ledger or a direct writer for goal-specific statistics.
-export function expectedWorkRewards(target,player,context,job,tick,before,produced){
- if(!produced)return; // Burns and catches return before every reward check.
- const write=typeof target==='function'?target:(id,qty)=>addExpected(target,id,qty);
+export function expectedWorkExtras(write,player,job,actionTicks){
  if(!player.ironman){
-  const chance=game.mountChance(1/game.workChance(job,player));
+  const chance=game.mountChance(actionTicks??1/game.workChance(job,player));
   rarityProbabilities(1+game.equipmentLuck(player.equipment),game.mountRarityThresholds).forEach((p,tier)=>write(game.withRarity(game.mountItemId,tier),chance*p));
  }
  const pet=game.skillPet(job.skill);
  if(pet)write(pet.itemId,game.skillPetChance(job.skill));
+}
+
+// Accept an existing ledger or a direct writer for goal-specific statistics.
+export function expectedWorkRewards(target,player,context,job,tick,before,produced){
+ if(!produced)return; // Burns and catches return before every reward check.
+ const write=typeof target==='function'?target:(id,qty)=>addExpected(target,id,qty);
+ expectedWorkExtras(write,player,job);
  if(!job.bonus)return;
  if(!before?.pack)throw Error('missingWorkState');
  // addPack only reads pack and perks.pockets; retain its original capacity rule.

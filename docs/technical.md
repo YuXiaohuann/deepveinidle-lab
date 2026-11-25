@@ -81,6 +81,7 @@
 | `src/debug-controls.js`、`tests/debug-controls.test.mjs` | 隐藏调试页、角色配置 JSON 文件下载与战斗／强化两个共用导入入口、文件往返及失败状态验证 |
 | `src/mastery.js`、`src/mastery-controls.js` | 独立精通预算、升级成本、配置校验与双语交互 |
 | `src/mastery-optimizer.js`、`src/mastery-optimizer-worker.js`、`src/mastery-optimizer-controls.js` | 目标策略、有界搜索、独立复核与专用 Worker；冻结输入、运行任务输入检查与迟到消息隔离；任务重置与已完成推荐独立，应用只填入本页目标。具体预算、评分和交互见[精通优化设计](pages/mastery.md#计算最优分配方案) |
+| `src/mastery-work-estimate.js` | 精通快速模式。使用采集／制造场景的角色、工位、仓库和增益，适配内置 work-time 的单次期望与批次耗时，折算 24 小时指标 |
 | `src/mastery-result-store.js`、`src/mastery-result-controls.js`、`src/mastery-plan-view.js` | 精通双栏分配保存、历史指标与共用卡片展示、跨标签冲突检查；新计算严格校验，恢复仅校验分配等级。计算、搜索、估值或上游规则不兼容时更新计算兼容版本，旧分配仍可应用，指标标记历史版本；辅助信息异常明确提示且不丢分配 |
 | `tests/mastery-optimizer.test.mjs`、`tests/mastery-optimizer-browser.mjs` | 独立穷举算例、真实模拟对照、预算／缺价／异常与种子隔离，以及真实 Worker、取消、结果保留和双语窄屏验证 |
 | `src/price-protocol.js`、`src/price-service.js` | 物品价格八项数据的只读快照、固定公开协议、统一设价命令及分类变更通知 |

@@ -2,6 +2,9 @@ import {game} from './model.js';
 import {masteryResultHistory} from './mastery-result-store.js';
 
 const escapePlanText=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function masteryWorkModeLabel(mode,language){
+ return mode==='fast'?(language==='zh'?'快速模式':'Fast mode'):(language==='zh'?'标准模式':'Standard mode');
+}
 export function masteryPlanMetrics(record,totalPoints,language){
  const text=(zh,en)=>language==='zh'?zh:en,format=n=>n.toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:2});
  const cost=game.masteriesTotalCost(record.plan.ranks),total=String(totalPoints??'').trim()!==''?Number(totalPoints):NaN;
@@ -12,6 +15,8 @@ export function masteryPlanMetrics(record,totalPoints,language){
 export function masteryPlanHistoryNote(record,language){
  const text=(zh,en)=>language==='zh'?zh:en,format=n=>n.toLocaleString(language==='zh'?'zh-CN':'en',{maximumFractionDigits:2}),history=masteryResultHistory(record);
  if(!history.available)return `<p class="micro">${text('历史计算信息不可用，分配方案仍可使用','Historical calculation details unavailable; the allocation can still be used')}</p>`;
- const delta=history.plan.paired?format(history.plan.paired.mean)+(Math.abs(history.plan.paired.mean)<=2*history.plan.paired.se?' · '+text('差异接近波动','Close to variability'):''):history.baseline.overBudget?text('当时原方案超预算，无法比较','Original plan exceeded its budget'):text('当时原方案未完成模拟，无法比较','Original simulation did not finish');
- return `<p class="micro">${history.oldEngine?text('历史计算版本 · ','Historical calculation version · '):''}${text('较计算时原方案：','Vs original at calculation: ')}${escapePlanText(delta)}</p>`;
+ const unavailable=history.workMode==='fast'?text('当时原方案无可用结果','Original plan had no usable result'):text('当时原方案未完成模拟，无法比较','Original simulation did not finish');
+ const delta=history.plan.paired?format(history.plan.paired.mean)+(history.workMode!=='fast'&&Math.abs(history.plan.paired.mean)<=2*history.plan.paired.se?' · '+text('差异接近波动','Close to variability'):''):history.baseline.overBudget?text('当时原方案超预算，无法比较','Original plan exceeded its budget'):unavailable;
+ const mode=history.policy.gathering||history.policy.crafting?masteryWorkModeLabel(history.workMode,language)+' · ':'';
+ return `<p class="micro">${history.oldEngine?text('历史计算版本 · ','Historical calculation version · '):''}${mode}${text('较计算时原方案：','Vs original at calculation: ')}${escapePlanText(delta)}</p>`;
 }

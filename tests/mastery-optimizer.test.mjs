@@ -339,3 +339,47 @@ test('XP goals reject invalid gains and incomplete runs; crafting validates reci
  const high=craftingJobs.find(j=>j.levelReq>1);assert.throws(()=>optimizerInput({...raw,recipeId:high.id,tier:craftingTiers(high)[0]}),/levelTooLow/);
  assert.throws(()=>optimizeMastery(raw,{simulate:()=>({xp:100,complete:true,error:'routeStopped'})}),/noViableOptimizerPlan/);
 });
+
+test('fast work search scores four goals deterministically without running a simulator',()=>{
+ for(const objective of ['gatherIncome','gatherCollection','gatherXp','craftXp']){
+  const raw={...(objective.endsWith('Xp')?xpInput(objective,82):gatheringInput(objective,82)),workMode:'fast'};
+  const before=structuredClone(raw);
+  const result=optimizeMastery(raw,{simulate:()=>assert.fail('fast mode ran a simulation')});
+  assert.equal(result.workMode,'fast');assert.equal(result.simulations,0);
+  assert.deepEqual(result.screeningSeeds,[]);assert.deepEqual(result.reviewSeeds,[]);
+  assert.ok(result.plans[0].stats.mean>0);assert.equal(result.plans[0].stats.se,0);
+  assert.deepEqual(optimizeMastery(raw),result);assert.deepEqual(raw,before);
+  assert.ok(result.plans.every(plan=>plan.cost<=raw.totalPoints));
+ }
+ const combat=optimizeMastery({...input(0),workMode:'fast'},{simulate:()=>({deaths:0,coins:10,normalItems:{},rareItems:{}})});
+ assert.equal(combat.workMode,'standard');assert.equal(combat.simulations,7);
+});
+
+test('fast work uses gathering success and discard rules and native crafting quality and upgrade XP',()=>{
+ const score=raw=>optimizeMastery({...raw,workMode:'fast'}).plans[0].stats.mean;
+ const income=gatheringInput('gatherIncome',0),collection=gatheringInput('gatherCollection',0);
+ income.gathering.ironman=true;collection.gathering.ironman=true;
+ const discard=raw=>({...raw,gathering:{...raw.gathering,discardGathered:true}});
+ assert.ok(score(discard(income))<score(income)/10);
+ assert.ok(score(discard(collection))>=score(collection));
+ const theft=gatheringJobs.find(job=>job.caught),gather=xpInput('gatherXp');
+ gather.jobId=theft.id;gather.gathering.levels[theft.skill]=theft.levelReq;
+ assert.ok(score({...gather,gathering:{...gather.gathering,perks:{hands:5}}})>score(gather));
+ assert.ok(score({...gather,gathering:{...gather.gathering,weeklyXp:60}})>score(gather));
+ assert.throws(()=>score({...income,prices:{}}),/missingOptimizerPrices/);
+ const craft=xpInput('craftXp');
+ assert.ok(score({...craft,tier:1})>score(craft));
+ const upgrade=craftingJobs.find(job=>job.upgrade);craft.recipeId=upgrade.id;
+ craft.crafting.levels[upgrade.skill]=upgrade.levelReq;
+ assert.ok(score(craft)>0);assert.equal(score({...craft,tier:4}),score(craft));
+});
+
+test('fast gathering counts the two fishing rarity windows once',()=>{
+ const job=gatheringJobs.find(j=>j.skill==='fishing'&&j.levelReq===1);
+ const raw={...gatheringInput('gatherIncome',0),jobId:job.id,workMode:'fast'};
+ Object.assign(raw.gathering,{ironman:true,discardGathered:true});
+ const ids=optimizerIncomeItems(optimizerInput(raw)),legendary=game.withRarity(job.output.itemId,4);
+ raw.prices=Object.fromEntries(ids.map(id=>[id,{price:Number(id===legendary)}]));
+ const score=hotSetting=>optimizeMastery({...raw,gathering:{...raw.gathering,hotSetting}}).plans[0].stats.mean;
+ assert.ok(Math.abs(score('game')/score('off')-(1+.25/24))<.0001);
+});

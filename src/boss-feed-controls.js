@@ -344,7 +344,7 @@ function comparisonFilters({text:t,rarity}) {
   return `<div class="toolbar boss-filters">
     <div class="boss-filter-row">
       <div class="craft-search-filters">
-        <div class="search-wrap"><span aria-hidden="true">⌕</span><input type="search" id="boss-feed-search" placeholder="${t('搜索物品名称（中 / 英）','Search items in English or Chinese')}" aria-label="${t('搜索投喂物品','Search feeding items')}" autocomplete="off"></div>
+        <div class="search-wrap"><img class="search-icon" src="/src/assets/search.svg" alt="" width="14" height="14"><input type="search" id="boss-feed-search" placeholder="${t('搜索物品名称（中 / 英）','Search items in English or Chinese')}" aria-label="${t('搜索投喂物品','Search feeding items')}" autocomplete="off"></div>
         <select id="boss-feed-skill" aria-label="${t('投喂技能','Feeding skill')}"></select>
         <select id="boss-feed-category" aria-label="${t('物品分类','Item group')}"></select>
       </div>
