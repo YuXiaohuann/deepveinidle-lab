@@ -38,3 +38,10 @@ export async function verifyUsageRoute(base){
  assert.equal(response.headers.get('allow'),'POST');
  return response.status;
 }
+
+export async function verifyUsageStatsRoute(base){
+ const response=await fetch(new URL('/api/usage-stats',base),{redirect:'manual',signal:AbortSignal.timeout(10000)});
+ assert.equal(response.status,401,'/api/usage-stats must reject queries without a key');
+ assert.equal(response.headers.get('cache-control'),'no-store');
+ return response.status;
+}

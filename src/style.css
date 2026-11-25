@@ -36,6 +36,14 @@ header{gap:24px}.section-nav{display:flex;gap:8px;margin-right:auto}.header-righ
 @media(max-width:740px){header{height:auto;min-height:77px;flex-wrap:wrap;gap:12px;padding:16px}.section-nav{order:3;width:100%;margin:0}.section-nav a{min-width:90px}.header-right{margin-left:auto}.forecast-section{padding:17px 12px}}
 
 .forecast-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}.forecast-heading h1,.forecast-heading p{margin:0}
+.usage-dashboard{max-width:980px}
+.usage-form.panel,.usage-period,.usage-history{padding:18px}
+.usage-form{display:grid;gap:8px;max-width:480px}.usage-form>div{display:flex;gap:8px}.usage-form input{flex:1;min-width:0}.usage-form button{flex:none}
+.usage-periods{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.usage-period h2,.usage-history h2{margin-top:0}.usage-period dl{display:grid;gap:12px;margin-bottom:0}.usage-period dl div{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
+.usage-period dt{color:var(--muted)}.usage-period dd{margin:0;font-size:20px;font-variant-numeric:tabular-nums}.usage-period dl div:first-child dd{color:var(--gold)}
+.usage-history table{min-width:0;width:100%;margin:12px 0}.usage-history caption{text-align:left;color:var(--gold);padding:8px 0}.usage-history th:last-child,.usage-history td:last-child{text-align:right}
+@media(max-width:560px){.usage-periods{grid-template-columns:1fr}}
 .forecast-panel>.table-scroll{border-radius:0 0 9px 9px}
 .forecast-panel>.forecast-storage{padding-top:18px;margin-bottom:0;border-bottom:1px solid var(--line)}
 .forecast-schedule tbody tr{background:var(--forecast-row-bg,#17252b)}
