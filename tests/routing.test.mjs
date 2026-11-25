@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import vm from 'node:vm';
 import {spawn} from 'node:child_process';
 import {once} from 'node:events';
+import {fileURLToPath} from 'node:url';
 import {routes,checkRedirects} from '../scripts/release-common.mjs';
 
 const root=new URL('../',import.meta.url);
@@ -23,7 +24,7 @@ test('known routes retain their URLs; unknown history entries are replaced with 
    assert.equal(replacements[0][2],'/combat?unused=1#anchor');
   }
  }
- await checkRedirects(root.pathname);
+ await checkRedirects(fileURLToPath(root));
 });
 
 test('local HTTP server redirects unknown paths and preserves pages, assets and access restrictions',async t=>{

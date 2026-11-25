@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@dvi-lab/work-time':
+        specifier: https://github.com/MaryCLY/deepveinidle-work-time/archive/refs/tags/v0.3.0.tar.gz
+        version: https://github.com/MaryCLY/deepveinidle-work-time/archive/refs/tags/v0.3.0.tar.gz
       acorn:
         specifier: 8.15.0
         version: 8.15.0
@@ -22,6 +25,11 @@ importers:
         version: 1.62.1
 
 packages:
+
+  '@dvi-lab/work-time@https://github.com/MaryCLY/deepveinidle-work-time/archive/refs/tags/v0.3.0.tar.gz':
+    resolution: {tarball: https://github.com/MaryCLY/deepveinidle-work-time/archive/refs/tags/v0.3.0.tar.gz}
+    version: 0.3.0
+    engines: {node: '>=20.9.0'}
 
   acorn@8.15.0:
     resolution: {integrity: sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==}
@@ -70,6 +78,11 @@ packages:
     resolution: {integrity: sha512-U3PppEkleoTnIfi8BozMx3yju3qc/L6SwqWo2Sw+54PX+PX0q9I+r1Um5HCmqD7n9VDX5/v3vQH/AjA6deDdtw==}
 
 snapshots:
+
+  '@dvi-lab/work-time@https://github.com/MaryCLY/deepveinidle-work-time/archive/refs/tags/v0.3.0.tar.gz':
+    dependencies:
+      acorn: 8.15.0
+      eslint-scope: 8.4.0
 
   acorn@8.15.0: {}
 

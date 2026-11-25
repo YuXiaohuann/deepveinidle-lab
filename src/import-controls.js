@@ -1,6 +1,5 @@
 import {createCharacterUpdater} from './character-auto-import.js';
 import {reportUsage} from './usage-statistics.js';
-import {translatedName} from './i18n.js';
 const pending=new Map();let counter=0;
 function receiveCharacter(event){
  if(typeof event.detail!=='string')return;
@@ -40,26 +39,22 @@ export function importStatusText(language,status,busy=false){
  if(status.ready)return zh?'脚本已连接；可读取最近游戏角色数据。':'Script connected; ready to read the latest game character.';
  const label=zh?'已导入 · 读取时间：':'Imported · Captured: ';
  const captured=label+new Date(status.capturedAt).toLocaleString(zh?'zh-CN':'en');
- const source=status.masterySource;
- if(!source)return captured;
- if(source.fallback)return captured+(zh?'\n绑定的精通页不可用，已使用当前页。':'\nThe assigned mastery page is unavailable. Used the active page.');
- if(source.page===null)return captured+(zh?'\n精通：当前页':'\nMasteries: active page');
- const skill=translatedName(source.skill[0].toUpperCase()+source.skill.slice(1),language);
- return captured+(zh?`\n精通：第 ${source.page} 页（${skill}绑定）`:`\nMasteries: page ${source.page} (${skill} assignment)`);
+ if(status.masteryFallback||status.masterySource?.fallback)return captured+(zh?'\n部分精通绑定不可用，已使用游戏当前设置。':'\nSome mastery bindings are unavailable. Used the current in-game settings.');
+ return captured;
 }
 
-const panelPages={'character-import-settings':'combat','gather-import-settings':'gather','craft-import-settings':'craft','enhance-import-settings':'enhance','mastery-import-settings':'mastery'};
+const panelPages={'character-import-settings':'combat','gather-import-settings':'gather','craft-import-settings':'craft','enhance-import-settings':'enhance','mastery-import-settings':'mastery','boss-feed-import-settings':'boss-feed'};
 const updaters=new Map(),drafts=new Set();let activeImportPage=null;
 function settingsText(language,error){return error?(language==='zh'?(error==='load'?'自动更新设置无法读取，已停止自动更新。':'自动更新设置保存失败。'):(error==='load'?'Auto-update settings could not be read; automatic updates are disabled.':'Auto-update settings could not be saved.')):'';}
 export function registerCharacterUpdates(page,adapter){
- const {hasDraft=()=>false,...callbacks}=adapter;
+ const {hasDraft=()=>false,reportSuccessfulImport=true,...callbacks}=adapter;
  const updater=createCharacterUpdater({
   storage:{getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value)},
   page,read:()=>requestCharacter('read'),...callbacks,
-  apply:async snapshot=>{
-   const saved=await callbacks.apply(snapshot);
+  apply:async (snapshot,context)=>{
+   const saved=await callbacks.apply(snapshot,context);
    drafts.delete(page);
-   if(saved)void reportUsage(snapshot.player);
+   if(saved&&reportSuccessfulImport)void reportUsage(snapshot.player);
    return saved;
   },
   hasDraft:()=>drafts.has(page)||hasDraft()||Boolean(document.getElementById(`${page}-section`)?.querySelector('input:invalid,select:invalid,[aria-invalid=true]')),

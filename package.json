@@ -7,12 +7,14 @@
     "start": "node scripts/serve.mjs",
     "extract": "node scripts/extract.mjs",
     "vendor:markdown": "node scripts/vendor-markdown.mjs",
+    "vendor:work-time": "node scripts/vendor-work-time.mjs",
     "test": "node --test tests/*.test.mjs",
     "release:check": "node scripts/release.mjs check",
     "release:package": "node scripts/release.mjs package",
     "release:verify": "node scripts/release.mjs verify"
   },
   "devDependencies": {
+    "@dvi-lab/work-time": "https://github.com/MaryCLY/deepveinidle-work-time/archive/refs/tags/v0.3.0.tar.gz",
     "acorn": "8.15.0",
     "eslint-scope": "8.4.0",
     "markdown-it": "15.0.2",

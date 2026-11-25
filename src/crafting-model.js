@@ -5,6 +5,7 @@ import {readGuild} from './guild.js';
 import {slotItems,gatheringGear,workEquipmentSlots} from './gathering-model.js';
 import {importWorkConfig} from './work-import.js';
 import {valuationPrice} from './item-prices.js';
+import {restoreSkillMasteries} from './character-masteries.js';
 
 export const craftingStorageKey='dvi-crafting-config-v1';
 export const craftingSkills=['cooking','smithing','fletching','herblore','crafting'];
@@ -34,6 +35,7 @@ export function normalizeCrafting(raw){
  for(const p of craftingPotions)s.brews[p.kind]=integer(raw.brews?.[p.kind]??-1,-1,4);
  for(const r of craftingRooms)s.house[r.id]=integer(raw.house?.[r.id]??0,0,game.houseLevelLimit);
  for(const m of craftingMasteries)s.masteries[m.id]=integer(raw.masteries?.[m.id]??0,0,game.masteryRankLimit);
+ restoreSkillMasteries(s,raw.masteriesBySkill,craftingSkills,game.masteryRankLimit);
  for(const p of craftingPerks)s.perks[p.id]=integer(raw.perks?.[p.id]??0,0,p.ranks);
  const manual=normalizeManual(raw,{fractionalWorldXp:true});for(const k of ['guildXp','weeklyXp','ironman','blessing','hotSetting','simulationHours'])s[k]=manual[k];
  s.homeBank=game.world.banks.some(b=>b.id===Number(raw.homeBank))?Number(raw.homeBank):0;s.guild=readGuild(raw.guild);
