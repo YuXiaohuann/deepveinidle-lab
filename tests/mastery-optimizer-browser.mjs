@@ -61,7 +61,7 @@ try{
  await page.locator('#mastery-optimizer>summary').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('#mastery-optimizer').evaluate(el=>el.open),true);
  results.cases.push('optimizer is a native details panel, collapsed on first load and expandable by keyboard');
  assert.equal(await page.locator('#optimizer-goal option:disabled').count(),0);
- assert.equal(await page.getByLabel('计算模式').inputValue(),'reset');
+ assert.equal(await page.getByLabel('分配方式').inputValue(),'reset');
  await page.selectOption('#optimizer-allocation-mode','reset');
  assert.match(await page.locator('#optimizer-monster').inputValue(),/深渊恐魔/);
  const expectedMonsterOrder=[...game.monsters].sort((a,b)=>b.level-a.level).map(m=>`${translatedName(m.name,'zh')} · ${m.level}`);
@@ -146,7 +146,7 @@ try{
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   assert.equal(await page.locator('#optimizer-goal option:disabled').count(),0);
   assert.equal(await page.locator('#optimizer-allocation-mode').inputValue(),'remaining');
-  assert.equal(await page.getByLabel(language==='zh'?'计算模式':'Calculation mode').count(),1);
+  assert.equal(await page.getByLabel(language==='zh'?'分配方式':'Allocation method').count(),1);
   assert.equal(await page.locator('#optimizer-output [data-optimizer-apply]').count(),remainingPlan.plans.length);
   assert.equal(await page.locator('#optimizer-output [data-optimizer-save]').count(),remainingPlan.plans.length);
   assert.equal(await page.locator('[data-optimizer-copy]').count(),0);

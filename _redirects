@@ -12,8 +12,12 @@
 /mastery/ / 200
 /craft / 200
 /craft/ / 200
+/boss-feed / 200
+/boss-feed/ / 200
 /formulas / 200
 /formulas/ / 200
+/usage / 200
+/usage/ / 200
 / / 200
 /index.html /index.html 200
 /src/* /src/:splat 200

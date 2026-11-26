@@ -15,3 +15,28 @@ export function characterMasteries(player,skill){
  }
  return {...current,source:{page:null,fallback:true}};
 }
+
+export function restoreSkillMasteries(state,raw,skills,rankLimit){
+ if(!record(raw))return;
+ const ranks=Object.keys(state.masteries);
+ const profiles=Object.fromEntries(skills.filter(skill=>record(raw[skill])).map(skill=>[
+  skill,Object.fromEntries(ranks.map(id=>{
+   const rank=raw[skill][id];
+   return [id,Number.isInteger(rank)&&rank>=0&&rank<=rankLimit?rank:0];
+  })),
+ ]));
+ if(Object.keys(profiles).length)state.masteriesBySkill=profiles;
+}
+
+export function switchSkillMasteries(state,previousSkill,nextSkill){
+ if(previousSkill===nextSkill)return;
+ if(!state.masteriesBySkill)rememberSkillMasteries(state,previousSkill);
+ const ranks=state.masteriesBySkill?.[nextSkill];
+ state.masteries=ranks?{...ranks}:emptyMasteryRanks(state.masteries);
+}
+
+export function rememberSkillMasteries(state,skill){
+ (state.masteriesBySkill??={})[skill]={...state.masteries};
+}
+
+export const emptyMasteryRanks=ranks=>Object.fromEntries(Object.keys(ranks).map(id=>[id,0]));

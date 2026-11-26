@@ -13,6 +13,15 @@ export async function verifyBrowser(base,version,directory,{analytics='live'}={}
  const results={base,version,browser:browser.version(),executablePath,cases:[],errors:[],combat:[]};
  const context=await browser.newContext();results.analytics=await configureAnalytics(context,analytics);
  await context.route(new URL('/api/usage',base).href,route=>route.fulfill({status:204}));
+ const statsUrl=new URL('/api/usage-stats',base);
+ await context.route(url=>url.origin===statsUrl.origin&&url.pathname===statsUrl.pathname,route=>{
+  assert.equal(route.request().headers().authorization,'Bearer usage-test-key');
+  const params=new URL(route.request().url()).searchParams;
+  if(params.get('name')==='Missing')return route.fulfill({json:{rows:[],next:null}});
+  if(params.get('before'))return route.fulfill({json:{rows:[{date:'2026-11-22',sessions:1}],next:null}});
+  if(params.has('name'))return route.fulfill({json:{rows:[{date:'2026-11-25',sessions:2}],next:'2026-11-25'}});
+  return route.fulfill({json:{date:'2026-11-25',today_users:1,today_sessions:2,week_users:3,week_sessions:4,month_users:5,month_sessions:6}});
+ });
  const page=await context.newPage();
  page.setDefaultTimeout(20000);
  page.on('pageerror',e=>results.errors.push({type:'pageerror',message:e.message}));
@@ -36,10 +45,23 @@ export async function verifyBrowser(base,version,directory,{analytics='live'}={}
   for(const width of [1280,390])for(const language of ['zh','en']){
    await page.setViewportSize({width,height:900});await page.selectOption('#language',language);
    for(const id of pages){
-    if(['formulas','debug'].includes(id)){await page.goto(new URL('/'+id,base).href,{waitUntil:'networkidle'});await page.selectOption('#language',language);}
+    if(['formulas','debug','usage'].includes(id)){await page.goto(new URL('/'+id,base).href,{waitUntil:'networkidle'});await page.selectOption('#language',language);}
     else await page.locator(`#${id}-nav`).click();
     await page.locator(`#${id}-section`).waitFor({state:'visible'});
     if(id==='formulas')await page.locator('.formula-article h1').waitFor();
+    if(id==='boss-feed')await page.locator('#boss-feed-comparison-title').waitFor();
+    if(id==='usage'){
+     assert.equal(await page.locator('.section-nav a[href="/usage"]').count(),0);
+     await page.locator('#usage-token').fill('usage-test-key');
+     await page.locator('#usage-login button').click();
+     await page.locator('#usage-data').waitFor();
+     assert.deepEqual(await page.locator('#usage-data [data-count]').allTextContents(),['1','2','3','4','5','6']);
+     await page.locator('#usage-name').fill('Alice');
+     await page.locator('#usage-search button').click();
+     await page.locator('#usage-more').click();
+     await page.locator('#usage-table tbody tr').nth(1).waitFor();
+     assert.equal(await page.locator('#usage-table tbody tr').count(),2);
+    }
     await settle();
     assert.equal(new URL(page.url()).pathname,'/'+id,'Navigation did not preserve path');
     assert.equal(await page.locator('.beta').textContent(),version,'UI version mismatch');
@@ -50,7 +72,7 @@ export async function verifyBrowser(base,version,directory,{analytics='live'}={}
      return {width:root.scrollWidth,viewport:innerWidth,split:document.getElementById('app').classList.contains('split-scroll'),bodyHeight:root.scrollHeight,height:innerHeight,leftOverflow:left?getComputedStyle(left).overflowY:null,rightOverflow:right?getComputedStyle(right).overflowY:null,rightBelow:left&&right?right.getBoundingClientRect().top>=left.getBoundingClientRect().bottom-1:null,footerInRight:right?right.contains(document.querySelector('.project-footer')):false};
     },id);
     assert.ok(layout.width<=width,`${id} ${language} ${width}: horizontal overflow`);
-    const configured=['combat','gather','craft','enhance','mastery'].includes(id);
+    const configured=['combat','gather','craft','boss-feed','enhance','mastery'].includes(id);
     if(configured&&width>740){assert.equal(layout.split,true);assert.equal(layout.leftOverflow,'auto');assert.equal(layout.rightOverflow,'auto');assert.equal(layout.footerInRight,true);assert.ok(layout.bodyHeight<=layout.height+1,'Desktop body should not scroll');}
     else if(configured){assert.notEqual(layout.leftOverflow,'auto');assert.notEqual(layout.rightOverflow,'auto');assert.equal(layout.rightBelow,true,'Mobile columns overlap');}
     else assert.equal(layout.split,false,'Forecast/debug should use normal scrolling');
@@ -106,6 +128,16 @@ export async function verifyBrowser(base,version,directory,{analytics='live'}={}
    assert.equal(await page.locator('#rows tr[data-enemy]').count(),game.monsters.length);
    results.combat.push({language,width,targets:game.monsters.length,status:'passed'});
   }
+  await page.goto(new URL('/usage/',base).href,{waitUntil:'networkidle'});
+  assert.equal(new URL(page.url()).pathname,'/usage/');
+  assert.ok(await page.locator('#usage-data').isHidden());
+  await page.locator('#usage-token').fill('usage-test-key');
+  await page.locator('#usage-login button').click();
+  await page.locator('#usage-name').fill('Missing');
+  await page.locator('#usage-search button').click();
+  await page.locator('#usage-empty').waitFor();
+  await page.locator('#usage-lock').click();
+  assert.ok(await page.locator('#usage-data').isHidden());
   assert.equal(results.cases.length,pages.length*4);assert.deepEqual(results.errors,[],'Browser warnings/errors');
   return {cases:results.cases.length,combatTargets:game.monsters.length,browser:results.browser,executablePath,analytics:results.analytics};
  }catch(error){results.failure=error.message;results.failureLayout=await page.evaluate(()=>({active:document.activeElement?.outerHTML.slice(0,300),columns:[...document.querySelectorAll('[data-scroll-column]')].filter(e=>!e.closest('[hidden]')).map(e=>({column:e.dataset.scrollColumn,top:e.scrollTop,height:e.scrollHeight,client:e.clientHeight}))})).catch(()=>null);await page.screenshot({path:path.join(directory,'browser-failure.png'),fullPage:true}).catch(e=>results.errors.push({type:'screenshot',message:e.message}));throw error;}

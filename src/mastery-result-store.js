@@ -1,5 +1,5 @@
 import {game} from './model.js';
-import {optimizerInput,optimizerScenario,optimizerPolicy,checkOptimizerPrices} from './mastery-optimizer.js';
+import {optimizerInput,optimizerScenario,optimizerPolicy,optimizerWorkMode,checkOptimizerPrices} from './mastery-optimizer.js';
 import {craftingJobs} from './crafting-model.js';
 import {gatheringJobs} from './gathering-model.js';
 
@@ -20,6 +20,7 @@ function stable(value){
 function optimizerContext(raw){
  const policy=optimizerPolicy(raw.objective),gathering=policy.gathering;
  return {objective:raw.objective,allocationMode:raw.allocationMode,totalPoints:number(raw.totalPoints),current:Object.fromEntries(game.masteries.map(m=>[m.id,number(raw.current?.[m.id])])),effort:raw.effort,
+  ...((policy.gathering||policy.crafting)&&raw.workMode!==undefined?{workMode:optimizerWorkMode(policy,raw.workMode)}:{}),
   ...(policy.crafting?{recipeId:raw.recipeId,tier:raw.tier,crafting:optimizerScenario(raw.objective,{...raw.crafting,skill:craftingJobs.find(j=>j.id===raw.recipeId)?.skill})}:gathering?{jobId:raw.jobId,gathering:optimizerScenario(raw.objective,{...raw.gathering,skill:gatheringJobs.find(j=>j.id===raw.jobId)?.skill})}:{monsterId:raw.monsterId,combat:optimizerScenario(raw.objective,raw.combat)})};
 }
 const pick=(value,keys)=>Object.fromEntries(keys.map(key=>[key,value[key]]));
@@ -33,7 +34,7 @@ export function optimizerTaskKey(raw){
   buffs:pick(settings,['guildXp','weeklyXp','worldRarity','blessing','hotSetting']),
   supplies:{homeBank:source.homeBank,ironman:settings.ironman,...(gathering?{discardGathered:source.discardGathered}:{coins:settings.coins,bankSlotsBought:settings.bankSlotsBought,unlimitedBank:settings.unlimitedBank})},
   ...(!work?{style:source.style,food:{...pick(source,['food','eatAt','fed','rooted']),...pick(settings,['foodRule','foodMaxTier','foodPerTrip'])}}:{})};
- return JSON.stringify(stable({...pick(context,['objective','allocationMode','totalPoints','current']),...(policy.crafting?{recipeId:context.recipeId,tier:context.tier}:gathering?{jobId:context.jobId}:{monsterId:context.monsterId}),scenario}));
+ return JSON.stringify(stable({...pick(context,['objective','allocationMode','totalPoints','current']),...(work?{workMode:optimizerWorkMode(policy,context.workMode)}:{}),...(policy.crafting?{recipeId:context.recipeId,tier:context.tier}:gathering?{jobId:context.jobId}:{monsterId:context.monsterId}),scenario}));
 }
 export function validateComputedMasteryResult(record){
  requireValue(object(record));
@@ -65,14 +66,16 @@ export function masteryResultHistory(record){
  try{
   requireValue(typeof record.engine==='string'&&record.engine.length>0&&object(record.input)&&object(record.baseline));
   const input=record.input;requireValue(integer(input.now)&&input.now>0&&input.now<=8.64e15&&integer(input.totalPoints)&&['reset','remaining'].includes(input.allocationMode));
-  const policy=optimizerPolicy(input.objective);stats(record.plan.stats);requireValue(record.plan.stats.mean>=0);
+  const policy=optimizerPolicy(input.objective),workMode=optimizerWorkMode(policy,input.workMode);stats(record.plan.stats);requireValue(record.plan.stats.mean>=0);
   if(record.plan.paired!==null)stats(record.plan.paired);
   requireValue(typeof record.baseline.overBudget==='boolean'&&typeof record.baseline.viable==='boolean');
-  return {available:true,oldEngine:record.engine!==masteryResultEngine,input,plan:record.plan,baseline:record.baseline,policy};
+  return {available:true,oldEngine:record.engine!==masteryResultEngine,input,plan:record.plan,baseline:record.baseline,policy,workMode};
  }catch{return {available:false,oldEngine:record?.engine!==masteryResultEngine};}
 }
 export function createMasteryResult(request,result,index=0){
  requireValue(object(result)&&result.objective===request.objective&&result.allocationMode===request.allocationMode&&result.totalPoints===request.totalPoints&&Array.isArray(result.plans));
+ const policy=optimizerPolicy(request.objective);
+ requireValue(optimizerWorkMode(policy,request.workMode)===optimizerWorkMode(policy,result.workMode));
  const plan=result.plans[index];requireValue(object(plan));
  const input={...optimizerContext(request),now:request.now,prices:structuredClone(request.prices)};
  return structuredClone(validateComputedMasteryResult({engine:masteryResultEngine,input,baseline:result.baseline,plan:{ranks:plan.ranks,cost:plan.cost,additionalCost:plan.additionalCost,stats:plan.stats,paired:plan.paired}}));

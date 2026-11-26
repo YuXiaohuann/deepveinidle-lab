@@ -60,6 +60,10 @@ const exportsMap={
   "isCrop": "Nz",
   "damageReduction": "upe",
   "brewScale": "_a",
+  "warriorAccuracyBonus": "Lz",
+  "warriorMaxHitBonus": "FW",
+  "nourishHealingBonus": "MW",
+  "hasteAttackSpeedBonus": "CW",
   "combine": "Za",
   "bosses": "Xb",
   "bossStats": "O_",
@@ -171,6 +175,36 @@ const exportsMap={
   "upgradeSiteJob": "FB",
   "upgradeWorkTicks": "Tv"
 };
+// Skilling bosses and work-time use this same declaration closure and snapshot.
+const bossFeedRules={
+  rawBosses:'ke', rooms:'J_', makePlayer:'Uye', pointsBase:'tk', markMultiplier:'lb',
+  outfitContribution:'Rce', chestThreshold:'Sh', feedXp:'rZ', feedRecipe:'Up',
+  feedUsesFarmingSpeed:'Xue', productionXp:'oke', equippedSkillTool:'BS',
+  materialSavingSkill:'E0e', swiftSpeedBonus:'DW',
+  item:exportsMap.item, itemList:exportsMap.items, gear:exportsMap.gear, tool:exportsMap.tool,
+  decodeBase:exportsMap.baseItemId, tier:exportsMap.itemTier, withRarity:exportsMap.withRarity,
+  encode:exportsMap.encode, level:exportsMap.level, levelXp:exportsMap.levelXp,
+  workSpeed:exportsMap.workModifiers, inventoryCapacity:exportsMap.packCapacity,
+  mountStride:exportsMap.mountSpeed, brewStrength:exportsMap.brewScale,
+  masteryMultiplier:exportsMap.masteryMultiplier, sideSkillBonus:exportsMap.skillOffhandBonus,
+  workXpMultiplier:exportsMap.workXpMultiplier, perkList:exportsMap.perks, maxLevel:exportsMap.maxLevel,
+  maxEnhancement:exportsMap.maxEnhancement, masteryRankLimit:exportsMap.masteryRankLimit,
+  houseLevelLimit:exportsMap.houseLevelLimit, canEnhance:exportsMap.canEnhance,
+};
+const bossWorkTimeGame={
+  tickMs:exportsMap.tickMs, recipes:exportsMap.recipes, upgradeRecipes:exportsMap.upgradeRecipes,
+  items:exportsMap.items, item:exportsMap.item, recipeInputs:exportsMap.recipeInputs,
+  recipeOutput:exportsMap.recipeOutput, itemSupportsRarity:exportsMap.itemSupportsRarity,
+  rarityThresholds:exportsMap.rarityThresholds, hotRarityMultiplier:exportsMap.hotRarityMultiplier,
+  world:exportsMap.world, siteEntrance:exportsMap.nearbyTile, walkPath:'ik',
+  withRarity:exportsMap.withRarity, baseItemId:exportsMap.baseItemId, itemTier:exportsMap.itemTier,
+  upgradeMaterials:exportsMap.upgradeMaterials, upgradeResult:exportsMap.upgradeResult,
+  levelSpeedCoefficient:'_le', upgradeBaseTicks:'$B', bonusMinimumUncommon:exportsMap.bonusMinimumUncommon,
+  bosses:bossFeedRules.rawBosses, bossUnlockLevel:'Br', bossFeedRecipe:bossFeedRules.feedRecipe,
+  bossFeedParts:'hz', bossUsesFarmingSpeed:bossFeedRules.feedUsesFarmingSpeed,
+  bossHeartLayout:'ct', bossKrakenLayout:'Ra', bossColonyLayout:'rr', bossBlightLayout:'Xa', bossSiegeLayout:'sn',
+};
+const exportGroups={bossFeedRules,bossWorkTimeGame};
 const selected=new Set(); const allowed=new Set(['WeakSet','WeakMap','Uint8Array','Uint16Array','Uint32Array','Int16Array','Int32Array','Float64Array','Math','Map','Set','Number','Object','Array','String','Error','Date','Boolean','Infinity','undefined','JSON','RegExp','parseInt','parseFloat']);
 function collect(name){
  const d=declarations.get(name);if(!d)throw Error('Missing declaration '+name);if(selected.has(d))return;selected.add(d);
@@ -179,8 +213,15 @@ function collect(name){
  for(const dep of new Set(refs))if(declarations.has(dep))collect(dep);else if(!allowed.has(dep))throw Error(`Unexpected external dependency ${dep} in ${name}`);
 }
 Object.values(exportsMap).forEach(collect);
+for(const group of Object.values(exportGroups))Object.values(group).forEach(collect);
 const ordered=[...selected].sort((a,b)=>a.start-b.start);
+const workTimeSource={sourceVersion:sourceInfo.changelogVersion,sourceUrl:sourceInfo.sourceUrl,sha256:sourceInfo.sha256};
+const groupedCode=Object.entries(exportGroups).map(([name,group])=>{
+ const members=Object.entries(group).map(([key,symbol])=>`  ${key}: ${symbol}`);
+ if(name==='bossWorkTimeGame')members.push(`  source: Object.freeze(${JSON.stringify(workTimeSource)})`);
+ return `export const ${name} = Object.freeze({\n${members.join(',\n')}\n});\n`;
+}).join('');
 fs.mkdirSync('src',{recursive:true});
-fs.writeFileSync('src/upstream.js','// GENERATED from reviewed vendor snapshots. Do not edit.\n'+ordered.map(d=>d.text).join('\n')+'\nexport { '+Object.entries(exportsMap).map(([alias,name])=>`${name} as ${alias}`).join(', ')+' };\n');
-fs.writeFileSync('vendor/manifest.json',JSON.stringify({...sourceInfo,exports:exportsMap,declarations:ordered.map(({name,start,end,text})=>({name,start,end,sha256:hash(text)})),overrides:[]},null,2));
+fs.writeFileSync('src/upstream.js','// GENERATED from reviewed vendor snapshots. Do not edit.\n'+ordered.map(d=>d.text).join('\n')+'\nexport { '+Object.entries(exportsMap).map(([alias,name])=>`${name} as ${alias}`).join(', ')+' };\n'+groupedCode);
+fs.writeFileSync('vendor/manifest.json',JSON.stringify({...sourceInfo,exports:exportsMap,exportGroups,declarations:ordered.map(({name,start,end,text})=>({name,start,end,sha256:hash(text)})),overrides:[]},null,2));
 console.log(`Extracted ${ordered.length} original declarations (${fs.statSync('src/upstream.js').size} bytes).`);

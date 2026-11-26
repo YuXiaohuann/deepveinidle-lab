@@ -1,5 +1,5 @@
 // Keep scroll containers outside each page's replaceable result markup.
-const pages=['combat','gather','craft','enhance','mastery'];
+const pages=['combat','gather','craft','boss-feed','enhance','mastery'];
 const positions=new Map();
 const columns=new Map();
 export function rememberScrollLayout(){

@@ -14,7 +14,7 @@ const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-12,`${a} != ${b}`);
 
 test('1212 uses the complete reviewed build and retains disabled experimental features',()=>{
  const manifest=JSON.parse(fs.readFileSync('vendor/manifest.json'));
- assert.equal(manifest.changelogVersion,'1.0.1221');assert.equal(manifest.declarations.length,1463);assert.deepEqual(manifest.overrides,[]);
+ assert.equal(manifest.changelogVersion,'1.0.1221');assert.equal(manifest.declarations.length,1480);assert.deepEqual(manifest.overrides,[]);
  assert.deepEqual(game.features,{enhanceRedesign:false,alchemy:false,profiles:false});
  assert.equal(game.rooms.length,18);assert.equal(game.equipmentSlots.includes('flask'),true);
  assert.equal(game.items.length,1489);assert.equal(game.upgradeRecipes.length,27);

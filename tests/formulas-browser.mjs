@@ -38,11 +38,10 @@ try{
  });
  await page.goto(base+'/combat');
  await page.waitForFunction(()=>document.querySelector('#simulation-status').hidden);
+ assert.equal(await page.evaluate(()=>window.combatWorkerCount),1);
  assert.equal(requests,0);
  assert.equal(await page.locator('#formulas-nav').count(),0);
  await page.goto(base+'/formulas');
- await page.waitForFunction(()=>document.querySelector('#simulation-status').hidden);
- const workerCount=await page.evaluate(()=>window.combatWorkerCount);
  await page.locator('.formula-status[role="alert"]').waitFor();
  assert.match(await page.locator('.formula-error').innerText(),/HTTP 503/);
  fail=false;await page.getByRole('button',{name:'重新加载',exact:true}).click();
@@ -64,8 +63,15 @@ try{
  assert.equal(await page.locator('.formula-article h1').innerText(),'战斗公式');
  assert.equal(await page.locator('#formulas-section').getAttribute('lang'),'zh-CN');
  assert.equal(new URL(page.url()).hash,secondHash);assert.equal(requests,2);
- await page.locator('#combat-nav').click();await page.goBack();await page.locator('.formula-article h1').waitFor();
- assert.equal(requests,2);assert.equal(await page.evaluate(()=>window.combatWorkerCount),workerCount);
+ assert.equal(await page.evaluate(()=>window.combatWorkerCount),0);
+ await page.locator('#combat-nav').click();
+ await page.waitForFunction(()=>document.querySelector('#simulation-status').hidden);
+ assert.equal(await page.evaluate(()=>window.combatWorkerCount),1);
+ await page.goBack();await page.locator('.formula-article h1').waitFor();
+ await page.goForward();await page.waitForFunction(()=>document.querySelector('#simulation-status').hidden);
+ assert.equal(await page.evaluate(()=>window.combatWorkerCount),1);
+ await page.goBack();await page.locator('.formula-article h1').waitFor();
+ assert.equal(requests,2);
  result.cases.push('Chinese content under English UI, cache and simulation preservation');
  for(const width of [1280,390]){
   await page.setViewportSize({width,height:900});

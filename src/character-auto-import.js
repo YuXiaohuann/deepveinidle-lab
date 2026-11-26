@@ -25,8 +25,9 @@ export function createCharacterUpdater({storage,page,read,apply,onError=()=>{},o
    if(!active||token!==generation||revision()!==previous||(!manual&&hasDraft()))return;
    if(!response.snapshot)throw Error('noSnapshot');
    const {snapshot}=response;
-   if(!manual&&lastImport&&snapshot.capturedAt===lastImport.capturedAt&&skill===lastImport.skill)return;
-   const saved=await apply(snapshot);
+   const sameAutomaticCapture=Boolean(!manual&&lastImport&&snapshot.capturedAt===lastImport.capturedAt);
+   if(sameAutomaticCapture&&skill===lastImport.skill)return;
+   const saved=await apply(snapshot,{sameAutomaticCapture});
    if(saved&&active&&token===generation)lastImport={capturedAt:snapshot.capturedAt,skill};
   }catch(error){if(active&&token===generation)onError(error);}
   finally{

@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {characterMasteries} from '../src/character-masteries.js';
+import {characterMasteries,rememberSkillMasteries} from '../src/character-masteries.js';
 import {importCharacter} from '../src/character-import.js';
 import {craftingDefaults,importCrafting} from '../src/crafting-model.js';
 import {gatheringDefaults,importGathering} from '../src/gathering-model.js';
 import {enhancementDefaults,importEnhancement} from '../src/enhancement.js';
 import {masteryDefaults,importMastery} from '../src/mastery.js';
-import {game,preset} from '../src/model.js';
+import {game,normalize,preset,selectStyle} from '../src/model.js';
 
 const snapshot=()=>({version:2,capturedAt:Date.now(),player:{
  lastTick:0,equipment:{weapon:null},skills:{enhancing:0},house:{},houseFurniture:{},
@@ -38,6 +38,9 @@ test('combat selects the imported weapon skill, including empty and unreadable w
   assert.equal(state.style,skill??'melee');
   assert.equal(state.masteries.xp,xp);
   assert.deepEqual(masterySource,skill?{page,skill}:{page});
+  const otherStyle=state.style==='ranged'?'melee':'ranged';
+  const roundTrip=selectStyle(selectStyle(normalize(JSON.parse(JSON.stringify(state))),otherStyle),state.style);
+  assert.equal(roundTrip.masteries.xp,xp);
  }
 });
 
@@ -69,4 +72,29 @@ test('bound ranks retain each page’s existing invalid-level handling',()=>{
  assert.equal(gathering.state.masteries.xp,11);
  assert.ok(gathering.warnings.includes('masteries.xp'));
  assert.throws(()=>importEnhancement(enhancementDefaults(),data),/invalidSnapshot/);
+});
+
+test('one combat import supports switching styles after saving and preserves local edits per skill',()=>{
+ const {state}=importCharacter(preset('ranged'),snapshot());
+ assert.equal(state.masteries.xp,7);
+ const ranged=selectStyle(normalize(JSON.parse(JSON.stringify(state))),'ranged');
+ assert.equal(ranged.masteries.xp,2);
+ ranged.masteries.xp=13;
+ rememberSkillMasteries(ranged,'ranged');
+ const magic=selectStyle(ranged,'magic');
+ assert.equal(magic.masteries.xp,7);
+ assert.equal(selectStyle(magic,'ranged').masteries.xp,13);
+});
+
+test('legacy mastery settings belong to the saved skill and new manual edits stay independent',()=>{
+ const legacy=preset('ranged');
+ legacy.masteries.xp=11;
+ const melee=selectStyle(legacy,'melee');
+ assert.equal(melee.masteries.xp,0);
+ melee.masteries.xp=16;
+ rememberSkillMasteries(melee,'melee');
+ const ranged=selectStyle(JSON.parse(JSON.stringify(melee)),'ranged');
+ assert.equal(ranged.masteries.xp,11);
+ assert.equal(selectStyle(ranged,'magic').masteries.xp,0);
+ assert.equal(selectStyle(ranged,'melee').masteries.xp,16);
 });

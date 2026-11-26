@@ -61,6 +61,7 @@ test('running task key accepts numeric drafts and ignores unused page/task but r
 test('gathering task key uses the selected job skill even when source page selects a different skill',()=>{
  const raw={objective:'gatherCollection',allocationMode:'reset',current:masteryDefaults().current,totalPoints:0,effort:'fast',jobId:gatheringJobs.find(j=>j.skill==='fishing'&&j.levelReq===1).id,gathering:gatheringDefaults(),now:1794096000000};
  assert.equal(optimizerTaskKey(raw),optimizerTaskKey(optimizerInput(raw)));
+ assert.notEqual(optimizerTaskKey(raw),optimizerTaskKey({...raw,workMode:'fast'}));
 });
 test('income records retain their original effective prices, accept zero and reject missing prices',()=>{
  const {request,result}=fixture();request.objective='combatIncome';result.objective='combatIncome';
@@ -120,6 +121,9 @@ test('XP records round-trip without prices; crafting context tracks recipe, rari
   changed.tier=1;assert.notEqual(optimizerTaskKey(changed),key);changed.tier=0;
   changed.crafting.levels.cooking=2;assert.notEqual(optimizerTaskKey(changed),key);
   assert.equal(record.input.combat,undefined);assert.equal(record.input.gathering,undefined);
+  const legacy=structuredClone(record);delete legacy.input.workMode;
+  assert.equal(masteryResultHistory(legacy).workMode,'standard');
+  assert.equal(validateComputedMasteryResult(legacy),legacy);
  }
 });
 

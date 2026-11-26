@@ -8,7 +8,9 @@
 node scripts/serve.mjs
 ```
 
-打开 [本机页面](http://127.0.0.1:4173)。服务仅监听本机，可通过 `PORT` 环境变量修改端口；支持 `/combat`、`/gather`、`/craft`、`/enhance`、`/mastery`、`/forecast`、`/formulas` 和调试页 `/debug`。调试页仅提供角色配置 JSON 导出、战斗／强化配置文件导入；完整角色快照捕获、导入、导出与模拟已在当前版本移除。
+打开 [本机页面](http://127.0.0.1:4173)。服务仅监听本机，可通过 `PORT` 环境变量修改端口；支持 `/combat`、`/gather`、`/craft`、`/boss-feed`、`/enhance`、`/mastery`、`/forecast`、`/formulas` 和调试页 `/debug`。调试页仅提供角色配置 JSON 导出、战斗／强化配置文件导入；完整角色快照捕获、导入、导出与模拟已在当前版本移除。
+
+`/usage` 可用静态服务检查页面入口和锁定界面。验证实际查询时用 `wrangler pages dev`、本机 `USAGE_DB` 和测试用 `USAGE_READ_TOKEN`，在本地数据库执行 `migrations/` 内的迁移。发布前浏览器检查会拦截统计查询并返回合成数据。 [使用统计页](modules/usage-statistics.md#使用统计页)
 
 功能修改默认运行相关测试；涉及共用逻辑、影响范围难以界定或专项检查发现问题时扩大范围，发布前按[发布流程](release.md)执行完整检查。专项示例：
 
@@ -34,6 +36,12 @@ node scripts/extract.mjs
 完整公开资源位于 `vendor/game-original.js`，来源、摘要、语义导出及声明摘要记录于 `vendor/manifest.json`；当前快照与提取边界见[原始代码复用](technical.md#62-原始代码复用)。禁止手工修改生成文件 `src/upstream.js`；更新资源前遵循[上游更新流程](technical.md#64-上游更新流程)，完成映射审阅、重新提取及回归验证。
 
 本机服务有意不开放 `docs/`、`reports/` 与 `AGENTS.md`；文档通过仓库或本地编辑器阅读。README 与 DESIGN 仍可直接访问，但其拆分文档链接不属于网页预览服务范围。无需为文档整理扩大服务器访问范围。
+
+## 技能首领专项
+
+运行 `node --test tests/boss-feed.test.mjs tests/routing.test.mjs` 检查计算、行情协议、精通投影和路由。运行 `node tests/boss-feed-browser.mjs` 使用本机 Chrome、合成行情和角色快照检查页面；截图保存于 `.test-artifacts/boss-feed/`。
+
+更新固定版本的 `@dvi-lab/work-time` 后，用 `pnpm vendor:work-time` 同步浏览器模块、许可证及文件摘要。静态检查验证所提交文件与已安装版本一致。首领规则和时间适配使用同一 `node scripts/extract.mjs`，与其他页面共用 `vendor/game-original.js`。
 
 ## 强化页专项
 
@@ -65,7 +73,7 @@ node --test tests/mastery.test.mjs tests/mastery-controls.test.mjs tests/mastery
 | --- | --- | --- |
 | `mastery-optimizer-browser.mjs` | `.test-artifacts/mastery-optimizer/` | 原四目标、三档搜索与两种预算的真实Worker；目标应用、冻结价格、保留旧推荐、运行取消／迟到隔离及保存失败 |
 | `mastery-result-slots-browser.mjs` | `.test-artifacts/mastery-result-slots/browser/` | 双栏覆盖／删除／应用、导入刷新保留、超预算和低于当前恢复、旧引擎／异常辅助信息、无效点数草稿、跨标签冲突与卡片布局 |
-| `mastery-xp-browser.mjs` | `.test-artifacts/mastery-xp/browser/` | 三个经验目标的真实Worker、计算时指标、制造配方品质、自动应用与双栏恢复、来源配置保留 |
+| `mastery-xp-browser.mjs` | `.test-artifacts/mastery-xp/browser/` | 三个经验目标的真实 Worker、采集／制造快速模式、切换取消、双语窄屏、配方品质、自动应用与双栏恢复 |
 | `mastery-search-browser.mjs` | `.test-artifacts/mastery-search/search/` | 三类候选排序与双语搜索、鼠标／键盘、无匹配和取消、仅确认不同选择取消任务、实际Worker请求目标 |
 
 四套共用 `tests/helpers/mastery-browser.mjs` 的临时服务、合成角色、价格隔离和Worker观测；默认关闭市场自动导入，不连接真实账号。真实完成使用实际Worker，取消／迟到／错误场景使用受控替身。包含中英文桌面与390px布局，日志和截图需落盘并人工审阅，不替代发布验收。需要回环监听和本机Chrome；传入目标网址时直接访问该目标，不启动本机服务。
@@ -116,7 +124,7 @@ node --test tests/mastery.test.mjs tests/mastery-controls.test.mjs tests/mastery
 
 ## 共用角色自动更新专项
 
-`node --test tests/character-auto-import.test.mjs tests/character-import.test.mjs tests/character-masteries.test.mjs tests/crafting-store.test.mjs tests/crafting-display.test.mjs` 验证配置导入、精通选页、偏好、坏存档保护及并发。`node tests/character-auto-import-browser.mjs [输出目录]` 验证五页配置开关、独立保存、焦点合并、重绘、制造忽略无效库存，以及精通来源、同快照换技能、迟到响应、异常绑定回退和双语桌面／390px。默认输出 `.test-artifacts/character-auto-import/browser/`，使用受控桥接，不连接游戏账号，不替代发布验收。
+`node --test tests/character-auto-import.test.mjs tests/character-import.test.mjs tests/character-masteries.test.mjs tests/crafting-store.test.mjs tests/crafting-display.test.mjs` 验证配置导入、精通选页、偏好、坏存档保护及并发。`node tests/character-auto-import-browser.mjs [输出目录]` 验证五页配置开关、独立保存、焦点合并、重绘、制造忽略无效库存、切换技能时立即更新精通、迟到响应、异常绑定回退和双语桌面／390px。默认输出 `.test-artifacts/character-auto-import/browser/`，使用受控桥接验证。
 
 1208 上限与旧存档浏览器专项：`node tests/upstream-browser.mjs --caps-only --out .test-artifacts/upstream-1208/caps-browser`。覆盖中英文桌面／390px 下战斗、采集、制造的家园控件、强化书台及精通等级上限、越界输入提示和恢复合法值、强化／精通越界存档明确提示且原存储保留。此选项仅执行该专项，不代表完整页面或发布验收。
 
